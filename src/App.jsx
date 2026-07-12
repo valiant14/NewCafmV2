@@ -15,6 +15,7 @@ import WorkOrdersPage from './pages/WorkOrdersPage'
 import LaborPage from './pages/LaborPage'
 import MaterialsPage from './pages/MaterialsPage'
 import ToolsPage from './pages/ToolsPage'
+import PreventiveMaintenancePage from './pages/PreventiveMaintenancePage'
 
 const excelDate = (value) => {
   if (!value || typeof value === 'string') return value || '—'
@@ -162,6 +163,7 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   const [workCompleted,setWorkCompleted]=useState(['COMP','COMPLETED','CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
   const [workClosed,setWorkClosed]=useState(['CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
   const [workStarted,setWorkStarted]=useState(['INPRG','COMP','COMPLETED','CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
+  const [workAssigned,setWorkAssigned]=useState(String(order.STATUS||'').toUpperCase()!=='WAITING')
   const [description,setDescription]=useState(order['DESCRIPITION ']||'')
   const [priority,setPriority]=useState(String(order['PRIORTY']||'2'))
   const [department,setDepartment]=useState(String(order['DEPARTMENT ']||''))
@@ -179,7 +181,7 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   const [remedyCode,setRemedyCode]=useState(order['REMEDY CODE']||'')
   const [plannedLabor,setPlannedLabor]=useState(isPM?[{craft:'HVAC Technician',hours:'2',crew:'HVAC Team A'}]:[{craft:'',hours:'',crew:''}])
   const [plannedResources,setPlannedResources]=useState(isPM?[{type:'Material',item:'Air filter, 500 × 500 mm',quantity:'2',availability:'Available'},{type:'Tool',item:'Digital multimeter',quantity:'1',availability:'Available'}]:[])
-  const [plannedTasks,setPlannedTasks]=useState(isPM?jobTasks.slice(0,4).map(task=>({sequence:task['JOB TASK SEQUENCE'],description:task['JOB TASK DESCRIPTION'],duration:Math.max(5,Math.round(Number(task['TASK DURATION IN HOUR'])*1440))})):[{sequence:10,description:'',duration:''}])
+  const [plannedTasks,setPlannedTasks]=useState(isPM?(order['JOB PLAN TASKS']?.length?order['JOB PLAN TASKS']:jobTasks.slice(0,4)).map(task=>({sequence:task['JOB TASK SEQUENCE'],description:task['JOB TASK DESCRIPTION'],duration:Math.max(5,Math.round(Number(task['TASK DURATION IN HOUR'])*1440))})):[{sequence:10,description:'',duration:''}])
   const [ptwRequired,setPtwRequired]=useState(false)
   const [ptwFiles,setPtwFiles]=useState([])
   const [generalFiles,setGeneralFiles]=useState([{name:'site-inspection-photo.jpg',size:'1.8 MB',type:'Image'}])
@@ -227,7 +229,7 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   const failureReady=Boolean(isPM||(failureClass&&problemCode))
   const actualReady=Boolean(technicianRemarks.trim()&&completionNotes.trim()&&actualLabor.trim()&&Number(actualHours)>0)
   const preparationReady=overviewReady&&planReady&&failureReady
-  const status = materialBlocked ? 'Waiting for Spare Parts' : ptwBlocked ? 'Waiting for Permit' : workClosed ? 'CLOSE' : workCompleted ? 'COMP' : workStarted ? 'INPRG' : overviewReady ? 'ASSIGNED' : 'WAPPR'
+  const status = materialBlocked ? 'Waiting for Spare Parts' : ptwBlocked ? 'Waiting for Permit' : workClosed ? 'CLOSE' : workCompleted ? 'COMP' : workStarted ? 'INPRG' : workAssigned&&overviewReady ? 'ASSIGNED' : isPM&&overviewReady ? 'Waiting' : 'WAPPR'
   const actualsEditable = workCompleted
   const number = order.WORKORDER || 'AUTO'
   const targetFinishTime=targetFinish?new Date(targetFinish).getTime():null
@@ -238,10 +240,10 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   const reroute=()=>{setTab('Overview');setAssignedDepartment('');setSupervisor('');setWorkStarted(false)}
   const addFiles=(setter)=>event=>{const files=Array.from(event.target.files||[]).map(file=>({name:file.name,size:file.size>1048576?`${(file.size/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(file.size/1024))} KB`,type:file.type||'Document'}));setter(current=>[...current,...files]);event.target.value=''}
   const completeWork=()=>{const now=toDateTimeInput(new Date());setActualFinish(now);setActualStart(current=>current||now);setWorkCompleted(true)}
-  useEffect(()=>{setAutoSaveState('Saving');const timer=setTimeout(()=>setAutoSaveState('Saved'),450);return()=>clearTimeout(timer)},[description,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualStart,actualFinish,workStarted,workCompleted,workClosed])
+  useEffect(()=>{setAutoSaveState('Saving');const timer=setTimeout(()=>setAutoSaveState('Saved'),450);return()=>clearTimeout(timer)},[description,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualStart,actualFinish,workAssigned,workStarted,workCompleted,workClosed])
   return <div className={page?'work-order-detail-page':'wo-overlay'}><div className={`wo-editor ${page?'work-order-page-editor':''}`}>
     <header className="wo-editor-head"><div><button className="back-link" onClick={close}>← Work Order Tracking</button><div className="wo-title-line"><h2>{number === 'AUTO' ? 'New work order' : `Work order #${number}`}</h2><Badge tone={isPM?'blue':'purple'}>{isPM?'PM':'CM'}</Badge><Badge tone="orange">{status}</Badge></div><p>{order['DESCRIPITION '] || order.DESCRIPTION || 'Enter work order information'}</p></div>
-      <div className="wo-head-actions"><div className={`autosave-indicator ${autoSaveState.toLowerCase()}`}>{autoSaveState==='Saving'?<span className="saving-dot"/>:<Check size={13}/>}<span>{autoSaveState==='Saving'?'Saving…':'All changes saved'}</span></div><div className={`auto-status ${status.toLowerCase().replaceAll(' ','-')}`}><span>Automatic status</span><strong>{status}</strong></div>{status==='ASSIGNED'&&<button className="primary complete-action" disabled={!preparationReady} onClick={()=>setWorkStarted(true)}><Wrench size={15}/>Start work</button>}{status==='INPRG'&&<button className="primary complete-action" onClick={completeWork}><Check size={15}/>Resolve / complete</button>}{status==='COMP'&&<button className="primary complete-action" disabled={!actualReady} onClick={()=>setWorkClosed(true)}><Check size={15}/>Close work order</button>}<button className="outline" onClick={reroute}><RotateCcw size={15}/> Re-route</button><button className="outline" onClick={()=>window.print()}><Printer size={15}/> Print</button><button className="close-editor" onClick={close}><X size={20}/></button></div></header>
+      <div className="wo-head-actions"><div className={`autosave-indicator ${autoSaveState.toLowerCase()}`}>{autoSaveState==='Saving'?<span className="saving-dot"/>:<Check size={13}/>}<span>{autoSaveState==='Saving'?'Saving…':'All changes saved'}</span></div><div className={`auto-status ${status.toLowerCase().replaceAll(' ','-')}`}><span>Automatic status</span><strong>{status}</strong></div>{status==='Waiting'&&<button className="primary complete-action" disabled={!overviewReady} onClick={()=>setWorkAssigned(true)}><Users size={15}/>Assign department</button>}{status==='ASSIGNED'&&<button className="primary complete-action" disabled={!preparationReady} onClick={()=>setWorkStarted(true)}><Wrench size={15}/>Start work</button>}{status==='INPRG'&&<button className="primary complete-action" onClick={completeWork}><Check size={15}/>Resolve / complete</button>}{status==='COMP'&&<button className="primary complete-action" disabled={!actualReady} onClick={()=>setWorkClosed(true)}><Check size={15}/>Close work order</button>}<button className="outline" onClick={reroute}><RotateCcw size={15}/> Re-route</button><button className="outline" onClick={()=>window.print()}><Printer size={15}/> Print</button><button className="close-editor" onClick={close}><X size={20}/></button></div></header>
     <div className="wo-summary"><div><span>WORK TYPE</span><strong>{isPM?'Preventive Maintenance':'Corrective Maintenance'}</strong></div><div><span>SLA MET?</span><strong className={slaBreachedNow?'sla-breach':'sla-ok'}>{slaBreachedNow?<AlertTriangle size={14}/>:<Check size={14}/>} {slaLabel}</strong></div><div><span>PROJECT</span><strong>Royal Court Facilities</strong></div><div><span>PTW REQUIRED</span><strong>{ptwRequired?'Yes':'No'}</strong></div></div>
     <div className="wo-tabs simplified-tabs">{workOrderTabs.map((name,index)=><button key={name} className={tab===name?'active':''} onClick={()=>setTab(name)}><small>{String(index+1).padStart(2,'0')}</small>{name}{name==='Failure'&&!isPM&&<i/>}</button>)}</div>
     <div className="wo-tab-help"><div><strong>{tab}</strong><span>{workOrderTabHelp[tab]}</span></div></div>
@@ -367,12 +369,12 @@ function ServiceRequests({ onConvert, requests, setRequests }) {
 }
 
 export default function App() {
-  const [active, setActive] = useState(()=>window.location.pathname.startsWith('/service-requests')?'Service Requests':window.location.pathname.startsWith('/work-orders')?'Work Orders':'Overview')
+  const [active, setActive] = useState(()=>window.location.pathname.startsWith('/service-requests')?'Service Requests':window.location.pathname.startsWith('/work-orders')?'Work Orders':window.location.pathname.startsWith('/preventive-maintenance')?'Preventive Maintenance':'Overview')
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [allWorkOrders,setAllWorkOrders]=useState(workOrders)
   const [serviceRequests,setServiceRequests]=useState(serviceRequestSeed)
-  const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false) }
+  const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false);if(name==='Preventive Maintenance')window.history.pushState({},'',`/preventive-maintenance`) }
   const convertRequest = request => {
     const number=String(56545135+allWorkOrders.filter(o=>String(o.WORKORDER).startsWith('56545')).length-3)
     const cm={'WORKORDER':number,'DESCRIPITION ':request.description,'LOCATION ':request.location,'LOCATION PRIORTY':request.priority,'ASSET':request.asset||'Unassigned','STATUS':'WAPPR','WORK TYPE ':'CM','STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':request.assignedDepartment||request.department,'SUB DEPARTMENT  NAME':request.subDepartment||'','PRIORTY':request.priority==='Emergency'?1:request.priority==='High'?2:3,'SITE':request.site,'TARGET START ':null,'TARGET FINISH ':null,'SOURCE SR':request.sr,'FAILURE CODE':request.failureCode||'','PROBLEM CODE':request.problemCode||'','CAUSE CODE':request.causeCode||'','REMEDY CODE':request.remedyCode||''}
@@ -381,15 +383,14 @@ export default function App() {
   }
   const openConvertedWorkOrder=number=>{setActive('Work Orders');setSearch('');window.history.pushState({},'',`/work-orders/${number}`)}
   const createWorkOrder=form=>{const next=Math.max(...allWorkOrders.map(order=>Number(order.WORKORDER)||0),56545134)+1;const created={'WORKORDER':String(next),'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':form.priority,'ASSET':form.asset,'STATUS':'WAPPR','WORK TYPE ':form.type,'STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':'','SUB DEPARTMENT  NAME':'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null};setAllWorkOrders(rows=>[...rows,created]);return created}
+  const generatePmWorkOrder=(pm,tasks)=>setAllWorkOrders(rows=>rows.some(order=>order['PM NUMBER']===pm.pmNumber&&order['PM CYCLE']===pm.cycle)?rows:[...rows,{'WORKORDER':pm.workOrder,'DESCRIPITION ':pm.description,'LOCATION ':pm.location,'LOCATION PRIORTY':'Routine','ASSET':pm.asset,'STATUS':'Waiting','WORK TYPE ':'PM','STATUS DESCRIPITION':'Waiting for Execution','DEPARTMENT ':pm.department,'SUB DEPARTMENT  NAME':pm.subDepartment,'PRIORTY':3,'SITE':pm.site,'TARGET START ':pm.startDate,'TARGET FINISH ':pm.startDate,'PM NUMBER':pm.pmNumber,'PM CYCLE':pm.cycle,'JOB PLAN':pm.jobPlan,'JOB PLAN TASKS':tasks,'ESTIMATED DURATION':tasks.reduce((sum,task)=>sum+Number(task['TASK DURATION IN HOUR']||0),0)*24}])
   const pages = {
     'Service Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={serviceRequests} setRequests={setServiceRequests} assets={assets} workOrders={allWorkOrders} failureOptions={failureClassOptions}/>,
     'Work Orders': <WorkOrdersPage rows={allWorkOrders} assets={assets} onCreate={createWorkOrder} EditorComponent={WorkOrderEditor} excelDate={excelDate} slaBreached={slaBreached}/>,
     'Assets': <RegisterPage title="Asset register" eyebrow="PORTFOLIO" description="A complete view of maintainable equipment across every site." rows={assets} search={search} setSearch={setSearch} action="Add asset" columns={[
       {key:'assetnum',label:'Asset ID',render:v=><strong className="mono">{v}</strong>},{key:'description',label:'Description'},{key:'site',label:'Site'},{key:'department',label:'Department'},{key:'modelnum',label:'Model'},{key:'status',label:'Status',render:v=><Badge tone="green">{v}</Badge>}
     ]}/>,
-    'Preventive Maintenance': <RegisterPage title="PM schedule" eyebrow="MAINTENANCE" description="Recurring maintenance programs generated from your PM workbook." rows={pmRecords} search={search} setSearch={setSearch} action="New PM" columns={[
-      {key:'PMNUM',label:'PM number',render:v=><strong className="mono">{v}</strong>},{key:'PM DESCRIPTION',label:'Description'},{key:'ASSETNUM',label:'Asset'},{key:'JPNUM',label:'Job plan'},{key:'FREQUENCY',label:'Frequency',render:(v,r)=>`${v} ${r.FREQUNIT}`},{key:'WOSTATUS',label:'WO status',render:v=><Badge tone="blue">{v}</Badge>}
-    ]}/>,
+    'Preventive Maintenance': <PreventiveMaintenancePage assets={assets} jobTasks={jobTasks} onGenerate={generatePmWorkOrder}/>,
     'Locations': <><section className="page-heading"><div><p className="eyebrow">PORTFOLIO</p><h1>Locations</h1><p>Manage the facility hierarchy across sites and buildings.</p></div><button className="primary"><Plus size={17}/>Add location</button></section><section className="panel"><EmptyLocations/></section></>,
     'Job Plans': <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobTasks} search={search} setSearch={setSearch} action="New job plan" columns={[
       {key:'JPNUM',label:'Plan',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Plan description'},{key:'JOB TASK SEQUENCE',label:'Sequence'},{key:'JOB TASK DESCRIPTION',label:'Task'},{key:'TASK DURATION IN HOUR',label:'Duration',render:v=>`${Math.round(Number(v)*1440)} min`}
