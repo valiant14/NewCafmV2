@@ -390,7 +390,7 @@ export default function App() {
     'Assets': <RegisterPage title="Asset register" eyebrow="PORTFOLIO" description="A complete view of maintainable equipment across every site." rows={assets} search={search} setSearch={setSearch} action="Add asset" columns={[
       {key:'assetnum',label:'Asset ID',render:v=><strong className="mono">{v}</strong>},{key:'description',label:'Description'},{key:'site',label:'Site'},{key:'department',label:'Department'},{key:'modelnum',label:'Model'},{key:'status',label:'Status',render:v=><Badge tone="green">{v}</Badge>}
     ]}/>,
-    'Preventive Maintenance': <PreventiveMaintenancePage assets={assets} jobTasks={jobTasks} onGenerate={generatePmWorkOrder}/>,
+    'Preventive Maintenance': <PreventiveMaintenancePage assets={assets} jobTasks={jobTasks} workOrders={allWorkOrders} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Locations': <><section className="page-heading"><div><p className="eyebrow">PORTFOLIO</p><h1>Locations</h1><p>Manage the facility hierarchy across sites and buildings.</p></div><button className="primary"><Plus size={17}/>Add location</button></section><section className="panel"><EmptyLocations/></section></>,
     'Job Plans': <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobTasks} search={search} setSearch={setSearch} action="New job plan" columns={[
       {key:'JPNUM',label:'Plan',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Plan description'},{key:'JOB TASK SEQUENCE',label:'Sequence'},{key:'JOB TASK DESCRIPTION',label:'Task'},{key:'TASK DURATION IN HOUR',label:'Duration',render:v=>`${Math.round(Number(v)*1440)} min`}
