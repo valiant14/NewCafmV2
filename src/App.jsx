@@ -7,8 +7,12 @@ import {
 } from 'lucide-react'
 import workbookData from './data/workbooks.json'
 import departments from './data/departments.json'
+import laborMaster from './data/labor.json'
 import ServiceRequestsPage, { initialRequests as serviceRequestSeed } from './pages/ServiceRequestsPage'
 import WorkOrdersPage from './pages/WorkOrdersPage'
+import LaborPage from './pages/LaborPage'
+import MaterialsPage from './pages/MaterialsPage'
+import ToolsPage from './pages/ToolsPage'
 
 const excelDate = (value) => {
   if (!value || typeof value === 'string') return value || '—'
@@ -44,7 +48,7 @@ const failureClassOptions = uniqueCodeOptions(failureCodes, 'FAILURE CLASS ID', 
 const nav = [
   ['Overview', LayoutDashboard], ['Service Requests', FileText], ['Work Orders', ClipboardList], ['Assets', Boxes],
   ['Preventive Maintenance', CalendarClock], ['Locations', MapPin], ['Job Plans', Wrench],
-  ['Failure Library', ShieldCheck]
+  ['Failure Library', ShieldCheck], ['Labor', Users], ['Materials', PackageCheck], ['Tools & Equipment', Wrench]
 ]
 
 const initials = (name) => name.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()
@@ -189,6 +193,9 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   const departmentOptions=departments.map(item=>({value:item.name,label:item.code}))
   const selectedDepartment=departments.find(item=>item.name===department)
   const subDepartmentOptions=(selectedDepartment?.subDepartments||departments.flatMap(item=>item.subDepartments)).map(item=>({value:item.name,label:item.code}))
+  const workGroupOptions={Mechanics:['C1-HVAC','C1-PLUMBING','C1-MECHANICAL'],Electrical:['C1-ELECTRICAL','C1-POWER','C1-LIGHTING'],Civil:['C1-CIVIL','C1-CARPENTRY','C1-PAINTING'],Landscape:['C1-LANDSCAPE','C1-IRRIGATION'],Cleaning:['C1-CLEANING']}[assignedDepartment]||['C1-HVAC','C1-ELECTRICAL','C1-PLUMBING','C1-CIVIL']
+  const supervisorOptions=laborMaster.filter(person=>!assignedDepartment||person.department===assignedDepartment).map(person=>({value:person.name,label:`${person.craftCode} · ${person.craft}`}))
+  const laborCraftOptions=[...new Map(laborMaster.map(person=>[person.craftCode,{value:person.craftCode,label:person.craft}])).values()]
   const assetsForSite=assets.filter(a=>!siteValue||String(a.site)===siteValue)
   const assetOptions=assetsForSite.map(a=>({value:a.assetnum,label:a.description?.trim()}))
   const locationOptions=[...new Set([...assetsForSite.map(a=>a.location),...workOrders.filter(o=>!siteValue||String(o.SITE)===siteValue).map(o=>o['LOCATION '])].filter(Boolean))].sort()
@@ -240,7 +247,7 @@ function WorkOrderEditor({ order, onClose, page = false }) {
           <div className="span-2"><Field label="Long Description" value="Preventive maintenance inspection and servicing activities." type="textarea"/></div><Field label="Reported Date" value="2026-07-12T09:30" type="datetime-local" locked/><Field label="Target Start" value={targetStart} onChange={e=>setTargetStart(e.target.value)} type="datetime-local" locked={isPM}/><Field label="Target Finish" value={targetFinish} onChange={e=>setTargetFinish(e.target.value)} type="datetime-local"/><Field label="Actual Start" value={actualStart} locked/><Field label="Actual Finish" value={actualFinish} locked/>
         </div></Section>
         <Section title="Asset & Location"><div className="field-grid"><Field label="Asset" value={assetValue} required onChange={changeAsset} suggestions={assetOptions} placeholder="Search asset number or description"/><Field label="Location" value={locationValue} required onChange={e=>setLocationValue(e.target.value)} suggestions={locationOptions} placeholder="Search or select a location"/><Field label="Asset Description" value="HVAC cooling unit" required/><Field label="Project" value="Royal Court Facilities" required/></div></Section>
-        <Section title="Responsibility" note="Use Re-route to clear and reassign ownership"><div className="field-grid"><Field label="Assigned Department" value={assignedDepartment} required onChange={e=>setAssignedDepartment(e.target.value)} suggestions={departmentOptions} placeholder="Search assigned department"/><Field label="Work Group" value={workGroup} onChange={e=>setWorkGroup(e.target.value)}/><Field label="Supervisor" value={supervisor} onChange={e=>setSupervisor(e.target.value)}/><Field label="Labor Craft Code" value={laborCraft} onChange={e=>setLaborCraft(e.target.value)}/></div></Section>
+        <Section title="Responsibility" note="Use Re-route to clear and reassign ownership"><div className="field-grid"><Field label="Assigned Department" value={assignedDepartment} required onChange={e=>{setAssignedDepartment(e.target.value);setWorkGroup('');setSupervisor('')}} suggestions={departmentOptions} placeholder="Search assigned department"/><Field label="Work Group" value={workGroup} onChange={e=>setWorkGroup(e.target.value)} suggestions={workGroupOptions} placeholder="Search or select a work group"/><Field label="Supervisor" value={supervisor} onChange={e=>setSupervisor(e.target.value)} suggestions={supervisorOptions} placeholder="Search supervisor name or craft"/><Field label="Labor Craft Code" value={laborCraft} onChange={e=>setLaborCraft(e.target.value)} suggestions={laborCraftOptions} placeholder="Search craft code or description"/></div></Section>
       </>}
       {tab==='Plan' && <><div className={`mode-note ${isPM?'auto':'manual'}`}><Sparkles size={18}/><div><strong>{isPM?'Automatically generated planned data':'Department-entered planned data'}</strong><span>{isPM?'Copied from PM and job plan; values are locked after generation.':'CM planning must be completed by the responsible department.'}</span></div></div>
         <Section title="Planned Labor" note={isPM?'Generated from the linked job plan':'Add the crafts, crews, and estimated hours required'}>{!isPM&&<button className="inline-add plan-add" onClick={()=>setPlannedLabor(rows=>[...rows,{craft:'',hours:'',crew:''}])}><Plus size={15}/>Add labor</button>}<div className="planner-table"><div className="planner-head"><span>Labor craft</span><span>Estimated hours</span><span>Assigned crew</span><span></span></div>{plannedLabor.map((row,index)=><div className="planner-row" key={index}><input value={row.craft} readOnly={isPM} onChange={e=>updatePlanRow(setPlannedLabor,index,'craft',e.target.value)} placeholder="e.g. HVAC Technician"/><input value={row.hours} readOnly={isPM} type="number" onChange={e=>updatePlanRow(setPlannedLabor,index,'hours',e.target.value)} placeholder="Hours"/><input value={row.crew} readOnly={isPM} onChange={e=>updatePlanRow(setPlannedLabor,index,'crew',e.target.value)} placeholder="Crew or person"/>{!isPM&&<button onClick={()=>setPlannedLabor(rows=>rows.filter((_,i)=>i!==index))}><X size={14}/></button>}</div>)}</div></Section>
@@ -386,7 +393,10 @@ export default function App() {
     ]}/>,
     'Failure Library': <RegisterPage title="Failure library" eyebrow="RELIABILITY" description="Search the bilingual Maximo problem, cause, and remedy hierarchy." rows={failureCodes} search={search} setSearch={setSearch} action="Add code" columns={[
       {key:'FAILURE CLASS ID',label:'Class',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Class description'},{key:'PROBLEM CODE',label:'Problem code'},{key:'PC - DESCRIPTION',label:'Problem description'},{key:'CAUSE CODE',label:'Cause'}
-    ]}/>
+    ]}/>,
+    'Labor': <LaborPage/>,
+    'Materials': <MaterialsPage/>,
+    'Tools & Equipment': <ToolsPage/>
   }
   return <div className="app-shell">
     <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}><div className="brand"><div><Command size={20}/></div><span>FACILITY<strong>COMMAND</strong></span><button className="mobile-close" onClick={()=>setMobileOpen(false)}><X/></button></div>

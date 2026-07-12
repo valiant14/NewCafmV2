@@ -1,0 +1,8 @@
+[
+  { "personId": "LAB-0001", "name": "Omar Al Harbi", "craftCode": "HVAC-TECH", "craft": "HVAC Technician", "department": "Mechanics", "subDepartment": "HVAC", "shift": "Day", "availability": "Available" },
+  { "personId": "LAB-0002", "name": "Fahad Al Qahtani", "craftCode": "HVAC-SR", "craft": "Senior HVAC Technician", "department": "Mechanics", "subDepartment": "HVAC", "shift": "Day", "availability": "Assigned" },
+  { "personId": "LAB-0003", "name": "Yousef Al Dosari", "craftCode": "ELEC-TECH", "craft": "Electrical Technician", "department": "Electrical", "subDepartment": "Power Distribution", "shift": "Night", "availability": "Available" },
+  { "personId": "LAB-0004", "name": "Khalid Al Mutairi", "craftCode": "PLMB-TECH", "craft": "Plumbing Technician", "department": "Mechanics", "subDepartment": "Plumbing", "shift": "Day", "availability": "On Leave" },
+  { "personId": "LAB-0005", "name": "Saad Al Shammari", "craftCode": "CIVIL-TECH", "craft": "Civil Technician", "department": "Civil", "subDepartment": "Building Fabric", "shift": "Day", "availability": "Available" },
+  { "personId": "LAB-0006", "name": "Nasser Al Otaibi", "craftCode": "PAINT-TECH", "craft": "Painter", "department": "Civil", "subDepartment": "Painting", "shift": "Day", "availability": "Assigned" }
+]
