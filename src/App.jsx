@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
-  Bell, Boxes, CalendarClock, Check, ChevronRight, CircleHelp, ClipboardList,
+  Bell, Boxes, CalendarClock, Check, ChevronRight, ClipboardList,
   Command, Filter, LayoutDashboard, MapPin, Menu, MoreHorizontal, Plus, Search,
-  Settings, ShieldCheck, SlidersHorizontal, Sparkles, Users, Wrench, X,
+  ShieldCheck, SlidersHorizontal, Sparkles, Users, Wrench, X,
   Printer, Upload, RotateCcw, PackageCheck, Gauge, FileText, AlertTriangle
 } from 'lucide-react'
 import departments from './data/departments.json'
@@ -273,7 +273,7 @@ export default function App() {
   return <div className="app-shell">
     <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}><div className="brand"><div><Command size={20}/></div><span>FACILITY<strong>COMMAND</strong></span><button className="mobile-close" onClick={()=>setMobileOpen(false)}><X/></button></div>
       <nav><span className="nav-label">WORKSPACE</span>{nav.map(([name, Icon]) => <button className={active===name?'active':''} onClick={()=>navigate(name)} key={name}><Icon size={18}/><span>{name}</span>{name==='Work Orders'&&<b>{workOrders.length}</b>}</button>)}</nav>
-      <div className="sidebar-bottom"><nav><button><Users size={18}/><span>Team</span></button><button><Settings size={18}/><span>Settings</span></button><button><CircleHelp size={18}/><span>Help & support</span></button></nav><div className="user"><div className="avatar">{initials('Ahmed Faisal')}</div><div><strong>Ahmed Faisal</strong><span>Facility Manager</span></div><MoreHorizontal size={18}/></div></div>
+      <div className="sidebar-bottom"><div className="user"><div className="avatar">{initials('Ahmed Faisal')}</div><div><strong>Ahmed Faisal</strong><span>Facility Manager</span></div><MoreHorizontal size={18}/></div></div>
     </aside>
     <main><header className="topbar"><button className="menu-btn" onClick={()=>setMobileOpen(true)}><Menu/></button><div className="crumb"><span>Facility Command</span><ChevronRight size={14}/><strong>{active}</strong></div><div className="top-actions"><button className="global-search" onClick={()=>document.querySelector('.register input')?.focus()}><Search size={16}/><span>Search anything</span><kbd>⌘ K</kbd></button><button className="icon-button"><Bell size={19}/><i/></button><div className="top-avatar">AF</div></div></header>
       <div className="content">{active==='Overview'?<OverviewPage onNavigate={navigate}/>:pages[active]}</div>
