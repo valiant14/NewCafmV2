@@ -1,0 +1,6 @@
+import { Check, X } from 'lucide-react'
+
+export default function MasterRecordModal({title,note,fields,form,setForm,onClose,onSave}){
+  const valid=fields.filter(field=>field.required).every(field=>String(form[field.key]??'').trim())
+  return <div className="wo-overlay master-modal-overlay"><section className="master-record-modal"><header><div><span className="record-kicker">MASTER DATA</span><h2>{title}</h2><p>{note}</p></div><button onClick={onClose} aria-label="Close"><X size={19}/></button></header><main>{fields.map(field=><label key={field.key}><span>{field.label}{field.required&&<b>*</b>}</span>{field.options?<select value={form[field.key]??''} onChange={e=>setForm(current=>({...current,[field.key]:e.target.value}))}>{field.options.map(option=><option key={option}>{option}</option>)}</select>:<input type={field.type||'text'} min={field.min} value={form[field.key]??''} onChange={e=>setForm(current=>({...current,[field.key]:e.target.value}))} placeholder={field.placeholder}/>}</label>)}</main><footer><span>{valid?'Ready to create':'Complete the required fields'}</span><button className="outline" onClick={onClose}>Cancel</button><button className="primary" disabled={!valid} onClick={onSave}><Check size={15}/>Create record</button></footer></section></div>
+}

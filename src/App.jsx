@@ -249,12 +249,12 @@ function ServiceRequests({ onConvert, requests, setRequests }) {
 }
 
 export default function App() {
-  const [active, setActive] = useState(()=>window.location.pathname.startsWith('/service-requests')?'Service Requests':window.location.pathname.startsWith('/work-orders')?'Work Orders':window.location.pathname.startsWith('/preventive-maintenance')?'Preventive Maintenance':'Overview')
+  const [active, setActive] = useState(()=>window.location.pathname.startsWith('/service-requests')?'Service Requests':window.location.pathname.startsWith('/work-orders')?'Work Orders':window.location.pathname.startsWith('/preventive-maintenance')?'Preventive Maintenance':window.location.pathname.startsWith('/labor')?'Labor':window.location.pathname.startsWith('/materials')?'Materials':window.location.pathname.startsWith('/tools')?'Tools & Equipment':'Overview')
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [allWorkOrders,setAllWorkOrders]=useState(workOrders)
   const [serviceRequests,setServiceRequests]=useState(serviceRequestSeed)
-  const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false);if(name==='Preventive Maintenance')window.history.pushState({},'',`/preventive-maintenance`) }
+  const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false);const paths={'Overview':'/','Service Requests':'/service-requests','Work Orders':'/work-orders','Preventive Maintenance':'/preventive-maintenance','Labor':'/labor','Materials':'/materials','Tools & Equipment':'/tools'};if(paths[name])window.history.pushState({},'',paths[name]) }
   const convertRequest = request => {
     const number=String(56545135+allWorkOrders.filter(o=>String(o.WORKORDER).startsWith('56545')).length-3)
     const cm={'WORKORDER':number,'DESCRIPITION ':request.description,'LOCATION ':request.location,'LOCATION PRIORTY':request.priority,'ASSET':request.asset||'Unassigned','STATUS':'WAPPR','WORK TYPE ':'CM','STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':request.assignedDepartment||request.department,'SUB DEPARTMENT  NAME':request.subDepartment||'','PRIORTY':request.priority==='Emergency'?1:request.priority==='High'?2:3,'SITE':request.site,'TARGET START ':null,'TARGET FINISH ':null,'SOURCE SR':request.sr,'FAILURE CODE':request.failureCode||'','PROBLEM CODE':request.problemCode||'','CAUSE CODE':request.causeCode||'','REMEDY CODE':request.remedyCode||''}
