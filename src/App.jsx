@@ -1,11 +1,10 @@
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Bell, Boxes, CalendarClock, Check, ChevronRight, CircleHelp, ClipboardList,
   Command, Filter, LayoutDashboard, MapPin, Menu, MoreHorizontal, Plus, Search,
   Settings, ShieldCheck, SlidersHorizontal, Sparkles, Users, Wrench, X,
   Printer, Upload, RotateCcw, PackageCheck, Gauge, FileText, AlertTriangle
 } from 'lucide-react'
-import workbookData from './data/workbooks.json'
 import departments from './data/departments.json'
 import laborMaster from './data/labor.json'
 import materialMaster from './data/materials.json'
@@ -16,37 +15,14 @@ import LaborPage from './pages/LaborPage'
 import MaterialsPage from './pages/MaterialsPage'
 import ToolsPage from './pages/ToolsPage'
 import PreventiveMaintenancePage from './pages/PreventiveMaintenancePage'
+import RegisterPage from './pages/RegisterPage'
+import LocationsPage from './pages/LocationsPage'
+import OverviewPage from './pages/OverviewPage'
+import Badge from './components/ui/Badge'
+import Field from './components/ui/Field'
+import Section from './components/ui/Section'
+import { assets, workOrders, pmRecords, jobTasks, failureCodes, statusMatrix, failureClassOptions, uniqueCodeOptions, excelDate, toDateTimeInput, slaBreached } from './data/cafmData'
 
-const excelDate = (value) => {
-  if (!value || typeof value === 'string') return value || '—'
-  const date = new Date(Date.UTC(1899, 11, 30) + value * 86400000)
-  return new Intl.DateTimeFormat('en', { day: '2-digit', month: 'short', year: 'numeric' }).format(date)
-}
-const excelToDate = value => typeof value === 'number' ? new Date(Date.UTC(1899, 11, 30) + value * 86400000) : null
-const toDateTimeInput = value => {
-  const date = typeof value === 'number' ? excelToDate(value) : value ? new Date(value) : null
-  return date && !Number.isNaN(date.getTime()) ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
-}
-const slaBreached = order => {
-  const finish = excelToDate(order['TARGET FINISH '])
-  return Boolean(finish && finish < new Date() && !['COMP', 'CLOSE', 'CAN'].includes(order.STATUS))
-}
-
-const rowsToObjects = (rows = []) => {
-  const headers = (rows[0] || []).map((header, index) => String(header || `Column ${index + 1}`).trim())
-  return rows.slice(1).filter(row => row.some(value => value !== null && value !== '')).map(row =>
-    Object.fromEntries(headers.map((header, index) => [header, row[index] ?? '']))
-  )
-}
-
-const assets = rowsToObjects(workbookData.assets.assets)
-const workOrders = rowsToObjects(workbookData['Work Order Tracking'].Sheet1)
-const pmRecords = rowsToObjects(workbookData.PM['PREVENTIVE MAINTENANCE'])
-const jobTasks = rowsToObjects(workbookData['JOB PLAN-TASKS']['JOB PLAN-TASKS'])
-const failureCodes = rowsToObjects(workbookData['FAILURE CODE']['FAILURE CODE'])
-const statusMatrix = rowsToObjects(workbookData.IBM_Maximo_Status_Matrix['Maximo Status Matrix'])
-const uniqueCodeOptions = (rows, codeKey, descriptionKey) => [...new Map(rows.filter(row=>row[codeKey]).map(row=>[row[codeKey], { value: row[codeKey], label: row[descriptionKey] }])).values()]
-const failureClassOptions = uniqueCodeOptions(failureCodes, 'FAILURE CLASS ID', 'DESCRIPTION')
 
 const nav = [
   ['Overview', LayoutDashboard], ['Service Requests', FileText], ['Work Orders', ClipboardList], ['Assets', Boxes],
@@ -56,82 +32,6 @@ const nav = [
 
 const initials = (name) => name.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()
 
-function Badge({ children, tone = 'neutral' }) {
-  return <span className={`badge ${tone}`}><i />{children}</span>
-}
-
-function Metric({ label, value, detail, icon: Icon, tone }) {
-  return <article className="metric-card">
-    <div className={`metric-icon ${tone}`}><Icon size={19} /></div>
-    <div><p>{label}</p><strong>{value}</strong><small>{detail}</small></div>
-    <button aria-label={`View ${label}`}><ChevronRight size={18} /></button>
-  </article>
-}
-
-function Donut({ value, label }) {
-  return <div className="donut-wrap">
-    <div className="donut" style={{ '--value': value }}><div><strong>{value}%</strong><span>{label}</span></div></div>
-  </div>
-}
-
-function EmptyLocations() {
-  return <div className="empty-state"><MapPin size={30} /><h3>No location records yet</h3><p>The Excel location file contains its field structure but no rows. Add locations when the source is ready.</p></div>
-}
-
-function DataTable({ rows, columns, search, pageSize = 12 }) {
-  const normalized = search.toLowerCase().trim()
-  const filtered = useMemo(() => !normalized ? rows : rows.filter(row =>
-    Object.values(row).some(value => String(value).toLowerCase().includes(normalized))
-  ), [rows, normalized])
-  return <>
-    <div className="table-shell"><table><thead><tr>{columns.map(column => <th key={column.key}>{column.label}</th>)}</tr></thead>
-      <tbody>{filtered.slice(0, pageSize).map((row, index) => <tr key={index}>{columns.map(column =>
-        <td key={column.key}>{column.render ? column.render(row[column.key], row) : (row[column.key] || '—')}</td>
-      )}</tr>)}</tbody></table></div>
-    <div className="table-footer"><span>Showing {Math.min(pageSize, filtered.length)} of {filtered.length.toLocaleString()} records</span><span>Source: Excel mock data</span></div>
-  </>
-}
-
-function Overview({ onNavigate }) {
-  const operating = assets.filter(a => a.status === 'OPERATING').length
-  return <>
-    <section className="welcome"><div><Badge tone="green">Live workspace</Badge><h1>Good morning, Ahmed.</h1><p>Here’s what needs attention across your facilities today.</p></div>
-      <button className="primary" onClick={() => onNavigate('Work Orders')}><Plus size={17} /> New work order</button></section>
-    <section className="metrics">
-      <Metric label="Open work orders" value={workOrders.length} detail="All awaiting approval" icon={ClipboardList} tone="orange" />
-      <Metric label="Assets online" value={`${operating}/${assets.length}`} detail="100% operational" icon={Boxes} tone="green" />
-      <Metric label="PM programs" value={pmRecords.length} detail="Recurring schedules" icon={CalendarClock} tone="blue" />
-      <Metric label="Failure codes" value={failureCodes.length.toLocaleString()} detail="Searchable library" icon={ShieldCheck} tone="purple" />
-    </section>
-    <section className="overview-grid">
-      <article className="panel work-panel"><header><div><p className="eyebrow">OPERATIONS</p><h2>Active work orders</h2></div><button onClick={() => onNavigate('Work Orders')}>View all <ChevronRight size={16}/></button></header>
-        <DataTable rows={workOrders} search="" pageSize={5} columns={[
-          { key: 'WORKORDER', label: 'Order', render: v => <strong className="mono">#{v}</strong> },
-          { key: 'DESCRIPITION', label: 'Description' },
-          { key: 'LOCATION PRIORTY', label: 'Location', render: v => <Badge tone={v?.trim() === 'VIP' ? 'purple' : 'orange'}>{v}</Badge> },
-          { key: 'STATUS', label: 'Status', render: v => <Badge tone="orange">{v}</Badge> },
-          { key: 'TARGET START ', label: 'Target', render: excelDate }
-        ]} />
-      </article>
-      <aside className="side-stack">
-        <article className="panel health"><header><div><p className="eyebrow">PORTFOLIO</p><h2>Facility health</h2></div><MoreHorizontal /></header><Donut value={96} label="healthy" />
-          <div className="health-row"><span><i className="green-dot"/>Operational</span><strong>{operating}</strong></div>
-          <div className="health-row"><span><i className="orange-dot"/>Open orders</span><strong>{workOrders.length}</strong></div>
-        </article>
-        <article className="insight-card"><div className="spark"><Sparkles size={18}/></div><div><span>SMART INSIGHT</span><strong>All current work orders are PM-related.</strong><p>Bundle technician visits by site to reduce travel time.</p></div></article>
-      </aside>
-    </section>
-    <section className="panel schedule"><header><div><p className="eyebrow">MAINTENANCE</p><h2>Preventive maintenance</h2></div><button onClick={() => onNavigate('Preventive Maintenance')}>Open schedule <ChevronRight size={16}/></button></header>
-      <div className="pm-strip">{pmRecords.slice(0, 4).map((pm, index) => <div className="pm-item" key={pm.PMNUM}><div className="date-tile"><span>{String(index + 14).padStart(2, '0')}</span><small>JUL</small></div><div><strong>{pm['PM DESCRIPTION']}</strong><span>{pm.ASSETNUM} · {pm.FREQUENCY} {pm.FREQUNIT}</span></div><Badge tone={index === 0 ? 'orange' : 'blue'}>{index === 0 ? 'Due soon' : 'Scheduled'}</Badge></div>)}</div>
-    </section>
-  </>
-}
-
-function RegisterPage({ title, eyebrow, description, rows, columns, search, setSearch, action = 'Add record' }) {
-  return <><section className="page-heading"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div><button className="primary"><Plus size={17}/>{action}</button></section>
-    <section className="panel register"><div className="register-tools"><div className="search-box"><Search size={17}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder={`Search ${title.toLowerCase()}…`} /></div><button className="outline"><SlidersHorizontal size={16}/> Filter</button></div>
-      <DataTable rows={rows} columns={columns} search={search}/></section></>
-}
 
 const workOrderTabs = ['Overview', 'Plan', 'Failure', 'Materials', 'PTW & Files', 'Meters', 'Completion & Actuals']
 const workOrderTabHelp = {
@@ -142,18 +42,6 @@ const workOrderTabHelp = {
   Materials: 'Request inventory items and track material availability.',
   'PTW & Files': 'Manage permits to work, photos, and supporting documents.',
   Meters: 'Capture optional asset, water, and energy readings.'
-}
-
-const Field = ({ label, value = '', required, locked, type = 'text', options, suggestions, onChange, placeholder }) => {
-  const listId=useId()
-  if (locked) return null
-  return <label className="wo-field">
-    <span>{label}{required && <b>*</b>}</span>
-    {options ? <select value={value} onChange={onChange} disabled={locked}>{options.map(o=><option key={o}>{o}</option>)}</select> :
-      type === 'textarea' ? <textarea value={value} onChange={onChange} readOnly={locked} rows="3"/> : <>
-      <input type={type} value={value} onChange={onChange} readOnly={locked} list={suggestions?.length?listId:undefined} placeholder={placeholder}/>
-      {suggestions?.length ? <datalist id={listId}>{suggestions.map(item=><option value={item.value??item} key={item.value??item}>{item.label||item.value||item}</option>)}</datalist> : null}</>}
-  </label>
 }
 
 function WorkOrderEditor({ order, onClose, page = false }) {
@@ -276,26 +164,6 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   </div></div>
 }
 
-function Section({ title, note, children }) { return <section className="wo-section"><header><div><h3>{title}</h3>{note&&<p>{note}</p>}</div></header>{children}</section> }
-
-function WorkOrderTracking({ search, setSearch, rows = workOrders }) {
-  const [selected, setSelected] = useState(()=>{const id=decodeURIComponent(window.location.pathname.split('/work-orders/')[1]||'');return rows.find(order=>String(order.WORKORDER)===id)||null})
-  const [typeFilter,setTypeFilter]=useState('All')
-  const openOrder=order=>{setSelected(order);window.history.pushState({},'',`/work-orders/${order.WORKORDER||'new'}`)}
-  const closeOrder=()=>{setSelected(null);window.history.pushState({},'','/work-orders')}
-  const normalized=search.toLowerCase().trim()
-  const orderType=order=>(order['WORK TYPE ']||order['WORK TYPE  ']||'PM').trim()
-  const filtered=rows.filter(o=>(typeFilter==='All'||orderType(o)===typeFilter)&&(!normalized||Object.values(o).some(v=>String(v).toLowerCase().includes(normalized))))
-  const breachedCount=rows.filter(slaBreached).length
-  const typeCount=type=>rows.filter(order=>type==='All'||orderType(order)===type).length
-  return <div className="work-orders-index"><section className="page-heading"><div><p className="eyebrow">MAINTENANCE OPERATIONS</p><h1>Work Orders</h1><p>Track, plan, execute, and close every maintenance work order.</p></div><div className="heading-actions"><button className="outline"><Printer size={16}/> Print selected</button><button className="primary" onClick={()=>openOrder({'WORK TYPE  ':'CM'})}><Plus size={17}/>New work order</button></div></section>
-    <div className="sub-tabs work-order-tabs">{['All','PM','CM','Incident'].map(type=><button key={type} className={typeFilter===type?'active':''} onClick={()=>setTypeFilter(type)}>{type==='All'?'All Work Orders':type}<b>{typeCount(type)}</b></button>)}</div>
-    <section className="work-order-glance"><span><i className="green-dot"/>Within SLA <strong>{Math.round(((rows.length-breachedCount)/rows.length)*100)}%</strong></span><span>Waiting approval <strong>{rows.filter(o=>o.STATUS==='WAPPR').length}</strong></span><span className={breachedCount?'attention':''}>Overdue <strong>{breachedCount}</strong></span></section>
-    <section className="panel register work-order-table"><div className="register-tools"><div className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search work order, asset, or location…"/></div><div className="tool-group"><button className="outline"><SlidersHorizontal size={16}/>Filters</button></div></div>
-      <div className="table-shell"><table><thead><tr><th><input type="checkbox"/></th><th>Work order</th><th>Description</th><th>Type</th><th>Asset / Location</th><th>Status</th><th>SLA</th><th>Target start</th><th></th></tr></thead><tbody>{filtered.map((o,i)=>{const breached=slaBreached(o);return <tr key={i} className="click-row" onClick={()=>openOrder(o)}><td onClick={e=>e.stopPropagation()}><input type="checkbox"/></td><td><strong className="mono">#{o.WORKORDER}</strong></td><td>{o['DESCRIPITION ']}</td><td><Badge tone="blue">{o['WORK TYPE ']||'PM'}</Badge></td><td><strong>{o.ASSET}</strong><small className="cell-sub">{o['LOCATION ']}</small></td><td><Badge tone="orange">{o.STATUS}</Badge></td><td><Badge tone={breached?'orange':'green'}>{breached?'SLA Breached':'Met'}</Badge></td><td>{excelDate(o['TARGET START '])}</td><td><ChevronRight size={17}/></td></tr>})}</tbody></table></div><div className="table-footer"><span>{filtered.length} work orders across all types</span><span>Click any row to open the complete work order</span></div></section>
-    {selected&&<WorkOrderEditor order={selected} onClose={closeOrder}/>}</div>
-}
-
 const initialRequests = [{
   sr:'SR-2026-0041', description:'Water leak reported above meeting room', longDescription:'Active water staining and intermittent dripping from ceiling tile.',
   site:'1031', location:'RC-1031-RD-001-00-054', asset:'', department:'Civil', reportedBy:'Maha Alotaibi',
@@ -391,7 +259,7 @@ export default function App() {
       {key:'assetnum',label:'Asset ID',render:v=><strong className="mono">{v}</strong>},{key:'description',label:'Description'},{key:'site',label:'Site'},{key:'department',label:'Department'},{key:'modelnum',label:'Model'},{key:'status',label:'Status',render:v=><Badge tone="green">{v}</Badge>}
     ]}/>,
     'Preventive Maintenance': <PreventiveMaintenancePage assets={assets} jobTasks={jobTasks} workOrders={allWorkOrders} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
-    'Locations': <><section className="page-heading"><div><p className="eyebrow">PORTFOLIO</p><h1>Locations</h1><p>Manage the facility hierarchy across sites and buildings.</p></div><button className="primary"><Plus size={17}/>Add location</button></section><section className="panel"><EmptyLocations/></section></>,
+    'Locations': <LocationsPage/>,
     'Job Plans': <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobTasks} search={search} setSearch={setSearch} action="New job plan" columns={[
       {key:'JPNUM',label:'Plan',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Plan description'},{key:'JOB TASK SEQUENCE',label:'Sequence'},{key:'JOB TASK DESCRIPTION',label:'Task'},{key:'TASK DURATION IN HOUR',label:'Duration',render:v=>`${Math.round(Number(v)*1440)} min`}
     ]}/>,
@@ -408,7 +276,7 @@ export default function App() {
       <div className="sidebar-bottom"><nav><button><Users size={18}/><span>Team</span></button><button><Settings size={18}/><span>Settings</span></button><button><CircleHelp size={18}/><span>Help & support</span></button></nav><div className="user"><div className="avatar">{initials('Ahmed Faisal')}</div><div><strong>Ahmed Faisal</strong><span>Facility Manager</span></div><MoreHorizontal size={18}/></div></div>
     </aside>
     <main><header className="topbar"><button className="menu-btn" onClick={()=>setMobileOpen(true)}><Menu/></button><div className="crumb"><span>Facility Command</span><ChevronRight size={14}/><strong>{active}</strong></div><div className="top-actions"><button className="global-search" onClick={()=>document.querySelector('.register input')?.focus()}><Search size={16}/><span>Search anything</span><kbd>⌘ K</kbd></button><button className="icon-button"><Bell size={19}/><i/></button><div className="top-avatar">AF</div></div></header>
-      <div className="content">{active==='Overview'?<Overview onNavigate={navigate}/>:pages[active]}</div>
+      <div className="content">{active==='Overview'?<OverviewPage onNavigate={navigate}/>:pages[active]}</div>
       <footer><span>Facility Command · Mock data generated from provided Excel files</span><span>{statusMatrix.length} Maximo status rules loaded</span></footer>
     </main>
   </div>
