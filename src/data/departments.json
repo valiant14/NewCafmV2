@@ -1,0 +1,45 @@
+[
+  {
+    "code": "MECH",
+    "name": "Mechanics",
+    "subDepartments": [
+      { "code": "4-1-1", "name": "HVAC" },
+      { "code": "4-1-2", "name": "Plumbing" },
+      { "code": "4-1-3", "name": "Mechanical Systems" }
+    ]
+  },
+  {
+    "code": "ELEC",
+    "name": "Electrical",
+    "subDepartments": [
+      { "code": "4-2-1", "name": "Low Voltage" },
+      { "code": "4-2-2", "name": "Power Distribution" },
+      { "code": "4-2-3", "name": "Lighting" }
+    ]
+  },
+  {
+    "code": "CIVIL",
+    "name": "Civil",
+    "subDepartments": [
+      { "code": "4-3-1", "name": "Building Fabric" },
+      { "code": "4-3-2", "name": "Carpentry" },
+      { "code": "4-3-3", "name": "Painting" }
+    ]
+  },
+  {
+    "code": "LAND",
+    "name": "Landscape",
+    "subDepartments": [
+      { "code": "4-4-1", "name": "Irrigation" },
+      { "code": "4-4-2", "name": "Softscape" }
+    ]
+  },
+  {
+    "code": "CLEAN",
+    "name": "Cleaning",
+    "subDepartments": [
+      { "code": "4-5-1", "name": "Internal Cleaning" },
+      { "code": "4-5-2", "name": "External Cleaning" }
+    ]
+  }
+]
