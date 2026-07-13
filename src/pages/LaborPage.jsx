@@ -3,6 +3,10 @@ import { Plus, Users } from 'lucide-react'
 import laborSeed from '../data/labor.json'
 import AddLaborModal from '../components/labor/AddLaborModal'
 import LaborDetailPage from '../components/labor/LaborDetailPage'
+import Badge from '../components/ui/Badge'
+import DataTable from '../components/ui/DataTable'
+import MasterSummary from '../components/ui/MasterSummary'
+import PageHeader from '../components/ui/PageHeader'
 
 const empty = {
   personId: '',
@@ -46,53 +50,38 @@ export default function LaborPage() {
 
   return (
     <>
-      <section className="page-heading">
-        <div>
-          <p className="eyebrow">RESOURCE MASTER DATA</p>
-          <h1>Labor</h1>
-          <p>Maintain technicians, craft codes, departments, shifts, and availability.</p>
-        </div>
-        <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add labor</button>
-      </section>
+      <PageHeader
+        eyebrow="RESOURCE MASTER DATA"
+        title="Labor"
+        description="Maintain technicians, craft codes, departments, shifts, and availability."
+        actionLabel="Add labor"
+        actionIcon={Plus}
+        onAction={() => setAdding(true)}
+      />
 
-      <section className="master-summary">
-        <Users size={18} />
-        <span>Labor resources</span>
-        <strong>{rows.length}</strong>
-        <i>Available {rows.filter(row => row.availability === 'Available').length}</i>
-      </section>
+      <MasterSummary
+        icon={Users}
+        label="Labor resources"
+        value={rows.length}
+        detail={`Available ${rows.filter(row => row.availability === 'Available').length}`}
+      />
 
       <section className="panel register">
-        <div className="table-shell">
-          <table>
-            <thead>
-              <tr>
-                <th>Person ID</th>
-                <th>Name</th>
-                <th>Craft code</th>
-                <th>Craft</th>
-                <th>Department</th>
-                <th>Sub Department</th>
-                <th>Shift</th>
-                <th>Availability</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(row => (
-                <tr className="click-row" key={row.personId} onClick={() => open(row)}>
-                  <td><strong className="mono">{row.personId}</strong></td>
-                  <td>{row.name}</td>
-                  <td>{row.craftCode}</td>
-                  <td>{row.craft}</td>
-                  <td>{row.department}</td>
-                  <td>{row.subDepartment}</td>
-                  <td>{row.shift}</td>
-                  <td><span className={`badge ${row.availability === 'Available' ? 'green' : 'orange'}`}><i />{row.availability}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rows={rows}
+          rowKey="personId"
+          onRowClick={open}
+          columns={[
+            { key: 'personId', label: 'Person ID', render: value => <strong className="mono">{value}</strong> },
+            { key: 'name', label: 'Name' },
+            { key: 'craftCode', label: 'Craft code' },
+            { key: 'craft', label: 'Craft' },
+            { key: 'department', label: 'Department' },
+            { key: 'subDepartment', label: 'Sub Department' },
+            { key: 'shift', label: 'Shift' },
+            { key: 'availability', label: 'Availability', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> }
+          ]}
+        />
       </section>
 
       {adding && <AddLaborModal form={form} setForm={setForm} onClose={() => setAdding(false)} onSave={save} />}

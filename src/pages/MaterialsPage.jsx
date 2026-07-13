@@ -1,8 +1,14 @@
 import { useState } from 'react'
-import { FileSpreadsheet, PackageCheck, Plus, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import materialSeed from '../data/materials.json'
 import AddMaterialModal from '../components/materials/AddMaterialModal'
 import MaterialDetailPage from '../components/materials/MaterialDetailPage'
+import Badge from '../components/ui/Badge'
+import DataTable from '../components/ui/DataTable'
+import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ImportNotice from '../components/ui/ImportNotice'
+import MasterSummary from '../components/ui/MasterSummary'
+import PageHeader from '../components/ui/PageHeader'
 
 const empty = {
   itemNumber: '',
@@ -54,70 +60,44 @@ export default function MaterialsPage() {
 
   return (
     <>
-      <section className="page-heading">
-        <div>
-          <p className="eyebrow">INVENTORY MASTER DATA</p>
-          <h1>Materials</h1>
-          <p>Maintain spare parts, consumables, balances, reservations, and reorder levels.</p>
-        </div>
-        <div className="heading-actions">
-          <label className="outline inventory-import">
-            <FileSpreadsheet size={16} />
-            {imported || 'Import Excel'}
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={event => setImported(event.target.files?.[0]?.name || '')} />
-          </label>
-          <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add material</button>
-        </div>
-      </section>
+      <PageHeader
+        eyebrow="INVENTORY MASTER DATA"
+        title="Materials"
+        description="Maintain spare parts, consumables, balances, reservations, and reorder levels."
+        actions={(
+          <div className="heading-actions">
+            <ExcelImportButton fileName={imported} onFile={setImported} />
+            <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add material</button>
+          </div>
+        )}
+      />
 
-      {imported && (
-        <div className="inventory-import-note">
-          <PackageCheck size={16} />
-          <span><strong>{imported}</strong> ready for inventory validation and stock update.</span>
-          <button onClick={() => setImported('')}><X size={14} /></button>
-        </div>
-      )}
+      <ImportNotice fileName={imported} subject="inventory" onClear={() => setImported('')} />
 
-      <section className="master-summary">
-        <PackageCheck size={18} />
-        <span>Inventory items</span>
-        <strong>{rows.length}</strong>
-        <i>Purchase required {rows.filter(row => row.availability === 'Purchase Required').length}</i>
-      </section>
+      <MasterSummary
+        icon={PackageCheck}
+        label="Inventory items"
+        value={rows.length}
+        detail={`Purchase required ${rows.filter(row => row.availability === 'Purchase Required').length}`}
+      />
 
       <section className="panel register">
-        <div className="table-shell">
-          <table>
-            <thead>
-              <tr>
-                <th>Item number</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Unit</th>
-                <th>Storeroom</th>
-                <th>Balance</th>
-                <th>Reserved</th>
-                <th>Reorder level</th>
-                <th>Availability</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(row => (
-                <tr className="click-row" key={row.itemNumber} onClick={() => open(row)}>
-                  <td><strong className="mono">{row.itemNumber}</strong></td>
-                  <td>{row.description}</td>
-                  <td>{row.category}</td>
-                  <td>{row.unit}</td>
-                  <td>{row.storeroom}</td>
-                  <td>{row.balance}</td>
-                  <td>{row.reserved}</td>
-                  <td>{row.reorderLevel}</td>
-                  <td><span className={`badge ${row.availability === 'Available' ? 'green' : 'orange'}`}><i />{row.availability}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rows={rows}
+          rowKey="itemNumber"
+          onRowClick={open}
+          columns={[
+            { key: 'itemNumber', label: 'Item number', render: value => <strong className="mono">{value}</strong> },
+            { key: 'description', label: 'Description' },
+            { key: 'category', label: 'Category' },
+            { key: 'unit', label: 'Unit' },
+            { key: 'storeroom', label: 'Storeroom' },
+            { key: 'balance', label: 'Balance' },
+            { key: 'reserved', label: 'Reserved' },
+            { key: 'reorderLevel', label: 'Reorder level' },
+            { key: 'availability', label: 'Availability', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> }
+          ]}
+        />
       </section>
 
       {adding && <AddMaterialModal form={form} setForm={setForm} onClose={() => setAdding(false)} onSave={save} />}

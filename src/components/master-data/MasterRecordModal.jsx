@@ -55,13 +55,13 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
           </button>
         </header>
 
-        <main>
+        <div className="master-modal-body">
           {fields.map(field => (
             <MasterRecordField key={field.key} field={field} value={form[field.key]} onChange={updateField} />
           ))}
-        </main>
+        </div>
 
-        <footer>
+        <div className="master-modal-footer">
           <span>{valid ? 'Ready to create' : 'Complete the required fields'}</span>
           <button type="button" className="outline" onClick={onClose}>
             Cancel
@@ -70,7 +70,7 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
             <Check size={15} />
             {submitLabel}
           </button>
-        </footer>
+        </div>
       </section>
     </div>
   )

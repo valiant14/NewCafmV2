@@ -3,6 +3,10 @@ import { Plus, Wrench } from 'lucide-react'
 import toolSeed from '../data/tools.json'
 import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
+import Badge from '../components/ui/Badge'
+import DataTable from '../components/ui/DataTable'
+import MasterSummary from '../components/ui/MasterSummary'
+import PageHeader from '../components/ui/PageHeader'
 
 const empty = {
   toolNumber: '',
@@ -46,51 +50,37 @@ export default function ToolsPage() {
 
   return (
     <>
-      <section className="page-heading">
-        <div>
-          <p className="eyebrow">RESOURCE MASTER DATA</p>
-          <h1>Tools & Equipment</h1>
-          <p>Maintain tools, equipment locations, quantities, status, and inspections.</p>
-        </div>
-        <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add tool or equipment</button>
-      </section>
+      <PageHeader
+        eyebrow="RESOURCE MASTER DATA"
+        title="Tools & Equipment"
+        description="Maintain tools, equipment locations, quantities, status, and inspections."
+        actionLabel="Add tool or equipment"
+        actionIcon={Plus}
+        onAction={() => setAdding(true)}
+      />
 
-      <section className="master-summary">
-        <Wrench size={18} />
-        <span>Tools and equipment</span>
-        <strong>{rows.length}</strong>
-        <i>Available {rows.filter(row => row.status === 'Available').length}</i>
-      </section>
+      <MasterSummary
+        icon={Wrench}
+        label="Tools and equipment"
+        value={rows.length}
+        detail={`Available ${rows.filter(row => row.status === 'Available').length}`}
+      />
 
       <section className="panel register">
-        <div className="table-shell">
-          <table>
-            <thead>
-              <tr>
-                <th>Tool number</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Location</th>
-                <th>Quantity</th>
-                <th>Status</th>
-                <th>Inspection due</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(row => (
-                <tr className="click-row" key={row.toolNumber} onClick={() => open(row)}>
-                  <td><strong className="mono">{row.toolNumber}</strong></td>
-                  <td>{row.description}</td>
-                  <td>{row.category}</td>
-                  <td>{row.location}</td>
-                  <td>{row.quantity}</td>
-                  <td><span className={`badge ${row.status === 'Available' ? 'green' : 'orange'}`}><i />{row.status}</span></td>
-                  <td>{row.inspectionDue}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rows={rows}
+          rowKey="toolNumber"
+          onRowClick={open}
+          columns={[
+            { key: 'toolNumber', label: 'Tool number', render: value => <strong className="mono">{value}</strong> },
+            { key: 'description', label: 'Description' },
+            { key: 'category', label: 'Category' },
+            { key: 'location', label: 'Location' },
+            { key: 'quantity', label: 'Quantity' },
+            { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> },
+            { key: 'inspectionDue', label: 'Inspection due' }
+          ]}
+        />
       </section>
 
       {adding && <AddToolModal form={form} setForm={setForm} onClose={() => setAdding(false)} onSave={save} />}
