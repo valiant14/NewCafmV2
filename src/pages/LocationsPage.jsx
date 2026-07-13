@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MapPin, Plus } from 'lucide-react'
+import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
@@ -16,15 +17,15 @@ export default function LocationsPage() {
         title="Locations"
         description="Manage the facility hierarchy across sites and buildings."
         actions={(
-          <div className="heading-actions">
+          <div className="flex items-center gap-2">
             <ExcelImportButton fileName={imported} onFile={setImported} />
-            <button className="primary"><Plus size={17} />Add location</button>
+            <Button><Plus size={17} />Add location</Button>
           </div>
         )}
       />
       <ImportNotice fileName={imported} subject="location" onClear={() => setImported('')} />
       <IndexTabs active="All" tabs={[{ key: 'All', label: 'All Locations', count: 0 }]} />
-      <section className="panel">
+      <section className="rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
         <EmptyState
           icon={MapPin}
           title="No location records yet"

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import Button from './Button'
+import { cn } from '../../lib/cn'
 
 export default function DataTable({
   rows,
@@ -39,22 +41,33 @@ export default function DataTable({
 
   return (
     <>
-      <div className="table-shell">
-        <table>
+      <div className="overflow-auto">
+        <table className="w-full border-collapse text-left text-[11px]">
           <thead>
             <tr>
-              {columns.map(column => <th key={column.key}>{column.label}</th>)}
+              {columns.map(column => (
+                <th
+                  key={column.key}
+                  className="whitespace-nowrap border-y border-[#eceee9] bg-[#f8f9f6] px-4 py-3 text-[9px] font-extrabold uppercase tracking-[.08em] text-[#858d88]"
+                >
+                  {column.label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {visibleRows.map((row, index) => (
               <tr
                 key={getKey(row, index)}
-                className={rowClassName ? rowClassName(row) : onRowClick ? 'click-row' : undefined}
+                className={cn(
+                  'border-b border-[#eff1ed] transition',
+                  onRowClick && 'cursor-pointer hover:bg-[#f8faf7]',
+                  rowClassName?.(row)
+                )}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
                 {columns.map(column => (
-                  <td key={column.key}>
+                  <td key={column.key} className="max-w-[320px] px-4 py-3.5 text-[#59635e] first:font-semibold">
                     {column.render ? column.render(row[column.key], row) : fallback(row[column.key])}
                   </td>
                 ))}
@@ -65,24 +78,24 @@ export default function DataTable({
       </div>
 
       {showFooter && pagination && (
-        <div className="pagination-bar">
-          <div>Showing <strong>{filtered.length ? start + 1 : 0}-{Math.min(end, filtered.length)}</strong> of <strong>{filtered.length}</strong></div>
-          <label>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eef1ed] px-4 py-3 text-[10px] text-[#7d8781]">
+          <div>Showing <strong className="text-[#405047]">{filtered.length ? start + 1 : 0}-{Math.min(end, filtered.length)}</strong> of <strong className="text-[#405047]">{filtered.length}</strong></div>
+          <label className="flex items-center gap-2">
             Rows
-            <select value={size} onChange={event => setSize(Number(event.target.value))}>
+            <select className="h-8 rounded-lg border border-[#dfe5df] bg-white px-2 text-[10px]" value={size} onChange={event => setSize(Number(event.target.value))}>
               {pageSizeOptions.map(option => <option value={option} key={option}>{option}</option>)}
             </select>
           </label>
-          <div className="page-controls">
-            <button disabled={currentPage === 1} onClick={() => setPage(value => Math.max(1, value - 1))}>Previous</button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="h-8 px-3 text-[10px]" disabled={currentPage === 1} onClick={() => setPage(value => Math.max(1, value - 1))}>Previous</Button>
             <span>Page {currentPage} of {pageCount}</span>
-            <button disabled={currentPage === pageCount} onClick={() => setPage(value => Math.min(pageCount, value + 1))}>Next</button>
+            <Button variant="outline" className="h-8 px-3 text-[10px]" disabled={currentPage === pageCount} onClick={() => setPage(value => Math.min(pageCount, value + 1))}>Next</Button>
           </div>
         </div>
       )}
 
       {showFooter && !pagination && (
-        <div className="table-footer">
+        <div className="flex justify-between border-t border-[#eef1ed] px-4 py-3 text-[10px] text-[#929894]">
           <span>Showing {Math.min(pageSize, filtered.length)} of {filtered.length.toLocaleString()} records</span>
           <span>{sourceLabel}</span>
         </div>

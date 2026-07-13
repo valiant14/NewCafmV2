@@ -4,6 +4,7 @@ import laborSeed from '../data/labor.json'
 import AddLaborModal from '../components/labor/AddLaborModal'
 import LaborDetailPage from '../components/labor/LaborDetailPage'
 import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
@@ -60,9 +61,9 @@ export default function LaborPage() {
         title="Labor"
         description="Maintain technicians, craft codes, departments, shifts, and availability."
         actions={(
-          <div className="heading-actions">
+          <div className="flex items-center gap-2">
             <ExcelImportButton fileName={imported} onFile={setImported} />
-            <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add labor</button>
+            <Button onClick={() => setAdding(true)}><Plus size={17} />Add labor</Button>
           </div>
         )}
       />
@@ -80,7 +81,7 @@ export default function LaborPage() {
         ]}
       />
 
-      <section className="panel register">
+      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
         <DataTable
           rows={visibleRows}
           rowKey="personId"

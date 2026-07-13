@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
+import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
@@ -16,9 +17,9 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
         title={title}
         description={description}
         actions={(
-          <div className="heading-actions">
+          <div className="flex items-center gap-2">
             <ExcelImportButton fileName={imported} onFile={setImported} />
-            <button className="primary"><Plus size={17} />{action}</button>
+            <Button><Plus size={17} />{action}</Button>
           </div>
         )}
       />
@@ -32,7 +33,7 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
         ]}
       />
 
-      <section className="panel register">
+      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
         <DataTable rows={rows} columns={columns} search={search} pagination />
       </section>
     </>

@@ -4,6 +4,7 @@ import toolSeed from '../data/tools.json'
 import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
 import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
@@ -60,9 +61,9 @@ export default function ToolsPage() {
         title="Tools & Equipment"
         description="Maintain tools, equipment locations, quantities, status, and inspections."
         actions={(
-          <div className="heading-actions">
+          <div className="flex items-center gap-2">
             <ExcelImportButton fileName={imported} onFile={setImported} />
-            <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add tool or equipment</button>
+            <Button onClick={() => setAdding(true)}><Plus size={17} />Add tool or equipment</Button>
           </div>
         )}
       />
@@ -80,7 +81,7 @@ export default function ToolsPage() {
         ]}
       />
 
-      <section className="panel register">
+      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
         <DataTable
           rows={visibleRows}
           rowKey="toolNumber"
