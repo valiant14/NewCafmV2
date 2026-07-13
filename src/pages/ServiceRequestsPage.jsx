@@ -7,6 +7,7 @@ import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
+import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
 
 export const initialRequests = [{
@@ -121,7 +122,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   )
 
   const detailProps = { assets, workOrders, failureOptions, onBack: close, onSubmit: submit, onApprove: approve, onOpenWorkOrder }
-  if (selected?.status === 'NEW') return <>{listView}<div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-[#112219]/70 p-6 backdrop-blur-sm"><ServiceRequestDetail modal request={selected} {...detailProps} /></div></>
+  if (selected?.status === 'NEW') return <>{listView}<ModalOverlay><ServiceRequestDetail modal request={selected} {...detailProps} /></ModalOverlay></>
   if (selected) return <ServiceRequestDetail request={selected} {...detailProps} />
   return listView
 }

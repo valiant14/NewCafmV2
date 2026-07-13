@@ -40,8 +40,8 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
   }
 
   return (
-    <div className={modal ? 'max-h-[88vh] w-full max-w-5xl overflow-auto rounded-3xl bg-[#fbfcfa] shadow-2xl' : 'space-y-5'}>
-      <header className="rounded-t-3xl border border-[var(--app-line)] bg-white p-6 shadow-[0_12px_32px_rgba(32,55,45,.07)]">
+    <div className={modal ? 'flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-2xl' : 'space-y-5'}>
+      <header className={`${modal ? 'rounded-t-3xl border-b' : 'rounded-3xl border'} border-[var(--app-line)] bg-[var(--app-panel)] p-6 shadow-[0_12px_32px_rgba(32,55,45,.07)]`}>
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
             {!isNew && <button className="mb-4 text-xs font-bold text-[#577066] transition hover:text-[var(--app-primary)]" onClick={onBack}>← All Service Requests</button>}
@@ -53,7 +53,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
             <p className="mt-2 text-sm text-[var(--app-muted)]">{isNew ? 'Tell us what happened and where.' : form.description}</p>
           </div>
           {isNew ? (
-            <button className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#dfe5df] bg-white text-[#617067]" onClick={onBack} aria-label="Close new service request"><X size={20} /></button>
+            <button className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] text-[var(--app-muted)] transition hover:bg-[var(--app-table-hover-bg)] hover:text-[var(--app-ink)]" onClick={onBack} aria-label="Close new service request"><X size={20} /></button>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline"><Printer size={15} /> Print</Button>
@@ -94,7 +94,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
         </div>
       )}
 
-      <main className="space-y-5 p-0">
+      <main className={`${modal ? 'overflow-auto' : ''} space-y-5 p-0`}>
         {submitError && <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#f0d4bd] bg-[#fff7ef] p-4 text-[#9a5a2f]"><div className="flex items-center gap-2"><AlertTriangle size={17} /><span>{submitError}</span></div><button onClick={() => setSubmitError('')}><X size={14} /></button></div>}
 
         {isNew && <Section title="" note=""><div className="grid gap-4 md:grid-cols-2">
@@ -121,7 +121,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
         </div>}
       </main>
 
-      {isNew && <footer className="flex items-center justify-end gap-2 border-t border-[var(--app-line)] bg-white p-5"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handlePrimary}><Check size={15} />Submit request</Button></footer>}
+      {isNew && <footer className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-[var(--app-line)] bg-[var(--app-panel)] p-5"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handlePrimary}><Check size={15} />Submit request</Button></footer>}
     </div>
   )
 }

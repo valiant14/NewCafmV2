@@ -6,6 +6,7 @@ import PmScheduleTable from '../components/preventive-maintenance/PmScheduleTabl
 import PmScheduleUpload from '../components/preventive-maintenance/PmScheduleUpload'
 import Button from '../components/ui/Button'
 import IndexTabs from '../components/ui/IndexTabs'
+import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
 import departments from '../data/departments.json'
 import pmSeed from '../data/pmSchedules.json'
@@ -131,10 +132,6 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
     return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} />
   }
 
-  if (mode === 'new') {
-    return <PmScheduleForm form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departments} onCancel={() => setMode('list')} onSave={save} />
-  }
-
   if (mode === 'upload') {
     return <PmScheduleUpload headers={excelHeaders} upload={upload} setUpload={setUpload} onCancel={() => setMode('list')} onDownloadTemplate={downloadTemplate} onImport={() => { setPlans(pmSeed); setMode('list') }} />
   }
@@ -185,6 +182,11 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         sort={sort}
         onSort={toggleSort}
       />
+      {mode === 'new' && (
+        <ModalOverlay>
+          <PmScheduleForm modal form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departments} onCancel={() => setMode('list')} onSave={save} />
+        </ModalOverlay>
+      )}
     </section>
   )
 }
