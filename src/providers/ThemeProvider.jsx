@@ -87,49 +87,50 @@ export const themes = {
     name: 'light',
     tokens: {
       // Base
-      '--app-bg': '#F8FAFC',
+      '--app-bg': '#F5F7FA',
       '--app-panel': '#FFFFFF',
-      '--app-ink': '#0F172A',
-      '--app-muted': '#64748B',
-      '--app-line': '#E2E8F0',
+      '--app-ink': '#1F2937',
+      '--app-muted': '#6B7280',
+      '--app-line': '#E5E7EB',
+
+      // Tables
       '--app-table-bg': '#FFFFFF',
       '--app-table-header-bg': '#F8FAFC',
       '--app-table-footer-bg': '#F8FAFC',
       '--app-table-hover-bg': '#F1F5F9',
-      '--app-table-text': '#475569',
-      '--app-table-heading': '#64748B',
+      '--app-table-text': '#374151',
+      '--app-table-heading': '#6B7280',
 
       // Brand
-      '--app-primary': '#1D4ED8',
-      '--app-primary-hover': '#1E40AF',
+      '--app-primary': '#2563EB',
+      '--app-primary-hover': '#1D4ED8',
       '--app-accent': '#60A5FA',
 
       // Sidebar
-      '--app-sidebar-bg': '#0F172A',
-      '--app-sidebar-panel': '#1E293B',
-      '--app-sidebar-hover': '#334155',
-      '--app-sidebar-active': '#1D4ED8',
-      '--app-sidebar-text': '#F8FAFC',
-      '--app-sidebar-muted': '#94A3B8',
-      '--app-sidebar-accent': '#60A5FA',
-      '--app-sidebar-accent-ink': '#FFFFFF',
+      '--app-sidebar-bg': '#1F2937',
+      '--app-sidebar-panel': '#273549',
+      '--app-sidebar-hover': '#374151',
+      '--app-sidebar-active': '#2563EB',
+      '--app-sidebar-text': '#F9FAFB',
+      '--app-sidebar-muted': '#9CA3AF',
+      '--app-sidebar-accent': '#93C5FD',
+      '--app-sidebar-accent-ink': '#111827',
 
-      // Legacy Tokens
-      '--ink': '#0F172A',
-      '--muted': '#64748B',
-      '--line': '#E2E8F0',
+      // Legacy
+      '--ink': '#1F2937',
+      '--muted': '#6B7280',
+      '--line': '#E5E7EB',
       '--panel': '#FFFFFF',
 
-      // Legacy Color Aliases
-      '--green': '#1D4ED8',
-      '--lime': '#60A5FA',
+      '--green': '#2563EB',
+      '--lime': '#93C5FD',
       '--orange': '#F59E0B',
 
-      // Optional Status Colors
-      '--success': '#22C55E',
-      '--warning': '#F59E0B',
-      '--danger': '#EF4444',
-      '--info': '#0EA5E9'
+      // Status
+      '--success': '#16A34A',
+      '--warning': '#D97706',
+      '--danger': '#DC2626',
+      '--info': '#0284C7'
     }
   },
 
@@ -137,45 +138,46 @@ export const themes = {
     name: 'dark',
     tokens: {
       // Base
-      '--app-bg': '#020617',
-      '--app-panel': '#0F172A',
-      '--app-ink': '#F8FAFC',
-      '--app-muted': '#94A3B8',
-      '--app-line': '#1E293B',
-      '--app-table-bg': '#0F172A',
-      '--app-table-header-bg': '#111827',
-      '--app-table-footer-bg': '#111827',
-      '--app-table-hover-bg': '#1E293B',
-      '--app-table-text': '#CBD5E1',
-      '--app-table-heading': '#94A3B8',
+      '--app-bg': '#111827',
+      '--app-panel': '#1F2937',
+      '--app-ink': '#F9FAFB',
+      '--app-muted': '#9CA3AF',
+      '--app-line': '#374151',
+
+      // Tables
+      '--app-table-bg': '#1F2937',
+      '--app-table-header-bg': '#273549',
+      '--app-table-footer-bg': '#273549',
+      '--app-table-hover-bg': '#374151',
+      '--app-table-text': '#E5E7EB',
+      '--app-table-heading': '#9CA3AF',
 
       // Brand
-      '--app-primary': '#3B82F6',
-      '--app-primary-hover': '#2563EB',
+      '--app-primary': '#60A5FA',
+      '--app-primary-hover': '#3B82F6',
       '--app-accent': '#93C5FD',
 
       // Sidebar
-      '--app-sidebar-bg': '#020617',
-      '--app-sidebar-panel': '#0F172A',
-      '--app-sidebar-hover': '#1E293B',
-      '--app-sidebar-active': '#2563EB',
-      '--app-sidebar-text': '#F8FAFC',
+      '--app-sidebar-bg': '#0F172A',
+      '--app-sidebar-panel': '#1E293B',
+      '--app-sidebar-hover': '#334155',
+      '--app-sidebar-active': '#3B82F6',
+      '--app-sidebar-text': '#F9FAFB',
       '--app-sidebar-muted': '#94A3B8',
       '--app-sidebar-accent': '#60A5FA',
       '--app-sidebar-accent-ink': '#FFFFFF',
 
-      // Legacy Tokens
-      '--ink': '#F8FAFC',
-      '--muted': '#94A3B8',
-      '--line': '#1E293B',
-      '--panel': '#0F172A',
+      // Legacy
+      '--ink': '#F9FAFB',
+      '--muted': '#9CA3AF',
+      '--line': '#374151',
+      '--panel': '#1F2937',
 
-      // Legacy Color Aliases
-      '--green': '#3B82F6',
+      '--green': '#60A5FA',
       '--lime': '#93C5FD',
       '--orange': '#FBBF24',
 
-      // Optional Status Colors
+      // Status
       '--success': '#4ADE80',
       '--warning': '#FBBF24',
       '--danger': '#F87171',

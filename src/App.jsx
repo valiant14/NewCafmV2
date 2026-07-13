@@ -278,10 +278,25 @@ export default function App() {
     'Assets': <AssetsPage initialAssets={assets} workOrders={allWorkOrders} />,
     'Preventive Maintenance': <PreventiveMaintenancePage assets={assets} jobTasks={jobTasks} workOrders={allWorkOrders} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Locations': <LocationsPage/>,
-    'Job Plans': <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobTasks} search={search} setSearch={setSearch} action="New job plan" columns={[
+    'Job Plans': <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobTasks} search={search} setSearch={setSearch} action="New job plan" modalTitle="Add job plan" modalNote="Create a job plan task line with sequence, instructions, and estimated duration." modalFields={[
+      { key: 'JPNUM', label: 'Job Plan', required: true, placeholder: 'JP415004' },
+      { key: 'DESCRIPTION', label: 'Plan Description', required: true, full: true },
+      { key: 'JOB TASK SEQUENCE', label: 'Task Sequence', required: true, type: 'number', defaultValue: 10 },
+      { key: 'JOB TASK DESCRIPTION', label: 'Task Description', required: true, full: true },
+      { key: 'TASK DURATION IN HOUR', label: 'Duration in Hours', required: true, type: 'number', defaultValue: 1 }
+    ]} mapFormToRow={form => ({ ...form, 'TASK DURATION IN HOUR': Number(form['TASK DURATION IN HOUR'] || 0) })} columns={[
       {key:'JPNUM',label:'Plan',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Plan description'},{key:'JOB TASK SEQUENCE',label:'Sequence'},{key:'JOB TASK DESCRIPTION',label:'Task'},{key:'TASK DURATION IN HOUR',label:'Duration',render:v=>`${Math.round(Number(v)*1440)} min`}
     ]}/>,
-    'Failure Library': <RegisterPage title="Failure library" eyebrow="RELIABILITY" description="Search the bilingual Maximo problem, cause, and remedy hierarchy." rows={failureCodes} search={search} setSearch={setSearch} action="Add code" columns={[
+    'Failure Library': <RegisterPage title="Failure library" eyebrow="RELIABILITY" description="Search the bilingual Maximo problem, cause, and remedy hierarchy." rows={failureCodes} search={search} setSearch={setSearch} action="Add code" modalTitle="Add failure code" modalNote="Create a failure hierarchy record. Cause and remedy can stay optional." modalFields={[
+      { key: 'FAILURE CLASS ID', label: 'Failure Class ID', required: true, placeholder: 'HVAC' },
+      { key: 'DESCRIPTION', label: 'Class Description', required: true, full: true },
+      { key: 'PROBLEM CODE', label: 'Problem Code', required: true },
+      { key: 'PC - DESCRIPTION', label: 'Problem Description', required: true, full: true },
+      { key: 'CAUSE CODE', label: 'Cause Code' },
+      { key: 'CC - DESCRIPTION', label: 'Cause Description', full: true },
+      { key: 'REMEDY CODE', label: 'Remedy Code' },
+      { key: 'RC - DESCRIPTION', label: 'Remedy Description', full: true }
+    ]} columns={[
       {key:'FAILURE CLASS ID',label:'Class',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Class description'},{key:'PROBLEM CODE',label:'Problem code'},{key:'PC - DESCRIPTION',label:'Problem description'},{key:'CAUSE CODE',label:'Cause'}
     ]}/>,
     'Labor': <LaborPage/>,
