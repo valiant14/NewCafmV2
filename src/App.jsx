@@ -26,7 +26,7 @@ import Field from './components/ui/Field'
 import Section from './components/ui/Section'
 import AppShell from './components/layout/AppShell'
 import { navigationItems, pathForPage, routeToPage } from './config/navigation'
-import { assets, workOrders, pmRecords, jobTasks, failureCodes, statusMatrix, failureClassOptions, uniqueCodeOptions, excelDate, toDateTimeInput, slaBreached } from './data/cafmData'
+import { assets, workOrders, pmRecords, jobTasks, failureCodes, locations, statusMatrix, failureClassOptions, uniqueCodeOptions, excelDate, toDateTimeInput, slaBreached } from './data/cafmData'
 
 
 const nav = [
@@ -306,7 +306,7 @@ export default function App() {
     'Work Orders': <WorkOrdersPage rows={allWorkOrders} assets={assets} onCreate={createWorkOrder} EditorComponent={WorkOrderEditor} excelDate={excelDate} slaBreached={slaBreached}/>,
     'Assets': <AssetsPage initialAssets={assets} workOrders={allWorkOrders} />,
     'Preventive Maintenance': <PreventiveMaintenancePage assets={assets} jobTasks={jobTasks} workOrders={allWorkOrders} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
-    'Locations': <LocationsPage/>,
+    'Locations': <LocationsPage initialLocations={locations}/>,
     'Job Plans': <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobTasks} search={search} setSearch={setSearch} action="New job plan" modalTitle="Add job plan" modalNote="Create a job plan task line with sequence, instructions, and estimated duration." modalFields={[
       { key: 'JPNUM', label: 'Job Plan', required: true, placeholder: 'JP415004' },
       { key: 'DESCRIPTION', label: 'Plan Description', required: true, full: true },

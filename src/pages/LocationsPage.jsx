@@ -10,24 +10,38 @@ import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
 
 const locationFields = [
-  { key: 'site', label: 'Site', required: true, placeholder: '1031' },
   { key: 'location', label: 'Location', required: true, placeholder: 'RC-1031-RD-001-00-054' },
-  { key: 'description', label: 'Description', required: true, full: true },
+  { key: 'description', label: 'Description', required: true },
   { key: 'type', label: 'Type', options: ['Building', 'Floor', 'Room', 'Zone', 'External'] },
-  { key: 'parent', label: 'Parent Location', placeholder: 'Optional hierarchy parent' },
-  { key: 'department', label: 'Department', placeholder: 'Responsible department' },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
+  { key: 'status', label: 'Status', options: ['OPERATING', 'PLANNED', 'DECOMMISSIONED'] },
+  { key: 'priority', label: 'Priority', type: 'number', placeholder: '1' },
+  { key: 'priority  description', label: 'Priority Description', placeholder: 'VIP / Royal / Standard' },
+  { key: 'site', label: 'Site', required: true, placeholder: '1031' },
+  { key: 'builiding', label: 'Building', placeholder: 'Building code' },
+  { key: 'builiding category', label: 'Building Category', placeholder: 'Building category' }
 ]
 
-export default function LocationsPage() {
+const emptyLocation = {
+  location: '',
+  description: '',
+  type: 'Room',
+  status: 'OPERATING',
+  priority: '',
+  'priority  description': '',
+  site: '',
+  builiding: '',
+  'builiding category': ''
+}
+
+export default function LocationsPage({ initialLocations = [] }) {
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ site: '', location: '', description: '', type: 'Room', parent: '', department: '', status: 'Active' })
-  const [locations, setLocations] = useState([])
+  const [form, setForm] = useState(emptyLocation)
+  const [locations, setLocations] = useState(initialLocations)
 
   const saveLocation = () => {
     setLocations(current => [{ ...form }, ...current])
-    setForm({ site: '', location: '', description: '', type: 'Room', parent: '', department: '', status: 'Active' })
+    setForm(emptyLocation)
     setModalOpen(false)
   }
 
@@ -55,11 +69,13 @@ export default function LocationsPage() {
             columns={[
               { key: 'location', label: 'Location', render: value => <strong className="mono">{value}</strong> },
               { key: 'description', label: 'Description' },
-              { key: 'site', label: 'Site' },
               { key: 'type', label: 'Type' },
-              { key: 'parent', label: 'Parent' },
-              { key: 'department', label: 'Department' },
               { key: 'status', label: 'Status' },
+              { key: 'priority', label: 'Priority' },
+              { key: 'priority  description', label: 'Priority Description' },
+              { key: 'site', label: 'Site' },
+              { key: 'builiding', label: 'Building' },
+              { key: 'builiding category', label: 'Building Category' },
               { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
             ]}
           />

@@ -12,6 +12,7 @@ export const workOrders = rowsToObjects(workbookData['Work Order Tracking'].Shee
 export const pmRecords = rowsToObjects(workbookData.PM['PREVENTIVE MAINTENANCE'])
 export const jobTasks = rowsToObjects(workbookData['JOB PLAN-TASKS']['JOB PLAN-TASKS'])
 export const failureCodes = rowsToObjects(workbookData['FAILURE CODE']['FAILURE CODE'])
+export const locations = rowsToObjects(workbookData.location.location)
 export const statusMatrix = rowsToObjects(workbookData.IBM_Maximo_Status_Matrix['Maximo Status Matrix'])
 export const uniqueCodeOptions = (rows, codeKey, descriptionKey) => [...new Map(rows.filter(row=>row[codeKey]).map(row=>[row[codeKey], { value: row[codeKey], label: row[descriptionKey] }])).values()]
 export const failureClassOptions = uniqueCodeOptions(failureCodes, 'FAILURE CLASS ID', 'DESCRIPTION')

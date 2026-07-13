@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   MapPin,
   PackageCheck,
-  Settings,
   ShieldCheck,
   Users,
   Wrench
@@ -23,8 +22,7 @@ export const navigationItems = [
   { name: 'Failure Library', path: '/failure-library', icon: ShieldCheck },
   { name: 'Labor', path: '/labor', icon: Users },
   { name: 'Materials', path: '/materials', icon: PackageCheck },
-  { name: 'Tools & Equipment', path: '/tools', icon: Wrench },
-  { name: 'Settings', path: '/settings', icon: Settings }
+  { name: 'Tools & Equipment', path: '/tools', icon: Wrench }
 ]
 
 export const routeToPage = pathname => {
