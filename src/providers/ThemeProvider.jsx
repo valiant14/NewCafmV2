@@ -66,17 +66,31 @@ export const themes = {
   light: {
     name: 'light',
     tokens: {
-      '--app-bg': '#f4f5f0',
+      // Base
+      '--app-bg': '#f8fafc',
       '--app-panel': '#ffffff',
-      '--app-ink': '#1e2823',
-      '--app-muted': '#727a75',
-      '--app-line': '#e3e6df',
-      '--app-primary': '#4f46e5',
-      '--app-accent': '#818cf8',
+      '--app-ink': '#0f172a',
+      '--app-muted': '#64748b',
+      '--app-line': '#e2e8f0',
 
-      '--ink': '#1e2823',
-      '--muted': '#727a75',
-      '--line': '#e3e6df',
+      // Brand
+      '--app-primary': '#4f46e5',
+      '--app-accent': '#6366f1',
+
+      // Sidebar
+      '--app-sidebar-bg': '#0f172a',
+      '--app-sidebar-panel': '#1e293b',
+      '--app-sidebar-hover': '#334155',
+      '--app-sidebar-active': '#4f46e5',
+      '--app-sidebar-text': '#f8fafc',
+      '--app-sidebar-muted': '#94a3b8',
+      '--app-sidebar-accent': '#818cf8',
+      '--app-sidebar-accent-ink': '#ffffff',
+
+      // Legacy Tokens
+      '--ink': '#0f172a',
+      '--muted': '#64748b',
+      '--line': '#e2e8f0',
       '--panel': '#ffffff',
 
       '--green': '#4f46e5',
@@ -88,18 +102,32 @@ export const themes = {
   dark: {
     name: 'dark',
     tokens: {
-      '--app-bg': '#111a15',
-      '--app-panel': '#17231d',
-      '--app-ink': '#eef5f0',
-      '--app-muted': '#a8b6ae',
-      '--app-line': '#2d3c34',
-      '--app-primary': '#4f46e5',
+      // Base
+      '--app-bg': '#020617',
+      '--app-panel': '#0f172a',
+      '--app-ink': '#f8fafc',
+      '--app-muted': '#94a3b8',
+      '--app-line': '#1e293b',
+
+      // Brand
+      '--app-primary': '#6366f1',
       '--app-accent': '#818cf8',
 
-      '--ink': '#eef5f0',
-      '--muted': '#a8b6ae',
-      '--line': '#2d3c34',
-      '--panel': '#17231d',
+      // Sidebar
+      '--app-sidebar-bg': '#020617',
+      '--app-sidebar-panel': '#0f172a',
+      '--app-sidebar-hover': '#1e293b',
+      '--app-sidebar-active': '#4f46e5',
+      '--app-sidebar-text': '#f8fafc',
+      '--app-sidebar-muted': '#94a3b8',
+      '--app-sidebar-accent': '#818cf8',
+      '--app-sidebar-accent-ink': '#ffffff',
+
+      // Legacy Tokens
+      '--ink': '#f8fafc',
+      '--muted': '#94a3b8',
+      '--line': '#1e293b',
+      '--panel': '#0f172a',
 
       '--green': '#6366f1',
       '--lime': '#a5b4fc',

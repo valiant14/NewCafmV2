@@ -20,14 +20,14 @@ export default function AppShell({
 
   return (
     <div className="app-shell min-h-screen bg-[var(--app-bg)] text-[var(--app-ink)] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
-      <aside className={`sidebar fixed inset-y-0 left-0 z-40 flex w-[248px] -translate-x-full flex-col bg-[#17251e] px-4 py-6 text-[#dbe5df] transition lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${mobileOpen ? 'open translate-x-0 shadow-2xl' : ''}`}>
+      <aside className={`sidebar fixed inset-y-0 left-0 z-40 flex w-[248px] -translate-x-full flex-col bg-[var(--app-sidebar-bg)] px-4 py-6 text-[var(--app-sidebar-text)] transition lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${mobileOpen ? 'open translate-x-0 shadow-2xl' : ''}`}>
         <div className="brand mb-8 flex items-center gap-3 px-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#cfe775] text-[#17251e]">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--app-sidebar-accent)] text-[var(--app-sidebar-accent-ink)]">
             <Command size={20} />
           </div>
           <span className="font-heading text-[length:var(--app-brand-font-size)] font-extrabold tracking-wide">
             FACILITY
-            <strong className="block text-[10px] tracking-[0.18em] text-[#9fb1a7]">COMMAND</strong>
+            <strong className="block text-[10px] tracking-[0.18em] text-[var(--app-sidebar-muted)]">COMMAND</strong>
           </span>
           <button className="mobile-close ml-auto text-white lg:hidden" onClick={onMobileClose} aria-label="Close menu">
             <X />
@@ -35,7 +35,7 @@ export default function AppShell({
         </div>
 
         <nav className="grid gap-1">
-          <span className="nav-label px-3 pb-2 text-[length:var(--app-nav-label-font-size)] font-extrabold tracking-[0.18em] text-[#71837a]">WORKSPACE</span>
+          <span className="nav-label px-3 pb-2 text-[length:var(--app-nav-label-font-size)] font-extrabold tracking-[0.18em] text-[var(--app-sidebar-muted)]">WORKSPACE</span>
           {navigation.map(item => {
             const Icon = item.icon
             const selected = active === item.name
@@ -43,24 +43,24 @@ export default function AppShell({
               <button
                 key={item.name}
                 onClick={() => onNavigate(item.name)}
-                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-[length:var(--app-nav-font-size)] transition ${selected ? 'bg-[#2c4236] text-white shadow-[inset_3px_0_#cfe775]' : 'text-[#9eb0a6] hover:bg-[#21332a] hover:text-white'}`}
+                className={`flex items-center gap-3 rounded-xl border-l-4 px-3 py-3 text-left text-[length:var(--app-nav-font-size)] transition ${selected ? 'active border-[var(--app-sidebar-accent)] bg-[var(--app-sidebar-active)] text-white' : 'border-transparent text-[var(--app-sidebar-muted)] hover:bg-[var(--app-sidebar-hover)] hover:text-[var(--app-sidebar-text)]'}`}
               >
                 <Icon size={18} />
                 <span>{item.name}</span>
-                {item.counter && <b className="ml-auto rounded-full bg-[#cfe775] px-2 py-0.5 text-[10px] text-[#213127]">{counters[item.counter] || 0}</b>}
+                {item.counter && <b className="ml-auto rounded-full bg-[var(--app-sidebar-accent)] px-2 py-0.5 text-[10px] text-[var(--app-sidebar-accent-ink)]">{counters[item.counter] || 0}</b>}
               </button>
             )
           })}
         </nav>
 
         <div className="sidebar-bottom mt-auto">
-          <div className="user flex items-center gap-3 border-t border-[#2d3c34] px-1 pt-4">
-          <div className="avatar grid h-9 w-9 place-items-center rounded-full bg-[#d7e4a4] text-xs font-extrabold text-[#203027]">{user.initials}</div>
+          <div className="user flex items-center gap-3 border-t border-[color-mix(in_srgb,var(--app-sidebar-muted)_25%,transparent)] px-1 pt-4">
+          <div className="avatar grid h-9 w-9 place-items-center rounded-full bg-[var(--app-sidebar-accent)] text-xs font-extrabold text-[var(--app-sidebar-accent-ink)]">{user.initials}</div>
           <div className="grid min-w-0 flex-1">
             <strong className="truncate text-xs">{user.name}</strong>
-            <span className="truncate text-[10px] text-[#81948a]">{user.role}</span>
+            <span className="truncate text-[10px] text-[var(--app-sidebar-muted)]">{user.role}</span>
           </div>
-          <MoreHorizontal size={18} className="text-[#6d8176]" />
+          <MoreHorizontal size={18} className="text-[var(--app-sidebar-muted)]" />
           </div>
         </div>
       </aside>
