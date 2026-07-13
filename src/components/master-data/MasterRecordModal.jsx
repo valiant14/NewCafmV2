@@ -1,13 +1,12 @@
 import { Check } from 'lucide-react'
 import Button from '../ui/Button'
-import { cn } from '../../lib/cn'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
 
 function MasterRecordField({ field, value, onChange }) {
   const inputId = `master-${field.key}`
 
   return (
-    <label className={cn('grid gap-2', field.full && 'md:col-span-2')} htmlFor={inputId}>
+    <label className="grid gap-2" htmlFor={inputId}>
       <span className="text-[9px] font-extrabold uppercase tracking-[.12em] text-[#65746c]">
         {field.label}
         {field.required && <b className="ml-1 text-[#d77545]">*</b>}

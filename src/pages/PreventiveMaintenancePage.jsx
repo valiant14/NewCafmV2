@@ -1,17 +1,15 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Check, FileSpreadsheet, Plus, Search, Sparkles, X } from 'lucide-react'
+import { AlertTriangle, Check, Plus, Search, Sparkles, X } from 'lucide-react'
 import PmScheduleDetail from '../components/preventive-maintenance/PmScheduleDetail'
 import PmScheduleForm from '../components/preventive-maintenance/PmScheduleForm'
 import PmScheduleTable from '../components/preventive-maintenance/PmScheduleTable'
-import PmScheduleUpload from '../components/preventive-maintenance/PmScheduleUpload'
 import Button from '../components/ui/Button'
+import ExcelImportButton from '../components/ui/ExcelImportButton'
 import IndexTabs from '../components/ui/IndexTabs'
 import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
 import departments from '../data/departments.json'
 import pmSeed from '../data/pmSchedules.json'
-
-const excelHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'ROUTE', 'LOCATION', 'JPNUM', 'NEXTDATE', 'LEAD TIME (DAYS)', 'FREQUENCY', 'FREQUNIT', 'PMCOUNTER', 'WORKTYPE', 'WOSTATUS', 'STORELOC', 'SUPERVISOR', 'LEAD', 'PERSONGROUP', 'department', 'sub department']
 
 const emptyPlan = {
   pmNumber: '',
@@ -57,7 +55,6 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
   const [form, setForm] = useState(emptyPlan)
   const [query, setQuery] = useState('')
-  const [upload, setUpload] = useState(null)
   const [generation, setGeneration] = useState(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -106,16 +103,6 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
     setSelectedId('')
     window.history.pushState({}, '', '/preventive-maintenance')
   }
-  const downloadTemplate = () => {
-    const example = ['PMALS-HV-00001', 'PM of Split A/C Unit', 'ALS-HV-00001', '', '', 'JP415004', '1-Jan-22', '30', '3', 'MONTHS', '0', 'PM', 'WSCH', 'DIWAN-MAIN', '', '', 'C1-HVAC', '', '']
-    const csv = [excelHeaders, example].map(row => row.map(value => `"${value}"`).join(',')).join('\n')
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = 'PM_Master_Upload_Template.csv'
-    anchor.click()
-    URL.revokeObjectURL(url)
-  }
   const generate = () => {
     const cutoff = new Date('2026-08-31')
     const due = plans.filter(plan => plan.pmStatus === 'Active' && new Date(plan.startDate) <= cutoff && plan.lastGeneratedCycle !== cycleKey(plan))
@@ -132,17 +119,13 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
     return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} />
   }
 
-  if (mode === 'upload') {
-    return <PmScheduleUpload headers={excelHeaders} upload={upload} setUpload={setUpload} onCancel={() => setMode('list')} onDownloadTemplate={downloadTemplate} onImport={() => { setPlans(pmSeed); setMode('list') }} />
-  }
-
   return (
     <section>
       <PageHeader
         eyebrow="PREVENTIVE MAINTENANCE"
         title="PM Schedule"
         description="Maximo-aligned PM masters and automatic work-order generation."
-        actions={<div className="flex items-center gap-2"><Button variant="outline" onClick={() => setMode('upload')}><FileSpreadsheet size={16} />Import Excel</Button><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelImportButton onFile={() => setPlans(pmSeed)} /><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
       />
 
       {generation && (

@@ -66,8 +66,8 @@ export default function LocationsPage() {
         ) : (
           <EmptyState
             icon={MapPin}
-            title="No location records yet"
-            description="The Excel location file contains its field structure but no rows. Add locations when the source is ready."
+            title="No locations added yet"
+            description="Create your first site, building, floor, room, or zone using the Add location button."
           />
         )}
       </section>
