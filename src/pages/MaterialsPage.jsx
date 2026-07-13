@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PackageCheck, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import materialSeed from '../data/materials.json'
 import AddMaterialModal from '../components/materials/AddMaterialModal'
 import MaterialDetailPage from '../components/materials/MaterialDetailPage'
@@ -7,7 +7,7 @@ import Badge from '../components/ui/Badge'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
-import MasterSummary from '../components/ui/MasterSummary'
+import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 
 const empty = {
@@ -27,8 +27,10 @@ export default function MaterialsPage() {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
+  const [tab, setTab] = useState('All')
   const routeId = decodeURIComponent(window.location.pathname.split('/materials/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.itemNumber === routeId) || null)
+  const visibleRows = tab === 'All' ? rows : rows.filter(row => row.availability === tab)
 
   const open = row => {
     setSelected(row)
@@ -74,18 +76,22 @@ export default function MaterialsPage() {
 
       <ImportNotice fileName={imported} subject="inventory" onClear={() => setImported('')} />
 
-      <MasterSummary
-        icon={PackageCheck}
-        label="Inventory items"
-        value={rows.length}
-        detail={`Purchase required ${rows.filter(row => row.availability === 'Purchase Required').length}`}
+      <IndexTabs
+        active={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'All', label: 'All Materials', count: rows.length },
+          { key: 'Available', label: 'Available', count: rows.filter(row => row.availability === 'Available').length },
+          { key: 'Purchase Required', label: 'Purchase Required', count: rows.filter(row => row.availability === 'Purchase Required').length }
+        ]}
       />
 
       <section className="panel register">
         <DataTable
-          rows={rows}
+          rows={visibleRows}
           rowKey="itemNumber"
           onRowClick={open}
+          pagination
           columns={[
             { key: 'itemNumber', label: 'Item number', render: value => <strong className="mono">{value}</strong> },
             { key: 'description', label: 'Description' },

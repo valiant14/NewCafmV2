@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Plus, Search, SlidersHorizontal } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
+import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 
 export default function RegisterPage({ title, eyebrow, description, rows, columns, search, setSearch, action = 'Add record' }) {
@@ -24,16 +25,15 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
 
       <ImportNotice fileName={imported} subject={title.toLowerCase()} onClear={() => setImported('')} />
 
-      <section className="panel register">
-        <div className="register-tools">
-          <div className="search-box">
-            <Search size={17} />
-            <input value={search} onChange={event => setSearch(event.target.value)} placeholder={`Search ${title.toLowerCase()}...`} />
-          </div>
-          <button className="outline"><SlidersHorizontal size={16} /> Filter</button>
-        </div>
+      <IndexTabs
+        active="All"
+        tabs={[
+          { key: 'All', label: `All ${title}`, count: rows.length }
+        ]}
+      />
 
-        <DataTable rows={rows} columns={columns} search={search} />
+      <section className="panel register">
+        <DataTable rows={rows} columns={columns} search={search} pagination />
       </section>
     </>
   )

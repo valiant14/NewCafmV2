@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Wrench } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import toolSeed from '../data/tools.json'
 import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
@@ -7,7 +7,7 @@ import Badge from '../components/ui/Badge'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
-import MasterSummary from '../components/ui/MasterSummary'
+import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 
 const empty = {
@@ -25,8 +25,10 @@ export default function ToolsPage() {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
+  const [tab, setTab] = useState('All')
   const routeId = decodeURIComponent(window.location.pathname.split('/tools/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.toolNumber === routeId) || null)
+  const visibleRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
 
   const open = row => {
     setSelected(row)
@@ -67,18 +69,23 @@ export default function ToolsPage() {
 
       <ImportNotice fileName={imported} subject="tools and equipment" onClear={() => setImported('')} />
 
-      <MasterSummary
-        icon={Wrench}
-        label="Tools and equipment"
-        value={rows.length}
-        detail={`Available ${rows.filter(row => row.status === 'Available').length}`}
+      <IndexTabs
+        active={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'All', label: 'All Tools', count: rows.length },
+          { key: 'Available', label: 'Available', count: rows.filter(row => row.status === 'Available').length },
+          { key: 'Allocated', label: 'Allocated', count: rows.filter(row => row.status === 'Allocated').length },
+          { key: 'Maintenance', label: 'Maintenance', count: rows.filter(row => row.status === 'Maintenance').length }
+        ]}
       />
 
       <section className="panel register">
         <DataTable
-          rows={rows}
+          rows={visibleRows}
           rowKey="toolNumber"
           onRowClick={open}
+          pagination
           columns={[
             { key: 'toolNumber', label: 'Tool number', render: value => <strong className="mono">{value}</strong> },
             { key: 'description', label: 'Description' },

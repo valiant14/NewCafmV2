@@ -3,6 +3,7 @@ import { MapPin, Plus } from 'lucide-react'
 import EmptyState from '../components/ui/EmptyState'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
+import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 
 export default function LocationsPage() {
@@ -22,6 +23,7 @@ export default function LocationsPage() {
         )}
       />
       <ImportNotice fileName={imported} subject="location" onClear={() => setImported('')} />
+      <IndexTabs active="All" tabs={[{ key: 'All', label: 'All Locations', count: 0 }]} />
       <section className="panel">
         <EmptyState
           icon={MapPin}

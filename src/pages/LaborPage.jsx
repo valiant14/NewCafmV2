@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Users } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import laborSeed from '../data/labor.json'
 import AddLaborModal from '../components/labor/AddLaborModal'
 import LaborDetailPage from '../components/labor/LaborDetailPage'
@@ -7,7 +7,7 @@ import Badge from '../components/ui/Badge'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
-import MasterSummary from '../components/ui/MasterSummary'
+import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 
 const empty = {
@@ -26,8 +26,10 @@ export default function LaborPage() {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
+  const [tab, setTab] = useState('All')
   const routeId = decodeURIComponent(window.location.pathname.split('/labor/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.personId === routeId) || null)
+  const visibleRows = tab === 'All' ? rows : rows.filter(row => row.availability === tab)
 
   const open = row => {
     setSelected(row)
@@ -67,18 +69,23 @@ export default function LaborPage() {
 
       <ImportNotice fileName={imported} subject="labor" onClear={() => setImported('')} />
 
-      <MasterSummary
-        icon={Users}
-        label="Labor resources"
-        value={rows.length}
-        detail={`Available ${rows.filter(row => row.availability === 'Available').length}`}
+      <IndexTabs
+        active={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'All', label: 'All Labor', count: rows.length },
+          { key: 'Available', label: 'Available', count: rows.filter(row => row.availability === 'Available').length },
+          { key: 'Assigned', label: 'Assigned', count: rows.filter(row => row.availability === 'Assigned').length },
+          { key: 'On Leave', label: 'On Leave', count: rows.filter(row => row.availability === 'On Leave').length }
+        ]}
       />
 
       <section className="panel register">
         <DataTable
-          rows={rows}
+          rows={visibleRows}
           rowKey="personId"
           onRowClick={open}
+          pagination
           columns={[
             { key: 'personId', label: 'Person ID', render: value => <strong className="mono">{value}</strong> },
             { key: 'name', label: 'Name' },

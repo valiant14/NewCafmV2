@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Building2, CalendarClock, Check, ChevronRight, MapPin, Plus, Printer, Upload, UserRound, X } from 'lucide-react'
+import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import { Field, Section } from '../components/ui/FormControls'
 import ImportNotice from '../components/ui/ImportNotice'
@@ -84,7 +85,29 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   const close = () => { setSelected(null); window.history.pushState({}, '', '/service-requests') }
   const submit = request => { const submitted = { ...request, sr: `SR-2026-${String(requests.length + 42).padStart(4, '0')}`, status: 'WAPPR', requestType: 'Service' }; setRequests(list => [...list, submitted]); setSelected(submitted); window.history.replaceState({}, '', `/service-requests/${submitted.sr}`) }
   const approve = request => { const createdWorkOrder=onConvert(request); const updated = { ...request, status: 'CONVERTED', convertedWorkOrder: createdWorkOrder.WORKORDER }; setRequests(list => list.map(item => item.sr === updated.sr ? updated : item)); setSelected(updated); window.history.replaceState({}, '', `/service-requests/${updated.sr}`); return updated }
-  const listView = <><PageHeader eyebrow="REQUEST INTAKE" title="Service Requests" description="Submit, review, approve, and convert requests into Corrective Maintenance work orders." actions={<div className="heading-actions"><ExcelImportButton fileName={imported} onFile={setImported} /><button className="primary" onClick={() => open(blankRequest())}><Plus size={17} />New service request</button></div>} /><ImportNotice fileName={imported} subject="service request" onClear={()=>setImported('')} /><div className="sub-tabs"><button className="active">All Service Requests <b>{requests.length}</b></button><button>Awaiting Review <b>{requests.filter(request => request.status === 'WAPPR').length}</b></button><button>Converted <b>{requests.filter(request => request.status === 'CONVERTED').length}</b></button></div><section className="panel register"><div className="table-shell"><table><thead><tr><th>SR number</th><th>Description</th><th>Site / Location</th><th>Department</th><th>Reported by</th><th>Priority</th><th>Status</th><th /></tr></thead><tbody>{requests.map(request => <tr className="click-row" key={request.sr} onClick={() => open(request)}><td><strong className="mono">{request.sr}</strong></td><td>{request.description}</td><td>{request.site}<small className="cell-sub">{request.location}</small></td><td>{request.department || 'Pending review'}</td><td>{request.reportedBy}</td><td><Badge tone={request.priority === 'High' ? 'orange' : 'neutral'}>{request.priority}</Badge></td><td><Badge tone={request.status === 'CONVERTED' ? 'green' : 'orange'}>{request.status}</Badge></td><td><ChevronRight size={17} /></td></tr>)}</tbody></table></div></section></>
+  const listView = <>
+    <PageHeader eyebrow="REQUEST INTAKE" title="Service Requests" description="Submit, review, approve, and convert requests into Corrective Maintenance work orders." actions={<div className="heading-actions"><ExcelImportButton fileName={imported} onFile={setImported} /><button className="primary" onClick={() => open(blankRequest())}><Plus size={17} />New service request</button></div>} />
+    <ImportNotice fileName={imported} subject="service request" onClear={()=>setImported('')} />
+    <div className="sub-tabs"><button className="active">All Service Requests <b>{requests.length}</b></button><button>Awaiting Review <b>{requests.filter(request => request.status === 'WAPPR').length}</b></button><button>Converted <b>{requests.filter(request => request.status === 'CONVERTED').length}</b></button></div>
+    <section className="panel register">
+      <DataTable
+        rows={requests}
+        rowKey="sr"
+        onRowClick={open}
+        pagination
+        columns={[
+          { key: 'sr', label: 'SR number', render: value => <strong className="mono">{value}</strong> },
+          { key: 'description', label: 'Description' },
+          { key: 'site', label: 'Site / Location', render: (value, request) => <>{value}<small className="cell-sub">{request.location}</small></> },
+          { key: 'department', label: 'Department', render: value => value || 'Pending review' },
+          { key: 'reportedBy', label: 'Reported by' },
+          { key: 'priority', label: 'Priority', render: value => <Badge tone={value === 'High' ? 'orange' : 'neutral'}>{value}</Badge> },
+          { key: 'status', label: 'Status', render: value => <Badge tone={value === 'CONVERTED' ? 'green' : 'orange'}>{value}</Badge> },
+          { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
+        ]}
+      />
+    </section>
+  </>
   if (selected?.status === 'NEW') return <>{listView}<div className="wo-overlay sr-create-overlay"><ServiceRequestDetail modal request={selected} assets={assets} workOrders={workOrders} failureOptions={failureOptions} onBack={close} onSubmit={submit} onApprove={approve} /></div></>
   if (selected) return <ServiceRequestDetail request={selected} assets={assets} workOrders={workOrders} failureOptions={failureOptions} onBack={close} onSubmit={submit} onApprove={approve} onOpenWorkOrder={onOpenWorkOrder} />
   return listView
