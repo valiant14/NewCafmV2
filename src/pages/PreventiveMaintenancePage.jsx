@@ -36,6 +36,42 @@ const emptyPlan = {
   lastGeneratedCycle: ''
 }
 
+const normalizeDate = value => {
+  if (!value) return ''
+  const parsed = new Date(value)
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10)
+  const match = String(value).match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/)
+  if (!match) return String(value)
+  const months = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 }
+  const year = Number(match[3].length === 2 ? `20${match[3]}` : match[3])
+  return new Date(year, months[match[2]] ?? 0, Number(match[1])).toISOString().slice(0, 10)
+}
+
+const mapPmImportRows = rows => rows.map(row => ({
+  pmNumber: row.PMNUM || '',
+  description: row['PM DESCRIPTION'] || '',
+  asset: row.ASSETNUM || '',
+  route: row.ROUTE || '',
+  location: row.LOCATION || '',
+  site: row.SITE || '1031',
+  jobPlan: row.JPNUM || '',
+  startDate: normalizeDate(row.NEXTDATE),
+  leadTime: Number(row['LEAD TIME (DAYS)'] || 0),
+  frequency: Number(row.FREQUENCY || 1),
+  freqUnit: row.FREQUNIT || 'MONTHS',
+  pmCounter: Number(row.PMCOUNTER || 0),
+  workType: row.WORKTYPE || 'PM',
+  woStatus: row.WOSTATUS || 'WSCH',
+  storeLocation: row.STORELOC || '',
+  supervisor: row.SUPERVISOR || '',
+  lead: row.LEAD || '',
+  personGroup: row.PERSONGROUP || '',
+  department: row.department || row.DEPARTMENT || '',
+  subDepartment: row['sub department'] || row['SUB DEPARTMENT'] || '',
+  pmStatus: row['PM Status'] || row.PMSTATUS || 'Active',
+  lastGeneratedCycle: ''
+})).filter(plan => plan.pmNumber && plan.description)
+
 const cycleKey = plan => `${plan.pmNumber}-${plan.startDate}`
 
 const addFrequency = plan => {
@@ -125,7 +161,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         eyebrow="PREVENTIVE MAINTENANCE"
         title="PM Schedule"
         description="Maximo-aligned PM masters and automatic work-order generation."
-        actions={<div className="flex items-center gap-2"><ExcelImportButton onFile={() => setPlans(pmSeed)} /><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows); if (imported.length) setPlans(imported) }} /><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
       />
 
       {generation && (

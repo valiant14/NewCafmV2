@@ -44,16 +44,16 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
       <header className={`${modal ? 'rounded-t-3xl border-b' : 'rounded-3xl border'} border-[var(--app-line)] bg-[var(--app-panel)] p-6 shadow-[0_12px_32px_rgba(32,55,45,.07)]`}>
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
-            {!isNew && <button className="mb-4 text-xs font-bold text-[#577066] transition hover:text-[var(--app-primary)]" onClick={onBack}>← All Service Requests</button>}
-            {!isNew && <p className="text-[9px] font-extrabold uppercase tracking-[.18em] text-[#7a8780]">SERVICE REQUEST · {form.requestType?.toUpperCase()}</p>}
+            {!isNew && <button className="mb-4 text-xs font-bold text-[#577066] transition hover:text-[var(--app-primary)]" onClick={onBack}>← All Job Requests</button>}
+            {!isNew && <p className="text-[9px] font-extrabold uppercase tracking-[.18em] text-[#7a8780]">JOB REQUEST · {form.requestType?.toUpperCase()}</p>}
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-extrabold tracking-[-.045em] text-[var(--app-ink)]">{form.sr === 'AUTO' ? 'New service request' : form.sr}</h1>
+              <h1 className="text-3xl font-extrabold tracking-[-.045em] text-[var(--app-ink)]">{form.sr === 'AUTO' ? 'New job request' : form.sr}</h1>
               <Badge tone={form.status === 'CONVERTED' ? 'green' : 'orange'}>{form.status}</Badge>
             </div>
             <p className="mt-2 text-sm text-[var(--app-muted)]">{isNew ? 'Tell us what happened and where.' : form.description}</p>
           </div>
           {isNew ? (
-            <button className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] text-[var(--app-muted)] transition hover:bg-[var(--app-table-hover-bg)] hover:text-[var(--app-ink)]" onClick={onBack} aria-label="Close new service request"><X size={20} /></button>
+            <button className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] text-[var(--app-muted)] transition hover:bg-[var(--app-table-hover-bg)] hover:text-[var(--app-ink)]" onClick={onBack} aria-label="Close new job request"><X size={20} /></button>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline"><Printer size={15} /> Print</Button>
@@ -109,7 +109,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
 
         {!isNew && activeTab === 'Request Details' && <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
           <section className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]"><span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[#7b8780]">Reported issue</span><h2 className="mt-2 text-xl font-extrabold text-[var(--app-ink)]">{form.description}</h2><p className="mt-3 text-sm text-[var(--app-muted)]">{form.longDescription || 'No additional description was provided.'}</p></section>
-          <aside className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]"><h3 className="font-extrabold text-[var(--app-ink)]">Request information</h3><dl className="mt-4 grid gap-3">{[['Priority', form.priority], ['Site', form.site], ['Location', form.location], ['Request type', 'Service']].map(([label, value]) => <div className="rounded-2xl bg-[#f8faf7] p-3" key={label}><dt className="text-[9px] font-extrabold uppercase tracking-[.12em] text-[#7b8780]">{label}</dt><dd className="mt-1 text-sm font-bold text-[var(--app-ink)]">{value}</dd></div>)}</dl></aside>
+          <aside className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]"><h3 className="font-extrabold text-[var(--app-ink)]">Job request information</h3><dl className="mt-4 grid gap-3">{[['Priority', form.priority], ['Site', form.site], ['Location', form.location], ['Request type', 'Service']].map(([label, value]) => <div className="rounded-2xl bg-[#f8faf7] p-3" key={label}><dt className="text-[9px] font-extrabold uppercase tracking-[.12em] text-[#7b8780]">{label}</dt><dd className="mt-1 text-sm font-bold text-[var(--app-ink)]">{value}</dd></div>)}</dl></aside>
           <section className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)] lg:col-span-2"><div className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-end"><div><strong className="text-[var(--app-ink)]">{form.asset ? 'Linked asset' : 'Link an asset'}</strong><p className="mt-1 text-sm text-[var(--app-muted)]">{form.asset ? 'This request is ready for technical classification.' : 'An asset must be linked before this request can be converted to CM.'}</p></div><Field label="Asset" value={form.asset} required onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" /></div></section>
         </div>}
 

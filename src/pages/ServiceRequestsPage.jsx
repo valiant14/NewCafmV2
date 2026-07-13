@@ -45,7 +45,7 @@ const blankRequest = () => ({
 
 export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, failureOptions }) {
   const requestFromPath = () => {
-    const id = decodeURIComponent(window.location.pathname.split('/service-requests/')[1] || '')
+    const id = decodeURIComponent((window.location.pathname.split('/job-requests/')[1] || window.location.pathname.split('/service-requests/')[1] || ''))
     return id === 'new' ? blankRequest() : requests.find(request => request.sr === id) || null
   }
   const [selected, setSelected] = useState(requestFromPath)
@@ -61,24 +61,24 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
 
   const open = request => {
     setSelected(request)
-    window.history.pushState({}, '', `/service-requests/${request.sr === 'AUTO' ? 'new' : request.sr}`)
+    window.history.pushState({}, '', `/job-requests/${request.sr === 'AUTO' ? 'new' : request.sr}`)
   }
   const close = () => {
     setSelected(null)
-    window.history.pushState({}, '', '/service-requests')
+    window.history.pushState({}, '', '/job-requests')
   }
   const submit = request => {
     const submitted = { ...request, sr: `SR-2026-${String(requests.length + 42).padStart(4, '0')}`, status: 'WAPPR', requestType: 'Service' }
     setRequests(list => [...list, submitted])
     setSelected(submitted)
-    window.history.replaceState({}, '', `/service-requests/${submitted.sr}`)
+    window.history.replaceState({}, '', `/job-requests/${submitted.sr}`)
   }
   const approve = request => {
     const createdWorkOrder = onConvert(request)
     const updated = { ...request, status: 'CONVERTED', convertedWorkOrder: createdWorkOrder.WORKORDER }
     setRequests(list => list.map(item => item.sr === updated.sr ? updated : item))
     setSelected(updated)
-    window.history.replaceState({}, '', `/service-requests/${updated.sr}`)
+    window.history.replaceState({}, '', `/job-requests/${updated.sr}`)
     return updated
   }
 
@@ -86,16 +86,16 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     <>
       <PageHeader
         eyebrow="REQUEST INTAKE"
-        title="Service Requests"
-        description="Submit, review, approve, and convert requests into Corrective Maintenance work orders."
-        actions={<div className="flex items-center gap-2"><ExcelImportButton fileName={imported} onFile={setImported} /><Button onClick={() => open(blankRequest())}><Plus size={17} />New service request</Button></div>}
+        title="Job Requests"
+        description="Submit, review, approve, and convert job requests into Corrective Maintenance work orders."
+        actions={<div className="flex items-center gap-2"><ExcelImportButton fileName={imported} onFile={setImported} /><Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button></div>}
       />
-      <ImportNotice fileName={imported} subject="service request" onClear={() => setImported('')} />
+      <ImportNotice fileName={imported} subject="job request" onClear={() => setImported('')} />
       <IndexTabs
         active={tab}
         onChange={setTab}
         tabs={[
-          { key: 'All', label: 'All Service Requests', count: requests.length },
+          { key: 'All', label: 'All Job Requests', count: requests.length },
           { key: 'Awaiting Review', label: 'Awaiting Review', count: requests.filter(request => request.status === 'WAPPR').length },
           { key: 'Converted', label: 'Converted', count: requests.filter(request => request.status === 'CONVERTED').length }
         ]}

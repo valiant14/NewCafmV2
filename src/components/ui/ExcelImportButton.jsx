@@ -3,11 +3,48 @@ import { AlertTriangle, CheckCircle2, FileSpreadsheet } from 'lucide-react'
 import Button from './Button'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from './ModalFrame'
 
-export default function ExcelImportButton({ fileName, onFile, label = 'Import Excel' }) {
+const parseCsv = text => {
+  const rows = []
+  let row = []
+  let value = ''
+  let quoted = false
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]
+    const next = text[index + 1]
+
+    if (char === '"' && quoted && next === '"') {
+      value += '"'
+      index += 1
+    } else if (char === '"') {
+      quoted = !quoted
+    } else if (char === ',' && !quoted) {
+      row.push(value.trim())
+      value = ''
+    } else if ((char === '\n' || char === '\r') && !quoted) {
+      if (char === '\r' && next === '\n') index += 1
+      row.push(value.trim())
+      if (row.some(cell => cell !== '')) rows.push(row)
+      row = []
+      value = ''
+    } else {
+      value += char
+    }
+  }
+
+  row.push(value.trim())
+  if (row.some(cell => cell !== '')) rows.push(row)
+  if (rows.length < 2) return []
+
+  const headers = rows[0].map(header => header.trim())
+  return rows.slice(1).map(cells => Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ''])))
+}
+
+export default function ExcelImportButton({ fileName, onFile, onImport, label = 'Import Excel' }) {
   const [result, setResult] = useState(null)
   const allowed = ['xlsx', 'xls', 'csv']
 
-  const handleFile = event => {
+  const handleFile = async event => {
     const file = event.target.files?.[0]
     event.target.value = ''
 
@@ -24,13 +61,36 @@ export default function ExcelImportButton({ fileName, onFile, label = 'Import Ex
       return
     }
 
-    onFile?.(file.name)
-    setResult({
-      type: 'success',
-      title: 'Excel import completed',
-      message: `${file.name} was imported successfully and is ready as mock data.`,
-      fileName: file.name
-    })
+    if (extension !== 'csv') {
+      setResult({
+        type: 'error',
+        title: 'Excel parser needed',
+        message: 'Direct row parsing is enabled for CSV files. Please export this workbook as CSV, then import it again.',
+        fileName: file.name
+      })
+      return
+    }
+
+    try {
+      const rows = parseCsv(await file.text())
+      if (!rows.length) throw new Error('No data rows were found in the file.')
+      onFile?.(file.name, rows)
+      onImport?.(rows, file)
+      setResult({
+        type: 'success',
+        title: 'Excel import completed',
+        message: `${rows.length} row${rows.length === 1 ? '' : 's'} imported from ${file.name} and applied as mock data.`,
+        fileName: file.name,
+        rows: rows.length
+      })
+    } catch (error) {
+      setResult({
+        type: 'error',
+        title: 'Import failed',
+        message: error.message || 'The file could not be parsed.',
+        fileName: file.name
+      })
+    }
   }
 
   return (

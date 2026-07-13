@@ -1,12 +1,15 @@
-import { Bell, ChevronRight, Command, Menu, Moon, MoreHorizontal, Search, Sun, X } from 'lucide-react'
+import { Bell, ChevronRight, Command, Menu, MoreHorizontal, X } from 'lucide-react'
+import { useState } from 'react'
 import { useAuth } from '../../providers/AuthProvider'
-import { useTheme } from '../../providers/ThemeProvider'
+import Button from '../ui/Button'
+import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
 
 export default function AppShell({
   active,
   navigation,
   counters = {},
   overdueCount = 0,
+  notifications = [],
   statusRuleCount = 0,
   mobileOpen,
   onMobileOpen,
@@ -16,7 +19,7 @@ export default function AppShell({
   children
 }) {
   const { user } = useAuth()
-  const { themeName, toggleTheme, fontSizeName, fontSizes, setFontSizeName } = useTheme()
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   return (
     <div className="app-shell min-h-screen bg-[var(--app-bg)] text-[var(--app-ink)] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
@@ -26,8 +29,8 @@ export default function AppShell({
             <Command size={20} />
           </div>
           <span className="font-heading text-[length:var(--app-brand-font-size)] font-extrabold tracking-wide">
-            FACILITY
-            <strong className="block text-[10px] tracking-[0.18em] text-[var(--app-sidebar-muted)]">COMMAND</strong>
+            SEDER
+            <strong className="block text-[10px] tracking-[0.18em] text-[var(--app-sidebar-muted)]">CAFM</strong>
           </span>
           <button className="mobile-close ml-auto text-white lg:hidden" onClick={onMobileClose} aria-label="Close menu">
             <X />
@@ -55,12 +58,12 @@ export default function AppShell({
 
         <div className="sidebar-bottom mt-auto">
           <div className="user flex items-center gap-3 border-t border-[color-mix(in_srgb,var(--app-sidebar-muted)_25%,transparent)] px-1 pt-4">
-          <div className="avatar grid h-9 w-9 place-items-center rounded-full bg-[var(--app-sidebar-accent)] text-xs font-extrabold text-[var(--app-sidebar-accent-ink)]">{user.initials}</div>
-          <div className="grid min-w-0 flex-1">
-            <strong className="truncate text-xs">{user.name}</strong>
-            <span className="truncate text-[10px] text-[var(--app-sidebar-muted)]">{user.role}</span>
-          </div>
-          <MoreHorizontal size={18} className="text-[var(--app-sidebar-muted)]" />
+            <div className="avatar grid h-9 w-9 place-items-center rounded-full bg-[var(--app-sidebar-accent)] text-xs font-extrabold text-[var(--app-sidebar-accent-ink)]">{user.initials}</div>
+            <div className="grid min-w-0 flex-1">
+              <strong className="truncate text-xs">{user.name}</strong>
+              <span className="truncate text-[10px] text-[var(--app-sidebar-muted)]">{user.role}</span>
+            </div>
+            <MoreHorizontal size={18} className="text-[var(--app-sidebar-muted)]" />
           </div>
         </div>
       </aside>
@@ -71,34 +74,12 @@ export default function AppShell({
             <Menu />
           </button>
           <div className="crumb flex items-center gap-2 text-[length:var(--app-topbar-font-size)] text-[#909691]">
-            <span className="hidden sm:inline">Facility Command</span>
+            <span className="hidden sm:inline">Seder CAFM</span>
             <ChevronRight size={14} className="hidden sm:block" />
             <strong className="text-[#35413b]">{active}</strong>
           </div>
           <div className="top-actions ml-auto flex items-center gap-3">
-            <button className="global-search hidden h-9 items-center gap-2 rounded-lg border border-[#e0e3dd] bg-[#f7f8f5] px-3 text-xs text-[#8b918d] md:flex">
-              <Search size={16} />
-              <span>Search anything</span>
-              <kbd className="ml-12 rounded border border-[#d9ddd6] bg-white px-1.5 text-[9px]">⌘ K</kbd>
-            </button>
-            <select
-              className="hidden h-9 rounded-lg border border-[var(--app-line)] bg-[var(--app-panel)] px-2 text-xs font-bold text-[var(--app-muted)] outline-none transition focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[#dfeae4] sm:block"
-              value={fontSizeName}
-              onChange={event => setFontSizeName(event.target.value)}
-              aria-label="Font size"
-              title="Font size"
-            >
-              {Object.values(fontSizes).map(size => <option value={size.name} key={size.name}>{size.label}</option>)}
-            </select>
-            <button
-              className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--app-line)] bg-[var(--app-panel)] text-[var(--app-muted)] transition hover:text-[var(--app-primary)]"
-              onClick={toggleTheme}
-              title={`Switch to ${themeName === 'light' ? 'dark' : 'light'} theme`}
-              aria-label="Toggle theme"
-            >
-              {themeName === 'light' ? <Moon size={17} /> : <Sun size={17} />}
-            </button>
-            <button className="icon-button sla-notification relative text-[#58635d]" title={`${overdueCount} overdue work orders`} onClick={onOpenWorkOrders}>
+            <button className="icon-button sla-notification relative text-[#58635d]" title={`${overdueCount} overdue work orders`} onClick={() => setNotificationsOpen(true)}>
               <Bell size={19} />
               {overdueCount > 0 && <b className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#c9673d] px-1 text-[7px] text-white ring-2 ring-white">{overdueCount}</b>}
             </button>
@@ -111,10 +92,50 @@ export default function AppShell({
         </div>
 
         <footer className="flex justify-between border-t border-[var(--app-line)] px-4 py-4 text-[9px] text-[#949b97] lg:px-10">
-          <span>Facility Command · Mock data generated from provided Excel files</span>
+          <span>Seder CAFM · Mock data generated from provided Excel files</span>
           <span className="hidden sm:inline">{statusRuleCount} Maximo status rules loaded</span>
         </footer>
       </main>
+
+      {notificationsOpen && (
+        <ModalOverlay>
+          <ModalPanel className="max-w-3xl" labelledBy="notification-inbox-title">
+            <ModalHeader
+              eyebrow="NOTIFICATIONS"
+              title="Work order notification inbox"
+              titleId="notification-inbox-title"
+              description="Upcoming and overdue work orders generated from target dates and SLA status."
+              onClose={() => setNotificationsOpen(false)}
+            />
+            <div className="grid max-h-[58vh] gap-3 overflow-auto px-6 py-5">
+              {notifications.length ? notifications.map(item => (
+                <button
+                  key={`${item.type}-${item.workOrder}`}
+                  className="grid gap-2 rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] p-4 text-left transition hover:bg-[var(--app-table-hover-bg)] md:grid-cols-[140px_1fr_auto] md:items-center"
+                  onClick={() => { setNotificationsOpen(false); onOpenWorkOrders?.() }}
+                >
+                  <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.1em] ${item.type === 'overdue' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'}`}>
+                    {item.type === 'overdue' ? 'Overdue' : 'Upcoming'}
+                  </span>
+                  <span className="grid gap-1">
+                    <strong className="text-sm text-[var(--app-ink)]">WO #{item.workOrder} · {item.description}</strong>
+                    <small className="text-xs text-[var(--app-muted)]">{item.message}</small>
+                  </span>
+                  <ChevronRight size={18} className="text-[var(--app-muted)]" />
+                </button>
+              )) : (
+                <div className="grid min-h-40 place-items-center rounded-2xl border border-dashed border-[var(--app-line)] p-6 text-center text-sm text-[var(--app-muted)]">
+                  No upcoming or overdue work-order notifications.
+                </div>
+              )}
+            </div>
+            <ModalFooter>
+              <Button variant="outline" onClick={() => setNotificationsOpen(false)}>Close</Button>
+              <Button onClick={() => { setNotificationsOpen(false); onOpenWorkOrders?.() }}>Open Work Order Tracking</Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalOverlay>
+      )}
     </div>
   )
 }
