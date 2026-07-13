@@ -44,8 +44,28 @@ function ServiceRequestDetail({ request, assets, workOrders, failureOptions, onB
     else { const converted=onApprove(form); setForm(converted) }
   }
   return <div className={`service-request-view ${modal ? 'service-request-modal' : ''}`}>
-    <header className="record-page-header"><div className="record-header-copy"><div className="record-header-nav"><button className="back-link" onClick={onBack}>← All Service Requests</button>{!isNew&&<span className="record-kicker">SERVICE REQUEST · {form.requestType?.toUpperCase()}</span>}</div><div className="wo-title-line"><h1>{form.sr === 'AUTO' ? 'New service request' : form.sr}</h1><Badge tone={form.status==='CONVERTED'?'green':'orange'}>{form.status}</Badge></div><p>{isNew ? 'Tell us what happened and where. The maintenance team will configure the technical details.' : form.description}</p></div>{!isNew && <div className="record-header-actions"><button className="outline"><Printer size={15} /> Print</button>{form.status==='CONVERTED'&&form.convertedWorkOrder?<button className="primary wo-link-action" onClick={()=>onOpenWorkOrder(form.convertedWorkOrder)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15}/></button>:<button className="primary approve-action" onClick={handlePrimary} disabled={!canConvert}><Check size={15}/>Approve & convert to CM</button>}</div>}</header>
-    <div className="sr-flow"><span className="done">Request created</span><i /><span className={form.status === 'WAPPR' ? 'current' : 'done'}>Department review</span><i /><span className={form.status === 'CONVERTED' ? 'done' : ''}>CM work order</span></div>
+    <header className="record-page-header">
+      <div className="record-header-copy">
+        <div className="record-header-nav">
+          {!isNew && <button className="back-link" onClick={onBack}>← All Service Requests</button>}
+          {!isNew && <span className="record-kicker">SERVICE REQUEST · {form.requestType?.toUpperCase()}</span>}
+        </div>
+        <div className="wo-title-line">
+          <h1>{form.sr === 'AUTO' ? 'New service request' : form.sr}</h1>
+          <Badge tone={form.status==='CONVERTED'?'green':'orange'}>{form.status}</Badge>
+        </div>
+        <p>{isNew ? 'Tell us what happened and where. The maintenance team will configure the technical details.' : form.description}</p>
+      </div>
+      {isNew ? (
+        <button className="modal-close-x" onClick={onBack} aria-label="Close new service request"><X size={20}/></button>
+      ) : (
+        <div className="record-header-actions">
+          <button className="outline"><Printer size={15} /> Print</button>
+          {form.status==='CONVERTED'&&form.convertedWorkOrder?<button className="primary wo-link-action" onClick={()=>onOpenWorkOrder(form.convertedWorkOrder)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15}/></button>:<button className="primary approve-action" onClick={handlePrimary} disabled={!canConvert}><Check size={15}/>Approve & convert to CM</button>}
+        </div>
+      )}
+    </header>
+    {!isNew && <div className="sr-flow"><span className="done">Request created</span><i /><span className={form.status === 'WAPPR' ? 'current' : 'done'}>Department review</span><i /><span className={form.status === 'CONVERTED' ? 'done' : ''}>CM work order</span></div>}
     {!isNew&&<section className="record-summary"><div><span className="summary-icon orange"><AlertTriangle size={16}/></span><p>Priority<strong>{form.priority}</strong></p></div><div><span className="summary-icon green"><MapPin size={16}/></span><p>Site & location<strong>{form.site} · {form.location}</strong></p></div><div><span className="summary-icon blue"><UserRound size={16}/></span><p>Reported by<strong>{form.reportedBy}</strong></p></div><div><span className="summary-icon purple"><Building2 size={16}/></span><p>Department<strong>{form.department||'Pending review'}</strong></p></div><div><span className="summary-icon green"><CalendarClock size={16}/></span><p>Reported<strong>{form.reportedDate?.replace('T',' · ')}</strong></p></div></section>}
     {!isNew && <nav className="record-tabs">{['Request Details','Attachments','Department Review'].map(tab=><button key={tab} className={activeTab===tab?'active':''} onClick={()=>setActiveTab(tab)}>{tab}</button>)}</nav>}
     {!isNew&&form.status!=='CONVERTED'&&!canConvert&&<div className="conversion-warning"><AlertTriangle size={18}/><div><strong>Complete required information before CM conversion</strong><span>Missing: {missingConversionFields.join(', ')}</span></div><button onClick={()=>setActiveTab(form.asset?.trim()?'Department Review':'Request Details')}>Complete fields <ChevronRight size={14}/></button></div>}
@@ -70,7 +90,6 @@ function ServiceRequestDetail({ request, assets, workOrders, failureOptions, onB
         <section className="review-card routing-card"><header><span className="review-card-icon green"><Building2 size={18}/></span><div><span>Step 01</span><h3>Work routing</h3><p>Choose the teams responsible for reviewing and executing the work.</p></div><em className={form.department&&form.assignedDepartment?'complete':'pending'}>{form.department&&form.assignedDepartment?'Complete':'Required'}</em></header><div className="review-fields"><Field label="Department" value={form.department} required onChange={updateDepartment} suggestions={departmentOptions} placeholder="Search or select a department" /><Field label="Assigned Department" value={form.assignedDepartment || form.department} required onChange={update('assignedDepartment')} suggestions={departmentOptions} placeholder="Search or select an assigned department" /></div></section>
         <section className="review-card classification-card"><header><span className="review-card-icon orange"><AlertTriangle size={18}/></span><div><span>Step 02</span><h3>Technical classification</h3><p>Classify the maintenance discipline and reported failure.</p></div><em className={form.subDepartment&&form.failureCode?'complete':'pending'}>{form.subDepartment&&form.failureCode?'Complete':'Required'}</em></header><div className="review-fields"><Field label="Sub Department" value={form.subDepartment || ''} required onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Search or select a sub department" /><Field label="Failure Code" value={form.failureCode} required onChange={update('failureCode')} suggestions={failureOptions} placeholder="Search code or description" /></div></section>
       </div>}
-      {isNew && <div className="mode-note warning"><AlertTriangle size={18} /><div><strong>Technical configuration happens after submission</strong><span>Department assignment and failure classification will be completed by maintenance staff.</span></div></div>}
     </main>
     {isNew && <footer className="record-page-actions"><button className="outline" onClick={onBack}>Cancel</button><button className="primary sr-submit" onClick={handlePrimary}><Check size={15} />Submit request</button></footer>}
   </div>
