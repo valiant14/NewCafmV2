@@ -135,3 +135,343 @@
 .create-wo-modal>footer{padding:15px 24px;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid #dfe6df;box-shadow:0 -12px 30px #20372d0d}
 .create-wo-modal>footer .outline,.create-wo-modal>footer .primary{height:42px;border-radius:10px;padding-inline:18px}
 @media(max-width:700px){.create-wo-overlay{padding:0;align-items:stretch}.create-wo-modal{width:100%;max-height:100vh;height:100vh;border-radius:0}.create-wo-modal>header{padding:21px 18px}.create-wo-grid .wo-field,.create-wo-grid .create-span-2 .wo-field{grid-template-columns:1fr;gap:7px;padding:11px 16px}.create-wo-modal>footer{padding:13px 14px}.create-wo-modal>footer .outline,.create-wo-modal>footer .primary{flex:1;justify-content:center}}
+
+/* Work Order detail: align inner tabs with the cleaner record-detail pages */
+.work-order-page-editor .mode-note,
+.work-order-page-editor .materials-summary,
+.wo-editor .mode-note,
+.wo-editor .materials-summary{display:none!important}
+.wo-overview-layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px}
+.wo-overview-primary,.wo-overview-side,.plan-workspace,.documents-workspace{display:grid;gap:18px;align-content:start}
+.overview-section-label{display:flex;align-items:center;gap:8px;margin:0 0 -6px;color:#60766b;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em}
+.wo-section{border:1px solid var(--app-line)!important;border-radius:20px!important;background:#fff!important;box-shadow:0 8px 24px rgba(32,55,45,.06)!important;padding:20px!important}
+.wo-section>header{padding:0 0 14px!important;margin:0 0 16px!important;border-bottom:1px solid #edf0ec!important}
+.wo-section>header h3{font-size:16px!important;color:var(--app-ink)!important}
+.wo-section>header p{font-size:12px!important;color:var(--app-muted)!important}
+.field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.field-grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.span-2{grid-column:span 2}
+.planner-table,.materials-request-table,.document-list{overflow:hidden;border:1px solid #e4ebe4;border-radius:16px;background:#fff}
+.planner-head,.materials-head{display:grid;gap:12px;background:#f8f9f6;padding:12px 14px;color:#858d88;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.planner-table:not(.resources):not(.tasks) .planner-head,.planner-table:not(.resources):not(.tasks) .planner-row{grid-template-columns:1fr .7fr 1fr 40px}
+.planner-table.resources .planner-head,.planner-table.resources .planner-row{grid-template-columns:1fr 1.2fr .7fr 40px}
+.planner-table.tasks .planner-head,.planner-table.tasks .planner-row{grid-template-columns:90px 1fr 120px 40px}
+.planner-row,.materials-row,.document-list>div{display:grid;align-items:center;gap:12px;border-top:1px solid #eff1ed;padding:12px 14px;font-size:13px}
+.planner-row input,.planner-row select,.materials-row select,.actual-resource-list input{height:38px;border:1px solid #d8ded8;border-radius:10px;background:#fff;padding:0 10px;font-size:12px;outline:0}
+.planner-row input:focus,.planner-row select:focus,.materials-row select:focus,.actual-resource-list input:focus{border-color:#7ca18e;box-shadow:0 0 0 3px #dfeae4}
+.inline-add,.materials-empty .outline,.locked-next{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;border:1px solid #dfe5df;border-radius:10px;background:#fff;padding:0 13px;color:#57645d;font-size:12px;font-weight:700}
+.plan-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.failure-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.failure-selection-map{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+.failure-stage{border:1px solid #e4ebe4;border-radius:16px;background:#fbfcfa;padding:14px}
+.failure-stage.selected{border-color:#b9d6c3;background:#f1f8f3}
+.failure-stage-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;color:#7b8780;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em}
+.failure-stage b{display:block;color:var(--app-ink);font-size:15px}
+.failure-stage p,.failure-empty-stage,.failure-library-note{color:var(--app-muted);font-size:12px}
+.failure-library-note{display:flex;align-items:center;gap:8px;margin-top:14px;border:1px solid #dfe8df;border-radius:16px;background:#f8faf7;padding:12px}
+.ptw-control-card,.document-card{border:1px solid var(--app-line);border-radius:20px;background:#fff;padding:20px;box-shadow:0 8px 24px rgba(32,55,45,.06)}
+.ptw-control-card{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.ptw-control-copy{display:flex;align-items:center;gap:12px}
+.ptw-icon,.document-type,.material-cube{display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:12px;background:#edf4ef;color:#477e63}
+.ptw-toggle{display:flex;border:1px solid #dfe5df;border-radius:12px;background:#f8faf7;padding:4px}
+.ptw-toggle button{border:0;border-radius:9px;background:transparent;padding:8px 16px;color:#66746c;font-size:12px;font-weight:700}
+.ptw-toggle button.active{background:#fff;color:#315a47;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.document-card header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #edf0ec}
+.compact-upload{display:grid;place-items:center;margin-bottom:14px;border:1px dashed #ccd8cf;border-radius:16px;background:#fbfcfa;padding:24px;text-align:center;color:var(--app-muted);cursor:pointer}
+.compact-upload input{display:none}
+@media(max-width:1100px){.wo-overview-layout{grid-template-columns:1fr}.field-grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}.failure-selection-map{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.field-grid,.field-grid.four,.failure-fields,.failure-selection-map{grid-template-columns:1fr}.span-2{grid-column:auto}.planner-table,.materials-request-table{overflow:auto}.planner-head,.planner-row,.materials-head,.materials-row{min-width:720px}}
+
+/* Final Work Order detail polish */
+.work-order-detail-page{max-width:1400px;margin:0 auto}
+.work-order-page-editor{width:100%!important;max-width:none!important;border:0!important;background:transparent!important}
+.work-order-page-editor .wo-editor-head{margin-bottom:0}
+.work-order-page-editor .wo-body{padding:0!important;background:transparent!important}
+.work-order-page-editor .wo-tabs{margin-top:0}
+.work-order-page-editor .wo-head-actions{justify-content:flex-start}
+.work-order-page-editor .complete-action{background:#315a47!important;color:#fff!important;border-color:#315a47!important}
+
+/* Tailwind-based Work Order detail refactor */
+@layer components {
+  .work-order-detail-page {
+    @apply w-full space-y-5;
+  }
+
+  .wo-overlay {
+    @apply fixed inset-0 z-50 overflow-auto bg-[#112219]/70 p-6 backdrop-blur-sm;
+  }
+
+  .wo-editor {
+    @apply mx-auto max-w-7xl space-y-5 rounded-3xl bg-[#fbfcfa] p-5 shadow-2xl;
+  }
+
+  .work-order-page-editor {
+    @apply max-w-none bg-transparent p-0 shadow-none;
+  }
+
+  .wo-editor-head {
+    @apply rounded-3xl border border-[var(--app-line)] bg-white p-6 shadow-[0_14px_36px_rgba(32,55,45,.08)];
+    border-top: 4px solid #315a47;
+  }
+
+  .wo-title-line {
+    @apply flex flex-wrap items-center gap-3;
+  }
+
+  .wo-title-line h2 {
+    @apply text-3xl font-extrabold tracking-[-.045em] text-[var(--app-ink)];
+  }
+
+  .wo-editor-head p {
+    @apply mt-2 text-sm text-[var(--app-muted)];
+  }
+
+  .wo-head-actions {
+    @apply mt-5 flex flex-wrap items-center gap-2;
+  }
+
+  .autosave-indicator {
+    @apply inline-flex h-10 items-center gap-2 rounded-xl border border-[#dfe8df] bg-[#f8faf7] px-3 text-xs font-bold text-[#536059];
+  }
+
+  .saving-dot {
+    @apply h-2 w-2 animate-pulse rounded-full bg-[#d8905d];
+  }
+
+  .auto-status {
+    @apply h-auto min-w-0 rounded-xl border border-[#dfe8df] bg-white px-3 py-2;
+  }
+
+  .auto-status span {
+    @apply block text-[9px] font-extrabold uppercase tracking-[.12em] text-[#7b8780];
+  }
+
+  .auto-status strong {
+    @apply text-xs text-[var(--app-ink)];
+  }
+
+  .wo-head-actions .primary,
+  .wo-head-actions .outline,
+  .locked-next,
+  .materials-empty .outline {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border px-4 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .wo-head-actions .primary,
+  .locked-next.primary {
+    @apply border-transparent bg-[var(--app-primary)] text-white shadow-[0_8px_20px_rgba(49,90,71,.22)] hover:brightness-95;
+  }
+
+  .wo-head-actions .outline,
+  .locked-next.outline,
+  .materials-empty .outline {
+    @apply border-[#dfe5df] bg-white text-[#57645d] hover:bg-[#f7faf7];
+  }
+
+  .close-editor {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#dfe5df] bg-white text-[#617067] transition hover:bg-[#f4f7f4];
+  }
+
+  .wo-summary {
+    @apply grid gap-3 rounded-none bg-transparent p-0 text-[var(--app-ink)] md:grid-cols-4;
+  }
+
+  .wo-summary > div {
+    @apply rounded-2xl border border-[var(--app-line)] bg-white p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)];
+  }
+
+  .wo-summary span {
+    @apply text-[9px] font-extrabold uppercase tracking-[.14em] text-[#7b8780];
+  }
+
+  .wo-summary strong {
+    @apply mt-1 flex items-center gap-1 text-sm text-[var(--app-ink)];
+  }
+
+  .sla-breach {
+    color: #b96434 !important;
+  }
+
+  .sla-ok {
+    color: #477e63 !important;
+  }
+
+  .wo-tabs {
+    @apply flex gap-1 overflow-auto border-b border-[var(--app-line)] bg-transparent px-0;
+  }
+
+  .wo-tabs button {
+    @apply relative inline-flex items-center gap-2 whitespace-nowrap border-0 bg-transparent px-4 py-3 text-xs text-[#7a847e] transition;
+  }
+
+  .wo-tabs button.active {
+    @apply font-bold text-[#315a47];
+  }
+
+  .wo-tabs button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: .5rem;
+    right: .5rem;
+    height: 2px;
+    background: #477e63;
+  }
+
+  .wo-tabs small {
+    display: none;
+  }
+
+  .wo-tabs i {
+    @apply h-2 w-2 rounded-full bg-[#d8905d];
+  }
+
+  .wo-tab-help {
+    @apply rounded-2xl border border-[#dfe8df] bg-[#f8faf7] p-4;
+  }
+
+  .wo-tab-help strong {
+    @apply block text-sm text-[var(--app-ink)];
+  }
+
+  .wo-tab-help span {
+    @apply text-sm text-[var(--app-muted)];
+  }
+
+  .wo-body {
+    @apply space-y-5 bg-transparent p-0;
+  }
+
+}
+
+/* Work Order detail final Tailwind alignment */
+@layer components {
+  .work-order-page-editor .overview-section-label {
+    @apply hidden;
+  }
+
+  .work-order-page-editor .wo-tabs {
+    @apply mb-5 flex gap-6 overflow-x-auto border-0 border-b border-[var(--app-line)] bg-transparent p-0;
+    box-shadow: none !important;
+  }
+
+  .work-order-page-editor .wo-tabs button {
+    @apply relative h-11 border-0 bg-transparent px-0 text-sm font-semibold text-[#6d7972] shadow-none transition hover:text-[var(--app-ink)];
+  }
+
+  .work-order-page-editor .wo-tabs button.active {
+    @apply text-[var(--app-ink)];
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .work-order-page-editor .wo-tabs button.active::after {
+    @apply absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-[#315a47];
+    content: '';
+  }
+
+  .work-order-page-editor .wo-tabs button small {
+    @apply hidden;
+  }
+
+  .work-order-page-editor .wo-body {
+    @apply rounded-none bg-transparent p-0;
+  }
+
+  .work-order-page-editor .wo-overview-layout {
+    @apply grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px];
+  }
+
+  .work-order-page-editor .wo-overview-primary,
+  .work-order-page-editor .wo-overview-side,
+  .work-order-page-editor .plan-workspace,
+  .work-order-page-editor .documents-workspace {
+    @apply grid content-start gap-5;
+  }
+
+  .work-order-page-editor .wo-section {
+    @apply rounded-3xl border border-[var(--app-line)] bg-white shadow-[0_12px_32px_rgba(32,55,45,.06)];
+    padding: 1.25rem !important;
+  }
+
+  .work-order-page-editor .wo-section > header {
+    @apply mb-5 border-b border-[#edf0ec] pb-4;
+    padding: 0 0 1rem !important;
+    margin: 0 0 1.25rem !important;
+  }
+
+  .work-order-page-editor .wo-section > header h3 {
+    @apply text-base font-extrabold tracking-[-.02em] text-[var(--app-ink)];
+  }
+
+  .work-order-page-editor .wo-section > header p {
+    @apply mt-1 text-sm leading-relaxed text-[var(--app-muted)];
+  }
+
+  .work-order-page-editor .field-grid {
+    @apply grid grid-cols-1 gap-4 md:grid-cols-2;
+  }
+
+  .work-order-page-editor .field-grid.four {
+    @apply grid-cols-1 md:grid-cols-2 2xl:grid-cols-4;
+  }
+
+  .work-order-page-editor .span-2 {
+    @apply md:col-span-2;
+  }
+
+  .work-order-page-editor .wo-field {
+    @apply grid min-w-0 gap-2;
+  }
+
+  .work-order-page-editor .wo-field > span {
+    @apply m-0 flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[#617067];
+  }
+
+  .work-order-page-editor .wo-field > span b {
+    @apply text-[#c16f42];
+  }
+
+  .work-order-page-editor .wo-field input,
+  .work-order-page-editor .wo-field select,
+  .work-order-page-editor .wo-field textarea {
+    @apply w-full rounded-xl border border-[#d8ded8] bg-white px-3 text-sm text-[var(--app-ink)] outline-none transition placeholder:text-[#9aa39d] focus:border-[#6f987f] focus:ring-4 focus:ring-[#dfeae4];
+  }
+
+  .work-order-page-editor .wo-field input,
+  .work-order-page-editor .wo-field select {
+    height: 2.75rem !important;
+  }
+
+  .work-order-page-editor .wo-field textarea {
+    min-height: 5.5rem !important;
+    padding-top: .75rem !important;
+    padding-bottom: .75rem !important;
+  }
+
+  .work-order-page-editor .wo-field input[readonly],
+  .work-order-page-editor .wo-field textarea[readonly],
+  .work-order-page-editor .wo-field select:disabled {
+    @apply bg-[#f4f6f2] text-[#718078];
+  }
+}
+
+/* Work Order tabs: no card wrapper, only clean inline tabs */
+.work-order-page-editor .wo-tabs.simplified-tabs,
+.work-order-page-editor .wo-tabs {
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--app-line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 0 20px !important;
+}
+
+.work-order-page-editor .wo-tabs.simplified-tabs button,
+.work-order-page-editor .wo-tabs button {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
