@@ -1,74 +1,177 @@
-import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CalendarClock, Check, ChevronRight, FileSpreadsheet, Plus, Search, Settings2, Sparkles, Upload, X } from 'lucide-react'
-import Badge from '../components/ui/Badge'
+import { useMemo, useState } from 'react'
+import { AlertTriangle, Check, FileSpreadsheet, Plus, Search, Sparkles, X } from 'lucide-react'
+import PmScheduleDetail from '../components/preventive-maintenance/PmScheduleDetail'
+import PmScheduleForm from '../components/preventive-maintenance/PmScheduleForm'
+import PmScheduleTable from '../components/preventive-maintenance/PmScheduleTable'
+import PmScheduleUpload from '../components/preventive-maintenance/PmScheduleUpload'
 import Button from '../components/ui/Button'
-import { DetailHeader, DetailTabs, InfoCard, ProfileStrip } from '../components/ui/DetailScaffold'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
-import pmSeed from '../data/pmSchedules.json'
 import departments from '../data/departments.json'
+import pmSeed from '../data/pmSchedules.json'
 
-const excelHeaders=['PMNUM','PM DESCRIPTION','ASSETNUM','ROUTE','LOCATION','JPNUM','NEXTDATE','LEAD TIME (DAYS)','FREQUENCY','FREQUNIT','PMCOUNTER','WORKTYPE','WOSTATUS','STORELOC','SUPERVISOR','LEAD','PERSONGROUP','department','sub department']
-const emptyPlan={pmNumber:'',description:'',asset:'',route:'',location:'',site:'1031',jobPlan:'',startDate:'',leadTime:0,frequency:1,freqUnit:'MONTHS',pmCounter:0,workType:'PM',woStatus:'WSCH',storeLocation:'',supervisor:'',lead:'',personGroup:'',department:'',subDepartment:'',pmStatus:'Active',lastGeneratedCycle:''}
-const cycleKey=p=>`${p.pmNumber}-${p.startDate}`
-const addFrequency=p=>{const d=new Date(p.startDate);const n=Number(p.frequency)||1;if(p.freqUnit==='DAYS')d.setDate(d.getDate()+n);if(p.freqUnit==='WEEKS')d.setDate(d.getDate()+n*7);if(p.freqUnit==='MONTHS')d.setMonth(d.getMonth()+n);if(p.freqUnit==='YEARS')d.setFullYear(d.getFullYear()+n);return d.toISOString().slice(0,10)}
-const Status=({children,tone='green'})=><span className={`pm-status ${tone}`}>{children}</span>
+const excelHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'ROUTE', 'LOCATION', 'JPNUM', 'NEXTDATE', 'LEAD TIME (DAYS)', 'FREQUENCY', 'FREQUNIT', 'PMCOUNTER', 'WORKTYPE', 'WOSTATUS', 'STORELOC', 'SUPERVISOR', 'LEAD', 'PERSONGROUP', 'department', 'sub department']
 
-function PmScheduleDetail({plan,assets,jobTasks,jobPlans,workOrders,onBack,onOpenWorkOrder}){
-  const asset=assets.find(a=>a.assetnum===plan.asset)
-  const linkedPlan=jobPlans.find(j=>j.number===plan.jobPlan)
-  const tasks=jobTasks.filter(t=>t.JPNUM===plan.jobPlan)
-  const history=workOrders.filter(order=>order['PM NUMBER']===plan.pmNumber)
-  return <section className="pm-detail-page">
-    <header className="pm-detail-head"><div><button onClick={onBack}>← All PM Schedules</button><span>PREVENTIVE MAINTENANCE · {plan.workType}</span><h1>{plan.pmNumber} <Status tone={plan.pmStatus==='Active'?'green':'gray'}>{plan.pmStatus}</Status></h1><p>{plan.description}</p></div><div className="pm-detail-actions"><span><Check size={13}/>Master data synchronized</span><button className="outline" onClick={()=>window.print()}>Print PM</button></div></header>
-    <div className="pm-detail-summary"><div><span>NEXT DUE</span><strong>{plan.startDate}</strong><small>{plan.leadTime} days generation lead</small></div><div><span>FREQUENCY</span><strong>{plan.frequency} {plan.freqUnit}</strong><small>Recurring maintenance cycle</small></div><div><span>WO DEFAULT</span><strong>{plan.woStatus}</strong><small>Displayed as Waiting</small></div><div><span>GENERATED</span><strong>{history.length||plan.pmCounter}</strong><small>PM work orders</small></div></div>
-    <nav className="record-tabs pm-record-tabs"><button className="active">PM Details</button><button>Job Plan</button><button>Generated Work Orders <b>{history.length}</b></button></nav>
-    <div className="pm-detail-grid"><main>
-      <section className="pm-detail-card"><header><CalendarClock/><div><h2>Schedule & Generation</h2><p>The rule used by the monthly automatic generator.</p></div></header><div className="pm-detail-fields">{[['PM Number',plan.pmNumber],['Next Date',plan.startDate],['Frequency',`${plan.frequency} ${plan.freqUnit}`],['Lead Time',`${plan.leadTime} days`],['Work Type',plan.workType],['WO Status',`${plan.woStatus} · Waiting`],['PM Counter',plan.pmCounter],['Last Generated Cycle',plan.lastGeneratedCycle||'Not generated']].map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>
-      <section className="pm-detail-card"><header><Settings2/><div><h2>Job Plan & Execution Package</h2><p>Copied automatically into every generated work order.</p></div></header><div className="pm-jobplan-banner"><div><span>JPNUM</span><strong>{plan.jobPlan}</strong><small>{linkedPlan?.description||'Job plan reference from Excel'}</small></div><div><span>Estimated Duration</span><strong>{linkedPlan?`${Math.max(1,Math.round(linkedPlan.duration*10)/10)} hours`:'From job plan'}</strong></div></div><div className="pm-task-table"><div><span>Sequence</span><span>Job task</span><span>Duration</span></div>{tasks.length?tasks.map(t=><article key={t.JOBTASKID}><strong>{t['JOB TASK SEQUENCE']}</strong><span>{t['JOB TASK DESCRIPTION']}</span><strong>{Math.max(1,Math.round(Number(t['TASK DURATION IN HOUR'])*1440))} min</strong></article>):<p>No task rows found for this job plan.</p>}</div></section>
-      <section className="pm-detail-card pm-history-card"><header><FileSpreadsheet/><div><h2>Generated Work Order History</h2><p>Every work order produced from this PM master and maintenance cycle.</p></div><Status tone={history.length?'green':'gray'}>{history.length} records</Status></header>{history.length?<div className="pm-history-table"><div><span>Work Order</span><span>Cycle</span><span>Target Date</span><span>Status</span><span></span></div>{history.map(order=><button key={order.WORKORDER} onClick={()=>onOpenWorkOrder?.(order.WORKORDER)}><strong>{order.WORKORDER}</strong><span>{order['PM CYCLE']||'—'}</span><span>{String(order['TARGET START ']||'—').slice(0,10)}</span><Status tone={['COMP','CLOSE'].includes(order.STATUS)?'green':'gray'}>{order.STATUS}</Status><ChevronRight size={15}/></button>)}</div>:<div className="pm-history-empty"><CalendarClock/><strong>No work orders generated yet</strong><span>The first eligible cycle will appear here after automatic generation.</span></div>}</section>
-    </main><aside><section className="pm-detail-card"><header><Sparkles/><div><h2>Asset & Location</h2><p>Maintenance subject from the PM master.</p></div></header><div className="pm-side-list"><div><span>ASSETNUM</span><strong>{plan.asset||'Location-based PM'}</strong><small>{asset?.description}</small></div><div><span>LOCATION</span><strong>{plan.location||asset?.location||'From asset'}</strong></div><div><span>ROUTE</span><strong>{plan.route||'No route'}</strong></div><div><span>STORELOC</span><strong>{plan.storeLocation||'Not specified'}</strong></div></div></section><section className="pm-detail-card"><header><Settings2/><div><h2>Responsibility</h2><p>Ownership copied to generated work orders.</p></div></header><div className="pm-side-list"><div><span>PERSONGROUP</span><strong>{plan.personGroup||'Not assigned'}</strong></div><div><span>Department</span><strong>{plan.department||'Not configured'}</strong></div><div><span>Sub Department</span><strong>{plan.subDepartment||'Not configured'}</strong></div><div><span>Supervisor</span><strong>{plan.supervisor||'Assigned after generation'}</strong></div><div><span>Lead</span><strong>{plan.lead||'Not specified'}</strong></div></div></section></aside></div>
-  </section>
+const emptyPlan = {
+  pmNumber: '',
+  description: '',
+  asset: '',
+  route: '',
+  location: '',
+  site: '1031',
+  jobPlan: '',
+  startDate: '',
+  leadTime: 0,
+  frequency: 1,
+  freqUnit: 'MONTHS',
+  pmCounter: 0,
+  workType: 'PM',
+  woStatus: 'WSCH',
+  storeLocation: '',
+  supervisor: '',
+  lead: '',
+  personGroup: '',
+  department: '',
+  subDepartment: '',
+  pmStatus: 'Active',
+  lastGeneratedCycle: ''
 }
 
-export default function PreventiveMaintenancePage({assets=[],jobTasks=[],workOrders=[],onGenerate,onOpenWorkOrder}){
-  const routeId=window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
-  const [plans,setPlans]=useState(pmSeed),[mode,setMode]=useState('list'),[selectedId,setSelectedId]=useState(routeId?decodeURIComponent(routeId):''),[form,setForm]=useState(emptyPlan),[query,setQuery]=useState(''),[upload,setUpload]=useState(null),[generation,setGeneration]=useState(null),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10),[pmTab,setPmTab]=useState('All')
-  const jobPlans=useMemo(()=>[...new Map(jobTasks.filter(t=>t.JPNUM).map(t=>[t.JPNUM,{number:t.JPNUM,description:t.DESCRIPTION,duration:jobTasks.filter(x=>x.JPNUM===t.JPNUM).reduce((s,x)=>s+Number(x['TASK DURATION IN HOUR']||0),0)*24}])).values()],[jobTasks])
-  const selectedJobPlan=jobPlans.find(j=>j.number===form.jobPlan), selectedDepartment=departments.find(d=>d.name===form.department)
-  const visible=plans.filter(p=>(pmTab==='All'||p.pmStatus===pmTab)&&Object.values(p).some(v=>String(v).toLowerCase().includes(query.toLowerCase())))
-  const pageCount=Math.max(1,Math.ceil(visible.length/pageSize))
-  const currentPage=Math.min(page,pageCount)
-  const visiblePage=visible.slice((currentPage-1)*pageSize,currentPage*pageSize)
-  const set=(key,value)=>setForm(f=>({...f,[key]:value}))
-  const chooseAsset=value=>{const a=assets.find(x=>x.assetnum===value);setForm(f=>({...f,asset:value,location:a?.location||f.location,site:String(a?.site||f.site)}))}
-  const downloadTemplate=()=>{const example=['PMALS-HV-00001','PM of Split A/C Unit','ALS-HV-00001','','','JP415004','1-Jan-22','30','3','MONTHS','0','PM','WSCH','DIWAN-MAIN','','','C1-HVAC','',''];const csv=[excelHeaders,example].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));const a=document.createElement('a');a.href=url;a.download='PM_Master_Upload_Template.csv';a.click();URL.revokeObjectURL(url)}
-  const valid=Boolean(form.pmNumber&&form.description&&(form.asset||form.location)&&form.jobPlan&&form.startDate&&form.frequency&&form.freqUnit)
-  const save=()=>{if(!valid)return;setPlans(r=>[...r,form]);setForm(emptyPlan);setMode('list')}
-  const generate=()=>{const cutoff=new Date('2026-08-31');const due=plans.filter(p=>p.pmStatus==='Active'&&new Date(p.startDate)<=cutoff&&p.lastGeneratedCycle!==cycleKey(p));const made=due.map((p,i)=>({...p,workOrder:`PMWO-${20260801+i}`,cycle:cycleKey(p),nextDue:addFrequency(p)}));setPlans(rows=>rows.map(p=>{const x=made.find(m=>m.pmNumber===p.pmNumber);return x?{...p,startDate:x.nextDue,lastGeneratedCycle:x.cycle,pmCounter:Number(p.pmCounter)+1}:p}));made.forEach(p=>onGenerate?.(p,jobTasks.filter(t=>t.JPNUM===p.jobPlan)));setGeneration(made)}
-  const openPlan=id=>{setSelectedId(id);window.history.pushState({},'',`/preventive-maintenance/${encodeURIComponent(id)}`)}
-  const closePlan=()=>{setSelectedId('');window.history.pushState({},'','/preventive-maintenance')}
-  const selected=plans.find(p=>p.pmNumber===selectedId)
-  useEffect(()=>{const click=event=>{const row=event.target.closest('.pm-table-row');if(row){const id=row.querySelector('strong')?.textContent;if(id)openPlan(id)}};document.addEventListener('click',click);return()=>document.removeEventListener('click',click)},[])
+const cycleKey = plan => `${plan.pmNumber}-${plan.startDate}`
 
-  if(selected)return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder}/>
+const addFrequency = plan => {
+  const date = new Date(plan.startDate)
+  const amount = Number(plan.frequency) || 1
+  if (plan.freqUnit === 'DAYS') date.setDate(date.getDate() + amount)
+  if (plan.freqUnit === 'WEEKS') date.setDate(date.getDate() + amount * 7)
+  if (plan.freqUnit === 'MONTHS') date.setMonth(date.getMonth() + amount)
+  if (plan.freqUnit === 'YEARS') date.setFullYear(date.getFullYear() + amount)
+  return date.toISOString().slice(0, 10)
+}
 
-  if(selected){const linkedPlan=jobPlans.find(j=>j.number===selected.jobPlan);const tasks=jobTasks.filter(t=>t.JPNUM===selected.jobPlan);const asset=assets.find(a=>a.assetnum===selected.asset);return <section className="pm-detail-page"><header className="pm-detail-head"><div><button onClick={closePlan}>← All PM Schedules</button><span>PREVENTIVE MAINTENANCE · {selected.workType}</span><h1>{selected.pmNumber} <Status tone={selected.pmStatus==='Active'?'green':'gray'}>{selected.pmStatus}</Status></h1><p>{selected.description}</p></div><div className="pm-detail-actions"><span><Check size={13}/>Master data synchronized</span><button className="outline" onClick={()=>window.print()}>Print PM</button></div></header><div className="pm-detail-summary"><div><span>NEXT DUE</span><strong>{selected.startDate}</strong><small>{selected.leadTime} days generation lead</small></div><div><span>FREQUENCY</span><strong>{selected.frequency} {selected.freqUnit}</strong><small>Recurring maintenance cycle</small></div><div><span>WO DEFAULT</span><strong>{selected.woStatus}</strong><small>Displayed as Waiting</small></div><div><span>GENERATED</span><strong>{selected.pmCounter}</strong><small>PM work orders</small></div></div><div className="pm-detail-grid"><main><section className="pm-detail-card"><header><CalendarClock/><div><h2>Schedule & Generation</h2><p>The rule used by the monthly automatic generator.</p></div></header><div className="pm-detail-fields"><div><span>PM Number</span><strong>{selected.pmNumber}</strong></div><div><span>Next Date</span><strong>{selected.startDate}</strong></div><div><span>Frequency</span><strong>{selected.frequency} {selected.freqUnit}</strong></div><div><span>Lead Time</span><strong>{selected.leadTime} days</strong></div><div><span>Work Type</span><strong>{selected.workType}</strong></div><div><span>WO Status</span><strong>{selected.woStatus} · Waiting</strong></div><div><span>PM Counter</span><strong>{selected.pmCounter}</strong></div><div><span>Last Generated Cycle</span><strong>{selected.lastGeneratedCycle||'Not generated in this workspace'}</strong></div></div></section><section className="pm-detail-card"><header><Settings2/><div><h2>Job Plan & Execution Package</h2><p>Copied automatically into every generated work order.</p></div></header><div className="pm-jobplan-banner"><div><span>JPNUM</span><strong>{selected.jobPlan}</strong><small>{linkedPlan?.description||'Job plan reference from Excel'}</small></div><div><span>Estimated Duration</span><strong>{linkedPlan?`${Math.max(1,Math.round(linkedPlan.duration*10)/10)} hours`:'From job plan'}</strong></div></div><div className="pm-task-table"><div><span>Sequence</span><span>Job task</span><span>Duration</span></div>{tasks.length?tasks.map(t=><article key={t.JOBTASKID}><strong>{t['JOB TASK SEQUENCE']}</strong><span>{t['JOB TASK DESCRIPTION']}</span><strong>{Math.max(1,Math.round(Number(t['TASK DURATION IN HOUR'])*1440))} min</strong></article>):<p>No task rows found for this job plan.</p>}</div></section></main><aside><section className="pm-detail-card"><header><Sparkles/><div><h2>Asset & Location</h2><p>Maintenance subject from the PM master.</p></div></header><div className="pm-side-list"><div><span>ASSETNUM</span><strong>{selected.asset||'Location-based PM'}</strong><small>{asset?.description}</small></div><div><span>LOCATION</span><strong>{selected.location||asset?.location||'From asset'}</strong></div><div><span>ROUTE</span><strong>{selected.route||'No route'}</strong></div><div><span>STORELOC</span><strong>{selected.storeLocation||'Not specified'}</strong></div></div></section><section className="pm-detail-card"><header><Settings2/><div><h2>Responsibility</h2><p>Ownership copied to generated work orders.</p></div></header><div className="pm-side-list"><div><span>PERSONGROUP</span><strong>{selected.personGroup||'Not assigned'}</strong></div><div><span>Department</span><strong>{selected.department||'Not configured'}</strong></div><div><span>Sub Department</span><strong>{selected.subDepartment||'Not configured'}</strong></div><div><span>Supervisor</span><strong>{selected.supervisor||'Assigned after generation'}</strong></div><div><span>Lead</span><strong>{selected.lead||'Not specified'}</strong></div></div></section></aside></div></section>}
+export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], workOrders = [], onGenerate, onOpenWorkOrder }) {
+  const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
+  const [plans, setPlans] = useState(pmSeed)
+  const [mode, setMode] = useState('list')
+  const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
+  const [form, setForm] = useState(emptyPlan)
+  const [query, setQuery] = useState('')
+  const [upload, setUpload] = useState(null)
+  const [generation, setGeneration] = useState(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [pmTab, setPmTab] = useState('All')
 
-  if(mode==='new')return <section className="pm-page"><header className="pm-record-head"><button onClick={()=>setMode('list')}>← PM Schedule</button><div><span>NEW MAXIMO PM MASTER</span><h1>Create PM schedule</h1><p>Fields follow the uploaded PM workbook structure.</p></div><button className="primary" disabled={!valid} onClick={save}><Check size={16}/>Create schedule</button></header><div className="pm-form-layout"><section className="pm-form-card"><div className="pm-card-title"><CalendarClock/><div><h2>PM master data</h2><p>Schedule, ownership, routing, and work-order defaults.</p></div></div><div className="pm-form-grid">
-    <label><span>PMNUM *</span><input value={form.pmNumber} onChange={e=>set('pmNumber',e.target.value)}/></label><label><span>PM DESCRIPTION *</span><input value={form.description} onChange={e=>set('description',e.target.value)}/></label>
-    <label><span>ASSETNUM</span><input list="pm-assets" value={form.asset} onChange={e=>chooseAsset(e.target.value)} placeholder="Search asset"/><datalist id="pm-assets">{assets.map(a=><option key={a.assetnum} value={a.assetnum}>{a.description}</option>)}</datalist></label><label><span>LOCATION</span><input value={form.location} onChange={e=>set('location',e.target.value)} placeholder="Use when PM is location-based"/></label>
-    <label><span>ROUTE</span><input value={form.route} onChange={e=>set('route',e.target.value)}/></label><label><span>JPNUM *</span><input list="pm-jps" value={form.jobPlan} onChange={e=>set('jobPlan',e.target.value)}/><datalist id="pm-jps">{jobPlans.map(j=><option key={j.number} value={j.number}>{j.description}</option>)}</datalist></label>
-    <label><span>NEXTDATE *</span><input type="date" value={form.startDate} onChange={e=>set('startDate',e.target.value)}/></label><label><span>LEAD TIME (DAYS)</span><input type="number" min="0" value={form.leadTime} onChange={e=>set('leadTime',Number(e.target.value))}/></label>
-    <label><span>FREQUENCY *</span><input type="number" min="1" value={form.frequency} onChange={e=>set('frequency',Number(e.target.value))}/></label><label><span>FREQUNIT *</span><select value={form.freqUnit} onChange={e=>set('freqUnit',e.target.value)}>{['DAYS','WEEKS','MONTHS','YEARS'].map(x=><option key={x}>{x}</option>)}</select></label>
-    <label><span>PMCOUNTER</span><input type="number" min="0" value={form.pmCounter} onChange={e=>set('pmCounter',Number(e.target.value))}/></label><label><span>WORKTYPE</span><input value="PM" readOnly/></label>
-    <label><span>WOSTATUS</span><select value={form.woStatus} onChange={e=>set('woStatus',e.target.value)}><option>WSCH</option><option>WAPPR</option></select></label><label><span>STORELOC</span><input value={form.storeLocation} onChange={e=>set('storeLocation',e.target.value)}/></label>
-    <label><span>SUPERVISOR</span><input value={form.supervisor} onChange={e=>set('supervisor',e.target.value)}/></label><label><span>LEAD</span><input value={form.lead} onChange={e=>set('lead',e.target.value)}/></label>
-    <label><span>PERSONGROUP</span><input value={form.personGroup} onChange={e=>set('personGroup',e.target.value)} placeholder="C1-HVAC"/></label><label><span>PM Status</span><select value={form.pmStatus} onChange={e=>set('pmStatus',e.target.value)}><option>Active</option><option>Inactive</option></select></label>
-    <label><span>department</span><select value={form.department} onChange={e=>setForm(f=>({...f,department:e.target.value,subDepartment:''}))}><option value="">Select department</option>{departments.map(d=><option key={d.code}>{d.name}</option>)}</select></label><label><span>sub department</span><select value={form.subDepartment} onChange={e=>set('subDepartment',e.target.value)}><option value="">Select sub department</option>{(selectedDepartment?.subDepartments||[]).map(s=><option key={s.code}>{s.name}</option>)}</select></label>
-  </div></section><aside className="pm-rule-card"><Sparkles/><h3>Job Plan controls duration</h3><p>Tasks, duration, labor, materials, tools, safety instructions, and checklists are copied at generation.</p><div><span>Job Plan</span><strong>{selectedJobPlan?.description||'Not selected'}</strong></div><div><span>Estimated Duration</span><strong>{selectedJobPlan?`${Math.max(1,Math.round(selectedJobPlan.duration*10)/10)} hours`:'—'}</strong></div><div><span>Excel WO Status</span><strong>{form.woStatus} · Waiting</strong></div></aside></div></section>
+  const jobPlans = useMemo(() => [
+    ...new Map(jobTasks
+      .filter(task => task.JPNUM)
+      .map(task => [task.JPNUM, {
+        number: task.JPNUM,
+        description: task.DESCRIPTION,
+        duration: jobTasks.filter(item => item.JPNUM === task.JPNUM).reduce((sum, item) => sum + Number(item['TASK DURATION IN HOUR'] || 0), 0) * 24
+      }])
+    ).values()
+  ], [jobTasks])
 
-  if(mode==='upload')return <section className="pm-page"><header className="pm-record-head"><button onClick={()=>setMode('list')}>← PM Schedule</button><div><span>BULK MAXIMO MASTER DATA</span><h1>Upload PM schedules</h1><p>The template uses the exact 19 Excel columns provided.</p></div></header><div className="pm-upload-layout"><section className="pm-upload-card"><div className="pm-upload-steps"><b>1</b><span>Download template</span><i/><b>2</b><span>Upload & validate</span><i/><b>3</b><span>Create schedules</span></div><div className="pm-template"><FileSpreadsheet/><div><strong>PM_Master_Upload_Template.csv</strong><span>19 matching columns · opens in Excel</span></div><button className="outline" onClick={downloadTemplate}>Download template</button></div><label className={`pm-dropzone ${upload?'loaded':''}`}><input type="file" accept=".xlsx,.xls,.csv" onChange={e=>setUpload(e.target.files?.[0]||null)}/><Upload/><strong>{upload?upload.name:'Drop Excel file here or browse'}</strong><span>{upload?'Ready to validate against the 19-column PM structure':'Accepted: .xlsx, .xls, .csv'}</span></label>{upload&&<div className="pm-validation"><Check/><div><strong>PM workbook ready</strong><span>Headers will be matched exactly; blank rows are ignored.</span></div></div>}<button className="primary pm-import" disabled={!upload} onClick={()=>{setPlans(pmSeed);setMode('list')}}><Upload size={16}/>Import PM schedules</button></section><aside className="pm-column-guide"><h3>Exact Excel columns</h3>{excelHeaders.map((x,i)=><div key={x}><b>{i+1}</b><span>{x}</span><Check/></div>)}</aside></div></section>
+  const selected = plans.find(plan => plan.pmNumber === selectedId)
+  const visible = plans.filter(plan => (pmTab === 'All' || plan.pmStatus === pmTab) && Object.values(plan).some(value => String(value).toLowerCase().includes(query.toLowerCase())))
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize))
+  const currentPage = Math.min(page, pageCount)
+  const visiblePage = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
-  return <section className="pm-page pm-index"><PageHeader eyebrow="PREVENTIVE MAINTENANCE" title="PM Schedule" description="Maximo-aligned PM masters and automatic work-order generation." actions={<div className="heading-actions"><button className="outline" onClick={()=>setMode('upload')}><FileSpreadsheet size={16}/>Import Excel</button><button className="primary" onClick={()=>setMode('new')}><Plus size={16}/>New PM schedule</button></div>} /><div className="pm-kpis"><article><CalendarClock/><span>Active plans<strong>{plans.filter(p=>p.pmStatus==='Active').length}</strong></span></article><article><Sparkles/><span>Excel records<strong>{plans.length}</strong></span></article><article><Settings2/><span>Generation rule<strong>Monthly · automatic</strong></span></article><button onClick={generate}><Sparkles/>Run generation preview</button></div>{generation&&<div className={`pm-generation-result ${generation.length?'success':'empty'}`}>{generation.length?<Check/>:<AlertTriangle/>}<div><strong>{generation.length?`${generation.length} work orders generated`:'No eligible PM plans'}</strong><span>Duplicate generation is prevented by PM number and NEXTDATE cycle.</span></div><button onClick={()=>setGeneration(null)}><X/></button></div>}<IndexTabs active={pmTab} onChange={value=>{setPmTab(value);setPage(1)}} tabs={[{key:'All',label:'All PM Schedules',count:plans.length},{key:'Active',label:'Active',count:plans.filter(p=>p.pmStatus==='Active').length},{key:'Inactive',label:'Inactive',count:plans.filter(p=>p.pmStatus==='Inactive').length}]}/><div className="pm-toolbar"><div><Search/><input value={query} onChange={e=>{setQuery(e.target.value);setPage(1)}} placeholder="Search PMNUM, asset, location, JPNUM, or person group"/></div><span>{visible.length} PM masters</span></div><section className="pm-register"><div className="pm-table-head"><span>PM plan</span><span>Asset / Location</span><span>Job plan</span><span>Schedule</span><span>Responsibility</span><span>Status</span><span></span></div>{visiblePage.map(p=><article className="pm-table-row" key={p.pmNumber}><div><strong>{p.pmNumber}</strong><span>{p.description}</span></div><div><strong>{p.asset||p.location}</strong><span>{p.route||p.location||'Asset-based PM'}</span></div><div><strong>{p.jobPlan}</strong><span>Duration from job plan</span></div><div><strong>{p.frequency} {p.freqUnit}</strong><span>NEXTDATE {p.startDate} · Lead {p.leadTime}d</span></div><div><strong>{p.personGroup||p.department||'Not assigned'}</strong><span>{p.department} {p.subDepartment}</span></div><div><Status>{p.pmStatus}</Status><span>{p.workType} · {p.woStatus} · Counter {p.pmCounter}</span></div><button><ChevronRight/></button></article>)}<div className="pagination-bar"><div>Showing <strong>{visible.length?((currentPage-1)*pageSize)+1:0}-{Math.min(currentPage*pageSize,visible.length)}</strong> of <strong>{visible.length}</strong></div><label>Rows<select value={pageSize} onChange={event=>{setPageSize(Number(event.target.value));setPage(1)}}><option value="10">10</option><option value="25">25</option><option value="50">50</option></select></label><div className="page-controls"><button disabled={currentPage===1} onClick={()=>setPage(value=>Math.max(1,value-1))}>Previous</button><span>Page {currentPage} of {pageCount}</span><button disabled={currentPage===pageCount} onClick={()=>setPage(value=>Math.min(pageCount,value+1))}>Next</button></div></div></section><footer className="pm-logic-note"><Sparkles/><div><strong>Excel fields retained</strong><span>ROUTE, STORELOC, SUPERVISOR, LEAD, PERSONGROUP, PMCOUNTER, department, and sub department remain part of every PM master.</span></div></footer></section>
+  const valid = Boolean(form.pmNumber && form.description && (form.asset || form.location) && form.jobPlan && form.startDate && form.frequency && form.freqUnit)
+  const save = () => {
+    if (!valid) return
+    setPlans(rows => [...rows, form])
+    setForm(emptyPlan)
+    setMode('list')
+  }
+  const openPlan = id => {
+    setSelectedId(id)
+    window.history.pushState({}, '', `/preventive-maintenance/${encodeURIComponent(id)}`)
+  }
+  const closePlan = () => {
+    setSelectedId('')
+    window.history.pushState({}, '', '/preventive-maintenance')
+  }
+  const downloadTemplate = () => {
+    const example = ['PMALS-HV-00001', 'PM of Split A/C Unit', 'ALS-HV-00001', '', '', 'JP415004', '1-Jan-22', '30', '3', 'MONTHS', '0', 'PM', 'WSCH', 'DIWAN-MAIN', '', '', 'C1-HVAC', '', '']
+    const csv = [excelHeaders, example].map(row => row.map(value => `"${value}"`).join(',')).join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = 'PM_Master_Upload_Template.csv'
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+  const generate = () => {
+    const cutoff = new Date('2026-08-31')
+    const due = plans.filter(plan => plan.pmStatus === 'Active' && new Date(plan.startDate) <= cutoff && plan.lastGeneratedCycle !== cycleKey(plan))
+    const made = due.map((plan, index) => ({ ...plan, workOrder: `PMWO-${20260801 + index}`, cycle: cycleKey(plan), nextDue: addFrequency(plan) }))
+    setPlans(rows => rows.map(plan => {
+      const generated = made.find(item => item.pmNumber === plan.pmNumber)
+      return generated ? { ...plan, startDate: generated.nextDue, lastGeneratedCycle: generated.cycle, pmCounter: Number(plan.pmCounter) + 1 } : plan
+    }))
+    made.forEach(plan => onGenerate?.(plan, jobTasks.filter(task => task.JPNUM === plan.jobPlan)))
+    setGeneration(made)
+  }
+
+  if (selected) {
+    return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} />
+  }
+
+  if (mode === 'new') {
+    return <PmScheduleForm form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departments} onCancel={() => setMode('list')} onSave={save} />
+  }
+
+  if (mode === 'upload') {
+    return <PmScheduleUpload headers={excelHeaders} upload={upload} setUpload={setUpload} onCancel={() => setMode('list')} onDownloadTemplate={downloadTemplate} onImport={() => { setPlans(pmSeed); setMode('list') }} />
+  }
+
+  return (
+    <section>
+      <PageHeader
+        eyebrow="PREVENTIVE MAINTENANCE"
+        title="PM Schedule"
+        description="Maximo-aligned PM masters and automatic work-order generation."
+        actions={<div className="flex items-center gap-2"><Button variant="outline" onClick={() => setMode('upload')}><FileSpreadsheet size={16} />Import Excel</Button><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
+      />
+
+      {generation && (
+        <div className={`mb-4 flex items-center justify-between gap-3 rounded-2xl border p-4 ${generation.length ? 'border-[#dce8df] bg-[#f1f8f3] text-[#315a47]' : 'border-[#f0d4bd] bg-[#fff7ef] text-[#9a5a2f]'}`}>
+          <div className="flex items-center gap-3">{generation.length ? <Check /> : <AlertTriangle />}<div><strong>{generation.length ? `${generation.length} work orders generated` : 'No eligible PM plans'}</strong><span className="block text-xs">Duplicate generation is prevented by PM number and NEXTDATE cycle.</span></div></div>
+          <button onClick={() => setGeneration(null)}><X /></button>
+        </div>
+      )}
+
+      <IndexTabs
+        active={pmTab}
+        onChange={value => { setPmTab(value); setPage(1) }}
+        tabs={[
+          { key: 'All', label: 'All PM Schedules', count: plans.length },
+          { key: 'Active', label: 'Active', count: plans.filter(plan => plan.pmStatus === 'Active').length },
+          { key: 'Inactive', label: 'Inactive', count: plans.filter(plan => plan.pmStatus === 'Inactive').length }
+        ]}
+      />
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <label className="flex h-10 min-w-[320px] flex-1 items-center gap-2 rounded-xl border border-[#dfe5df] bg-white px-3 text-sm">
+          <Search size={16} className="text-[#7b8780]" />
+          <input className="w-full bg-transparent outline-none" value={query} onChange={event => { setQuery(event.target.value); setPage(1) }} placeholder="Search PMNUM, asset, location, JPNUM, or person group" />
+        </label>
+        <Button variant="outline" onClick={generate}><Sparkles size={16} />Run generation preview</Button>
+      </div>
+
+      <PmScheduleTable
+        rows={visiblePage}
+        currentPage={currentPage}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        total={visible.length}
+        onOpen={openPlan}
+        onPageChange={setPage}
+        onPageSizeChange={value => { setPageSize(value); setPage(1) }}
+      />
+    </section>
+  )
 }
