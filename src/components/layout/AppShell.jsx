@@ -1,5 +1,6 @@
-import { Bell, ChevronRight, Command, Menu, MoreHorizontal, Search, X } from 'lucide-react'
+import { Bell, ChevronRight, Command, Menu, Moon, MoreHorizontal, Search, Sun, X } from 'lucide-react'
 import { useAuth } from '../../providers/AuthProvider'
+import { useTheme } from '../../providers/ThemeProvider'
 
 export default function AppShell({
   active,
@@ -15,6 +16,7 @@ export default function AppShell({
   children
 }) {
   const { user } = useAuth()
+  const { themeName, toggleTheme, fontSizeName, fontSizes, setFontSizeName } = useTheme()
 
   return (
     <div className="app-shell min-h-screen bg-[var(--app-bg)] text-[var(--app-ink)] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
@@ -23,7 +25,7 @@ export default function AppShell({
           <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#cfe775] text-[#17251e]">
             <Command size={20} />
           </div>
-          <span className="font-heading text-sm font-extrabold tracking-wide">
+          <span className="font-heading text-[length:var(--app-brand-font-size)] font-extrabold tracking-wide">
             FACILITY
             <strong className="block text-[10px] tracking-[0.18em] text-[#9fb1a7]">COMMAND</strong>
           </span>
@@ -33,7 +35,7 @@ export default function AppShell({
         </div>
 
         <nav className="grid gap-1">
-          <span className="nav-label px-3 pb-2 text-[10px] font-extrabold tracking-[0.18em] text-[#71837a]">WORKSPACE</span>
+          <span className="nav-label px-3 pb-2 text-[length:var(--app-nav-label-font-size)] font-extrabold tracking-[0.18em] text-[#71837a]">WORKSPACE</span>
           {navigation.map(item => {
             const Icon = item.icon
             const selected = active === item.name
@@ -41,7 +43,7 @@ export default function AppShell({
               <button
                 key={item.name}
                 onClick={() => onNavigate(item.name)}
-                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] transition ${selected ? 'bg-[#2c4236] text-white shadow-[inset_3px_0_#cfe775]' : 'text-[#9eb0a6] hover:bg-[#21332a] hover:text-white'}`}
+                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-[length:var(--app-nav-font-size)] transition ${selected ? 'bg-[#2c4236] text-white shadow-[inset_3px_0_#cfe775]' : 'text-[#9eb0a6] hover:bg-[#21332a] hover:text-white'}`}
               >
                 <Icon size={18} />
                 <span>{item.name}</span>
@@ -68,7 +70,7 @@ export default function AppShell({
           <button className="menu-btn mr-3 text-[#58635d] lg:hidden" onClick={onMobileOpen} aria-label="Open menu">
             <Menu />
           </button>
-          <div className="crumb flex items-center gap-2 text-xs text-[#909691]">
+          <div className="crumb flex items-center gap-2 text-[length:var(--app-topbar-font-size)] text-[#909691]">
             <span className="hidden sm:inline">Facility Command</span>
             <ChevronRight size={14} className="hidden sm:block" />
             <strong className="text-[#35413b]">{active}</strong>
@@ -78,6 +80,23 @@ export default function AppShell({
               <Search size={16} />
               <span>Search anything</span>
               <kbd className="ml-12 rounded border border-[#d9ddd6] bg-white px-1.5 text-[9px]">⌘ K</kbd>
+            </button>
+            <select
+              className="hidden h-9 rounded-lg border border-[var(--app-line)] bg-[var(--app-panel)] px-2 text-xs font-bold text-[var(--app-muted)] outline-none transition focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[#dfeae4] sm:block"
+              value={fontSizeName}
+              onChange={event => setFontSizeName(event.target.value)}
+              aria-label="Font size"
+              title="Font size"
+            >
+              {Object.values(fontSizes).map(size => <option value={size.name} key={size.name}>{size.label}</option>)}
+            </select>
+            <button
+              className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--app-line)] bg-[var(--app-panel)] text-[var(--app-muted)] transition hover:text-[var(--app-primary)]"
+              onClick={toggleTheme}
+              title={`Switch to ${themeName === 'light' ? 'dark' : 'light'} theme`}
+              aria-label="Toggle theme"
+            >
+              {themeName === 'light' ? <Moon size={17} /> : <Sun size={17} />}
             </button>
             <button className="icon-button sla-notification relative text-[#58635d]" title={`${overdueCount} overdue work orders`} onClick={onOpenWorkOrders}>
               <Bell size={19} />
