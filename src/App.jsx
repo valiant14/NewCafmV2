@@ -22,6 +22,8 @@ import OverviewPage from './pages/OverviewPage'
 import Badge from './components/ui/Badge'
 import Field from './components/ui/Field'
 import Section from './components/ui/Section'
+import AppShell from './components/layout/AppShell'
+import { navigationItems, pathForPage, routeToPage } from './config/navigation'
 import { assets, workOrders, pmRecords, jobTasks, failureCodes, statusMatrix, failureClassOptions, uniqueCodeOptions, excelDate, toDateTimeInput, slaBreached } from './data/cafmData'
 
 
@@ -250,12 +252,12 @@ function ServiceRequests({ onConvert, requests, setRequests }) {
 }
 
 export default function App() {
-  const [active, setActive] = useState(()=>window.location.pathname.startsWith('/service-requests')?'Service Requests':window.location.pathname.startsWith('/work-orders')?'Work Orders':window.location.pathname.startsWith('/assets')?'Assets':window.location.pathname.startsWith('/preventive-maintenance')?'Preventive Maintenance':window.location.pathname.startsWith('/labor')?'Labor':window.location.pathname.startsWith('/materials')?'Materials':window.location.pathname.startsWith('/tools')?'Tools & Equipment':'Overview')
+  const [active, setActive] = useState(()=>routeToPage(window.location.pathname))
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [allWorkOrders,setAllWorkOrders]=useState(workOrders)
   const [serviceRequests,setServiceRequests]=useState(serviceRequestSeed)
-  const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false);const paths={'Overview':'/','Service Requests':'/service-requests','Work Orders':'/work-orders','Assets':'/assets','Preventive Maintenance':'/preventive-maintenance','Labor':'/labor','Materials':'/materials','Tools & Equipment':'/tools'};if(paths[name])window.history.pushState({},'',paths[name]) }
+  const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false); window.history.pushState({},'',pathForPage(name)) }
   const convertRequest = request => {
     const number=String(56545135+allWorkOrders.filter(o=>String(o.WORKORDER).startsWith('56545')).length-3)
     const cm={'WORKORDER':number,'DESCRIPITION ':request.description,'LOCATION ':request.location,'LOCATION PRIORTY':request.priority,'ASSET':request.asset||'Unassigned','STATUS':'WAPPR','WORK TYPE ':'CM','STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':request.assignedDepartment||request.department,'SUB DEPARTMENT  NAME':request.subDepartment||'','PRIORTY':request.priority==='Emergency'?1:request.priority==='High'?2:3,'SITE':request.site,'TARGET START ':null,'TARGET FINISH ':null,'SOURCE SR':request.sr,'FAILURE CODE':request.failureCode||'','PROBLEM CODE':request.problemCode||'','CAUSE CODE':request.causeCode||'','REMEDY CODE':request.remedyCode||''}
@@ -281,14 +283,20 @@ export default function App() {
     'Materials': <MaterialsPage/>,
     'Tools & Equipment': <ToolsPage/>
   }
-  return <div className="app-shell">
-    <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}><div className="brand"><div><Command size={20}/></div><span>FACILITY<strong>COMMAND</strong></span><button className="mobile-close" onClick={()=>setMobileOpen(false)}><X/></button></div>
-      <nav><span className="nav-label">WORKSPACE</span>{nav.map(([name, Icon]) => <button className={active===name?'active':''} onClick={()=>navigate(name)} key={name}><Icon size={18}/><span>{name}</span>{name==='Work Orders'&&<b>{workOrders.length}</b>}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="user"><div className="avatar">{initials('Ahmed Faisal')}</div><div><strong>Ahmed Faisal</strong><span>Facility Manager</span></div><MoreHorizontal size={18}/></div></div>
-    </aside>
-    <main><header className="topbar"><button className="menu-btn" onClick={()=>setMobileOpen(true)}><Menu/></button><div className="crumb"><span>Facility Command</span><ChevronRight size={14}/><strong>{active}</strong></div><div className="top-actions"><button className="global-search" onClick={()=>document.querySelector('.register input')?.focus()}><Search size={16}/><span>Search anything</span><kbd>⌘ K</kbd></button><button className="icon-button sla-notification" title={`${allWorkOrders.filter(slaBreached).length} overdue work orders`} onClick={()=>{setActive('Work Orders');setMobileOpen(false)}}><Bell size={19}/>{allWorkOrders.filter(slaBreached).length>0&&<b>{allWorkOrders.filter(slaBreached).length}</b>}</button><div className="top-avatar" title="Ahmed Faisal · Facility Manager">AF</div></div></header>
-      <div className="content">{active==='Overview'?<OverviewPage onNavigate={navigate}/>:pages[active]}</div>
-      <footer><span>Facility Command · Mock data generated from provided Excel files</span><span>{statusMatrix.length} Maximo status rules loaded</span></footer>
-    </main>
-  </div>
+  return (
+    <AppShell
+      active={active}
+      navigation={navigationItems}
+      counters={{ workOrders: allWorkOrders.length }}
+      overdueCount={allWorkOrders.filter(slaBreached).length}
+      statusRuleCount={statusMatrix.length}
+      mobileOpen={mobileOpen}
+      onMobileOpen={() => setMobileOpen(true)}
+      onMobileClose={() => setMobileOpen(false)}
+      onNavigate={navigate}
+      onOpenWorkOrders={() => { setActive('Work Orders'); setMobileOpen(false); window.history.pushState({}, '', '/work-orders') }}
+    >
+      {active === 'Overview' ? <OverviewPage onNavigate={navigate} /> : pages[active]}
+    </AppShell>
+  )
 }
