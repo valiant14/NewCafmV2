@@ -67,35 +67,43 @@ export const themes = {
     name: 'light',
     tokens: {
       // Base
-      '--app-bg': '#f8fafc',
-      '--app-panel': '#ffffff',
-      '--app-ink': '#0f172a',
-      '--app-muted': '#64748b',
-      '--app-line': '#e2e8f0',
+      '--app-bg': '#F8FAFC',
+      '--app-panel': '#FFFFFF',
+      '--app-ink': '#0F172A',
+      '--app-muted': '#64748B',
+      '--app-line': '#E2E8F0',
 
       // Brand
-      '--app-primary': '#4f46e5',
-      '--app-accent': '#6366f1',
+      '--app-primary': '#1D4ED8',
+      '--app-primary-hover': '#1E40AF',
+      '--app-accent': '#60A5FA',
 
       // Sidebar
-      '--app-sidebar-bg': '#0f172a',
-      '--app-sidebar-panel': '#1e293b',
+      '--app-sidebar-bg': '#0F172A',
+      '--app-sidebar-panel': '#1E293B',
       '--app-sidebar-hover': '#334155',
-      '--app-sidebar-active': '#4f46e5',
-      '--app-sidebar-text': '#f8fafc',
-      '--app-sidebar-muted': '#94a3b8',
-      '--app-sidebar-accent': '#818cf8',
-      '--app-sidebar-accent-ink': '#ffffff',
+      '--app-sidebar-active': '#1D4ED8',
+      '--app-sidebar-text': '#F8FAFC',
+      '--app-sidebar-muted': '#94A3B8',
+      '--app-sidebar-accent': '#60A5FA',
+      '--app-sidebar-accent-ink': '#FFFFFF',
 
       // Legacy Tokens
-      '--ink': '#0f172a',
-      '--muted': '#64748b',
-      '--line': '#e2e8f0',
-      '--panel': '#ffffff',
+      '--ink': '#0F172A',
+      '--muted': '#64748B',
+      '--line': '#E2E8F0',
+      '--panel': '#FFFFFF',
 
-      '--green': '#4f46e5',
-      '--lime': '#818cf8',
-      '--orange': '#f59e0b'
+      // Legacy Color Aliases
+      '--green': '#1D4ED8',
+      '--lime': '#60A5FA',
+      '--orange': '#F59E0B',
+
+      // Optional Status Colors
+      '--success': '#22C55E',
+      '--warning': '#F59E0B',
+      '--danger': '#EF4444',
+      '--info': '#0EA5E9'
     }
   },
 
@@ -104,34 +112,42 @@ export const themes = {
     tokens: {
       // Base
       '--app-bg': '#020617',
-      '--app-panel': '#0f172a',
-      '--app-ink': '#f8fafc',
-      '--app-muted': '#94a3b8',
-      '--app-line': '#1e293b',
+      '--app-panel': '#0F172A',
+      '--app-ink': '#F8FAFC',
+      '--app-muted': '#94A3B8',
+      '--app-line': '#1E293B',
 
       // Brand
-      '--app-primary': '#6366f1',
-      '--app-accent': '#818cf8',
+      '--app-primary': '#3B82F6',
+      '--app-primary-hover': '#2563EB',
+      '--app-accent': '#93C5FD',
 
       // Sidebar
       '--app-sidebar-bg': '#020617',
-      '--app-sidebar-panel': '#0f172a',
-      '--app-sidebar-hover': '#1e293b',
-      '--app-sidebar-active': '#4f46e5',
-      '--app-sidebar-text': '#f8fafc',
-      '--app-sidebar-muted': '#94a3b8',
-      '--app-sidebar-accent': '#818cf8',
-      '--app-sidebar-accent-ink': '#ffffff',
+      '--app-sidebar-panel': '#0F172A',
+      '--app-sidebar-hover': '#1E293B',
+      '--app-sidebar-active': '#2563EB',
+      '--app-sidebar-text': '#F8FAFC',
+      '--app-sidebar-muted': '#94A3B8',
+      '--app-sidebar-accent': '#60A5FA',
+      '--app-sidebar-accent-ink': '#FFFFFF',
 
       // Legacy Tokens
-      '--ink': '#f8fafc',
-      '--muted': '#94a3b8',
-      '--line': '#1e293b',
-      '--panel': '#0f172a',
+      '--ink': '#F8FAFC',
+      '--muted': '#94A3B8',
+      '--line': '#1E293B',
+      '--panel': '#0F172A',
 
-      '--green': '#6366f1',
-      '--lime': '#a5b4fc',
-      '--orange': '#fbbf24'
+      // Legacy Color Aliases
+      '--green': '#3B82F6',
+      '--lime': '#93C5FD',
+      '--orange': '#FBBF24',
+
+      // Optional Status Colors
+      '--success': '#4ADE80',
+      '--warning': '#FBBF24',
+      '--danger': '#F87171',
+      '--info': '#38BDF8'
     }
   }
 }
