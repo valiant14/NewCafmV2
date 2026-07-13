@@ -2,6 +2,98 @@ import { useState } from 'react'
 import { Plus, Wrench } from 'lucide-react'
 import toolSeed from '../data/tools.json'
 import AddToolModal from '../components/tools/AddToolModal'
-import MasterRecordDetail from '../components/master-data/MasterRecordDetail'
-const empty={toolNumber:'',description:'',category:'',location:'',quantity:1,status:'Available',inspectionDue:''}
-export default function ToolsPage(){const [rows,setRows]=useState(toolSeed),[adding,setAdding]=useState(false),[form,setForm]=useState(empty);const routeId=decodeURIComponent(window.location.pathname.split('/tools/')[1]||''),[selected,setSelected]=useState(rows.find(x=>x.toolNumber===routeId)||null);const open=x=>{setSelected(x);window.history.pushState({},'',`/tools/${x.toolNumber}`)},close=()=>{setSelected(null);window.history.pushState({},'','/tools')},save=()=>{if(!form.toolNumber||!form.description)return;const row={...form,quantity:Number(form.quantity)};setRows(x=>[...x,row]);setAdding(false);setForm(empty);open(row)};if(selected)return <MasterRecordDetail eyebrow="TOOL & EQUIPMENT" id={selected.toolNumber} title={selected.description} status={selected.status} statusTone={selected.status==='Available'?'green':'orange'} onBack={close} groups={[{kicker:'RESOURCE',title:'Tool Information',items:[['Description',selected.description],['Category',selected.category],['Quantity',selected.quantity],['Status',selected.status]]},{kicker:'CONTROL',title:'Location & Inspection',items:[['Location',selected.location],['Inspection Due',selected.inspectionDue]]}]}/>;return <><section className="page-heading"><div><p className="eyebrow">RESOURCE MASTER DATA</p><h1>Tools & Equipment</h1><p>Maintain tools, equipment locations, quantities, status, and inspections.</p></div><button className="primary" onClick={()=>setAdding(true)}><Plus size={17}/>Add tool or equipment</button></section><section className="master-summary"><Wrench size={18}/><span>Tools and equipment</span><strong>{rows.length}</strong><i>Available {rows.filter(x=>x.status==='Available').length}</i></section><section className="panel register"><div className="table-shell"><table><thead><tr><th>Tool number</th><th>Description</th><th>Category</th><th>Location</th><th>Quantity</th><th>Status</th><th>Inspection due</th></tr></thead><tbody>{rows.map(x=><tr className="click-row" key={x.toolNumber} onClick={()=>open(x)}><td><strong className="mono">{x.toolNumber}</strong></td><td>{x.description}</td><td>{x.category}</td><td>{x.location}</td><td>{x.quantity}</td><td><span className={`badge ${x.status==='Available'?'green':'orange'}`}><i/>{x.status}</span></td><td>{x.inspectionDue}</td></tr>)}</tbody></table></div></section>{adding&&<AddToolModal form={form} setForm={setForm} onClose={()=>setAdding(false)} onSave={save}/>}</>}
+import ToolDetailPage from '../components/tools/ToolDetailPage'
+
+const empty = {
+  toolNumber: '',
+  description: '',
+  category: '',
+  location: '',
+  quantity: 1,
+  status: 'Available',
+  inspectionDue: ''
+}
+
+export default function ToolsPage() {
+  const [rows, setRows] = useState(toolSeed)
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState(empty)
+  const routeId = decodeURIComponent(window.location.pathname.split('/tools/')[1] || '')
+  const [selected, setSelected] = useState(rows.find(row => row.toolNumber === routeId) || null)
+
+  const open = row => {
+    setSelected(row)
+    window.history.pushState({}, '', `/tools/${row.toolNumber}`)
+  }
+
+  const close = () => {
+    setSelected(null)
+    window.history.pushState({}, '', '/tools')
+  }
+
+  const save = () => {
+    if (!form.toolNumber || !form.description) return
+    const row = { ...form, quantity: Number(form.quantity) }
+    setRows(current => [...current, row])
+    setAdding(false)
+    setForm(empty)
+    open(row)
+  }
+
+  if (selected) {
+    return <ToolDetailPage tool={selected} onBack={close} />
+  }
+
+  return (
+    <>
+      <section className="page-heading">
+        <div>
+          <p className="eyebrow">RESOURCE MASTER DATA</p>
+          <h1>Tools & Equipment</h1>
+          <p>Maintain tools, equipment locations, quantities, status, and inspections.</p>
+        </div>
+        <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add tool or equipment</button>
+      </section>
+
+      <section className="master-summary">
+        <Wrench size={18} />
+        <span>Tools and equipment</span>
+        <strong>{rows.length}</strong>
+        <i>Available {rows.filter(row => row.status === 'Available').length}</i>
+      </section>
+
+      <section className="panel register">
+        <div className="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>Tool number</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Location</th>
+                <th>Quantity</th>
+                <th>Status</th>
+                <th>Inspection due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(row => (
+                <tr className="click-row" key={row.toolNumber} onClick={() => open(row)}>
+                  <td><strong className="mono">{row.toolNumber}</strong></td>
+                  <td>{row.description}</td>
+                  <td>{row.category}</td>
+                  <td>{row.location}</td>
+                  <td>{row.quantity}</td>
+                  <td><span className={`badge ${row.status === 'Available' ? 'green' : 'orange'}`}><i />{row.status}</span></td>
+                  <td>{row.inspectionDue}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {adding && <AddToolModal form={form} setForm={setForm} onClose={() => setAdding(false)} onSave={save} />}
+    </>
+  )
+}
