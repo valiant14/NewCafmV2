@@ -15,6 +15,7 @@ import LaborPage from './pages/LaborPage'
 import MaterialsPage from './pages/MaterialsPage'
 import ToolsPage from './pages/ToolsPage'
 import PreventiveMaintenancePage from './pages/PreventiveMaintenancePage'
+import AssetsPage from './pages/AssetsPage'
 import RegisterPage from './pages/RegisterPage'
 import LocationsPage from './pages/LocationsPage'
 import OverviewPage from './pages/OverviewPage'
@@ -249,12 +250,12 @@ function ServiceRequests({ onConvert, requests, setRequests }) {
 }
 
 export default function App() {
-  const [active, setActive] = useState(()=>window.location.pathname.startsWith('/service-requests')?'Service Requests':window.location.pathname.startsWith('/work-orders')?'Work Orders':window.location.pathname.startsWith('/preventive-maintenance')?'Preventive Maintenance':window.location.pathname.startsWith('/labor')?'Labor':window.location.pathname.startsWith('/materials')?'Materials':window.location.pathname.startsWith('/tools')?'Tools & Equipment':'Overview')
+  const [active, setActive] = useState(()=>window.location.pathname.startsWith('/service-requests')?'Service Requests':window.location.pathname.startsWith('/work-orders')?'Work Orders':window.location.pathname.startsWith('/assets')?'Assets':window.location.pathname.startsWith('/preventive-maintenance')?'Preventive Maintenance':window.location.pathname.startsWith('/labor')?'Labor':window.location.pathname.startsWith('/materials')?'Materials':window.location.pathname.startsWith('/tools')?'Tools & Equipment':'Overview')
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [allWorkOrders,setAllWorkOrders]=useState(workOrders)
   const [serviceRequests,setServiceRequests]=useState(serviceRequestSeed)
-  const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false);const paths={'Overview':'/','Service Requests':'/service-requests','Work Orders':'/work-orders','Preventive Maintenance':'/preventive-maintenance','Labor':'/labor','Materials':'/materials','Tools & Equipment':'/tools'};if(paths[name])window.history.pushState({},'',paths[name]) }
+  const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false);const paths={'Overview':'/','Service Requests':'/service-requests','Work Orders':'/work-orders','Assets':'/assets','Preventive Maintenance':'/preventive-maintenance','Labor':'/labor','Materials':'/materials','Tools & Equipment':'/tools'};if(paths[name])window.history.pushState({},'',paths[name]) }
   const convertRequest = request => {
     const number=String(56545135+allWorkOrders.filter(o=>String(o.WORKORDER).startsWith('56545')).length-3)
     const cm={'WORKORDER':number,'DESCRIPITION ':request.description,'LOCATION ':request.location,'LOCATION PRIORTY':request.priority,'ASSET':request.asset||'Unassigned','STATUS':'WAPPR','WORK TYPE ':'CM','STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':request.assignedDepartment||request.department,'SUB DEPARTMENT  NAME':request.subDepartment||'','PRIORTY':request.priority==='Emergency'?1:request.priority==='High'?2:3,'SITE':request.site,'TARGET START ':null,'TARGET FINISH ':null,'SOURCE SR':request.sr,'FAILURE CODE':request.failureCode||'','PROBLEM CODE':request.problemCode||'','CAUSE CODE':request.causeCode||'','REMEDY CODE':request.remedyCode||''}
@@ -267,9 +268,7 @@ export default function App() {
   const pages = {
     'Service Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={serviceRequests} setRequests={setServiceRequests} assets={assets} workOrders={allWorkOrders} failureOptions={failureClassOptions}/>,
     'Work Orders': <WorkOrdersPage rows={allWorkOrders} assets={assets} onCreate={createWorkOrder} EditorComponent={WorkOrderEditor} excelDate={excelDate} slaBreached={slaBreached}/>,
-    'Assets': <RegisterPage title="Asset register" eyebrow="PORTFOLIO" description="A complete view of maintainable equipment across every site." rows={assets} search={search} setSearch={setSearch} action="Add asset" columns={[
-      {key:'assetnum',label:'Asset ID',render:v=><strong className="mono">{v}</strong>},{key:'description',label:'Description'},{key:'site',label:'Site'},{key:'department',label:'Department'},{key:'modelnum',label:'Model'},{key:'status',label:'Status',render:v=><Badge tone="green">{v}</Badge>}
-    ]}/>,
+    'Assets': <AssetsPage initialAssets={assets} workOrders={allWorkOrders} />,
     'Preventive Maintenance': <PreventiveMaintenancePage assets={assets} jobTasks={jobTasks} workOrders={allWorkOrders} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Locations': <LocationsPage/>,
     'Job Plans': <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobTasks} search={search} setSearch={setSearch} action="New job plan" columns={[
