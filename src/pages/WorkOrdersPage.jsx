@@ -18,12 +18,35 @@ export default function WorkOrdersPage({ rows, assets, onCreate, EditorComponent
   const [imported, setImported] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [sort, setSort] = useState({ key: 'WORKORDER', direction: 'asc' })
 
   const orderType = order => (order['WORK TYPE '] || order['WORK TYPE  '] || 'PM').trim()
   const filtered = rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const sortValue = (order, key) => {
+    if (key === 'WORK TYPE') return orderType(order)
+    if (key === 'DESCRIPITION') return order['DESCRIPITION ']
+    if (key === 'LOCATION') return order['LOCATION ']
+    if (key === 'DEPARTMENT') return order['DEPARTMENT ']
+    if (key === 'TARGET START') return order['TARGET START ']
+    if (key === 'TARGET FINISH') return order['TARGET FINISH ']
+    if (key === 'ACTUAL START') return order['ACTUAL START ']
+    if (key === 'ACTUAL FINISH') return order['ACTUAL FINISH ']
+    if (key === 'REPORTED DATE') return order['REPORTED DATE ']
+    return order[key]
+  }
+  const sorted = [...filtered].sort((a, b) => {
+    const left = sortValue(a, sort.key) ?? ''
+    const right = sortValue(b, sort.key) ?? ''
+    const result = String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' })
+    return sort.direction === 'asc' ? result : -result
+  })
+  const toggleSort = key => {
+    setSort(current => current.key === key ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' })
+    setPage(1)
+  }
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
   const currentPage = Math.min(page, pageCount)
-  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const paginated = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
   const count = type => rows.filter(order => type === 'All' || orderType(order) === type).length
 
   const openOrder = order => {
@@ -74,6 +97,8 @@ export default function WorkOrdersPage({ rows, assets, onCreate, EditorComponent
         onPageSizeChange={value => { setPageSize(value); setPage(1) }}
         orderType={orderType}
         excelDate={excelDate}
+        sort={sort}
+        onSort={toggleSort}
       />
     </div>
   )

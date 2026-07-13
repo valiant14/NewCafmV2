@@ -17,6 +17,11 @@ export const fontSizes = {
     navLabel: '9px',
     brand: '13px',
     topbar: '11px',
+    tab: '10px',
+    tabIndex: '7px',
+    table: '10px',
+    tableHeader: '8px',
+    tableFooter: '9px',
     pageTitle: '30px',
     pageDescription: '13px',
     pageEyebrow: '8.5px'
@@ -30,6 +35,11 @@ export const fontSizes = {
     navLabel: '10px',
     brand: '14px',
     topbar: '12px',
+    tab: '11px',
+    tabIndex: '8px',
+    table: '11px',
+    tableHeader: '9px',
+    tableFooter: '10px',
     pageTitle: '38px',
     pageDescription: '14px',
     pageEyebrow: '9px'
@@ -43,6 +53,11 @@ export const fontSizes = {
     navLabel: '10.5px',
     brand: '15px',
     topbar: '13px',
+    tab: '12px',
+    tabIndex: '8.5px',
+    table: '12px',
+    tableHeader: '10px',
+    tableFooter: '11px',
     pageTitle: '42px',
     pageDescription: '15px',
     pageEyebrow: '10px'
@@ -56,6 +71,11 @@ export const fontSizes = {
     navLabel: '11px',
     brand: '16px',
     topbar: '14px',
+    tab: '13px',
+    tabIndex: '9px',
+    table: '13px',
+    tableHeader: '11px',
+    tableFooter: '12px',
     pageTitle: '46px',
     pageDescription: '16px',
     pageEyebrow: '11px'
@@ -72,6 +92,12 @@ export const themes = {
       '--app-ink': '#0F172A',
       '--app-muted': '#64748B',
       '--app-line': '#E2E8F0',
+      '--app-table-bg': '#FFFFFF',
+      '--app-table-header-bg': '#F8FAFC',
+      '--app-table-footer-bg': '#F8FAFC',
+      '--app-table-hover-bg': '#F1F5F9',
+      '--app-table-text': '#475569',
+      '--app-table-heading': '#64748B',
 
       // Brand
       '--app-primary': '#1D4ED8',
@@ -116,6 +142,12 @@ export const themes = {
       '--app-ink': '#F8FAFC',
       '--app-muted': '#94A3B8',
       '--app-line': '#1E293B',
+      '--app-table-bg': '#0F172A',
+      '--app-table-header-bg': '#111827',
+      '--app-table-footer-bg': '#111827',
+      '--app-table-hover-bg': '#1E293B',
+      '--app-table-text': '#CBD5E1',
+      '--app-table-heading': '#94A3B8',
 
       // Brand
       '--app-primary': '#3B82F6',
@@ -180,6 +212,11 @@ export function ThemeProvider({ children, defaultTheme = 'light', defaultFontSiz
     document.documentElement.style.setProperty('--app-nav-label-font-size', fontSize.navLabel)
     document.documentElement.style.setProperty('--app-brand-font-size', fontSize.brand)
     document.documentElement.style.setProperty('--app-topbar-font-size', fontSize.topbar)
+    document.documentElement.style.setProperty('--app-tab-font-size', fontSize.tab)
+    document.documentElement.style.setProperty('--app-tab-index-font-size', fontSize.tabIndex)
+    document.documentElement.style.setProperty('--app-table-font-size', fontSize.table)
+    document.documentElement.style.setProperty('--app-table-header-font-size', fontSize.tableHeader)
+    document.documentElement.style.setProperty('--app-table-footer-font-size', fontSize.tableFooter)
     document.documentElement.style.setProperty('--app-page-title-font-size', fontSize.pageTitle)
     document.documentElement.style.setProperty('--app-page-description-font-size', fontSize.pageDescription)
     document.documentElement.style.setProperty('--app-page-eyebrow-font-size', fontSize.pageEyebrow)

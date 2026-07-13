@@ -61,6 +61,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [pmTab, setPmTab] = useState('All')
+  const [sort, setSort] = useState({ key: 'pmNumber', direction: 'asc' })
 
   const jobPlans = useMemo(() => [
     ...new Map(jobTasks
@@ -75,9 +76,19 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
 
   const selected = plans.find(plan => plan.pmNumber === selectedId)
   const visible = plans.filter(plan => (pmTab === 'All' || plan.pmStatus === pmTab) && Object.values(plan).some(value => String(value).toLowerCase().includes(query.toLowerCase())))
-  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize))
+  const sorted = [...visible].sort((a, b) => {
+    const left = a[sort.key] ?? ''
+    const right = b[sort.key] ?? ''
+    const result = String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' })
+    return sort.direction === 'asc' ? result : -result
+  })
+  const toggleSort = key => {
+    setSort(current => current.key === key ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' })
+    setPage(1)
+  }
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
   const currentPage = Math.min(page, pageCount)
-  const visiblePage = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const visiblePage = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
   const valid = Boolean(form.pmNumber && form.description && (form.asset || form.location) && form.jobPlan && form.startDate && form.frequency && form.freqUnit)
   const save = () => {
@@ -171,6 +182,8 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         onOpen={openPlan}
         onPageChange={setPage}
         onPageSizeChange={value => { setPageSize(value); setPage(1) }}
+        sort={sort}
+        onSort={toggleSort}
       />
     </section>
   )

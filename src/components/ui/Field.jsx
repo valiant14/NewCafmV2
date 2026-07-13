@@ -11,7 +11,7 @@ export default function Field({ label, value = '', required, locked, type = 'tex
   )
 
   return (
-    <label className="wo-field group grid min-w-0 gap-2">
+    <label className="group grid min-w-0 gap-2">
       <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[#617067]">
         {label}
         {required && <b className="text-[#c16f42]">*</b>}
