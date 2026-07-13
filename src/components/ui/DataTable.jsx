@@ -80,16 +80,18 @@ export default function DataTable({
       {showFooter && pagination && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eef1ed] px-4 py-3 text-[10px] text-[#7d8781]">
           <div>Showing <strong className="text-[#405047]">{filtered.length ? start + 1 : 0}-{Math.min(end, filtered.length)}</strong> of <strong className="text-[#405047]">{filtered.length}</strong></div>
-          <label className="flex items-center gap-2">
-            Rows
-            <select className="h-8 rounded-lg border border-[#dfe5df] bg-white px-2 text-[10px]" value={size} onChange={event => setSize(Number(event.target.value))}>
-              {pageSizeOptions.map(option => <option value={option} key={option}>{option}</option>)}
-            </select>
-          </label>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="h-8 px-3 text-[10px]" disabled={currentPage === 1} onClick={() => setPage(value => Math.max(1, value - 1))}>Previous</Button>
-            <span>Page {currentPage} of {pageCount}</span>
-            <Button variant="outline" className="h-8 px-3 text-[10px]" disabled={currentPage === pageCount} onClick={() => setPage(value => Math.min(pageCount, value + 1))}>Next</Button>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+            <label className="flex items-center gap-2">
+              Rows
+              <select className="h-8 rounded-lg border border-[#dfe5df] bg-white px-2 text-[10px]" value={size} onChange={event => setSize(Number(event.target.value))}>
+                {pageSizeOptions.map(option => <option value={option} key={option}>{option}</option>)}
+              </select>
+            </label>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" className="h-8 px-3 text-[10px]" disabled={currentPage === 1} onClick={() => setPage(value => Math.max(1, value - 1))}>Previous</Button>
+              <span>Page {currentPage} of {pageCount}</span>
+              <Button variant="outline" className="h-8 px-3 text-[10px]" disabled={currentPage === pageCount} onClick={() => setPage(value => Math.min(pageCount, value + 1))}>Next</Button>
+            </div>
           </div>
         </div>
       )}

@@ -23,15 +23,17 @@ export default function PmScheduleTable({ rows, currentPage, pageSize, pageCount
       ))}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eceee9] bg-[#fbfcfa] px-4 py-3 text-xs text-[#66746c]">
         <div>Showing <strong>{from}-{to}</strong> of <strong>{total}</strong></div>
-        <label className="flex items-center gap-2">Rows
-          <select className="h-9 rounded-lg border border-[#dfe5df] bg-white px-2" value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}>
-            <option value="10">10</option><option value="25">25</option><option value="50">50</option>
-          </select>
-        </label>
-        <div className="flex items-center gap-2">
-          <button className="rounded-lg border border-[#dfe5df] bg-white px-3 py-2 disabled:opacity-50" disabled={currentPage === 1} onClick={() => onPageChange(Math.max(1, currentPage - 1))}>Previous</button>
-          <span>Page {currentPage} of {pageCount}</span>
-          <button className="rounded-lg border border-[#dfe5df] bg-white px-3 py-2 disabled:opacity-50" disabled={currentPage === pageCount} onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))}>Next</button>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+          <label className="flex items-center gap-2">Rows
+            <select className="h-9 rounded-lg border border-[#dfe5df] bg-white px-2" value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}>
+              <option value="10">10</option><option value="25">25</option><option value="50">50</option>
+            </select>
+          </label>
+          <div className="flex items-center gap-2">
+            <button className="rounded-lg border border-[#dfe5df] bg-white px-3 py-2 disabled:opacity-50" disabled={currentPage === 1} onClick={() => onPageChange(Math.max(1, currentPage - 1))}>Previous</button>
+            <span>Page {currentPage} of {pageCount}</span>
+            <button className="rounded-lg border border-[#dfe5df] bg-white px-3 py-2 disabled:opacity-50" disabled={currentPage === pageCount} onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))}>Next</button>
+          </div>
         </div>
       </div>
     </section>
