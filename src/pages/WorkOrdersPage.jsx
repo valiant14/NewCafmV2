@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { AlertTriangle, Check, ChevronRight, Plus, Printer, X } from 'lucide-react'
+import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ImportNotice from '../components/ui/ImportNotice'
 import { Field, Section } from '../components/ui/FormControls'
 import PageHeader from '../components/ui/PageHeader'
 
@@ -26,6 +28,7 @@ export default function WorkOrdersPage({ rows, assets, onCreate, EditorComponent
   })
   const [typeFilter, setTypeFilter] = useState('All')
   const [creating,setCreating]=useState(()=>window.location.pathname==='/work-orders/new')
+  const [imported,setImported]=useState('')
   const [page,setPage]=useState(1)
   const [pageSize,setPageSize]=useState(10)
   const orderType = order => (order['WORK TYPE '] || order['WORK TYPE  '] || 'PM').trim()
@@ -41,7 +44,8 @@ export default function WorkOrdersPage({ rows, assets, onCreate, EditorComponent
   const create=form=>{const created=onCreate(form);setCreating(false);setSelected(created);window.history.replaceState({},'',`/work-orders/${created.WORKORDER}`)}
 
   const listView = <div className="work-orders-index">
-    <PageHeader eyebrow="MAINTENANCE OPERATIONS" title="Work Orders" description="Track, plan, execute, and close every maintenance work order." actions={<div className="heading-actions"><button className="outline"><Printer size={16} /> Print list</button><button className="primary" onClick={openCreate}><Plus size={17} />New work order</button></div>} />
+    <PageHeader eyebrow="MAINTENANCE OPERATIONS" title="Work Orders" description="Track, plan, execute, and close every maintenance work order." actions={<div className="heading-actions"><ExcelImportButton fileName={imported} onFile={setImported} /><button className="outline"><Printer size={16} /> Print list</button><button className="primary" onClick={openCreate}><Plus size={17} />New work order</button></div>} />
+    <ImportNotice fileName={imported} subject="work order" onClear={()=>setImported('')} />
     <div className="sub-tabs work-order-tabs">{['All', 'PM', 'CM', 'Incident'].map(type => <button key={type} className={typeFilter === type ? 'active' : ''} onClick={() => {setTypeFilter(type);setPage(1)}}>{type === 'All' ? 'All Work Orders' : type}<b>{count(type)}</b></button>)}</div>
     <section className="panel register work-order-table tracking-columns"><div className="table-shell"><table><thead><tr><th>WORKORDER</th><th>DESCRIPITION</th><th>LOCATION</th><th>LOCATION PRIORTY</th><th>ASSET</th><th>STATUS</th><th>WORK TYPE</th><th>STATUS DESCRIPITION</th><th>DEPARTMENT</th><th>SUB DEPARTMENT</th><th>SUB DEPARTMENT NAME</th><th>TARGET START</th><th>TARGET FINISH</th><th>ACTUAL START</th><th>ACTUAL FINISH</th><th>REPORTED DATE</th><th>PRIORTY</th><th>SITE</th><th>JOP PLAN</th><th>DURATION</th><th>PM</th><th /></tr></thead><tbody>{paginated.map((order, index) => <tr key={index} className="click-row" onClick={() => openOrder(order)}><td><strong className="mono">#{order.WORKORDER}</strong></td><td>{order['DESCRIPITION '] || '—'}</td><td>{order['LOCATION '] || '—'}</td><td><Badge tone={String(order['LOCATION PRIORTY']||'').trim()==='VIP'?'purple':'neutral'}>{order['LOCATION PRIORTY'] || '—'}</Badge></td><td><strong>{order.ASSET || '—'}</strong></td><td><Badge tone="orange">{order.STATUS || '—'}</Badge></td><td><Badge tone="blue">{orderType(order)}</Badge></td><td>{order['STATUS DESCRIPITION'] || '—'}</td><td>{order['DEPARTMENT '] || '—'}</td><td>{order['SUB DEPARTMENT '] || '—'}</td><td>{order['SUB DEPARTMENT  NAME'] || '—'}</td><td>{excelDate(order['TARGET START '])}</td><td>{excelDate(order['TARGET FINISH '])}</td><td>{excelDate(order['ACTUAL START '])}</td><td>{excelDate(order['ACTUAL FINISH '])}</td><td>{excelDate(order['REPORTED DATE '])}</td><td>{order.PRIORTY || '—'}</td><td>{order.SITE || '—'}</td><td>{order['JOP PLAN '] || '—'}</td><td>{order['DURATION '] || '—'}</td><td>{order['PM '] || '—'}</td><td><ChevronRight size={17} /></td></tr>)}</tbody></table></div><div className="pagination-bar"><div>Showing <strong>{filtered.length?((currentPage-1)*pageSize)+1:0}–{Math.min(currentPage*pageSize,filtered.length)}</strong> of <strong>{filtered.length}</strong></div><label>Rows<select value={pageSize} onChange={event=>{setPageSize(Number(event.target.value));setPage(1)}}><option value="10">10</option><option value="25">25</option><option value="50">50</option></select></label><div className="page-controls"><button disabled={currentPage===1} onClick={()=>setPage(value=>Math.max(1,value-1))}>Previous</button><span>Page {currentPage} of {pageCount}</span><button disabled={currentPage===pageCount} onClick={()=>setPage(value=>Math.min(pageCount,value+1))}>Next</button></div></div></section>
   </div>

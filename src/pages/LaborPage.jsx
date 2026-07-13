@@ -5,6 +5,8 @@ import AddLaborModal from '../components/labor/AddLaborModal'
 import LaborDetailPage from '../components/labor/LaborDetailPage'
 import Badge from '../components/ui/Badge'
 import DataTable from '../components/ui/DataTable'
+import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ImportNotice from '../components/ui/ImportNotice'
 import MasterSummary from '../components/ui/MasterSummary'
 import PageHeader from '../components/ui/PageHeader'
 
@@ -23,6 +25,7 @@ export default function LaborPage() {
   const [rows, setRows] = useState(laborSeed)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
+  const [imported, setImported] = useState('')
   const routeId = decodeURIComponent(window.location.pathname.split('/labor/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.personId === routeId) || null)
 
@@ -54,10 +57,15 @@ export default function LaborPage() {
         eyebrow="RESOURCE MASTER DATA"
         title="Labor"
         description="Maintain technicians, craft codes, departments, shifts, and availability."
-        actionLabel="Add labor"
-        actionIcon={Plus}
-        onAction={() => setAdding(true)}
+        actions={(
+          <div className="heading-actions">
+            <ExcelImportButton fileName={imported} onFile={setImported} />
+            <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add labor</button>
+          </div>
+        )}
       />
+
+      <ImportNotice fileName={imported} subject="labor" onClear={() => setImported('')} />
 
       <MasterSummary
         icon={Users}

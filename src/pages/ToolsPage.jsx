@@ -5,6 +5,8 @@ import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
 import Badge from '../components/ui/Badge'
 import DataTable from '../components/ui/DataTable'
+import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ImportNotice from '../components/ui/ImportNotice'
 import MasterSummary from '../components/ui/MasterSummary'
 import PageHeader from '../components/ui/PageHeader'
 
@@ -22,6 +24,7 @@ export default function ToolsPage() {
   const [rows, setRows] = useState(toolSeed)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
+  const [imported, setImported] = useState('')
   const routeId = decodeURIComponent(window.location.pathname.split('/tools/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.toolNumber === routeId) || null)
 
@@ -54,10 +57,15 @@ export default function ToolsPage() {
         eyebrow="RESOURCE MASTER DATA"
         title="Tools & Equipment"
         description="Maintain tools, equipment locations, quantities, status, and inspections."
-        actionLabel="Add tool or equipment"
-        actionIcon={Plus}
-        onAction={() => setAdding(true)}
+        actions={(
+          <div className="heading-actions">
+            <ExcelImportButton fileName={imported} onFile={setImported} />
+            <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add tool or equipment</button>
+          </div>
+        )}
       />
+
+      <ImportNotice fileName={imported} subject="tools and equipment" onClear={() => setImported('')} />
 
       <MasterSummary
         icon={Wrench}

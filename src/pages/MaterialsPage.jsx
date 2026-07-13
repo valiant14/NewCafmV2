@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { PackageCheck, Plus } from 'lucide-react'
 import materialSeed from '../data/materials.json'
 import AddMaterialModal from '../components/materials/AddMaterialModal'
 import MaterialDetailPage from '../components/materials/MaterialDetailPage'
