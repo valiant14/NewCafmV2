@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, CalendarClock, Check, ChevronRight, FileSpreadsheet, Plus, Search, Settings2, Sparkles, Upload, X } from 'lucide-react'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import { DetailHeader, DetailTabs, InfoCard, ProfileStrip } from '../components/ui/DetailScaffold'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import pmSeed from '../data/pmSchedules.json'
