@@ -1,5 +1,6 @@
-﻿import { Bell, ChevronRight, Command, LogOut, Menu, X } from 'lucide-react'
+﻿import { Bell, ChevronRight, LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import sederLogo from '../../Assets/seder-logo.svg'
 import { useAuth } from '../../providers/AuthProvider'
 import Button from '../ui/Button'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
@@ -25,13 +26,7 @@ export default function AppShell({
     <div className="app-shell min-h-screen bg-[var(--app-bg)] text-[var(--app-ink)] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
       <aside className={`sidebar fixed inset-y-0 left-0 z-40 flex w-[248px] -translate-x-full flex-col bg-[var(--app-sidebar-bg)] px-4 py-6 text-[var(--app-sidebar-text)] transition lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${mobileOpen ? 'open translate-x-0 shadow-2xl' : ''}`}>
         <div className="brand mb-8 flex items-center gap-3 px-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--app-sidebar-accent)] text-[var(--app-sidebar-accent-ink)]">
-            <Command size={20} />
-          </div>
-          <span className="font-heading text-[length:var(--app-brand-font-size)] font-extrabold tracking-wide">
-            SEDER
-            <strong className="block text-[10px] tracking-[0.18em] text-[var(--app-sidebar-muted)]">CAFM</strong>
-          </span>
+          <img src={sederLogo} alt="Seder" className="h-12 w-auto max-w-[150px] object-contain" />
           <button className="mobile-close ml-auto text-white lg:hidden" onClick={onMobileClose} aria-label="Close menu">
             <X />
           </button>
@@ -139,6 +134,10 @@ export default function AppShell({
     </div>
   )
 }
+
+
+
+
 
 
 

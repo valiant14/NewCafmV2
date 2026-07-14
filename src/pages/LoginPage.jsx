@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { LockKeyhole, LogIn } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import Button from '../components/ui/Button'
+import sederLogo from '../Assets/seder-logo.png'
 import { useAuth } from '../providers/AuthProvider'
 
 const inputClass = 'h-11 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-field-bg)] px-3 text-sm text-[var(--app-ink)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-[var(--app-primary)]'
@@ -18,10 +19,8 @@ export default function LoginPage() {
     <main className="grid min-h-screen place-items-center bg-[var(--app-bg)] p-4 text-[var(--app-ink)]">
       <form onSubmit={submit} className="w-full max-w-sm rounded-[28px] border border-[var(--app-line)] bg-[var(--app-panel)] p-6 shadow-[0_24px_70px_rgba(20,35,29,.12)]">
         <div className="mb-6 text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]">
-              <LockKeyhole size={22} />
-          </span>
-          <p className="mt-4 text-[9px] font-extrabold uppercase tracking-[.18em] text-[var(--app-muted)]">Seder CAFM</p>
+          <img src={sederLogo} alt="Seder" className="mx-auto h-20 w-20 object-contain" />
+          <p className="mt-4 text-[9px] font-extrabold uppercase tracking-[.18em] text-[var(--app-muted)]">Secure workspace</p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">Login</h1>
         </div>
 

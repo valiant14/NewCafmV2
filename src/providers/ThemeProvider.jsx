@@ -86,134 +86,198 @@ export const themes = {
   light: {
     name: 'light',
     tokens: {
-      // Base
+      // Base — soft neutral with a subtle blue undertone
       '--app-bg': '#F5F7FA',
       '--app-panel': '#FFFFFF',
-      '--app-ink': '#1F2937',
-      '--app-muted': '#6B7280',
-      '--app-line': '#E5E7EB',
+      '--app-ink': '#172033',
+      '--app-muted': '#667085',
+      '--app-line': '#E2E7EE',
+
+      // Soft surfaces
+      '--app-soft-bg': '#F8FAFC',
+      '--app-soft-bg-hover': '#F0F4F8',
 
       // Tables
       '--app-table-bg': '#FFFFFF',
-      '--app-table-header-bg': '#F8FAFC',
-      '--app-table-footer-bg': '#F8FAFC',
-      '--app-table-hover-bg': '#F1F5F9',
-      '--app-table-text': '#374151',
-      '--app-table-heading': '#6B7280',
-      '--app-soft-bg': '#F8FAFC',
-      '--app-soft-bg-hover': '#F1F5F9',
-      '--app-field-border': '#D1D5DB',
-      '--app-field-focus': '#2563EB',
-      '--app-field-focus-ring': 'rgba(37, 99, 235, .14)',
-      '--app-required': '#D97706',
-      '--app-badge-neutral-bg': '#F3F4F6',
-      '--app-badge-neutral-text': '#4B5563',
-      '--app-badge-green-bg': '#DCFCE7',
-      '--app-badge-green-text': '#166534',
-      '--app-badge-orange-bg': '#FFEDD5',
-      '--app-badge-orange-text': '#9A3412',
-      '--app-badge-blue-bg': '#DBEAFE',
-      '--app-badge-blue-text': '#1D4ED8',
-      '--app-badge-purple-bg': '#EDE9FE',
-      '--app-badge-purple-text': '#6D28D9',
+      '--app-table-header-bg': '#F7F9FC',
+      '--app-table-footer-bg': '#F7F9FC',
+      '--app-table-hover-bg': '#F0F5FA',
+      '--app-table-selected-bg': '#E8F1FA',
+      '--app-table-text': '#344054',
+      '--app-table-heading': '#5D6B82',
+      '--app-table-border': '#E2E7EE',
 
-      // Brand
-      '--app-primary': '#2563EB',
-      '--app-primary-hover': '#1D4ED8',
-      '--app-accent': '#60A5FA',
+      // Brand — restrained mineral blue
+      '--app-primary': '#185A8D',
+      '--app-primary-hover': '#124A76',
+      '--app-primary-active': '#0E3D63',
+      '--app-primary-soft': '#E3F0F8',
+      '--app-primary-soft-hover': '#D6E9F5',
+      '--app-primary-ink': '#FFFFFF',
+      '--app-accent': '#58A6CF',
 
-      // Sidebar
-      '--app-sidebar-bg': '#1F2937',
-      '--app-sidebar-panel': '#273549',
-      '--app-sidebar-hover': '#374151',
-      '--app-sidebar-active': '#2563EB',
-      '--app-sidebar-text': '#F9FAFB',
-      '--app-sidebar-muted': '#9CA3AF',
-      '--app-sidebar-accent': '#93C5FD',
-      '--app-sidebar-accent-ink': '#111827',
+      // Forms
+      '--app-field-bg': '#FFFFFF',
+      '--app-field-text': '#172033',
+      '--app-field-placeholder': '#98A2B3',
+      '--app-field-border': '#C9D2DE',
+      '--app-field-border-hover': '#98A8BB',
+      '--app-field-focus': '#2377A9',
+      '--app-field-focus-ring': 'rgba(35, 119, 169, 0.16)',
+      '--app-field-disabled-bg': '#F2F4F7',
+      '--app-field-disabled-text': '#98A2B3',
+      '--app-required': '#B45309',
 
-      // Legacy
-      '--ink': '#1F2937',
-      '--muted': '#6B7280',
-      '--line': '#E5E7EB',
-      '--panel': '#FFFFFF',
+      // Sidebar — deep navy, not purple
+      '--app-sidebar-bg': '#15243A',
+      '--app-sidebar-panel': '#1B2D47',
+      '--app-sidebar-hover': '#243A57',
+      '--app-sidebar-active': '#2377A9',
+      '--app-sidebar-active-soft': '#1D4F73',
+      '--app-sidebar-text': '#F7FAFC',
+      '--app-sidebar-muted': '#AAB8CA',
+      '--app-sidebar-line': '#2A405E',
+      '--app-sidebar-accent': '#72B7D8',
+      '--app-sidebar-accent-ink': '#10263A',
 
-      '--green': '#2563EB',
-      '--lime': '#93C5FD',
-      '--orange': '#F59E0B',
+      // Neutral badge
+      '--app-badge-neutral-bg': '#EEF1F5',
+      '--app-badge-neutral-text': '#475467',
+
+      // Success badge
+      '--app-badge-green-bg': '#E5F5EC',
+      '--app-badge-green-text': '#24704A',
+
+      // Warning badge
+      '--app-badge-orange-bg': '#FFF1DC',
+      '--app-badge-orange-text': '#9A5411',
+
+      // Information badge
+      '--app-badge-blue-bg': '#E3F0F8',
+      '--app-badge-blue-text': '#185A8D',
+
+      // Secondary badge
+      '--app-badge-purple-bg': '#ECECF6',
+      '--app-badge-purple-text': '#50547A',
 
       // Status
-      '--success': '#16A34A',
-      '--warning': '#D97706',
-      '--danger': '#DC2626',
-      '--info': '#0284C7'
+      '--success': '#2E7D55',
+      '--success-soft': '#E5F5EC',
+      '--warning': '#B86A16',
+      '--warning-soft': '#FFF1DC',
+      '--danger': '#C33D4A',
+      '--danger-soft': '#FBEAEC',
+      '--info': '#2377A9',
+      '--info-soft': '#E3F0F8',
+
+      // Legacy compatibility
+      '--ink': '#172033',
+      '--muted': '#667085',
+      '--line': '#E2E7EE',
+      '--panel': '#FFFFFF',
+
+      '--green': '#185A8D',
+      '--lime': '#72B7D8',
+      '--orange': '#B86A16'
     }
   },
 
   dark: {
     name: 'dark',
     tokens: {
-      // Base
-      '--app-bg': '#111827',
-      '--app-panel': '#1F2937',
-      '--app-ink': '#F9FAFB',
-      '--app-muted': '#9CA3AF',
-      '--app-line': '#374151',
+      // Base — neutral charcoal navy
+      '--app-bg': '#0E1622',
+      '--app-panel': '#15202F',
+      '--app-ink': '#EDF2F7',
+      '--app-muted': '#9DAABD',
+      '--app-line': '#29384B',
+
+      // Soft surfaces
+      '--app-soft-bg': '#192638',
+      '--app-soft-bg-hover': '#213147',
 
       // Tables
-      '--app-table-bg': '#1F2937',
-      '--app-table-header-bg': '#273549',
-      '--app-table-footer-bg': '#273549',
-      '--app-table-hover-bg': '#374151',
-      '--app-table-text': '#E5E7EB',
-      '--app-table-heading': '#9CA3AF',
-      '--app-soft-bg': '#273549',
-      '--app-soft-bg-hover': '#374151',
-      '--app-field-border': '#4B5563',
-      '--app-field-focus': '#60A5FA',
-      '--app-field-focus-ring': 'rgba(96, 165, 250, .18)',
-      '--app-required': '#FBBF24',
-      '--app-badge-neutral-bg': '#374151',
-      '--app-badge-neutral-text': '#D1D5DB',
-      '--app-badge-green-bg': '#14532D',
-      '--app-badge-green-text': '#BBF7D0',
-      '--app-badge-orange-bg': '#7C2D12',
-      '--app-badge-orange-text': '#FED7AA',
-      '--app-badge-blue-bg': '#1E3A8A',
-      '--app-badge-blue-text': '#BFDBFE',
-      '--app-badge-purple-bg': '#4C1D95',
-      '--app-badge-purple-text': '#DDD6FE',
+      '--app-table-bg': '#15202F',
+      '--app-table-header-bg': '#192638',
+      '--app-table-footer-bg': '#192638',
+      '--app-table-hover-bg': '#1E2E42',
+      '--app-table-selected-bg': '#193B55',
+      '--app-table-text': '#D4DCE7',
+      '--app-table-heading': '#9DAABD',
+      '--app-table-border': '#29384B',
 
-      // Brand
-      '--app-primary': '#60A5FA',
-      '--app-primary-hover': '#3B82F6',
-      '--app-accent': '#93C5FD',
+      // Brand — brighter only where interaction requires it
+      '--app-primary': '#5AA9D1',
+      '--app-primary-hover': '#72B7D8',
+      '--app-primary-active': '#86C3DF',
+      '--app-primary-soft': '#193B55',
+      '--app-primary-soft-hover': '#204A68',
+      '--app-primary-ink': '#0B1A26',
+      '--app-accent': '#86C3DF',
+
+      // Forms
+      '--app-field-bg': '#111C2A',
+      '--app-field-text': '#EDF2F7',
+      '--app-field-placeholder': '#758398',
+      '--app-field-border': '#34465C',
+      '--app-field-border-hover': '#536981',
+      '--app-field-focus': '#72B7D8',
+      '--app-field-focus-ring': 'rgba(114, 183, 216, 0.20)',
+      '--app-field-disabled-bg': '#192432',
+      '--app-field-disabled-text': '#758398',
+      '--app-required': '#F0B35A',
 
       // Sidebar
-      '--app-sidebar-bg': '#0F172A',
-      '--app-sidebar-panel': '#1E293B',
-      '--app-sidebar-hover': '#334155',
-      '--app-sidebar-active': '#3B82F6',
-      '--app-sidebar-text': '#F9FAFB',
-      '--app-sidebar-muted': '#94A3B8',
-      '--app-sidebar-accent': '#60A5FA',
-      '--app-sidebar-accent-ink': '#FFFFFF',
+      '--app-sidebar-bg': '#0B1420',
+      '--app-sidebar-panel': '#111E2E',
+      '--app-sidebar-hover': '#1B2C41',
+      '--app-sidebar-active': '#276F9B',
+      '--app-sidebar-active-soft': '#193B55',
+      '--app-sidebar-text': '#F5F8FC',
+      '--app-sidebar-muted': '#94A4B8',
+      '--app-sidebar-line': '#26384D',
+      '--app-sidebar-accent': '#72B7D8',
+      '--app-sidebar-accent-ink': '#091722',
 
-      // Legacy
-      '--ink': '#F9FAFB',
-      '--muted': '#9CA3AF',
-      '--line': '#374151',
-      '--panel': '#1F2937',
+      // Neutral badge
+      '--app-badge-neutral-bg': '#293545',
+      '--app-badge-neutral-text': '#D1D9E4',
 
-      '--green': '#60A5FA',
-      '--lime': '#93C5FD',
-      '--orange': '#FBBF24',
+      // Success badge
+      '--app-badge-green-bg': '#173D2C',
+      '--app-badge-green-text': '#93D7B1',
+
+      // Warning badge
+      '--app-badge-orange-bg': '#4B3218',
+      '--app-badge-orange-text': '#F2C47B',
+
+      // Information badge
+      '--app-badge-blue-bg': '#193B55',
+      '--app-badge-blue-text': '#9DD5EE',
+
+      // Secondary badge
+      '--app-badge-purple-bg': '#303149',
+      '--app-badge-purple-text': '#C9CAE5',
 
       // Status
-      '--success': '#4ADE80',
-      '--warning': '#FBBF24',
-      '--danger': '#F87171',
-      '--info': '#38BDF8'
+      '--success': '#6FC394',
+      '--success-soft': '#173D2C',
+      '--warning': '#E5AD58',
+      '--warning-soft': '#4B3218',
+      '--danger': '#E77C86',
+      '--danger-soft': '#4A252B',
+      '--info': '#72B7D8',
+      '--info-soft': '#193B55',
+
+      // Legacy compatibility
+      '--ink': '#EDF2F7',
+      '--muted': '#9DAABD',
+      '--line': '#29384B',
+      '--panel': '#15202F',
+
+      '--green': '#5AA9D1',
+      '--lime': '#86C3DF',
+      '--orange': '#E5AD58'
     }
   }
 }

@@ -95,7 +95,7 @@ main,
 }
 
 .sidebar {
-  background: var(--app-sidebar-bg, #312e81) !important;
+  background: var(--app-sidebar-bg, #2e3380) !important;
   color: var(--app-sidebar-text, #eef2ff) !important;
 }
 
@@ -118,7 +118,7 @@ main,
 }
 
 .sidebar nav button.active {
-  background: var(--app-sidebar-active, #4f46e5) !important;
+  background: var(--app-sidebar-active, #007cd2) !important;
   color: #fff !important;
   box-shadow: none !important;
   border-left-color: var(--app-sidebar-accent, #a5b4fc) !important;
