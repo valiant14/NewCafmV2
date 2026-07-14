@@ -17,6 +17,7 @@ import SettingsPage from './pages/SettingsPage'
 import IncidentsPage from './pages/IncidentsPage'
 import RolesPermissionsPage from './pages/RolesPermissionsPage'
 import MetersPage from './pages/MetersPage'
+import LoginPage from './pages/LoginPage'
 import AppShell from './components/layout/AppShell'
 import WorkOrderDocumentsTab from './components/work-orders/WorkOrderDocumentsTab'
 import WorkOrderPrintReport from './components/work-orders/WorkOrderPrintReport'
@@ -30,6 +31,7 @@ import WorkOrderHeader, { workOrderOutlineButtonClass, workOrderPrimaryButtonCla
 import WorkOrderTabs from './components/work-orders/WorkOrderTabs'
 import { navigationItems, pathForPage, routeToPage } from './config/navigation'
 import { assets, workOrders, pmRecords, jobTasks, failureCodes, locations, statusMatrix, failureClassOptions, uniqueCodeOptions, excelDate, toDateTimeInput, slaBreached } from './data/cafmData'
+import { useAuth } from './providers/AuthProvider'
 
 
 const buildWorkOrderNotifications = rows => {
@@ -182,6 +184,7 @@ function WorkOrderEditor({ order, onClose, page = false }) {
 }
 
 export default function App() {
+  const { isAuthenticated } = useAuth()
   const [active, setActive] = useState(()=>routeToPage(window.location.pathname))
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -233,6 +236,8 @@ export default function App() {
     'Roles & Permissions': <RolesPermissionsPage/>,
     'Settings': <SettingsPage/>
   }
+  if (!isAuthenticated) return <LoginPage />
+
   return (
     <AppShell
       active={active}

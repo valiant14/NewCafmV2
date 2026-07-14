@@ -1,4 +1,4 @@
-﻿import { Bell, ChevronRight, Command, Menu, MoreHorizontal, X } from 'lucide-react'
+﻿import { Bell, ChevronRight, Command, LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../../providers/AuthProvider'
 import Button from '../ui/Button'
@@ -18,7 +18,7 @@ export default function AppShell({
   onOpenWorkOrders,
   children
 }) {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   return (
@@ -63,7 +63,7 @@ export default function AppShell({
               <strong className="truncate text-xs">{user.name}</strong>
               <span className="truncate text-[10px] text-[var(--app-sidebar-muted)]">{user.role}</span>
             </div>
-            <MoreHorizontal size={18} className="text-[var(--app-sidebar-muted)]" />
+            <button className="grid h-8 w-8 place-items-center rounded-lg text-[var(--app-sidebar-muted)] transition hover:bg-[var(--app-sidebar-hover)] hover:text-[var(--app-sidebar-text)]" onClick={logout} title="Logout" aria-label="Logout"><LogOut size={16} /></button>
           </div>
         </div>
       </aside>
@@ -139,5 +139,6 @@ export default function AppShell({
     </div>
   )
 }
+
 
 
