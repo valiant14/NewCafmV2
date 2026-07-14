@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as XLSX from 'xlsx'
 import { AlertTriangle, CheckCircle2, FileSpreadsheet } from 'lucide-react'
 import Button from './Button'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from './ModalFrame'
@@ -61,18 +62,15 @@ export default function ExcelImportButton({ fileName, onFile, onImport, label = 
       return
     }
 
-    if (extension !== 'csv') {
-      setResult({
-        type: 'error',
-        title: 'Excel parser needed',
-        message: 'Direct row parsing is enabled for CSV files. Please export this workbook as CSV, then import it again.',
-        fileName: file.name
-      })
-      return
-    }
-
     try {
-      const rows = parseCsv(await file.text())
+      let rows = []
+      if (extension === 'csv') {
+        rows = parseCsv(await file.text())
+      } else {
+        const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true })
+        const sheet = workbook.Sheets[workbook.SheetNames[0]]
+        rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false })
+      }
       if (!rows.length) throw new Error('No data rows were found in the file.')
       onFile?.(file.name, rows)
       onImport?.(rows, file)

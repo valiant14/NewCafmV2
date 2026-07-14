@@ -4,6 +4,7 @@ import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
@@ -32,6 +33,7 @@ const emptyLocation = {
   builiding: '',
   'builiding category': ''
 }
+const templateHeaders = Object.keys(emptyLocation)
 
 export default function LocationsPage({ initialLocations = [] }) {
   const [imported, setImported] = useState('')
@@ -53,7 +55,8 @@ export default function LocationsPage({ initialLocations = [] }) {
         description="Manage the facility hierarchy across sites and buildings."
         actions={(
           <div className="flex items-center gap-2">
-            <ExcelImportButton fileName={imported} onFile={setImported} />
+            <ExcelTemplateButton headers={templateHeaders} fileName="Locations_Template.xlsx" />
+            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setLocations(rows)} />
             <Button onClick={() => setModalOpen(true)}><Plus size={17} />Add location</Button>
           </div>
         )}

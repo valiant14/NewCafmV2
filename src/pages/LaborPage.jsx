@@ -7,6 +7,7 @@ import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
@@ -21,6 +22,7 @@ const empty = {
   shift: 'Day',
   availability: 'Available'
 }
+const templateHeaders = Object.keys(empty)
 
 export default function LaborPage() {
   const [rows, setRows] = useState(laborSeed)
@@ -62,7 +64,8 @@ export default function LaborPage() {
         description="Maintain technicians, craft codes, departments, shifts, and availability."
         actions={(
           <div className="flex items-center gap-2">
-            <ExcelImportButton fileName={imported} onFile={setImported} />
+            <ExcelTemplateButton headers={templateHeaders} fileName="Labor_Template.xlsx" />
+            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(rows)} />
             <Button onClick={() => setAdding(true)}><Plus size={17} />Add labor</Button>
           </div>
         )}

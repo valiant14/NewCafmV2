@@ -5,6 +5,7 @@ import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import { ModalOverlay } from '../components/ui/ModalFrame'
@@ -42,6 +43,7 @@ const blankRequest = () => ({
   failureCode: '',
   status: 'NEW'
 })
+const templateHeaders = Object.keys(blankRequest()).filter(key => key !== 'sr')
 
 export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, failureOptions }) {
   const requestFromPath = () => {
@@ -88,7 +90,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
         eyebrow="REQUEST INTAKE"
         title="Job Requests"
         description="Submit, review, approve, and convert job requests into Corrective Maintenance work orders."
-        actions={<div className="flex items-center gap-2"><ExcelImportButton fileName={imported} onFile={setImported} /><Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={templateHeaders} fileName="Job_Requests_Template.xlsx" /><ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRequests(rows.map((row, index) => ({ ...blankRequest(), ...row, sr: row.sr || `SR-IMPORT-${String(index + 1).padStart(4, '0')}` })))} /><Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button></div>}
       />
       <ImportNotice fileName={imported} subject="job request" onClear={() => setImported('')} />
       <IndexTabs

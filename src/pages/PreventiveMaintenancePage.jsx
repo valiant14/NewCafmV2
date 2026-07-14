@@ -5,6 +5,7 @@ import PmScheduleForm from '../components/preventive-maintenance/PmScheduleForm'
 import PmScheduleTable from '../components/preventive-maintenance/PmScheduleTable'
 import Button from '../components/ui/Button'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import IndexTabs from '../components/ui/IndexTabs'
 import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
@@ -35,6 +36,7 @@ const emptyPlan = {
   pmStatus: 'Active',
   lastGeneratedCycle: ''
 }
+const pmTemplateHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'ROUTE', 'LOCATION', 'JPNUM', 'NEXTDATE', 'LEAD TIME (DAYS)', 'FREQUENCY', 'FREQUNIT', 'PMCOUNTER', 'WORKTYPE', 'WOSTATUS', 'STORELOC', 'SUPERVISOR', 'LEAD', 'PERSONGROUP', 'department', 'sub department']
 
 const normalizeDate = value => {
   if (!value) return ''
@@ -161,7 +163,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         eyebrow="PREVENTIVE MAINTENANCE"
         title="PM Schedule"
         description="Maximo-aligned PM masters and automatic work-order generation."
-        actions={<div className="flex items-center gap-2"><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows); if (imported.length) setPlans(imported) }} /><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" /><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows); if (imported.length) setPlans(imported) }} /><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
       />
 
       {generation && (

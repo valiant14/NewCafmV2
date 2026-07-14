@@ -4,11 +4,14 @@ import CreateWorkOrderModal from '../components/work-orders/CreateWorkOrderModal
 import WorkOrdersTable from '../components/work-orders/WorkOrdersTable'
 import Button from '../components/ui/Button'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 
-export default function WorkOrdersPage({ rows, assets, onCreate, EditorComponent, excelDate }) {
+const workOrderTemplateHeaders = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTION', 'STATUS', 'WORK TYPE ', 'PRIORTY', 'SITE', 'DEPARTMENT ', 'SUB DEPARTMENT  NAME', 'LOCATION ', 'ASSET', 'TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'FAILURE CODE', 'PROBLEM CODE']
+
+export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, EditorComponent, excelDate }) {
   const [selected, setSelected] = useState(() => {
     const id = decodeURIComponent(window.location.pathname.split('/work-orders/')[1] || '')
     return rows.find(order => String(order.WORKORDER) === id) || null
@@ -78,7 +81,7 @@ export default function WorkOrdersPage({ rows, assets, onCreate, EditorComponent
         eyebrow="MAINTENANCE OPERATIONS"
         title="Work Orders"
         description="Track, plan, execute, and close every maintenance work order."
-        actions={<div className="flex items-center gap-2"><ExcelImportButton fileName={imported} onFile={setImported} /><Button variant="outline"><Printer size={16} /> Print list</Button><Button onClick={openCreate}><Plus size={17} />New work order</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={workOrderTemplateHeaders} fileName="Work_Orders_Template.xlsx" /><ExcelImportButton fileName={imported} onFile={setImported} onImport={importedRows => onImportRows?.(importedRows)} /><Button variant="outline"><Printer size={16} /> Print list</Button><Button onClick={openCreate}><Plus size={17} />New work order</Button></div>}
       />
       <ImportNotice fileName={imported} subject="work order" onClear={() => setImported('')} />
       <IndexTabs

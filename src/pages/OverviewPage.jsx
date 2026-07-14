@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Boxes, CalendarClock, ChevronRight, ClipboardList, MoreHorizontal, Plus, ShieldCheck, Sparkles } from 'lucide-react'
+import { AlertTriangle, Boxes, CalendarClock, ChevronRight, ClipboardList, Gauge, MoreHorizontal, Plus, ShieldCheck, Sparkles } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -46,6 +46,21 @@ const Donut = ({ value, label }) => (
 export default function OverviewPage({ onNavigate }) {
   const [imported, setImported] = useState('')
   const operating = assets.filter(asset => asset.status === 'OPERATING').length
+  const now = Date.now()
+  const openOrders = workOrders.filter(order => !['COMP', 'COMPLETED', 'CLOSE', 'CLOSED'].includes(String(order.STATUS || '').toUpperCase()))
+  const overdueOrders = openOrders.filter(order => {
+    const target = excelDate(order['TARGET FINISH '] || order['TARGET START '])
+    const due = target && target !== '-' ? new Date(target).getTime() : null
+    return due && due < now
+  })
+  const pmCount = workOrders.filter(order => String(order['WORK TYPE '] || '').trim() === 'PM').length
+  const cmCount = workOrders.filter(order => String(order['WORK TYPE '] || '').trim() === 'CM').length
+  const slaCompliance = workOrders.length ? Math.round(((workOrders.length - overdueOrders.length) / workOrders.length) * 100) : 100
+  const siteCompliance = [...new Set(workOrders.map(order => order.SITE).filter(Boolean))].slice(0, 4).map(site => {
+    const siteRows = workOrders.filter(order => order.SITE === site)
+    const siteOverdue = overdueOrders.filter(order => order.SITE === site)
+    return { site, value: siteRows.length ? Math.round(((siteRows.length - siteOverdue.length) / siteRows.length) * 100) : 100 }
+  })
 
   return (
     <>
@@ -68,6 +83,28 @@ export default function OverviewPage({ onNavigate }) {
         <Metric label="Assets online" value={`${operating}/${assets.length}`} detail="100% operational" icon={Boxes} tone="green" />
         <Metric label="PM programs" value={pmRecords.length} detail="Recurring schedules" icon={CalendarClock} tone="blue" />
         <Metric label="Failure codes" value={failureCodes.length.toLocaleString()} detail="Searchable library" icon={ShieldCheck} tone="purple" />
+      </section>
+
+      <section className="mb-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Metric label="SLA compliance" value={`${slaCompliance}%`} detail="Based on target finish/start dates" icon={Gauge} tone="green" />
+        <Metric label="SLA violations" value={overdueOrders.length} detail="Open work orders past target" icon={AlertTriangle} tone="orange" />
+        <Metric label="PM vs CM" value={`${pmCount}/${cmCount}`} detail="Preventive compared with corrective" icon={CalendarClock} tone="blue" />
+        <Metric label="Open workload" value={openOrders.length} detail="Waiting, assigned, or in progress" icon={ClipboardList} tone="purple" />
+      </section>
+
+      <section className="mb-7 rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+        <header className="mb-4">
+          <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[#7b8780]">SLA BY SITE</p>
+          <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Site-wise SLA compliance</h2>
+        </header>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {siteCompliance.map(item => (
+            <div className="rounded-2xl border border-[var(--app-line)] bg-[#fbfcfa] p-4" key={item.site}>
+              <div className="mb-3 flex items-center justify-between text-sm"><strong>{item.site}</strong><span>{item.value}%</span></div>
+              <div className="h-2 overflow-hidden rounded-full bg-[#e8eee9]"><span className="block h-full rounded-full bg-[var(--app-primary)]" style={{ width: `${item.value}%` }} /></div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="mb-7 grid gap-5 xl:grid-cols-[1fr_340px]">

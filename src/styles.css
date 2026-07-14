@@ -145,4 +145,70 @@ main,
   color: var(--app-muted, #727a75) !important;
 }
 
+.wo-print-report {
+  display: none;
+}
+
+@media print {
+  .wo-screen {
+    display: none !important;
+  }
+
+  .wo-print-report {
+    display: block !important;
+    color: #111827;
+    background: white;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+
+  .wo-print-report h1 {
+    font-size: 24px;
+    margin: 0 0 4px;
+  }
+
+  .wo-print-report h2 {
+    border-bottom: 1px solid #d1d5db;
+    font-size: 15px;
+    margin: 18px 0 8px;
+    padding-bottom: 6px;
+  }
+
+  .wo-print-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .wo-print-cell,
+  .wo-print-list li {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 8px;
+  }
+
+  .wo-print-cell span {
+    display: block;
+    color: #6b7280;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .wo-print-cell strong {
+    display: block;
+    font-size: 12px;
+    margin-top: 3px;
+  }
+
+  .wo-print-list {
+    display: grid;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+
 

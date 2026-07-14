@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
@@ -33,7 +34,8 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
         description={description}
         actions={(
           <div className="flex items-center gap-2">
-            <ExcelImportButton fileName={imported} onFile={setImported} />
+            <ExcelTemplateButton headers={modalFields.map(field => field.key)} fileName={`${title.replace(/\s+/g, '_')}_Template.xlsx`} />
+            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRecords(rows)} />
             <Button onClick={() => setModalOpen(true)}><Plus size={17} />{action}</Button>
           </div>
         )}

@@ -37,7 +37,7 @@ export default function CreateWorkOrderModal({ rows, assets, onCancel, onCreate 
         <div className="overflow-auto px-6 py-5">
           {error && <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-orange-800"><div className="flex items-center gap-2"><AlertTriangle size={17} /><span>{error}</span></div><button onClick={() => setError('')}><X size={14} /></button></div>}
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Work Type" value={form.type} required options={['CM', 'Incident']} onChange={update('type')} />
+            <Field label="Work Type" value={form.type} required options={['CM']} onChange={update('type')} />
             <Field label="Priority" value={form.priority} required options={['1 - Emergency', '2 - High', '3 - Medium', '4 - Low']} onChange={update('priority')} />
             <div className="md:col-span-2"><Field label="Description" value={form.description} required onChange={update('description')} /></div>
             <Field label="Site" value={form.site} required onChange={changeSite} suggestions={sites} placeholder="Search or select a site" />
