@@ -1,10 +1,4 @@
 ﻿import { useEffect, useState } from 'react'
-import {
-  Bell, Boxes, CalendarClock, Check, ChevronRight, ClipboardList,
-  Command, Filter, LayoutDashboard, MapPin, Menu, MoreHorizontal,
-  ShieldCheck, SlidersHorizontal, Sparkles, Users, Wrench, X,
-  Printer, RotateCcw, PackageCheck, Gauge, FileText, AlertTriangle
-} from 'lucide-react'
 import departments from './data/departments.json'
 import laborMaster from './data/labor.json'
 import materialMaster from './data/materials.json'
@@ -22,10 +16,6 @@ import OverviewPage from './pages/OverviewPage'
 import SettingsPage from './pages/SettingsPage'
 import IncidentsPage from './pages/IncidentsPage'
 import RolesPermissionsPage from './pages/RolesPermissionsPage'
-import Badge from './components/ui/Badge'
-import Button from './components/ui/Button'
-import Field from './components/ui/Field'
-import Section from './components/ui/Section'
 import AppShell from './components/layout/AppShell'
 import WorkOrderDocumentsTab from './components/work-orders/WorkOrderDocumentsTab'
 import WorkOrderPrintReport from './components/work-orders/WorkOrderPrintReport'
@@ -34,17 +24,12 @@ import WorkOrderActualTab from './components/work-orders/WorkOrderActualTab'
 import WorkOrderFailureTab from './components/work-orders/WorkOrderFailureTab'
 import WorkOrderMaterialRequestsTab from './components/work-orders/WorkOrderMaterialRequestsTab'
 import WorkOrderOverviewTab from './components/work-orders/WorkOrderOverviewTab'
+import WorkOrderMetersTab from './components/work-orders/WorkOrderMetersTab'
+import WorkOrderHeader, { workOrderOutlineButtonClass, workOrderPrimaryButtonClass } from './components/work-orders/WorkOrderHeader'
+import WorkOrderTabs from './components/work-orders/WorkOrderTabs'
 import { navigationItems, pathForPage, routeToPage } from './config/navigation'
 import { assets, workOrders, pmRecords, jobTasks, failureCodes, locations, statusMatrix, failureClassOptions, uniqueCodeOptions, excelDate, toDateTimeInput, slaBreached } from './data/cafmData'
 
-
-const nav = [
-  ['Overview', LayoutDashboard], ['Job Requests', FileText], ['Incidents', AlertTriangle], ['Work Orders', ClipboardList], ['Assets', Boxes],
-  ['Preventive Maintenance', CalendarClock], ['Locations', MapPin], ['Job Plans', Wrench],
-  ['Failure Library', ShieldCheck], ['Labor', Users], ['Materials', PackageCheck], ['Tools & Equipment', Wrench]
-]
-
-const initials = (name) => name.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()
 
 const buildWorkOrderNotifications = rows => {
   const now = Date.now()
@@ -75,40 +60,7 @@ const buildWorkOrderNotifications = rows => {
 
 
 const workOrderTabs = ['Overview', 'Plan', 'Failure', 'Material Requests', 'PTW & Files', 'Meters', 'Actual']
-const workOrderTabHelp = {
-  Overview: 'Core information, asset, assignment, and execution notes.',
-  Plan: 'Define the labor, job plan, tasks, materials, and tools expected for the work.',
-  Failure: 'Classify the failure hierarchy. Required before closing CM work orders.',
-  Actual: 'Section 7 Actual: record actual labor, spare parts, tools, equipment, and closeout details.',
-  'Material Requests': 'Request materials, tools, and equipment directly from the work order.',
-  'PTW & Files': 'Manage permits to work, photos, and supporting documents.',
-  Meters: 'Capture optional asset, water, and energy readings.'
-}
-
-const formGridClass = 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'
 const workOrderBodyClass = 'grid gap-3 p-0'
-const workOrderTabsClass = 'flex overflow-auto border-b border-[var(--app-line)] bg-transparent'
-const workOrderTabClass = active => [
-  'relative flex items-center gap-1.5 whitespace-nowrap px-3 py-3 text-[length:var(--app-tab-font-size)] text-[var(--app-muted)] transition hover:text-[var(--app-primary)]',
-  active ? 'font-bold text-[var(--app-ink)] after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-0.5 after:bg-[var(--app-primary)]' : ''
-].join(' ')
-const workOrderTabIndexClass = 'text-[length:var(--app-tab-index-font-size)] font-bold text-[var(--app-muted)]'
-const workOrderHeaderClass = 'grid gap-3 border-b border-[var(--app-line)] bg-transparent pb-3'
-const workOrderHeaderTopClass = 'flex flex-wrap items-start justify-between gap-3'
-const workOrderBackClass = 'inline-flex text-[length:var(--app-topbar-font-size)] font-bold text-[var(--app-muted)] transition hover:text-[var(--app-primary)]'
-const workOrderTitleClass = 'text-[clamp(24px,var(--app-page-title-font-size),34px)] font-extrabold tracking-[-.045em] text-[var(--app-ink)]'
-const workOrderDescriptionClass = 'mt-1 text-[length:var(--app-page-description-font-size)] text-[var(--app-muted)]'
-const workOrderHeaderActionsClass = 'flex flex-wrap items-center justify-end gap-2'
-const modeNoteClass = tone => [
-  'flex items-start gap-3 rounded-2xl p-4',
-  tone === 'warning' ? 'bg-[#fff7ef] text-[#9a5a2f]' : tone === 'actual' ? 'bg-[#eef7fb] text-[#44798b]' : 'bg-[#eef7f1] text-[#356c52]'
-].join(' ')
-const uploadZoneClass = 'relative grid min-h-28 cursor-pointer place-items-center content-center gap-2 rounded-2xl border border-dashed border-[#bfc9c1] bg-[#f8faf7] p-5 text-center text-[#728078]'
-const documentRowClass = 'flex items-center gap-3 border-b border-[#edf0ec] p-3 last:border-b-0'
-const autosaveClass = state => `inline-flex h-9 items-center gap-2 rounded-xl px-3 text-xs font-bold ${state === 'Saving' ? 'bg-[#f1f3f0] text-[#7b857f]' : 'bg-[#edf4ef] text-[#47785f]'}`
-const autoStatusClass = 'inline-flex h-9 items-center gap-2 rounded-xl bg-[#f7faf7] px-3 text-xs text-[var(--app-muted)] [&_strong]:text-[var(--app-ink)]'
-const woPrimaryButtonClass = 'inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-transparent bg-[var(--app-primary)] px-4 text-xs font-bold text-white shadow-[0_8px_20px_rgba(49,90,71,.18)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50'
-const woOutlineButtonClass = 'inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#dfe5df] bg-white px-4 text-xs font-bold text-[#57645d] transition hover:bg-[#f7faf7] disabled:cursor-not-allowed disabled:opacity-50'
 
 function WorkOrderEditor({ order, onClose, page = false }) {
   const workType=(order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
@@ -214,13 +166,18 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   const printWorkOrder=()=>{if(isPM&&tab!=='Plan')setTab('Plan');setTimeout(()=>window.print(),60)}
   useEffect(()=>{setAutoSaveState('Saving');const timer=setTimeout(()=>setAutoSaveState('Saved'),450);return()=>clearTimeout(timer)},[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterReading,waterConsumption,energyConsumption,meterReadingDate,workAssigned,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
-    <header className={workOrderHeaderClass}><div className={workOrderHeaderTopClass}><div><button className={workOrderBackClass} onClick={close}>Back to Work Order Tracking</button><div className="mt-2 flex flex-wrap items-center gap-3"><h2 className={workOrderTitleClass}>{number === 'AUTO' ? 'New work order' : `Work order #${number}`}</h2><Badge tone={isPM?'blue':'purple'}>{workType}</Badge><Badge tone="orange">{status}</Badge></div><p className={workOrderDescriptionClass}>{order['DESCRIPITION '] || order.DESCRIPTION || 'Enter work order information'}</p></div><div className={`${workOrderHeaderActionsClass} self-center`}><div className={autosaveClass(autoSaveState)}>{autoSaveState==='Saving'?<span className="h-2 w-2 animate-spin rounded-full border-2 border-[#a5aea9] border-t-[#557465]"/>:<Check size={13}/>}<span>{autoSaveState==='Saving'?'Saving…':'All changes saved'}</span></div><div className={autoStatusClass}><span>Automatic status</span><strong>{status}</strong></div>{status==='Waiting'&&<button className={woPrimaryButtonClass} disabled={!overviewReady} onClick={()=>setWorkAssigned(true)}><Users size={15}/>Assign department</button>}{status==='ASSIGNED'&&<button className={woPrimaryButtonClass} disabled={!preparationReady} onClick={()=>setWorkStarted(true)}><Wrench size={15}/>Start work</button>}{status==='INPRG'&&<button className={woPrimaryButtonClass} disabled={!failureReady} onClick={completeWork} title={!failureReady?'Failure Code and Problem Code are required before completion':''}><Check size={15}/>Resolve / complete</button>}{status==='COMP'&&<button className={woPrimaryButtonClass} disabled={!actualReady} onClick={()=>setWorkClosed(true)}><Check size={15}/>Close work order</button>}<button className={woOutlineButtonClass} onClick={reroute}><RotateCcw size={15}/> Re-route</button><button className={woOutlineButtonClass} onClick={printWorkOrder}><Printer size={15}/> Print</button></div></div></header>
-    <div className={workOrderTabsClass}>{workOrderTabs.map((name,index)=><button key={name} className={workOrderTabClass(tab===name)} onClick={()=>setTab(name)}><small className={workOrderTabIndexClass}>{String(index+1).padStart(2,'0')}</small>{name}{name==='Failure'&&!isPM&&<i className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--orange)]"/>}</button>)}</div>
-    <div className={workOrderBodyClass}>      {tab==='Overview' && <WorkOrderOverviewTab number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={toDateTimeInput(order['REPORTED DATE']||order['REPORT DATE'])||new Date().toISOString().slice(0,16)} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
-      {tab==='Plan' && <WorkOrderPlanTab isPM={isPM} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialMaster} toolMaster={toolMaster} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} />}      {tab==='Actual' && <WorkOrderActualTab actualsEditable={actualsEditable} status={status} preparationReady={preparationReady} planReady={planReady} setTab={setTab} setWorkStarted={setWorkStarted} completeWork={completeWork} outlineButtonClass={woOutlineButtonClass} primaryButtonClass={woPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} laborCraft={laborCraft} setLaborCraft={setLaborCraft} actualHours={actualHours} setActualHours={setActualHours} actualStart={actualStart} setActualStart={setActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} />}      {tab==='Failure' && <WorkOrderFailureTab isCM={isCM} failureClass={failureClass} changeFailure={changeFailure} failureClassOptions={failureClassOptions} problemCode={problemCode} setProblemCode={setProblemCode} setCauseCode={setCauseCode} setRemedyCode={setRemedyCode} problemOptions={problemOptions} causeCode={causeCode} causeOptions={causeOptions} remedyCode={remedyCode} remedyOptions={remedyOptions} failureDescription={failureDescription} problemDescription={problemDescription} causeDescription={causeDescription} remedyDescription={remedyDescription} failureCount={failureCodes.length} />}      {tab==='Material Requests' && <WorkOrderMaterialRequestsTab resourceRequests={resourceRequests} plannedResources={plannedResources} setPlannedResources={setPlannedResources} updatePlanRow={updatePlanRow} materialBlocked={materialBlocked} primaryButtonClass={woPrimaryButtonClass} outlineButtonClass={woOutlineButtonClass} setTab={setTab} />}
+    <WorkOrderHeader number={number} workType={workType} status={status} description={order['DESCRIPITION '] || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} reroute={reroute} printWorkOrder={printWorkOrder} setWorkAssigned={setWorkAssigned} setWorkStarted={setWorkStarted} completeWork={completeWork} setWorkClosed={setWorkClosed} />
+    <WorkOrderTabs tabs={workOrderTabs} active={tab} onChange={setTab} showFailureDot={!isPM} />
+    <div className={workOrderBodyClass}>
+      {tab==='Overview' && <WorkOrderOverviewTab number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={toDateTimeInput(order['REPORTED DATE']||order['REPORT DATE'])||new Date().toISOString().slice(0,16)} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
+      {tab==='Plan' && <WorkOrderPlanTab isPM={isPM} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialMaster} toolMaster={toolMaster} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} />}
+      {tab==='Actual' && <WorkOrderActualTab actualsEditable={actualsEditable} status={status} preparationReady={preparationReady} planReady={planReady} setTab={setTab} setWorkStarted={setWorkStarted} completeWork={completeWork} outlineButtonClass={workOrderOutlineButtonClass} primaryButtonClass={workOrderPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} laborCraft={laborCraft} setLaborCraft={setLaborCraft} actualHours={actualHours} setActualHours={setActualHours} actualStart={actualStart} setActualStart={setActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} />}
+      {tab==='Failure' && <WorkOrderFailureTab isCM={isCM} failureClass={failureClass} changeFailure={changeFailure} failureClassOptions={failureClassOptions} problemCode={problemCode} setProblemCode={setProblemCode} setCauseCode={setCauseCode} setRemedyCode={setRemedyCode} problemOptions={problemOptions} causeCode={causeCode} causeOptions={causeOptions} remedyCode={remedyCode} remedyOptions={remedyOptions} failureDescription={failureDescription} problemDescription={problemDescription} causeDescription={causeDescription} remedyDescription={remedyDescription} failureCount={failureCodes.length} />}
+      {tab==='Material Requests' && <WorkOrderMaterialRequestsTab resourceRequests={resourceRequests} plannedResources={plannedResources} setPlannedResources={setPlannedResources} updatePlanRow={updatePlanRow} materialBlocked={materialBlocked} primaryButtonClass={workOrderPrimaryButtonClass} outlineButtonClass={workOrderOutlineButtonClass} setTab={setTab} />}
       {tab==='PTW & Files' && <WorkOrderDocumentsTab ptwRequired={ptwRequired} setPtwRequired={setPtwRequired} ptwFiles={ptwFiles} setPtwFiles={setPtwFiles} generalFiles={generalFiles} setGeneralFiles={setGeneralFiles} addFiles={addFiles} downloadFile={downloadFile} />}
-      {tab==='Meters' && <><div className={modeNoteClass('auto')}><Gauge size={18}/><div className="grid gap-1"><strong className="text-sm">Optional meter readings</strong><span className="text-xs text-[var(--app-muted)]">Complete only when readings are available or required by the related asset.</span></div></div><Section compact title="Meter Readings"><div className={formGridClass}><Field label="General Meter Reading" value={meterReading} onChange={e=>setMeterReading(e.target.value)} type="number"/><Field label="Water Consumption (m³)" value={waterConsumption} onChange={e=>setWaterConsumption(e.target.value)} type="number"/><Field label="Energy Consumption (kWh)" value={energyConsumption} onChange={e=>setEnergyConsumption(e.target.value)} type="number"/><Field label="Reading Date" value={meterReadingDate} onChange={e=>setMeterReadingDate(e.target.value)} type="datetime-local"/></div></Section></>}
-    </div>  </div><WorkOrderPrintReport number={number} description={description || order['DESCRIPITION '] || 'Work order'} workType={workType} status={status} priority={priority} siteValue={siteValue} department={department} subDepartment={subDepartment} assignedDepartment={assignedDepartment} locationValue={locationValue} assetValue={assetValue} assetDescription={assetDescription} targetStart={targetStart} targetFinish={targetFinish} actualStart={actualStart} actualFinish={actualFinish} slaLabel={slaLabel} plannedTasks={plannedTasks} plannedLabor={plannedLabor} plannedResources={plannedResources} failureClass={failureClass} problemCode={problemCode} causeCode={causeCode} remedyCode={remedyCode} technicianRemarks={technicianRemarks} completionNotes={completionNotes} actualLabor={actualLabor} actualHours={actualHours} /></div>
+      {tab==='Meters' && <WorkOrderMetersTab meterReading={meterReading} setMeterReading={setMeterReading} waterConsumption={waterConsumption} setWaterConsumption={setWaterConsumption} energyConsumption={energyConsumption} setEnergyConsumption={setEnergyConsumption} meterReadingDate={meterReadingDate} setMeterReadingDate={setMeterReadingDate} />}
+    </div>
+  </div><WorkOrderPrintReport number={number} description={description || order['DESCRIPITION '] || 'Work order'} workType={workType} status={status} priority={priority} siteValue={siteValue} department={department} subDepartment={subDepartment} assignedDepartment={assignedDepartment} locationValue={locationValue} assetValue={assetValue} assetDescription={assetDescription} targetStart={targetStart} targetFinish={targetFinish} actualStart={actualStart} actualFinish={actualFinish} slaLabel={slaLabel} plannedTasks={plannedTasks} plannedLabor={plannedLabor} plannedResources={plannedResources} failureClass={failureClass} problemCode={problemCode} causeCode={causeCode} remedyCode={remedyCode} technicianRemarks={technicianRemarks} completionNotes={completionNotes} actualLabor={actualLabor} actualHours={actualHours} /></div>
 }
 
 export default function App() {
@@ -292,6 +249,8 @@ export default function App() {
     </AppShell>
   )
 }
+
+
 
 
 
