@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import departments from './data/departments.json'
 import laborMaster from './data/labor.json'
 import materialMaster from './data/materials.json'
@@ -71,6 +71,7 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   const isCM = workType === 'CM'
   const [tab, setTab] = useState('Overview')
   const [autoSaveState,setAutoSaveState]=useState('Saved')
+  const saveReady = useRef(false)
   const [workCompleted,setWorkCompleted]=useState(['COMP','COMPLETED','CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
   const [workClosed,setWorkClosed]=useState(['CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
   const [workStarted,setWorkStarted]=useState(['INPRG','COMP','COMPLETED','CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
@@ -92,9 +93,11 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   const [problemCode,setProblemCode]=useState(order['PROBLEM CODE']||'')
   const [causeCode,setCauseCode]=useState(order['CAUSE CODE']||'')
   const [remedyCode,setRemedyCode]=useState(order['REMEDY CODE']||'')
+  const jobPlanNumber = order['JOB PLAN'] || order.JPNUM || ''
+  const jobPlanTaskRows = order['JOB PLAN TASKS']?.length ? order['JOB PLAN TASKS'] : jobPlanNumber ? jobTasks.filter(task => task.JPNUM === jobPlanNumber) : []
   const [plannedLabor,setPlannedLabor]=useState(isPM?[{craft:'HVAC Technician',hours:'2',crew:'HVAC Team A'}]:[{craft:'',hours:'',crew:''}])
-  const [plannedResources,setPlannedResources]=useState(isPM?[{type:'Material',item:'Air filter, 500 × 500 mm',quantity:'2',availability:'Available'},{type:'Tool',item:'Digital multimeter',quantity:'1',availability:'Available'}]:[])
-  const [plannedTasks,setPlannedTasks]=useState(isPM?(order['JOB PLAN TASKS']?.length?order['JOB PLAN TASKS']:jobTasks.slice(0,4)).map(task=>({sequence:task['JOB TASK SEQUENCE'],description:task['JOB TASK DESCRIPTION'],duration:Math.max(5,Math.round(Number(task['TASK DURATION IN HOUR'])*1440))})):[{sequence:10,description:'',duration:''}])
+  const [plannedResources,setPlannedResources]=useState([])
+  const [plannedTasks,setPlannedTasks]=useState(isPM?jobPlanTaskRows.map(task=>({sequence:task['JOB TASK SEQUENCE'],description:task['JOB TASK DESCRIPTION'],duration:Math.max(5,Math.round(Number(task['TASK DURATION IN HOUR'])*1440))})):[{sequence:10,description:'',duration:''}])
   const [ptwRequired,setPtwRequired]=useState(false)
   const [ptwFiles,setPtwFiles]=useState([])
   const [generalFiles,setGeneralFiles]=useState([{name:'site-inspection-photo.jpg',size:'1.8 MB',type:'Image'}])
@@ -167,9 +170,10 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   const downloadFile=file=>{const blob=new Blob([`Mock CAFM attachment\n\nName: ${file.name}\nType: ${file.type||'Document'}\nSize: ${file.size||'Unknown'}\n\nReal storage integration can replace this generated download.`],{type:'text/plain'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=file.name?.includes('.')?file.name:`${file.name||'attachment'}.txt`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url)}
   const completeWork=()=>{if(!failureReady){setTab('Failure');return}const now=toDateTimeInput(new Date());setActualFinish(now);setActualStart(current=>current||now);setActualMaterials(current=>current.length?current:plannedResources.filter(row=>row.type==='Material').map(row=>({...row,actualQuantity:''})));setActualTools(current=>current.length?current:plannedResources.filter(row=>['Tool','Equipment'].includes(row.type)).map(row=>({...row,actualQuantity:''})));setWorkCompleted(true)}
   const printWorkOrder=()=>{if(isPM&&tab!=='Plan')setTab('Plan');setTimeout(()=>window.print(),60)}
-  useEffect(()=>{setAutoSaveState('Saving');const timer=setTimeout(()=>setAutoSaveState('Saved'),450);return()=>clearTimeout(timer)},[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterReading,waterConsumption,energyConsumption,meterReadingDate,workAssigned,workStarted,workCompleted,workClosed])
+  const saveChanges=()=>{setAutoSaveState('Saving');setTimeout(()=>setAutoSaveState('Saved'),350)}
+  useEffect(()=>{if(!saveReady.current){saveReady.current=true;return}setAutoSaveState('Unsaved changes')},[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterReading,waterConsumption,energyConsumption,meterReadingDate,workAssigned,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
-    <WorkOrderHeader number={number} workType={workType} status={status} description={order['DESCRIPITION '] || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} reroute={reroute} printWorkOrder={printWorkOrder} setWorkAssigned={setWorkAssigned} setWorkStarted={setWorkStarted} completeWork={completeWork} setWorkClosed={setWorkClosed} />
+    <WorkOrderHeader number={number} workType={workType} status={status} description={order['DESCRIPITION '] || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} onSave={saveChanges} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} reroute={reroute} printWorkOrder={printWorkOrder} setWorkAssigned={setWorkAssigned} setWorkStarted={setWorkStarted} completeWork={completeWork} setWorkClosed={setWorkClosed} />
     <WorkOrderTabs tabs={workOrderTabs} active={tab} onChange={setTab} showFailureDot={!isPM} />
     <div className={workOrderBodyClass}>
       {tab==='Overview' && <WorkOrderOverviewTab number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={toDateTimeInput(order['REPORTED DATE']||order['REPORT DATE'])||new Date().toISOString().slice(0,16)} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
@@ -256,6 +260,7 @@ export default function App() {
     </AppShell>
   )
 }
+
 
 
 

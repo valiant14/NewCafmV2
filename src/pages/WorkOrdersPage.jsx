@@ -5,6 +5,7 @@ import WorkOrdersTable from '../components/work-orders/WorkOrdersTable'
 import Button from '../components/ui/Button'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
+import GenericPrintReport from '../components/ui/GenericPrintReport'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
@@ -83,41 +84,76 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
     setSelected(created)
     window.history.replaceState({}, '', `/work-orders/${created.WORKORDER}`)
   }
+  const printList = () => setTimeout(() => window.print(), 60)
 
   const listView = (
     <div>
-      <PageHeader
-        eyebrow="MAINTENANCE OPERATIONS"
-        title="Work Orders"
-        description="Track, plan, execute, and close every maintenance work order."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={workOrderTemplateHeaders} fileName="Work_Orders_Template.xlsx" /><ExcelImportButton fileName={imported} onFile={setImported} onImport={importedRows => onImportRows?.(importedRows)} /><Button variant="outline"><Printer size={16} /> Print list</Button><Button onClick={openCreate}><Plus size={17} />New work order</Button></div>}
-      />
-      <ImportNotice fileName={imported} subject="work order" onClear={() => setImported('')} />
-      <IndexTabs
-        active={typeFilter}
-        onChange={type => { setTypeFilter(type); setPage(1) }}
-        tabs={['All', 'PM', 'CM', 'Incident'].map(type => ({ key: type, label: type === 'All' ? 'All Work Orders' : type, count: count(type) }))}
-      />
-      <StandardFilters
-        filters={filters}
-        setFilters={value => { setFilters(value); setPage(1) }}
-        siteOptions={optionsFromRows(rows, ['SITE'])}
-        departmentOptions={optionsFromRows(rows, ['DEPARTMENT ', 'ASSIGNED DEPARTMENT'])}
-        statusOptions={optionsFromRows(rows, ['STATUS'])}
-      />
-      <WorkOrdersTable
-        rows={paginated}
-        currentPage={currentPage}
-        pageSize={pageSize}
-        pageCount={pageCount}
-        total={filtered.length}
-        onOpen={openOrder}
-        onPageChange={setPage}
-        onPageSizeChange={value => { setPageSize(value); setPage(1) }}
-        orderType={orderType}
-        excelDate={excelDate}
-        sort={sort}
-        onSort={toggleSort}
+      <div className="print-report-screen">
+        <PageHeader
+          eyebrow="MAINTENANCE OPERATIONS"
+          title="Work Orders"
+          description="Track, plan, execute, and close every maintenance work order."
+          actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={workOrderTemplateHeaders} fileName="Work_Orders_Template.xlsx" /><ExcelImportButton fileName={imported} onFile={setImported} onImport={importedRows => onImportRows?.(importedRows)} /><Button variant="outline" onClick={printList}><Printer size={16} /> Print list</Button><Button onClick={openCreate}><Plus size={17} />New work order</Button></div>}
+        />
+        <ImportNotice fileName={imported} subject="work order" onClear={() => setImported('')} />
+        <IndexTabs
+          active={typeFilter}
+          onChange={type => { setTypeFilter(type); setPage(1) }}
+          tabs={['All', 'PM', 'CM', 'Incident'].map(type => ({ key: type, label: type === 'All' ? 'All Work Orders' : type, count: count(type) }))}
+        />
+        <StandardFilters
+          filters={filters}
+          setFilters={value => { setFilters(value); setPage(1) }}
+          siteOptions={optionsFromRows(rows, ['SITE'])}
+          departmentOptions={optionsFromRows(rows, ['DEPARTMENT ', 'ASSIGNED DEPARTMENT'])}
+          statusOptions={optionsFromRows(rows, ['STATUS'])}
+        />
+        <WorkOrdersTable
+          rows={paginated}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          pageCount={pageCount}
+          total={filtered.length}
+          onOpen={openOrder}
+          onPageChange={setPage}
+          onPageSizeChange={value => { setPageSize(value); setPage(1) }}
+          orderType={orderType}
+          excelDate={excelDate}
+          sort={sort}
+          onSort={toggleSort}
+        />
+      </div>
+      <GenericPrintReport
+        reportTitle="Work Order List"
+        reportSubtitle="Seder CAFM work order tracking"
+        number={`${filtered.length} records`}
+        status={typeFilter}
+        description="Filtered work order tracking list"
+        summary={[['Site Filter', filters.site || 'All'], ['Department Filter', filters.department || 'All'], ['Status Filter', filters.status || 'All']]}
+        tables={[{
+          title: 'Work Orders',
+          columns: [
+            { key: 'workOrder', label: 'WO Number' },
+            { key: 'description', label: 'Description' },
+            { key: 'type', label: 'Type' },
+            { key: 'status', label: 'Status' },
+            { key: 'site', label: 'Site' },
+            { key: 'department', label: 'Department' },
+            { key: 'targetStart', label: 'Target Start' }
+          ],
+          rows: sorted.map(order => ({
+            key: order.WORKORDER,
+            workOrder: order.WORKORDER,
+            description: order['DESCRIPITION '],
+            type: orderType(order),
+            status: order.STATUS,
+            site: order.SITE,
+            department: order['DEPARTMENT '],
+            targetStart: excelDate(order['TARGET START '])
+          })),
+          emptyText: 'No work orders match the selected filters.'
+        }]}
+        signatures={['Printed By', 'Reviewed By']}
       />
     </div>
   )

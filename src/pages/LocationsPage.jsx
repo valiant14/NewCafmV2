@@ -17,7 +17,7 @@ const locationFields = [
   { key: 'description', label: 'Description', required: true },
   { key: 'type', label: 'Type', options: ['Building', 'Floor', 'Room', 'Zone', 'External'] },
   { key: 'status', label: 'Status', options: ['OPERATING', 'PLANNED', 'DECOMMISSIONED'] },
-  { key: 'priority', label: 'Priority', type: 'number', placeholder: '1' },
+  { key: 'priority', label: 'Priority', options: ['1', '2', '3'], placeholder: 'Select priority' },
   { key: 'priority  description', label: 'Priority Description', placeholder: 'VIP / Royal / Standard' },
   { key: 'site', label: 'Site', required: true, placeholder: '1031' },
   { key: 'builiding', label: 'Building', placeholder: 'Building code' },

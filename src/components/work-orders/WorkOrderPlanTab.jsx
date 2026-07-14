@@ -54,25 +54,23 @@ export default function WorkOrderPlanTab({
         </div>
       </Section>
 
-      <Section compact title="Planned Materials & Tools" note="Request resources and enter the required count. Availability is managed in Materials.">
-        {!isPM && (
-          <div className={actionRowClass}>
-            <button className={addButtonClass} onClick={() => setPlannedResources(rows => [...rows, { type: 'Material', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add material</button>
-            <button className={secondaryAddButtonClass} onClick={() => setPlannedResources(rows => [...rows, { type: 'Tool', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add tool</button>
-          </div>
-        )}
+      <Section compact title="Planned Materials & Tools" note="Left empty by default. Data entry users add materials, tools, or equipment manually when needed; availability is managed in Materials.">
+        <div className={actionRowClass}>
+          <button className={addButtonClass} onClick={() => setPlannedResources(rows => [...rows, { type: 'Material', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add material</button>
+          <button className={secondaryAddButtonClass} onClick={() => setPlannedResources(rows => [...rows, { type: 'Tool', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add tool</button>
+        </div>
         <datalist id="planned-material-options">{materialMaster.map(item => <option value={item.description} key={item.itemNumber}>{item.itemNumber} · {item.category}</option>)}</datalist>
         <datalist id="planned-tool-options">{toolMaster.map(item => <option value={item.description} key={item.toolNumber}>{item.toolNumber} · {item.category}</option>)}</datalist>
         <div className={tableClass}>
           <div className={resourceHeadClass}><span>Type</span><span>Item / description</span><span>Quantity</span><span /></div>
           {plannedResources.length ? plannedResources.map((row, index) => (
             <div className={resourceRowClass} key={index}>
-              <select value={row.type} disabled={isPM} onChange={event => updatePlanRow(setPlannedResources, index, 'type', event.target.value)}>
+              <select value={row.type} onChange={event => updatePlanRow(setPlannedResources, index, 'type', event.target.value)}>
                 <option>Material</option><option>Tool</option><option>Equipment</option>
               </select>
-              <input value={row.item} list={row.type === 'Material' ? 'planned-material-options' : 'planned-tool-options'} readOnly={isPM} onChange={event => updatePlannedResource(index, event.target.value)} placeholder={`Search ${row.type.toLowerCase()} number or description`} />
-              <input value={row.quantity} type="number" min="1" step="1" readOnly={isPM} onChange={event => updatePlanRow(setPlannedResources, index, 'quantity', event.target.value)} placeholder="Enter count" />
-              {!isPM && <button onClick={() => setPlannedResources(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
+              <input value={row.item} list={row.type === 'Material' ? 'planned-material-options' : 'planned-tool-options'} onChange={event => updatePlannedResource(index, event.target.value)} placeholder={`Search ${row.type.toLowerCase()} number or description`} />
+              <input value={row.quantity} type="number" min="1" step="1" onChange={event => updatePlanRow(setPlannedResources, index, 'quantity', event.target.value)} placeholder="Enter count" />
+              <button onClick={() => setPlannedResources(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>
             </div>
           )) : <div className={emptyClass}>No planned materials or tools yet.</div>}
         </div>

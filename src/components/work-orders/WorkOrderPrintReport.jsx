@@ -101,8 +101,8 @@ export default function WorkOrderPrintReport({
           </div>
         </div>
         <div className="wo-print-title">
-          <h1>Work Order</h1>
-          <p>Corrective / Preventive Maintenance</p>
+          <h1>{workType === 'PM' ? 'PM Work Order' : 'CM Work Order'}</h1>
+          <p>{workType === 'PM' ? 'Preventive Maintenance' : 'Corrective Maintenance'}</p>
         </div>
         <div className="wo-print-number">
           <span>WORK ORDER</span>
