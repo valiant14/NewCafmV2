@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Plus } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Plus } from 'lucide-react'
+import IncidentDetailPage from '../components/incidents/IncidentDetailPage'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
+import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
@@ -42,6 +44,9 @@ export default function IncidentsPage() {
   const [tab, setTab] = useState('All Incidents')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({})
+  const [imported, setImported] = useState('')
+  const routeId = decodeURIComponent(window.location.pathname.split('/incidents/')[1] || '')
+  const [selected, setSelected] = useState(rows.find(row => row.incidentNumber === routeId) || null)
 
   const filteredRows = useMemo(() => {
     if (tab === 'Open') return rows.filter(row => row.status !== 'Closed')
@@ -64,6 +69,32 @@ export default function IncidentsPage() {
     setModalOpen(false)
   }
 
+  const open = incident => {
+    setSelected(incident)
+    window.history.pushState({}, '', `/incidents/${encodeURIComponent(incident.incidentNumber)}`)
+  }
+
+  const close = () => {
+    setSelected(null)
+    window.history.pushState({}, '', '/incidents')
+  }
+
+  const importRows = importedRows => {
+    setRows(importedRows.map((row, index) => ({
+      incidentNumber: row.incidentNumber || `INC-IMPORT-${String(index + 1).padStart(4, '0')}`,
+      description: row.description || '',
+      site: row.site || '',
+      department: row.department || '',
+      location: row.location || '',
+      severity: row.severity || 'Medium',
+      status: row.status || 'Open',
+      reportedBy: row.reportedBy || '',
+      reportedDate: row.reportedDate || ''
+    })))
+  }
+
+  if (selected) return <IncidentDetailPage incident={selected} onBack={close} />
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -71,13 +102,15 @@ export default function IncidentsPage() {
         title="Incidents"
         description="Standalone incident records separated from PM and CM work-order processes."
         actions={(
-          <>
+          <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={incidentTemplateHeaders} fileName="Incidents_Template.xlsx" />
-            <ExcelImportButton label="Import Excel" onImport={importedRows => setRows(importedRows)} />
+            <ExcelImportButton label="Import Excel" fileName={imported} onFile={setImported} onImport={importRows} />
             <Button onClick={() => { setForm({ severity: 'Medium' }); setModalOpen(true) }}><Plus size={15} />New incident</Button>
-          </>
+          </div>
         )}
       />
+
+      <ImportNotice fileName={imported} subject="incidents" onClear={() => setImported('')} />
 
       <IndexTabs
         tabs={[
@@ -89,22 +122,27 @@ export default function IncidentsPage() {
         onChange={setTab}
       />
 
-      <DataTable
-        rows={filteredRows}
-        rowKey="incidentNumber"
-        columns={[
-          { key: 'incidentNumber', label: 'Incident', render: (value, row) => <div><strong className="font-semibold text-[var(--app-ink)]">{value}</strong><span className="block text-xs text-[var(--app-muted)]">{row.description}</span></div> },
-          { key: 'site', label: 'Site' },
-          { key: 'department', label: 'Department' },
-          { key: 'location', label: 'Location' },
-          { key: 'severity', label: 'Severity', render: value => <Badge tone={value === 'High' ? 'orange' : 'blue'}>{value}</Badge> },
-          { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value}</Badge> },
-          { key: 'reportedBy', label: 'Reported By' }
-        ]}
-        emptyIcon={AlertTriangle}
-        emptyTitle="No incidents yet"
-        emptyDescription="Create standalone incident records here after the client confirms the final required fields."
-      />
+      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+        <DataTable
+          rows={filteredRows}
+          rowKey="incidentNumber"
+          onRowClick={open}
+          pagination
+          columns={[
+            { key: 'incidentNumber', label: 'Incident', render: (value, row) => <div><strong className="font-semibold text-[var(--app-ink)]">{value}</strong><span className="block text-xs text-[var(--app-muted)]">{row.description}</span></div> },
+            { key: 'site', label: 'Site' },
+            { key: 'department', label: 'Department' },
+            { key: 'location', label: 'Location' },
+            { key: 'severity', label: 'Severity', render: value => <Badge tone={value === 'Critical' || value === 'High' ? 'orange' : 'blue'}>{value}</Badge> },
+            { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value}</Badge> },
+            { key: 'reportedBy', label: 'Reported By' },
+            { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
+          ]}
+          emptyIcon={AlertTriangle}
+          emptyTitle="No incidents yet"
+          emptyDescription="Create standalone incident records here after the client confirms the final required fields."
+        />
+      </section>
 
       {modalOpen && (
         <MasterRecordModal
@@ -118,7 +156,9 @@ export default function IncidentsPage() {
             { key: 'department', label: 'Department', required: true },
             { key: 'location', label: 'Location', required: true },
             { key: 'severity', label: 'Severity', required: true, options: ['Low', 'Medium', 'High', 'Critical'] },
-            { key: 'reportedBy', label: 'Reported By', required: true }
+            { key: 'status', label: 'Status', required: true, options: ['Open', 'Under review', 'Closed'] },
+            { key: 'reportedBy', label: 'Reported By', required: true },
+            { key: 'reportedDate', label: 'Reported Date', type: 'datetime-local' }
           ]}
           onClose={() => setModalOpen(false)}
           onSave={addIncident}
