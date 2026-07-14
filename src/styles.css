@@ -143,64 +143,249 @@ main,
 }
 
 @media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .app-shell,
+  main,
+  .content {
+    display: block !important;
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  .sidebar,
+  .topbar,
+  footer {
+    display: none !important;
+  }
+
   .wo-screen {
     display: none !important;
   }
 
   .wo-print-report {
     display: block !important;
-    color: #111827;
+    color: #111;
     background: white;
-    font-family: Arial, sans-serif;
-    padding: 20px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9px;
+    line-height: 1.25;
+    padding: 0;
   }
 
-  .wo-print-report h1 {
-    font-size: 24px;
-    margin: 0 0 4px;
-  }
-
-  .wo-print-report h2 {
-    border-bottom: 1px solid #d1d5db;
-    font-size: 15px;
-    margin: 18px 0 8px;
-    padding-bottom: 6px;
-  }
-
-  .wo-print-grid {
+  .wo-print-header {
+    align-items: stretch;
+    border: 2px solid #111;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: 1.25fr 1.6fr 1.05fr;
+    margin-bottom: 8px;
+    min-height: 70px;
   }
 
-  .wo-print-cell,
-  .wo-print-list li {
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
+  .wo-print-brand,
+  .wo-print-title,
+  .wo-print-number {
+    display: grid;
     padding: 8px;
   }
 
-  .wo-print-cell span {
+  .wo-print-brand,
+  .wo-print-title {
+    border-right: 1px solid #111;
+  }
+
+  .wo-print-brand {
+    align-items: center;
+    gap: 8px;
+    grid-template-columns: 34px 1fr;
+  }
+
+  .wo-print-logo {
+    align-items: center;
+    background: #111;
+    color: #fff;
+    display: grid;
+    font-size: 19px;
+    font-weight: 800;
+    height: 34px;
+    justify-items: center;
+    width: 34px;
+  }
+
+  .wo-print-brand strong,
+  .wo-print-number strong {
     display: block;
-    color: #6b7280;
-    font-size: 9px;
+    font-size: 13px;
+    letter-spacing: .04em;
+  }
+
+  .wo-print-brand span,
+  .wo-print-number span,
+  .wo-print-summary span,
+  .wo-print-signatures span {
+    color: #444;
+    display: block;
+    font-size: 7px;
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;
   }
 
-  .wo-print-cell strong {
+  .wo-print-title {
+    align-content: center;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .wo-print-title h1 {
+    font-size: 24px;
+    letter-spacing: .04em;
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .wo-print-title p {
+    font-size: 8px;
+    font-weight: 700;
+    margin: 3px 0 0;
+    text-transform: uppercase;
+  }
+
+  .wo-print-number {
+    align-content: center;
+    text-align: right;
+  }
+
+  .wo-print-number i {
+    border: 1px solid #111;
+    display: inline-block;
+    font-style: normal;
+    font-weight: 800;
+    justify-self: end;
+    margin-top: 5px;
+    padding: 3px 8px;
+    text-transform: uppercase;
+  }
+
+  .wo-print-summary {
+    border: 1px solid #111;
+    display: grid;
+    grid-template-columns: 2fr repeat(3, 1fr);
+    margin-bottom: 8px;
+  }
+
+  .wo-print-summary > div {
+    border-right: 1px solid #111;
+    min-height: 38px;
+    padding: 6px;
+  }
+
+  .wo-print-summary > div:last-child {
+    border-right: 0;
+  }
+
+  .wo-print-summary strong {
     display: block;
-    font-size: 12px;
+    font-size: 10px;
     margin-top: 3px;
   }
 
-  .wo-print-list {
-    display: grid;
-    gap: 6px;
-    list-style: none;
+  .wo-print-report h2 {
+    background: #d9d9d9;
+    border: 1px solid #111;
+    border-bottom: 0;
+    font-size: 9px;
+    letter-spacing: .05em;
+    margin: 8px 0 0;
+    padding: 4px 6px;
+    text-transform: uppercase;
+  }
+
+  .wo-print-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .wo-print-field-table,
+  .wo-print-data-table {
+    border-collapse: collapse;
     margin: 0;
-    padding: 0;
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .wo-print-field-table td,
+  .wo-print-data-table th,
+  .wo-print-data-table td {
+    border: 1px solid #111;
+    padding: 4px 5px;
+    vertical-align: top;
+    word-break: break-word;
+  }
+
+  .wo-print-field-table td span {
+    color: #444;
+    display: block;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .wo-print-field-table td strong {
+    display: block;
+    font-size: 9px;
+    margin-top: 2px;
+    min-height: 12px;
+  }
+
+  .wo-print-data-table th {
+    background: #f1f1f1;
+    font-size: 7px;
+    letter-spacing: .06em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .wo-print-data-table td {
+    font-size: 9px;
+    min-height: 14px;
+  }
+
+  .wo-print-signatures {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 14px;
+  }
+
+  .wo-print-signatures > div {
+    border: 1px solid #111;
+    min-height: 48px;
+    padding: 6px;
+  }
+
+  .wo-print-signatures strong {
+    display: block;
+    margin-top: 18px;
+  }
+
+  .wo-print-footer {
+    border-top: 1px solid #111;
+    display: flex;
+    font-size: 8px;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 5px;
   }
 }
 
