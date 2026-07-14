@@ -215,14 +215,17 @@ main,
 
   .wo-print-logo {
     align-items: center;
-    background: #111;
-    color: #fff;
     display: grid;
-    font-size: 19px;
-    font-weight: 800;
     height: 34px;
     justify-items: center;
     width: 34px;
+  }
+
+  .wo-print-logo img {
+    display: block;
+    height: 100%;
+    max-width: 100%;
+    object-fit: contain;
   }
 
   .wo-print-brand strong,

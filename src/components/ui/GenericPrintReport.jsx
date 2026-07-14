@@ -1,3 +1,5 @@
+import sederLogo from '../../Assets/seder-logo.png'
+
 const value = input => input || '-'
 
 function FieldTable({ title, rows = [] }) {
@@ -59,7 +61,7 @@ export default function GenericPrintReport({
     <article className="wo-print-report generic-print-report">
       <header className="wo-print-header">
         <div className="wo-print-brand">
-          <div className="wo-print-logo">S</div>
+          <div className="wo-print-logo"><img src={sederLogo} alt="Seder" /></div>
           <div>
             <strong>SEDER CAFM</strong>
             <span>{reportSubtitle}</span>

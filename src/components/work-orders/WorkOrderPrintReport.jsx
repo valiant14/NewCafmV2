@@ -1,3 +1,5 @@
+import sederLogo from '../../Assets/seder-logo.png'
+
 const value = input => input || '-'
 const listNames = rows => rows?.length ? rows.map(file => file.name).join(', ') : '-'
 
@@ -92,7 +94,7 @@ export default function WorkOrderPrintReport({
     <article className="wo-print-report">
       <header className="wo-print-header">
         <div className="wo-print-brand">
-          <div className="wo-print-logo">S</div>
+          <div className="wo-print-logo"><img src={sederLogo} alt="Seder" /></div>
           <div>
             <strong>SEDER CAFM</strong>
             <span>Maximo-style work order report</span>
