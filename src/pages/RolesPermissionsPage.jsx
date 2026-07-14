@@ -20,20 +20,22 @@ const permissionRows = [
 
 const headers = ['role', 'user', 'site', 'department', 'scope', 'status', ...actions]
 const cardClass = 'rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]'
-const matrixClass = 'overflow-auto rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]'
+const matrixClass = 'overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]'
 const checkClass = active => `mx-auto grid h-6 w-6 place-items-center rounded-lg border text-[10px] font-extrabold ${active ? 'border-[var(--app-primary)] bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'border-[var(--app-line)] text-[var(--app-muted)]'}`
 
 export default function RolesPermissionsPage() {
   const [tab, setTab] = useState('All')
   const [rows, setRows] = useState(permissionRows)
   const [filters, setFilters] = useState(emptyStandardFilters)
+  const [selectedRoleName, setSelectedRoleName] = useState(permissionRows[0].role)
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, { site: ['site'], department: ['department'], status: ['status'] })
+  const selectedRole = visibleRows.find(row => row.role === selectedRoleName) || visibleRows[0] || rows[0]
 
   const togglePermission = (role, action, module) => {
     setRows(current => current.map(row => {
       if (row.role !== role) return row
-      const currentModules = row.permissions[action] || []
+      const currentModules = row.permissions?.[action] || []
       const nextModules = currentModules.includes(module)
         ? currentModules.filter(item => item !== module)
         : [...currentModules, module]
@@ -78,15 +80,17 @@ export default function RolesPermissionsPage() {
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]"><ShieldCheck size={20} /></span>
           <div>
             <h3 className="text-lg font-extrabold text-[var(--app-ink)]">Permission scope rules</h3>
-            <p className="text-sm text-[var(--app-muted)]">Minimum client requirement is enforced by defining access per site and department, then selecting allowed actions per module.</p>
+            <p className="text-sm text-[var(--app-muted)]">Select a role below, then configure its module permissions in the separate matrix.</p>
           </div>
         </div>
         <DataTable
           rows={visibleRows}
           rowKey={row => `${row.role}-${row.department}`}
+          onRowClick={row => setSelectedRoleName(row.role)}
+          rowClassName={row => row.role === selectedRole?.role ? 'bg-[var(--app-badge-green-bg)]' : ''}
           pagination
           columns={[
-            { key: 'role', label: 'Role' },
+            { key: 'role', label: 'Role', render: value => <span className="flex items-center gap-2"><strong>{value}</strong>{value === selectedRole?.role && <Badge tone="green">Selected</Badge>}</span> },
             { key: 'user', label: 'User / Group' },
             { key: 'site', label: 'Site Scope' },
             { key: 'department', label: 'Department Scope' },
@@ -97,35 +101,53 @@ export default function RolesPermissionsPage() {
       </section>
 
       <section className={matrixClass}>
-        <header className="border-b border-[var(--app-line)] p-4">
-          <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">Permission Matrix</p>
-          <h3 className="text-lg font-extrabold text-[var(--app-ink)]">Module action access</h3>
+        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--app-line)] p-4">
+          <div>
+            <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">Permission Matrix</p>
+            <h3 className="text-lg font-extrabold text-[var(--app-ink)]">Module action access</h3>
+            <p className="mt-1 text-xs text-[var(--app-muted)]">Editing one selected role only. The role list is separate so permissions do not mix together.</p>
+          </div>
+          <label className="grid min-w-[240px] gap-1">
+            <span className="text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">Selected Role</span>
+            <select
+              className="h-10 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-field-bg)] px-3 text-sm font-bold text-[var(--app-ink)] outline-none"
+              value={selectedRole?.role || ''}
+              onChange={event => setSelectedRoleName(event.target.value)}
+            >
+              {visibleRows.map(row => <option value={row.role} key={row.role}>{row.role}</option>)}
+            </select>
+          </label>
         </header>
-        <table className="w-full min-w-[900px] border-collapse text-sm">
-          <thead>
-            <tr className="bg-[var(--app-table-header-bg)] text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-table-heading)]">
-              <th className="border-b border-[var(--app-line)] p-3 text-left">Role</th>
-              <th className="border-b border-[var(--app-line)] p-3 text-left">Module</th>
-              {actions.map(action => <th key={action} className="border-b border-[var(--app-line)] p-3 text-center">{action}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {visibleRows.flatMap(row => modules.map(module => (
-              <tr key={`${row.role}-${module}`} className="border-b border-[var(--app-line)] last:border-b-0">
-                <td className="p-3 font-bold text-[var(--app-ink)]">{row.role}</td>
-                <td className="p-3 text-[var(--app-muted)]">{module}</td>
-                {actions.map(action => {
-                  const active = row.permissions?.[action]?.includes(module)
-                  return (
-                    <td key={action} className="p-3 text-center">
-                      <button type="button" className={checkClass(active)} onClick={() => togglePermission(row.role, action, module)}>{active ? '✓' : '—'}</button>
-                    </td>
-                  )
-                })}
+
+        <div className="overflow-auto">
+          <table className="w-full min-w-[760px] border-collapse text-sm">
+            <thead>
+              <tr className="bg-[var(--app-table-header-bg)] text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-table-heading)]">
+                <th className="border-b border-[var(--app-line)] p-3 text-left">Module</th>
+                {actions.map(action => <th key={action} className="border-b border-[var(--app-line)] p-3 text-center">{action}</th>)}
               </tr>
-            )))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {selectedRole ? modules.map(module => (
+                <tr key={`${selectedRole.role}-${module}`} className="border-b border-[var(--app-line)] last:border-b-0">
+                  <td className="p-3 font-bold text-[var(--app-ink)]">{module}</td>
+                  {actions.map(action => {
+                    const active = selectedRole.permissions?.[action]?.includes(module)
+                    return (
+                      <td key={action} className="p-3 text-center">
+                        <button type="button" className={checkClass(active)} onClick={() => togglePermission(selectedRole.role, action, module)}>{active ? '✓' : '—'}</button>
+                      </td>
+                    )
+                  })}
+                </tr>
+              )) : (
+                <tr>
+                  <td className="p-6 text-center text-[var(--app-muted)]" colSpan={actions.length + 1}>No role selected.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   )
