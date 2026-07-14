@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Command, Menu, MoreHorizontal, X } from 'lucide-react'
+﻿import { Bell, ChevronRight, Command, Menu, MoreHorizontal, X } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../../providers/AuthProvider'
 import Button from '../ui/Button'
@@ -69,21 +69,21 @@ export default function AppShell({
       </aside>
 
       <main className="flex min-h-screen min-w-0 flex-col">
-        <header className="topbar sticky top-0 z-30 flex h-[69px] items-center border-b border-[var(--app-line)] bg-white/85 px-4 backdrop-blur lg:px-8">
-          <button className="menu-btn mr-3 text-[#58635d] lg:hidden" onClick={onMobileOpen} aria-label="Open menu">
+        <header className="topbar sticky top-0 z-30 flex h-[69px] items-center border-b border-[var(--app-line)] bg-[color:color-mix(in_srgb,var(--app-panel)_85%,transparent)] px-4 backdrop-blur lg:px-8">
+          <button className="menu-btn mr-3 text-[var(--app-muted)] lg:hidden" onClick={onMobileOpen} aria-label="Open menu">
             <Menu />
           </button>
-          <div className="crumb flex items-center gap-2 text-[length:var(--app-topbar-font-size)] text-[#909691]">
+          <div className="crumb flex items-center gap-2 text-[length:var(--app-topbar-font-size)] text-[var(--app-muted)]">
             <span className="hidden sm:inline">Seder CAFM</span>
             <ChevronRight size={14} className="hidden sm:block" />
-            <strong className="text-[#35413b]">{active}</strong>
+            <strong className="text-[var(--app-ink)]">{active}</strong>
           </div>
           <div className="top-actions ml-auto flex items-center gap-3">
-            <button className="icon-button sla-notification relative text-[#58635d]" title={`${overdueCount} overdue work orders`} onClick={() => setNotificationsOpen(true)}>
+            <button className="icon-button sla-notification relative text-[var(--app-muted)]" title={`${overdueCount} overdue work orders`} onClick={() => setNotificationsOpen(true)}>
               <Bell size={19} />
-              {overdueCount > 0 && <b className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#c9673d] px-1 text-[7px] text-white ring-2 ring-white">{overdueCount}</b>}
+              {overdueCount > 0 && <b className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--danger)] px-1 text-[7px] text-white ring-2 ring-[var(--app-panel)]">{overdueCount}</b>}
             </button>
-            <div className="top-avatar grid h-8 w-8 place-items-center rounded-full bg-[#d7e4a4] text-[10px] font-extrabold text-[#203027]" title={`${user.name} · ${user.role}`}>{user.initials}</div>
+            <div className="top-avatar grid h-8 w-8 place-items-center rounded-full bg-[var(--app-sidebar-accent)] text-[10px] font-extrabold text-[var(--app-sidebar-accent-ink)]" title={`${user.name} · ${user.role}`}>{user.initials}</div>
           </div>
         </header>
 
@@ -91,7 +91,7 @@ export default function AppShell({
           {children}
         </div>
 
-        <footer className="flex justify-between border-t border-[var(--app-line)] px-4 py-4 text-[9px] text-[#949b97] lg:px-10">
+        <footer className="flex justify-between border-t border-[var(--app-line)] px-4 py-4 text-[9px] text-[var(--app-muted)] lg:px-10">
           <span>Seder CAFM · Mock data generated from provided Excel files</span>
           <span className="hidden sm:inline">{statusRuleCount} Maximo status rules loaded</span>
         </footer>
@@ -139,3 +139,5 @@ export default function AppShell({
     </div>
   )
 }
+
+

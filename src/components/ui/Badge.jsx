@@ -1,11 +1,11 @@
 import { cn } from '../../lib/cn'
 
 const tones = {
-  neutral: 'bg-[#f0f2ef] text-[#64706a]',
-  green: 'bg-[#e8f3ea] text-[#39805c]',
-  orange: 'bg-[#fff0e6] text-[#bb6738]',
-  blue: 'bg-[#eaf2f5] text-[#477a8d]',
-  purple: 'bg-[#f0ebfa] text-[#755b9f]'
+  neutral: 'bg-[var(--app-badge-neutral-bg)] text-[var(--app-badge-neutral-text)]',
+  green: 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]',
+  orange: 'bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]',
+  blue: 'bg-[var(--app-badge-blue-bg)] text-[var(--app-badge-blue-text)]',
+  purple: 'bg-[var(--app-badge-purple-bg)] text-[var(--app-badge-purple-text)]'
 }
 
 export default function Badge({ children, tone = 'neutral' }) {

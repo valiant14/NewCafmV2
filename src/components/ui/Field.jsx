@@ -4,17 +4,17 @@ import { cn } from '../../lib/cn'
 export default function Field({ label, value = '', required, locked, type = 'text', options, suggestions, onChange, placeholder }) {
   const listId=useId()
   const controlClass = cn(
-    'w-full rounded-xl border border-[#d8ded8] bg-white px-3 text-sm text-[var(--app-ink)] outline-none transition',
-    'placeholder:text-[#9aa39d] focus:border-[#6f987f] focus:ring-4 focus:ring-[#dfeae4]',
-    'read-only:bg-[#f4f6f2] read-only:text-[#718078] disabled:bg-[#f4f6f2] disabled:text-[#718078]',
+    'w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none transition',
+    'placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]',
+    'read-only:bg-[var(--app-soft-bg)] read-only:text-[var(--app-muted)] disabled:bg-[var(--app-soft-bg)] disabled:text-[var(--app-muted)]',
     type === 'textarea' ? 'min-h-[86px] py-3 leading-relaxed' : 'h-11'
   )
 
   return (
     <label className="group grid min-w-0 gap-2">
-      <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[#617067]">
+      <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">
         {label}
-        {required && <b className="text-[#c16f42]">*</b>}
+        {required && <b className="text-[var(--app-required)]">*</b>}
       </span>
       {options ? (
         <select className={controlClass} value={value} onChange={onChange} disabled={locked}>

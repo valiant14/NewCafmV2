@@ -35,13 +35,6 @@
   }
 }
 
-.cell-sub {
-  display: block;
-  margin-top: 3px;
-  color: #929995;
-  font-size: 9px;
-}
-
 @layer base {
   * {
     box-sizing: border-box;

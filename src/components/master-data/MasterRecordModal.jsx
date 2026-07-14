@@ -7,13 +7,13 @@ function MasterRecordField({ field, value, onChange }) {
 
   return (
     <label className="grid gap-2" htmlFor={inputId}>
-      <span className="text-[9px] font-extrabold uppercase tracking-[.12em] text-[#65746c]">
+      <span className="text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">
         {field.label}
-        {field.required && <b className="ml-1 text-[#d77545]">*</b>}
+        {field.required && <b className="ml-1 text-[var(--app-required)]">*</b>}
       </span>
 
       {field.options ? (
-        <select className="h-10 rounded-xl border border-[#d8ded8] bg-white px-3 text-sm outline-none focus:border-[#7ca18e] focus:ring-4 focus:ring-[#dfeae4]" id={inputId} value={value ?? ''} onChange={event => onChange(field.key, event.target.value)}>
+        <select className="h-10 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]" id={inputId} value={value ?? ''} onChange={event => onChange(field.key, event.target.value)}>
           {field.options.map(option => (
             <option key={option} value={option}>
               {option}
@@ -22,7 +22,7 @@ function MasterRecordField({ field, value, onChange }) {
         </select>
       ) : (
         <input
-          className="h-10 rounded-xl border border-[#d8ded8] bg-white px-3 text-sm outline-none focus:border-[#7ca18e] focus:ring-4 focus:ring-[#dfeae4]"
+          className="h-10 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
           id={inputId}
           type={field.type || 'text'}
           min={field.min}

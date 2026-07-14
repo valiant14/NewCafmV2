@@ -111,7 +111,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
           columns={[
             { key: 'sr', label: 'SR number', render: value => <strong className="mono">{value}</strong> },
             { key: 'description', label: 'Description' },
-            { key: 'site', label: 'Site / Location', render: (value, request) => <>{value}<small className="cell-sub">{request.location}</small></> },
+            { key: 'site', label: 'Site / Location', render: (value, request) => <>{value}<small className="mt-1 block text-[9px] text-[var(--app-muted)]">{request.location}</small></> },
             { key: 'department', label: 'Department', render: value => value || 'Pending review' },
             { key: 'reportedBy', label: 'Reported by' },
             { key: 'priority', label: 'Priority', render: value => <Badge tone={value === 'High' ? 'orange' : 'neutral'}>{value}</Badge> },
