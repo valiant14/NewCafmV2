@@ -50,6 +50,7 @@ export default function WorkOrderActualTab({
   targetStart,
   targetFinish,
   actualFinish,
+  setActualFinish,
   slaBreachedNow,
   slaLabel,
   technicianRemarks,
@@ -111,6 +112,7 @@ export default function WorkOrderActualTab({
           <Field label="Labor Craft Code" value={laborCraft} onChange={event => setLaborCraft(event.target.value)} required />
           <Field label="Actual Labor Hours" value={actualHours} onChange={event => setActualHours(event.target.value)} type="number" required />
           <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" />
+          <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" />
         </div>
       </Section>
 

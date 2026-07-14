@@ -10,6 +10,8 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
+import StandardFilters from '../components/ui/StandardFilters'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 const incidentSeed = [
   {
@@ -45,14 +47,16 @@ export default function IncidentsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({})
   const [imported, setImported] = useState('')
+  const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/incidents/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.incidentNumber === routeId) || null)
 
-  const filteredRows = useMemo(() => {
+  const tabRows = useMemo(() => {
     if (tab === 'Open') return rows.filter(row => row.status !== 'Closed')
     if (tab === 'Closed') return rows.filter(row => row.status === 'Closed')
     return rows
   }, [rows, tab])
+  const filteredRows = useMemo(() => applyStandardFilters(tabRows, filters, { date: ['reportedDate'] }), [tabRows, filters])
 
   const addIncident = () => {
     const nextNumber = `INC-2026-${String(rows.length + 1).padStart(4, '0')}`
@@ -119,7 +123,14 @@ export default function IncidentsPage() {
           { label: 'Closed', count: rows.filter(row => row.status === 'Closed').length }
         ]}
         active={tab}
-        onChange={setTab}
+        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
+      />
+      <StandardFilters
+        filters={filters}
+        setFilters={setFilters}
+        siteOptions={optionsFromRows(rows, ['site'])}
+        departmentOptions={optionsFromRows(rows, ['department'])}
+        statusOptions={optionsFromRows(rows, ['status'])}
       />
 
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">

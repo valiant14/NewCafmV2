@@ -10,6 +10,8 @@ import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import StandardFilters from '../components/ui/StandardFilters'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 const empty = {
   assetnum: '',
@@ -35,9 +37,11 @@ export default function AssetsPage({ initialAssets = [], workOrders = [] }) {
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
+  const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/assets/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.assetnum === routeId) || null)
-  const visibleRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
+  const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
+  const visibleRows = applyStandardFilters(tabRows, filters, { date: ['installdate'] })
 
   const open = row => {
     setSelected(row)
@@ -81,13 +85,20 @@ export default function AssetsPage({ initialAssets = [], workOrders = [] }) {
 
       <IndexTabs
         active={tab}
-        onChange={setTab}
+        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
         tabs={[
           { key: 'All', label: 'All Assets', count: rows.length },
           { key: 'OPERATING', label: 'Operating', count: rows.filter(row => row.status === 'OPERATING').length },
           { key: 'BROKEN', label: 'Broken', count: rows.filter(row => row.status === 'BROKEN').length },
           { key: 'NOT READY', label: 'Not Ready', count: rows.filter(row => row.status === 'NOT READY').length }
         ]}
+      />
+      <StandardFilters
+        filters={filters}
+        setFilters={setFilters}
+        siteOptions={optionsFromRows(rows, ['site'])}
+        departmentOptions={optionsFromRows(rows, ['department'])}
+        statusOptions={optionsFromRows(rows, ['status'])}
       />
 
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">

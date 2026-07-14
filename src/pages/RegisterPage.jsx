@@ -8,6 +8,8 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import StandardFilters from '../components/ui/StandardFilters'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 const emptyFromFields = fields => Object.fromEntries((fields || []).map(field => [field.key, field.defaultValue ?? '']))
 
@@ -16,6 +18,7 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
   const [records, setRecords] = useState(rows)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(() => emptyFromFields(modalFields))
+  const [filters, setFilters] = useState(emptyStandardFilters)
 
   useEffect(() => setRecords(rows), [rows])
 
@@ -49,9 +52,16 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
           { key: 'All', label: `All ${title}`, count: records.length }
         ]}
       />
+      <StandardFilters
+        filters={filters}
+        setFilters={setFilters}
+        siteOptions={optionsFromRows(records, ['site', 'SITE'])}
+        departmentOptions={optionsFromRows(records, ['department', 'DEPARTMENT', 'DEPARTMENT '])}
+        statusOptions={optionsFromRows(records, ['status', 'STATUS'])}
+      />
 
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-        <DataTable rows={records} columns={columns} search={search} pagination />
+        <DataTable rows={applyStandardFilters(records, filters)} columns={columns} search={search} pagination />
       </section>
 
       {modalOpen && (

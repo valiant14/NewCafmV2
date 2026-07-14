@@ -9,6 +9,8 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import StandardFilters from '../components/ui/StandardFilters'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 const locationFields = [
   { key: 'location', label: 'Location', required: true, placeholder: 'RC-1031-RD-001-00-054' },
@@ -40,6 +42,13 @@ export default function LocationsPage({ initialLocations = [] }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(emptyLocation)
   const [locations, setLocations] = useState(initialLocations)
+  const [filters, setFilters] = useState(emptyStandardFilters)
+  const visibleLocations = applyStandardFilters(locations, filters, {
+    site: ['site'],
+    department: ['department'],
+    status: ['status'],
+    date: ['createdDate']
+  })
 
   const saveLocation = () => {
     setLocations(current => [{ ...form }, ...current])
@@ -63,10 +72,17 @@ export default function LocationsPage({ initialLocations = [] }) {
       />
       <ImportNotice fileName={imported} subject="location" onClear={() => setImported('')} />
       <IndexTabs active="All" tabs={[{ key: 'All', label: 'All Locations', count: locations.length }]} />
+      <StandardFilters
+        filters={filters}
+        setFilters={setFilters}
+        siteOptions={optionsFromRows(locations, ['site'])}
+        departmentOptions={optionsFromRows(locations, ['department'])}
+        statusOptions={optionsFromRows(locations, ['status'])}
+      />
       <section className="rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-        {locations.length ? (
+        {visibleLocations.length ? (
           <DataTable
-            rows={locations}
+            rows={visibleLocations}
             rowKey="location"
             pagination
             columns={[
@@ -85,8 +101,8 @@ export default function LocationsPage({ initialLocations = [] }) {
         ) : (
           <EmptyState
             icon={MapPin}
-            title="No locations added yet"
-            description="Create your first site, building, floor, room, or zone using the Add location button."
+            title={locations.length ? 'No locations match the filters' : 'No locations added yet'}
+            description={locations.length ? 'Reset the standard filters to view all location records.' : 'Create your first site, building, floor, room, or zone using the Add location button.'}
           />
         )}
       </section>

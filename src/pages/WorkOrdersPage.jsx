@@ -8,6 +8,8 @@ import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import StandardFilters from '../components/ui/StandardFilters'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 const workOrderTemplateHeaders = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTION', 'STATUS', 'WORK TYPE ', 'PRIORTY', 'SITE', 'DEPARTMENT ', 'SUB DEPARTMENT  NAME', 'LOCATION ', 'ASSET', 'TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'FAILURE CODE', 'PROBLEM CODE']
 
@@ -22,9 +24,16 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [sort, setSort] = useState({ key: 'WORKORDER', direction: 'asc' })
+  const [filters, setFilters] = useState(emptyStandardFilters)
 
   const orderType = order => (order['WORK TYPE '] || order['WORK TYPE  '] || 'PM').trim()
-  const filtered = rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)
+  const typedRows = rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)
+  const filtered = applyStandardFilters(typedRows, filters, {
+    site: ['SITE'],
+    department: ['DEPARTMENT ', 'ASSIGNED DEPARTMENT'],
+    status: ['STATUS'],
+    date: ['TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'REPORTED DATE ']
+  })
   const sortValue = (order, key) => {
     if (key === 'WORK TYPE') return orderType(order)
     if (key === 'DESCRIPITION') return order['DESCRIPITION ']
@@ -88,6 +97,13 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
         active={typeFilter}
         onChange={type => { setTypeFilter(type); setPage(1) }}
         tabs={['All', 'PM', 'CM', 'Incident'].map(type => ({ key: type, label: type === 'All' ? 'All Work Orders' : type, count: count(type) }))}
+      />
+      <StandardFilters
+        filters={filters}
+        setFilters={value => { setFilters(value); setPage(1) }}
+        siteOptions={optionsFromRows(rows, ['SITE'])}
+        departmentOptions={optionsFromRows(rows, ['DEPARTMENT ', 'ASSIGNED DEPARTMENT'])}
+        statusOptions={optionsFromRows(rows, ['STATUS'])}
       />
       <WorkOrdersTable
         rows={paginated}

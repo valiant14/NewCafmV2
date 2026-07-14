@@ -9,8 +9,10 @@ import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import IndexTabs from '../components/ui/IndexTabs'
 import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
+import StandardFilters from '../components/ui/StandardFilters'
 import departments from '../data/departments.json'
 import pmSeed from '../data/pmSchedules.json'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 const emptyPlan = {
   pmNumber: '',
@@ -98,6 +100,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   const [pageSize, setPageSize] = useState(10)
   const [pmTab, setPmTab] = useState('All')
   const [sort, setSort] = useState({ key: 'pmNumber', direction: 'asc' })
+  const [filters, setFilters] = useState(emptyStandardFilters)
 
   const jobPlans = useMemo(() => [
     ...new Map(jobTasks
@@ -111,7 +114,13 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   ], [jobTasks])
 
   const selected = plans.find(plan => plan.pmNumber === selectedId)
-  const visible = plans.filter(plan => (pmTab === 'All' || plan.pmStatus === pmTab) && Object.values(plan).some(value => String(value).toLowerCase().includes(query.toLowerCase())))
+  const tabRows = plans.filter(plan => (pmTab === 'All' || plan.pmStatus === pmTab) && Object.values(plan).some(value => String(value).toLowerCase().includes(query.toLowerCase())))
+  const visible = applyStandardFilters(tabRows, filters, {
+    site: ['site'],
+    department: ['department', 'personGroup'],
+    status: ['pmStatus', 'woStatus'],
+    date: ['startDate']
+  })
   const sorted = [...visible].sort((a, b) => {
     const left = a[sort.key] ?? ''
     const right = b[sort.key] ?? ''
@@ -175,7 +184,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
 
       <IndexTabs
         active={pmTab}
-        onChange={value => { setPmTab(value); setPage(1) }}
+        onChange={value => { setPmTab(value); setFilters(emptyStandardFilters); setPage(1) }}
         tabs={[
           { key: 'All', label: 'All PM Schedules', count: plans.length },
           { key: 'Active', label: 'Active', count: plans.filter(plan => plan.pmStatus === 'Active').length },
@@ -190,6 +199,13 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         </label>
         <Button variant="outline" onClick={generate}><Sparkles size={16} />Run generation preview</Button>
       </div>
+      <StandardFilters
+        filters={filters}
+        setFilters={value => { setFilters(value); setPage(1) }}
+        siteOptions={optionsFromRows(plans, ['site'])}
+        departmentOptions={optionsFromRows(plans, ['department', 'personGroup'])}
+        statusOptions={optionsFromRows(plans, ['pmStatus', 'woStatus'])}
+      />
 
       <PmScheduleTable
         rows={visiblePage}

@@ -10,6 +10,8 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
+import StandardFilters from '../components/ui/StandardFilters'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 export const initialRequests = [{
   sr: 'SR-2026-0041',
@@ -53,7 +55,9 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   const [selected, setSelected] = useState(requestFromPath)
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
-  const visible = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? request.status === 'WAPPR' : request.status === 'CONVERTED')
+  const [filters, setFilters] = useState(emptyStandardFilters)
+  const tabRows = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? request.status === 'WAPPR' : request.status === 'CONVERTED')
+  const visible = applyStandardFilters(tabRows, filters, { date: ['reportedDate'] })
 
   useEffect(() => {
     const pop = () => setSelected(requestFromPath())
@@ -95,12 +99,19 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
       <ImportNotice fileName={imported} subject="job request" onClear={() => setImported('')} />
       <IndexTabs
         active={tab}
-        onChange={setTab}
+        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
         tabs={[
           { key: 'All', label: 'All Job Requests', count: requests.length },
           { key: 'Awaiting Review', label: 'Awaiting Review', count: requests.filter(request => request.status === 'WAPPR').length },
           { key: 'Converted', label: 'Converted', count: requests.filter(request => request.status === 'CONVERTED').length }
         ]}
+      />
+      <StandardFilters
+        filters={filters}
+        setFilters={setFilters}
+        siteOptions={optionsFromRows(requests, ['site'])}
+        departmentOptions={optionsFromRows(requests, ['department', 'assignedDepartment'])}
+        statusOptions={optionsFromRows(requests, ['status'])}
       />
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
         <DataTable
