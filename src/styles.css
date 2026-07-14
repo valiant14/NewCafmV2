@@ -172,6 +172,10 @@ main,
     display: none !important;
   }
 
+  .print-report-screen {
+    display: none !important;
+  }
+
   .wo-print-report {
     display: block !important;
     color: #111;

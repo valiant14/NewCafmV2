@@ -1,6 +1,7 @@
 import { CalendarClock, ChevronRight, FileSpreadsheet, Settings2, Sparkles } from 'lucide-react'
 import Badge from '../ui/Badge'
 import { DetailHeader, DetailTabs, InfoCard, ProfileStrip } from '../ui/DetailScaffold'
+import GenericPrintReport from '../ui/GenericPrintReport'
 
 export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, workOrders, onBack, onOpenWorkOrder }) {
   const asset = assets.find(item => item.assetnum === plan.asset)
@@ -9,7 +10,8 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, wor
   const history = workOrders.filter(order => order['PM NUMBER'] === plan.pmNumber)
 
   return (
-    <section className="space-y-5">
+    <section className="printable-record">
+      <div className="print-report-screen space-y-5">
       <DetailHeader
         eyebrow={`PREVENTIVE MAINTENANCE · ${plan.workType}`}
         id={plan.pmNumber}
@@ -106,6 +108,43 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, wor
           <InfoCard icon={Settings2} kicker="RESPONSIBILITY" title="Ownership" items={[['PERSONGROUP', plan.personGroup || 'Not assigned'], ['Department', plan.department || 'Not configured'], ['Sub Department', plan.subDepartment || 'Not configured'], ['Supervisor', plan.supervisor || 'Assigned after generation'], ['Lead', plan.lead || 'Not specified']]} />
         </aside>
       </div>
+      </div>
+      <GenericPrintReport
+        reportTitle="PM Schedule Report"
+        reportSubtitle="Preventive maintenance master report"
+        number={plan.pmNumber}
+        status={plan.pmStatus}
+        description={plan.description}
+        summary={[['Frequency', `${plan.frequency} ${plan.freqUnit}`], ['Job Plan', plan.jobPlan], ['Next Date', plan.startDate]]}
+        sections={[
+          { title: 'Schedule and Generation', rows: [[['PM Number', plan.pmNumber], ['Next Date', plan.startDate], ['Frequency', `${plan.frequency} ${plan.freqUnit}`], ['Lead Time', `${plan.leadTime} days`]], [['Work Type', plan.workType], ['WO Status', plan.woStatus], ['PM Counter', plan.pmCounter], ['Last Generated Cycle', plan.lastGeneratedCycle || 'Not generated']]] },
+          { title: 'Asset and Location', rows: [[['Asset', plan.asset || 'Location-based PM'], ['Asset Description', asset?.description], ['Location', plan.location || asset?.location], ['Route', plan.route || 'No route']]] },
+          { title: 'Responsibility', rows: [[['Person Group', plan.personGroup], ['Department', plan.department], ['Sub Department', plan.subDepartment], ['Supervisor', plan.supervisor || 'Assigned after generation']]] }
+        ]}
+        tables={[
+          {
+            title: 'Job Tasks',
+            columns: [
+              { key: 'JOB TASK SEQUENCE', label: 'Seq.' },
+              { key: 'JOB TASK DESCRIPTION', label: 'Task Description' },
+              { key: 'TASK DURATION IN HOUR', label: 'Duration', render: row => `${Math.max(1, Math.round(Number(row['TASK DURATION IN HOUR']) * 1440))} min` }
+            ],
+            rows: tasks,
+            emptyText: 'No task rows found for this job plan.'
+          },
+          {
+            title: 'Generated Work Orders',
+            columns: [
+              { key: 'WORKORDER', label: 'WO Number' },
+              { key: 'PM CYCLE', label: 'PM Cycle' },
+              { key: 'TARGET START ', label: 'Target Start' },
+              { key: 'STATUS', label: 'Status' }
+            ],
+            rows: history,
+            emptyText: 'No work orders generated yet.'
+          }
+        ]}
+      />
     </section>
   )
 }

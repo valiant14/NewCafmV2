@@ -1,5 +1,6 @@
 import { BadgeCheck, Boxes, Building2, CalendarClock, ClipboardList, Factory, MapPin, ShieldCheck, Tag } from 'lucide-react'
 import { DetailHeader, DetailTabs, FocusCard, InfoCard, ProfileStrip, TimelineCard } from '../ui/DetailScaffold'
+import GenericPrintReport from '../ui/GenericPrintReport'
 
 export default function AssetDetailPage({ asset, workOrders = [], onBack }) {
   const assetWorkOrders = workOrders.filter(order => String(order.ASSET || '').trim() === String(asset.assetnum || '').trim())
@@ -8,7 +9,8 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack }) {
   const healthy = asset.status === 'OPERATING'
 
   return (
-    <section className="space-y-5">
+    <section className="printable-record">
+      <div className="print-report-screen space-y-5">
       <DetailHeader
         eyebrow="ASSET MASTER"
         id={asset.assetnum}
@@ -96,6 +98,31 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack }) {
           ]}
         />
       </main>
+      </div>
+      <GenericPrintReport
+        reportTitle="Asset Report"
+        reportSubtitle="Asset master report"
+        number={asset.assetnum}
+        status={asset.status || 'UNKNOWN'}
+        description={asset.description}
+        summary={[['Site', asset.site], ['Location', asset.location], ['Department', asset.department]]}
+        sections={[
+          { title: 'Asset Information', rows: [[['Asset Number', asset.assetnum], ['Description', asset.description], ['Short Name', asset['asset short name']], ['Parent Asset', asset.parent]]] },
+          { title: 'Site Context', rows: [[['Site', asset.site], ['Location', asset.location], ['Department', asset.department], ['Sub Department', asset['sub department']]]] },
+          { title: 'Model and Serial', rows: [[['Model Number', asset.modelnum], ['Serial Number', asset.serialnum], ['Install Date', asset.installdate], ['Quantity', asset.quantity]]] }
+        ]}
+        tables={[{
+          title: 'Linked Work Orders',
+          columns: [
+            { key: 'WORKORDER', label: 'WO Number' },
+            { key: 'DESCRIPITION ', label: 'Description' },
+            { key: 'STATUS', label: 'Status' },
+            { key: 'WORK TYPE ', label: 'Type' }
+          ],
+          rows: assetWorkOrders,
+          emptyText: 'No work orders linked to this asset.'
+        }]}
+      />
     </section>
   )
 }

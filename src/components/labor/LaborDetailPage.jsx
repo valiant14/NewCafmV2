@@ -1,5 +1,6 @@
 import { Activity, BadgeCheck, BriefcaseBusiness, CalendarDays, Clock3, ShieldCheck, UserRound, Wrench } from 'lucide-react'
 import { DetailHeader, DetailTabs, FocusCard, InfoCard, ProfileStrip, TimelineCard } from '../ui/DetailScaffold'
+import GenericPrintReport from '../ui/GenericPrintReport'
 
 const workloadByStatus = {
   Available: { openWork: 1, weekHours: 14, utilization: 42, nextAssignment: 'Ready for dispatch' },
@@ -26,7 +27,8 @@ export default function LaborDetailPage({ labor, onBack }) {
   const statusTone = toneByStatus[labor.availability] || 'green'
 
   return (
-    <section className="space-y-5">
+    <section className="printable-record">
+      <div className="print-report-screen space-y-5">
       <DetailHeader
         eyebrow="LABOR RESOURCE"
         id={labor.personId}
@@ -100,6 +102,20 @@ export default function LaborDetailPage({ labor, onBack }) {
           ]}
         />
       </main>
+      </div>
+      <GenericPrintReport
+        reportTitle="Labor Report"
+        reportSubtitle="Labor resource report"
+        number={labor.personId}
+        status={labor.availability}
+        description={`${labor.name} - ${labor.craft}`}
+        summary={[['Department', labor.department], ['Craft Code', labor.craftCode], ['Shift', labor.shift]]}
+        sections={[
+          { title: 'Labor Information', rows: [[['Name', labor.name], ['Person ID', labor.personId], ['Shift', labor.shift], ['Availability', labor.availability]]] },
+          { title: 'Craft and Responsibility', rows: [[['Craft Code', labor.craftCode], ['Craft', labor.craft], ['Department', labor.department], ['Sub Department', labor.subDepartment]]] },
+          { title: 'Workload Context', rows: [[['Open Work', workload.openWork], ['Week Hours', `${workload.weekHours}h`], ['Utilization', `${workload.utilization}%`], ['Next Action', workload.nextAssignment]]] }
+        ]}
+      />
     </section>
   )
 }

@@ -1,5 +1,6 @@
 import { AlertTriangle, Archive, BadgeCheck, BarChart3, Boxes, ClipboardList, PackageCheck, Warehouse } from 'lucide-react'
 import { DetailHeader, DetailTabs, FocusCard, InfoCard, ProfileStrip, TimelineCard } from '../ui/DetailScaffold'
+import GenericPrintReport from '../ui/GenericPrintReport'
 
 const statusTone = {
   Available: 'green',
@@ -20,7 +21,8 @@ export default function MaterialDetailPage({ material, onBack }) {
   const tone = statusTone[material.availability] || 'green'
 
   return (
-    <section className="space-y-5">
+    <section className="printable-record">
+      <div className="print-report-screen space-y-5">
       <DetailHeader
         eyebrow="INVENTORY MATERIAL"
         id={material.itemNumber}
@@ -94,6 +96,20 @@ export default function MaterialDetailPage({ material, onBack }) {
           ]}
         />
       </main>
+      </div>
+      <GenericPrintReport
+        reportTitle="Material Report"
+        reportSubtitle="Inventory material report"
+        number={material.itemNumber}
+        status={material.availability}
+        description={material.description}
+        summary={[['Category', material.category], ['Storeroom', material.storeroom], ['Available', `${stock.available} ${material.unit}`]]}
+        sections={[
+          { title: 'Material Information', rows: [[['Item Number', material.itemNumber], ['Description', material.description], ['Category', material.category], ['Unit', material.unit]]] },
+          { title: 'Stock Position', rows: [[['Storeroom', material.storeroom], ['Balance', material.balance], ['Reserved', material.reserved], ['Available Balance', stock.available]]] },
+          { title: 'Reorder Control', rows: [[['Reorder Level', material.reorderLevel], ['Status', material.availability], ['Coverage', `${stock.coverage}%`], ['Purchase Required', stock.needsPurchase ? 'Yes' : 'No']]] }
+        ]}
+      />
     </section>
   )
 }

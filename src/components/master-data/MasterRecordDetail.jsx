@@ -1,11 +1,13 @@
 import { ChevronRight } from 'lucide-react'
 import { DetailHeader, DetailTabs } from '../ui/DetailScaffold'
+import GenericPrintReport from '../ui/GenericPrintReport'
 
 export default function MasterRecordDetail({ eyebrow, id, title, status, statusTone = 'green', onBack, groups = [] }) {
   const summary = groups.flatMap(group => group.items).slice(0, 4)
 
   return (
-    <section className="space-y-5">
+    <section className="printable-record">
+      <div className="print-report-screen space-y-5">
       <DetailHeader
         eyebrow={eyebrow}
         id={id}
@@ -48,6 +50,19 @@ export default function MasterRecordDetail({ eyebrow, id, title, status, statusT
           </section>
         ))}
       </main>
+      </div>
+      <GenericPrintReport
+        reportTitle={`${eyebrow || 'Master Data'} Report`}
+        reportSubtitle="Master data record report"
+        number={id}
+        status={status}
+        description={title}
+        summary={summary.slice(0, 3)}
+        sections={groups.map(group => ({
+          title: group.title,
+          rows: Array.from({ length: Math.ceil(group.items.length / 4) }, (_, rowIndex) => group.items.slice(rowIndex * 4, rowIndex * 4 + 4))
+        }))}
+      />
     </section>
   )
 }

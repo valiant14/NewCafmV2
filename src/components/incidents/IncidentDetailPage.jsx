@@ -1,5 +1,6 @@
 import { AlertTriangle, Building2, CalendarClock, ClipboardList, MapPin, ShieldCheck, UserRound } from 'lucide-react'
 import { DetailHeader, DetailTabs, FocusCard, InfoCard, ProfileStrip, TimelineCard } from '../ui/DetailScaffold'
+import GenericPrintReport from '../ui/GenericPrintReport'
 
 const severityTone = severity => {
   if (severity === 'Critical' || severity === 'High') return 'orange'
@@ -18,7 +19,8 @@ export default function IncidentDetailPage({ incident, onBack }) {
   const reportedDate = incident.reportedDate ? new Date(incident.reportedDate).toLocaleString() : 'Not recorded'
 
   return (
-    <section className="space-y-5">
+    <section className="printable-record">
+      <div className="print-report-screen space-y-5">
       <DetailHeader
         eyebrow="INCIDENT RECORD"
         id={incident.incidentNumber}
@@ -106,6 +108,20 @@ export default function IncidentDetailPage({ incident, onBack }) {
           ]}
         />
       </main>
+      </div>
+      <GenericPrintReport
+        reportTitle="Incident Report"
+        reportSubtitle="Standalone incident report"
+        number={incident.incidentNumber}
+        status={incident.status || 'Open'}
+        description={incident.description}
+        summary={[['Severity', incident.severity], ['Site', incident.site], ['Department', incident.department]]}
+        sections={[
+          { title: 'Incident Information', rows: [[['Incident Number', incident.incidentNumber], ['Description', incident.description], ['Status', incident.status], ['Severity', incident.severity]]] },
+          { title: 'Site and Department', rows: [[['Site', incident.site], ['Location', incident.location], ['Department', incident.department], ['Reported Date', reportedDate]]] },
+          { title: 'Reporter and Ownership', rows: [[['Reported By', incident.reportedBy], ['Owner Department', incident.department], ['Reviewer', incident.reviewer || 'HSE / Facility team'], ['Reference', incident.reference || 'Not linked']]] }
+        ]}
+      />
     </section>
   )
 }

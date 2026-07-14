@@ -1,5 +1,6 @@
 import { AlertTriangle, BadgeCheck, CalendarClock, ClipboardCheck, MapPin, ShieldCheck, TimerReset, Wrench } from 'lucide-react'
 import { DetailHeader, DetailTabs, FocusCard, InfoCard, ProfileStrip, TimelineCard } from '../ui/DetailScaffold'
+import GenericPrintReport from '../ui/GenericPrintReport'
 
 const statusTone = {
   Available: 'green',
@@ -31,7 +32,8 @@ export default function ToolDetailPage({ tool, onBack }) {
   const warning = tool.status !== 'Available' || inspection.dueSoon
 
   return (
-    <section className="space-y-5">
+    <section className="printable-record">
+      <div className="print-report-screen space-y-5">
       <DetailHeader
         eyebrow="TOOL & EQUIPMENT"
         id={tool.toolNumber}
@@ -106,6 +108,20 @@ export default function ToolDetailPage({ tool, onBack }) {
           ]}
         />
       </main>
+      </div>
+      <GenericPrintReport
+        reportTitle="Tool Report"
+        reportSubtitle="Tool and equipment report"
+        number={tool.toolNumber}
+        status={tool.status}
+        description={tool.description}
+        summary={[['Category', tool.category], ['Location', tool.location], ['Inspection Due', tool.inspectionDue]]}
+        sections={[
+          { title: 'Tool Information', rows: [[['Tool Number', tool.toolNumber], ['Description', tool.description], ['Category', tool.category], ['Quantity', tool.quantity]]] },
+          { title: 'Location and Inspection', rows: [[['Location', tool.location], ['Status', tool.status], ['Inspection Due', tool.inspectionDue], ['Inspection State', inspection.label]]] },
+          { title: 'Availability', rows: [[['Available Units', availableUnits], ['Inspection Window', inspection.days === null ? '-' : `${inspection.days} days`], ['Due Soon', inspection.dueSoon ? 'Yes' : 'No'], ['Overdue', inspection.overdue ? 'Yes' : 'No']]] }
+        ]}
+      />
     </section>
   )
 }

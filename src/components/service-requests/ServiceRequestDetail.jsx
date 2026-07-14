@@ -4,6 +4,7 @@ import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { Field, Section } from '../ui/FormControls'
 import departments from '../../data/departments.json'
+import GenericPrintReport from '../ui/GenericPrintReport'
 
 export default function ServiceRequestDetail({ request, assets, workOrders, failureOptions, onBack, onSubmit, onApprove, onOpenWorkOrder, modal = false }) {
   const [form, setForm] = useState(request)
@@ -40,7 +41,8 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
   }
 
   return (
-    <div className={modal ? 'flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-2xl' : 'space-y-5'}>
+    <div className={modal ? 'flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-2xl' : 'printable-record'}>
+      <div className={modal ? '' : 'print-report-screen space-y-5'}>
       <header className={`${modal ? 'rounded-t-3xl border-b' : 'rounded-3xl border'} border-[var(--app-line)] bg-[var(--app-panel)] p-6 shadow-[0_12px_32px_rgba(32,55,45,.07)]`}>
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
@@ -56,7 +58,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
             <button className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] text-[var(--app-muted)] transition hover:bg-[var(--app-table-hover-bg)] hover:text-[var(--app-ink)]" onClick={onBack} aria-label="Close new job request"><X size={20} /></button>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline"><Printer size={15} /> Print</Button>
+              <Button variant="outline" onClick={() => window.print()}><Printer size={15} /> Print</Button>
               {form.status === 'CONVERTED' && form.convertedWorkOrder ? (
                 <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>
               ) : (
@@ -122,6 +124,22 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
       </main>
 
       {isNew && <footer className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-[var(--app-line)] bg-[var(--app-panel)] p-5"><Button variant="outline" onClick={onBack}>Cancel</Button><Button onClick={handlePrimary}><Check size={15} />Submit request</Button></footer>}
+      </div>
+      {!modal && !isNew && (
+        <GenericPrintReport
+          reportTitle="Job Request Report"
+          reportSubtitle="Service request conversion report"
+          number={form.sr}
+          status={form.status}
+          description={form.description}
+          summary={[['Priority', form.priority], ['Site', form.site], ['Department', form.department || 'Pending review']]}
+          sections={[
+            { title: 'Request Information', rows: [[['Request Number', form.sr], ['Request Type', form.requestType || 'Service'], ['Status', form.status], ['Priority', form.priority]], [['Description', form.description], ['Long Description', form.longDescription], ['Reported By', form.reportedBy], ['Reported Date', form.reportedDate]]] },
+            { title: 'Location and Asset', rows: [[['Site', form.site], ['Location', form.location], ['Asset', form.asset], ['Converted Work Order', form.convertedWorkOrder]]] },
+            { title: 'Department Review', rows: [[['Department', form.department], ['Sub Department', form.subDepartment], ['Assigned Department', form.assignedDepartment || form.department], ['Failure Code', form.failureCode]]] }
+          ]}
+        />
+      )}
     </div>
   )
 }
