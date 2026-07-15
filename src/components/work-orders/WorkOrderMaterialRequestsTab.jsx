@@ -20,7 +20,7 @@ export default function WorkOrderMaterialRequestsTab({
   setTab
 }) {
   return (
-    <Section compact title="Material Requests" note="Generated from resources requested in the Plan tab. Materials, tools, and equipment are handled directly inside this work order.">
+    <Section compact title="Material Requests" note="This list is created only from materials, tools, or equipment manually added in the Plan tab. The system does not auto-retrieve these from the Job Plan by default.">
       {resourceRequests.length ? (
         <>
           <div className={tableClass}>
@@ -65,7 +65,7 @@ export default function WorkOrderMaterialRequestsTab({
         <div className={emptyClass}>
           <PackageCheck size={28} />
           <strong className="text-sm text-[var(--app-ink)]">No resources requested</strong>
-          <p className="text-xs">Add materials, tools, or equipment in the Plan tab.</p>
+          <p className="text-xs">Nothing is generated automatically. Add materials, tools, or equipment manually in the Plan tab when required.</p>
           <button className={outlineButtonClass} onClick={() => setTab('Plan')}>Go to Plan</button>
         </div>
       )}
