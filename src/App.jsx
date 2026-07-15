@@ -18,6 +18,8 @@ import IncidentsPage from './pages/IncidentsPage'
 import RolesPermissionsPage from './pages/RolesPermissionsPage'
 import MetersPage from './pages/MetersPage'
 import LoginPage from './pages/LoginPage'
+import PurchaseRequestsPage from './pages/PurchaseRequestsPage'
+import ReservationsPage from './pages/ReservationsPage'
 import AppShell from './components/layout/AppShell'
 import WorkOrderDocumentsTab from './components/work-orders/WorkOrderDocumentsTab'
 import WorkOrderPrintReport from './components/work-orders/WorkOrderPrintReport'
@@ -71,7 +73,7 @@ const toLocationPriority = value => {
   return 3
 }
 
-function WorkOrderEditor({ order, onClose, page = false }) {
+function WorkOrderEditor({ order, onClose, page = false, onCreatePurchaseRequest, onCreateReservation }) {
   const workType=(order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const isPM = workType === 'PM'
   const isCM = workType === 'CM'
@@ -147,10 +149,37 @@ function WorkOrderEditor({ order, onClose, page = false }) {
   const changeFailure=e=>{setFailureClass(e.target.value);setProblemCode('');setCauseCode('');setRemedyCode('')}
   const updatePlanRow=(setter,index,key,value)=>setter(rows=>rows.map((row,rowIndex)=>rowIndex===index?{...row,[key]:value}:row))
   const updateActualRow=(setter,index,value)=>setter(rows=>rows.map((row,rowIndex)=>rowIndex===index?{...row,actualQuantity:value}:row))
-  const updatePlannedResource=(index,value)=>updatePlanRow(setPlannedResources,index,'item',value)
+  const updatePlannedResource=(index,value)=>setPlannedResources(rows=>rows.map((row,rowIndex)=>rowIndex===index?{...row,item:value,requestStatus:''}:row))
+  const updatePlannedResourceField=(index,key,value)=>setPlannedResources(rows=>rows.map((row,rowIndex)=>rowIndex===index?{...row,[key]:value,requestStatus:''}:row))
+  const findPlannedInventory = resource => resource.type === 'Material'
+    ? materialMaster.find(item => item.description === resource.item || item.itemNumber === resource.item)
+    : toolMaster.find(item => item.description === resource.item || item.toolNumber === resource.item)
+  const resourceAvailability = resource => {
+    const inventory = findPlannedInventory(resource)
+    if (!inventory) return { availability: 'Not Found', source: resource.type === 'Material' ? 'Materials master' : 'Tools master' }
+    if (resource.type === 'Material') {
+      const availableQuantity = Math.max(0, Number(inventory.balance || 0) - Number(inventory.reserved || 0))
+      const requestedQuantity = Number(resource.quantity || 0)
+      return {
+        availability: requestedQuantity > 0 && availableQuantity >= requestedQuantity ? 'Available' : 'Purchase Required',
+        source: inventory.storeroom || 'Materials store',
+        availableQuantity,
+        itemNumber: inventory.itemNumber
+      }
+    }
+    const requestedQuantity = Number(resource.quantity || 0)
+    const availableQuantity = inventory.status === 'Available' ? Number(inventory.quantity || 0) : 0
+    return {
+      availability: requestedQuantity > 0 && availableQuantity >= requestedQuantity ? 'Available' : 'Purchase Required',
+      source: inventory.location || 'Tool Crib',
+      availableQuantity,
+      itemNumber: inventory.toolNumber,
+      inventoryStatus: inventory.status
+    }
+  }
   const materialRequests=plannedResources.filter(resource=>resource.type==='Material')
   const resourceRequests=plannedResources.filter(resource=>['Material','Tool','Equipment'].includes(resource.type))
-  const materialBlocked=materialRequests.some(resource=>resource.availability==='Purchase Required')
+  const materialBlocked=materialRequests.some(resource=>resourceAvailability(resource).availability==='Purchase Required'&&resource.requestStatus!=='Purchase Requested')
   const ptwBlocked=ptwRequired&&ptwFiles.length===0
   const overviewReady=Boolean(description.trim()&&siteValue&&assetValue&&assetDescription.trim()&&locationValue&&department&&assignedDepartment)
   const overviewMissing=[!description.trim()&&'Description',!siteValue&&'Site',!assetValue&&'Asset',!assetDescription.trim()&&'Asset Description',!locationValue&&'Location',!department&&'Department',!assignedDepartment&&'Assigned Department'].filter(Boolean)
@@ -183,10 +212,10 @@ function WorkOrderEditor({ order, onClose, page = false }) {
     <WorkOrderTabs tabs={workOrderTabs} active={tab} onChange={setTab} showFailureDot={!isPM} />
     <div className={workOrderBodyClass}>
       {tab==='Overview' && <WorkOrderOverviewTab number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={toDateTimeInput(order['REPORTED DATE']||order['REPORT DATE'])||new Date().toISOString().slice(0,16)} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
-      {tab==='Plan' && <WorkOrderPlanTab isPM={isPM} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialMaster} toolMaster={toolMaster} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} />}
+      {tab==='Plan' && <WorkOrderPlanTab isPM={isPM} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialMaster} toolMaster={toolMaster} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} updatePlannedResourceField={updatePlannedResourceField} />}
       {tab==='Actual' && <WorkOrderActualTab actualsEditable={actualsEditable} status={status} preparationReady={preparationReady} planReady={planReady} setTab={setTab} setWorkStarted={setWorkStarted} completeWork={completeWork} outlineButtonClass={workOrderOutlineButtonClass} primaryButtonClass={workOrderPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} setActualFinish={setActualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} laborCraft={laborCraft} setLaborCraft={setLaborCraft} actualHours={actualHours} setActualHours={setActualHours} actualStart={actualStart} setActualStart={setActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} />}
       {tab==='Failure' && <WorkOrderFailureTab isCM={isCM} failureClass={failureClass} changeFailure={changeFailure} failureClassOptions={failureClassOptions} problemCode={problemCode} setProblemCode={setProblemCode} setCauseCode={setCauseCode} setRemedyCode={setRemedyCode} problemOptions={problemOptions} causeCode={causeCode} causeOptions={causeOptions} remedyCode={remedyCode} remedyOptions={remedyOptions} failureDescription={failureDescription} problemDescription={problemDescription} causeDescription={causeDescription} remedyDescription={remedyDescription} failureCount={failureCodes.length} />}
-      {tab==='Material Requests' && <WorkOrderMaterialRequestsTab resourceRequests={resourceRequests} plannedResources={plannedResources} setPlannedResources={setPlannedResources} updatePlanRow={updatePlanRow} materialBlocked={materialBlocked} primaryButtonClass={workOrderPrimaryButtonClass} outlineButtonClass={workOrderOutlineButtonClass} setTab={setTab} />}
+      {tab==='Material Requests' && <WorkOrderMaterialRequestsTab resourceRequests={resourceRequests} plannedResources={plannedResources} setPlannedResources={setPlannedResources} updatePlanRow={updatePlanRow} getAvailability={resourceAvailability} materialBlocked={materialBlocked} primaryButtonClass={workOrderPrimaryButtonClass} outlineButtonClass={workOrderOutlineButtonClass} setTab={setTab} workOrderContext={{ number, site: siteValue, department: department || assignedDepartment, assignedDepartment }} onCreatePurchaseRequest={onCreatePurchaseRequest} onCreateReservation={onCreateReservation} />}
       {tab==='PTW & Files' && <WorkOrderDocumentsTab ptwRequired={ptwRequired} setPtwRequired={setPtwRequired} ptwFiles={ptwFiles} setPtwFiles={setPtwFiles} generalFiles={generalFiles} setGeneralFiles={setGeneralFiles} addFiles={addFiles} downloadFile={downloadFile} />}
       {tab==='Meters' && <WorkOrderMetersTab meterReading={meterReading} setMeterReading={setMeterReading} waterConsumption={waterConsumption} setWaterConsumption={setWaterConsumption} energyConsumption={energyConsumption} setEnergyConsumption={setEnergyConsumption} meterReadingDate={meterReadingDate} setMeterReadingDate={setMeterReadingDate} />}
     </div>
@@ -200,6 +229,8 @@ export default function App() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [allWorkOrders,setAllWorkOrders]=useState(workOrders)
   const [serviceRequests,setServiceRequests]=useState(serviceRequestSeed)
+  const [purchaseRequests,setPurchaseRequests]=useState([])
+  const [reservations,setReservations]=useState([])
   const workOrderNotifications = buildWorkOrderNotifications(allWorkOrders)
   const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false); window.history.pushState({},'',pathForPage(name)) }
   const convertRequest = request => {
@@ -209,12 +240,25 @@ export default function App() {
     return cm
   }
   const openConvertedWorkOrder=number=>{setActive('Work Orders');setSearch('');window.history.pushState({},'',`/work-orders/${number}`)}
+  const todayStamp=()=>new Date().toISOString().slice(0,10)
+  const createPurchaseRequest=record=>{
+    const created={purchaseRequest:`PR-2026-${String(purchaseRequests.length+1).padStart(4,'0')}`,status:'Purchase Requested',createdAt:todayStamp(),...record}
+    setPurchaseRequests(rows=>rows.some(row=>row.workOrder===created.workOrder&&row.item===created.item)?rows:[created,...rows])
+    return created
+  }
+  const createReservation=record=>{
+    const prefix=record.status==='Reserved'?'RSV':'ALC'
+    const created={reservation:`${prefix}-2026-${String(reservations.length+1).padStart(4,'0')}`,createdAt:todayStamp(),arrangedQuantity:0,releasedQuantity:0,deliveredQuantity:0,...record}
+    setReservations(rows=>rows.some(row=>row.workOrder===created.workOrder&&row.item===created.item&&row.status===created.status)?rows:[created,...rows])
+    return created
+  }
+  const updateReservation=(reference,patch)=>setReservations(rows=>rows.map(row=>row.reservation===reference?{...row,...patch}:row))
   const createWorkOrder=form=>{const next=Math.max(...allWorkOrders.map(order=>Number(order.WORKORDER)||0),56545134)+1;const created={'WORKORDER':String(next),'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':toLocationPriority(form.priority),'ASSET':form.asset,'STATUS':'WAPPR','WORK TYPE ':form.type,'STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':'','SUB DEPARTMENT  NAME':'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null};setAllWorkOrders(rows=>[...rows,created]);return created}
   const generatePmWorkOrder=(pm,tasks)=>setAllWorkOrders(rows=>rows.some(order=>order['PM NUMBER']===pm.pmNumber&&order['PM CYCLE']===pm.cycle)?rows:[...rows,{'WORKORDER':pm.workOrder,'DESCRIPITION ':pm.description,'LOCATION ':pm.location,'LOCATION PRIORTY':3,'ASSET':pm.asset,'STATUS':'Waiting','WORK TYPE ':'PM','STATUS DESCRIPITION':'Waiting for Execution','DEPARTMENT ':pm.department,'SUB DEPARTMENT  NAME':pm.subDepartment,'ASSIGNED DEPARTMENT':pm.department,'PRIORTY':3,'SITE':pm.site,'TARGET START ':pm.startDate,'TARGET FINISH ':pm.startDate,'PM NUMBER':pm.pmNumber,'PM CYCLE':pm.cycle,'JOB PLAN':pm.jobPlan,'JOB PLAN TASKS':tasks,'ESTIMATED DURATION':tasks.reduce((sum,task)=>sum+Number(task['TASK DURATION IN HOUR']||0),0)*24,'ROUTE':pm.route,'LEAD TIME (DAYS)':pm.leadTime,'FREQUENCY':pm.frequency,'FREQUNIT':pm.freqUnit,'PMCOUNTER':pm.pmCounter,'STORELOC':pm.storeLocation,'SUPERVISOR':pm.supervisor,'LEAD':pm.lead,'PERSONGROUP':pm.personGroup,'PM STATUS':pm.pmStatus}])
   const pages = {
     'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={serviceRequests} setRequests={setServiceRequests} assets={assets} workOrders={allWorkOrders} failureOptions={failureClassOptions}/>,
     'Incidents': <IncidentsPage/>,
-    'Work Orders': <WorkOrdersPage rows={allWorkOrders} assets={assets} onCreate={createWorkOrder} onImportRows={setAllWorkOrders} EditorComponent={WorkOrderEditor} excelDate={excelDate} slaBreached={slaBreached}/>,
+    'Work Orders': <WorkOrdersPage rows={allWorkOrders} assets={assets} onCreate={createWorkOrder} onImportRows={setAllWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} />} excelDate={excelDate} slaBreached={slaBreached}/>,
     'Assets': <AssetsPage initialAssets={assets} workOrders={allWorkOrders} />,
     'Preventive Maintenance': <PreventiveMaintenancePage assets={assets} jobTasks={jobTasks} workOrders={allWorkOrders} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Meters': <MetersPage assets={assets} workOrders={allWorkOrders} />,
@@ -242,6 +286,8 @@ export default function App() {
     ]}/>,
     'Labor': <LaborPage/>,
     'Materials': <MaterialsPage/>,
+    'Purchase Requests': <PurchaseRequestsPage rows={purchaseRequests}/>,
+    'Reservations': <ReservationsPage rows={reservations} onUpdate={updateReservation}/>,
     'Tools & Equipment': <ToolsPage/>,
     'Roles & Permissions': <RolesPermissionsPage/>,
     'Settings': <SettingsPage/>

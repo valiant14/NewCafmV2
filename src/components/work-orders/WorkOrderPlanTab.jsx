@@ -29,7 +29,8 @@ export default function WorkOrderPlanTab({
   materialMaster,
   toolMaster,
   updatePlanRow,
-  updatePlannedResource
+  updatePlannedResource,
+  updatePlannedResourceField
 }) {
   return (
     <div className={workspaceClass}>
@@ -65,11 +66,11 @@ export default function WorkOrderPlanTab({
           <div className={resourceHeadClass}><span>Type</span><span>Item / description</span><span>Quantity</span><span /></div>
           {plannedResources.length ? plannedResources.map((row, index) => (
             <div className={resourceRowClass} key={index}>
-              <select value={row.type} onChange={event => updatePlanRow(setPlannedResources, index, 'type', event.target.value)}>
+              <select value={row.type} onChange={event => updatePlannedResourceField(index, 'type', event.target.value)}>
                 <option>Material</option><option>Tool</option><option>Equipment</option>
               </select>
               <input value={row.item} list={row.type === 'Material' ? 'planned-material-options' : 'planned-tool-options'} onChange={event => updatePlannedResource(index, event.target.value)} placeholder={`Search ${row.type.toLowerCase()} number or description`} />
-              <input value={row.quantity} type="number" min="1" step="1" onChange={event => updatePlanRow(setPlannedResources, index, 'quantity', event.target.value)} placeholder="Enter count" />
+              <input value={row.quantity} type="number" min="1" step="1" onChange={event => updatePlannedResourceField(index, 'quantity', event.target.value)} placeholder="Enter count" />
               <button onClick={() => setPlannedResources(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>
             </div>
           )) : <div className={emptyClass}>No planned materials or tools yet.</div>}

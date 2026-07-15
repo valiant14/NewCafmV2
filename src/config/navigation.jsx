@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   MapPin,
   PackageCheck,
+  ShoppingCart,
   ShieldCheck,
   UserCog,
   Users,
@@ -27,6 +28,8 @@ export const navigationItems = [
   { name: 'Failure Library', path: '/failure-library', icon: ShieldCheck },
   { name: 'Labor', path: '/labor', icon: Users },
   { name: 'Materials', path: '/materials', icon: PackageCheck },
+  { name: 'Purchase Requests', path: '/purchase-requests', icon: ShoppingCart },
+  { name: 'Reservations', path: '/reservations', icon: ClipboardList },
   { name: 'Tools & Equipment', path: '/tools', icon: Wrench },
   { name: 'Roles & Permissions', path: '/roles-permissions', icon: UserCog }
 ]
