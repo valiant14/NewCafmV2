@@ -1,5 +1,6 @@
 import { AlertTriangle, Check, PackageCheck, Wrench } from 'lucide-react'
 import Section from '../ui/Section'
+import { statusDescription, statusTone } from '../../lib/statusMatrix'
 
 const tableClass = 'overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)]'
 const headClass = 'grid grid-cols-[1.3fr_120px_140px_160px_150px_190px] gap-3 bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]'
@@ -7,7 +8,7 @@ const rowClass = 'grid grid-cols-[1.3fr_120px_140px_160px_150px_190px] items-cen
 const resourceIconClass = type => `grid h-9 w-9 place-items-center rounded-xl ${type === 'Material' ? 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'bg-[var(--app-badge-blue-bg)] text-[var(--app-badge-blue-text)]'}`
 const summaryClass = blocked => `mt-3 flex items-start gap-3 rounded-2xl p-4 ${blocked ? 'bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]' : 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]'}`
 const emptyClass = 'grid min-h-40 place-items-center content-center gap-2 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-soft-bg)] p-6 text-center text-[var(--app-muted)]'
-const statusClass = status => `w-fit rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.08em] ${status === 'Purchase Requested' ? 'bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]' : status === 'Reserved' || status === 'Allocated' ? 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'bg-[var(--app-badge-neutral-bg)] text-[var(--app-badge-neutral-text)]'}`
+const statusClass = status => `w-fit rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.08em] ${statusTone(status) === 'orange' ? 'bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]' : statusTone(status) === 'green' ? 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : statusTone(status) === 'blue' ? 'bg-[var(--app-badge-blue-bg)] text-[var(--app-badge-blue-text)]' : 'bg-[var(--app-badge-neutral-bg)] text-[var(--app-badge-neutral-text)]'}`
 const availabilityClass = availability => `w-fit rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.08em] ${availability === 'Available' ? 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]'}`
 
 export default function WorkOrderMaterialRequestsTab({
@@ -27,12 +28,8 @@ export default function WorkOrderMaterialRequestsTab({
   const actionResource = (index, resource) => {
     const availability = getAvailability(resource).availability
     const stock = getAvailability(resource)
-    const nextStatus = availability === 'Purchase Required' || availability === 'Not Found'
-      ? 'Purchase Requested'
-      : resource.type === 'Material'
-        ? 'Reserved'
-        : 'Allocated'
-    const transaction = nextStatus === 'Purchase Requested'
+    const nextStatus = availability === 'Purchase Required' || availability === 'Not Found' ? 'WAPPR' : 'ENTERED'
+    const transaction = nextStatus === 'WAPPR'
       ? onCreatePurchaseRequest?.({
         workOrder: workOrderContext.number,
         type: resource.type,
@@ -52,7 +49,8 @@ export default function WorkOrderMaterialRequestsTab({
         availableQuantity: stock.availableQuantity,
         site: workOrderContext.site,
         department: workOrderContext.department,
-        status: nextStatus
+        status: nextStatus,
+        statusDescription: statusDescription('inventoryUsage', nextStatus)
       })
     setPlannedResources(rows => rows.map((row, rowIndex) => rowIndex === index ? {
       ...row,
@@ -89,7 +87,7 @@ export default function WorkOrderMaterialRequestsTab({
                   <span>{resource.quantity || 'Not set'}</span>
                   <span>{stock.source}</span>
                   <span className={availabilityClass(stock.availability)}>{stock.availability}</span>
-                  <span className={statusClass(resource.requestStatus)}>{resource.requestStatus ? `${resource.requestStatus}${resource.transactionRef ? ` · ${resource.transactionRef}` : ''}` : `Stock: ${stock.availableQuantity ?? '-'}`}</span>
+                  <span className={statusClass(resource.requestStatus)}>{resource.requestStatus ? `${resource.requestStatus} · ${statusDescription(resource.requestStatus === 'WAPPR' ? 'purchaseRequisition' : 'inventoryUsage', resource.requestStatus)}${resource.transactionRef ? ` · ${resource.transactionRef}` : ''}` : `Stock: ${stock.availableQuantity ?? '-'}`}</span>
                   <button className={stock.availability === 'Available' ? primaryButtonClass : outlineButtonClass} onClick={() => actionResource(index, resource)}>
                     {stock.availability === 'Available' ? (resource.type === 'Material' ? 'Reserve' : 'Allocate') : 'Create purchase request'}
                   </button>
@@ -101,8 +99,8 @@ export default function WorkOrderMaterialRequestsTab({
           <div className={summaryClass(materialBlocked)}>
             {materialBlocked ? <AlertTriangle size={18} /> : <Check size={18} />}
             <div className="grid gap-1">
-              <strong className="text-sm">{materialBlocked ? 'Waiting for Spare Parts' : 'Resources ready for execution'}</strong>
-              <span className="text-xs">{materialBlocked ? 'One or more planned material items require purchase. Work Order status changed automatically to Waiting for Spare Parts.' : 'Planned materials, tools, and equipment are available for reservation or allocation.'}</span>
+              <strong className="text-sm">{materialBlocked ? 'Work order on HOLD' : 'Resources ready for execution'}</strong>
+              <span className="text-xs">{materialBlocked ? 'One or more planned material items require purchase. Work Order status changes automatically to HOLD until the request is created or stock is available.' : 'Planned materials, tools, and equipment are available for reservation or allocation.'}</span>
             </div>
           </div>
         </>

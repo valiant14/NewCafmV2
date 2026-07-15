@@ -78,10 +78,10 @@ export default function WorkOrderActualTab({
         <div className={lockedIconClass}><ShieldCheck size={22} /></div>
         <div>
           <strong>Available after work completion</strong>
-          <p>{status === 'ASSIGNED' ? 'Complete Plan and Failure preparation, then select Start Work. When execution is finished, select Resolve / Complete.' : 'When physical work is finished, select Resolve / Complete in the header to unlock execution notes and actual consumption.'}</p>
+          <p>{status === 'SCHED' ? 'Complete Plan and Failure preparation, then select Start Work. When execution is finished, select Resolve / Complete.' : 'When physical work is finished, select Resolve / Complete in the header to unlock execution notes and actual consumption.'}</p>
           <span>Current status: {status}</span>
-          {status === 'ASSIGNED' && !preparationReady && <button className={outlineButtonClass} onClick={() => setTab(planReady ? 'Failure' : 'Plan')}>Complete {planReady ? 'Failure' : 'Plan'} preparation</button>}
-          {status === 'ASSIGNED' && preparationReady && <button className={primaryButtonClass} onClick={() => setWorkStarted(true)}>Start work</button>}
+          {status === 'SCHED' && !preparationReady && <button className={outlineButtonClass} onClick={() => setTab(planReady ? 'Failure' : 'Plan')}>Complete {planReady ? 'Failure' : 'Plan'} preparation</button>}
+          {status === 'SCHED' && preparationReady && <button className={primaryButtonClass} onClick={() => setWorkStarted(true)}>Start work</button>}
           {status === 'INPRG' && <button className={primaryButtonClass} onClick={completeWork}>Resolve / complete work</button>}
         </div>
       </div>

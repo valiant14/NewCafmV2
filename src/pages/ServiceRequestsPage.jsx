@@ -12,6 +12,7 @@ import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 
 export const initialRequests = [{
   sr: 'SR-2026-0041',
@@ -56,7 +57,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
-  const tabRows = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? request.status === 'WAPPR' : request.status === 'CONVERTED')
+  const tabRows = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? request.status === 'WAPPR' : request.status === 'RESOLVED')
   const visible = applyStandardFilters(tabRows, filters, { date: ['reportedDate'] })
 
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   }
   const approve = request => {
     const createdWorkOrder = onConvert(request)
-    const updated = { ...request, status: 'CONVERTED', convertedWorkOrder: createdWorkOrder.WORKORDER }
+    const updated = { ...request, status: 'RESOLVED', convertedWorkOrder: createdWorkOrder.WORKORDER }
     setRequests(list => list.map(item => item.sr === updated.sr ? updated : item))
     setSelected(updated)
     window.history.replaceState({}, '', `/job-requests/${updated.sr}`)
@@ -94,7 +95,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
         eyebrow="REQUEST INTAKE"
         title="Job Requests"
         description="Submit, review, approve, and convert job requests into Corrective Maintenance work orders."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={templateHeaders} fileName="Job_Requests_Template.xlsx" /><ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRequests(rows.map((row, index) => ({ ...blankRequest(), ...row, sr: row.sr || `SR-IMPORT-${String(index + 1).padStart(4, '0')}` })))} /><Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={templateHeaders} fileName="Job_Requests_Template.xlsx" /><ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRequests(rows.map((row, index) => ({ ...blankRequest(), ...row, status: normalizeStatus('serviceRequest', row.status, 'NEW'), sr: row.sr || `SR-IMPORT-${String(index + 1).padStart(4, '0')}` })))} /><Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button></div>}
       />
       <ImportNotice fileName={imported} subject="job request" onClear={() => setImported('')} />
       <IndexTabs
@@ -103,7 +104,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
         tabs={[
           { key: 'All', label: 'All Job Requests', count: requests.length },
           { key: 'Awaiting Review', label: 'Awaiting Review', count: requests.filter(request => request.status === 'WAPPR').length },
-          { key: 'Converted', label: 'Converted', count: requests.filter(request => request.status === 'CONVERTED').length }
+          { key: 'Converted', label: 'Resolved / Converted', count: requests.filter(request => request.status === 'RESOLVED').length }
         ]}
       />
       <StandardFilters
@@ -126,7 +127,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
             { key: 'department', label: 'Department', render: value => value || 'Pending review' },
             { key: 'reportedBy', label: 'Reported by' },
             { key: 'priority', label: 'Priority', render: value => <Badge tone={value === 'High' ? 'orange' : 'neutral'}>{value}</Badge> },
-            { key: 'status', label: 'Status', render: value => <Badge tone={value === 'CONVERTED' ? 'green' : 'orange'}>{value}</Badge> },
+            { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} · {statusDescription('serviceRequest', value)}</Badge> },
             { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
           ]}
         />

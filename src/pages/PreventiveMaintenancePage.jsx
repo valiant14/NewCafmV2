@@ -13,6 +13,7 @@ import StandardFilters from '../components/ui/StandardFilters'
 import departments from '../data/departments.json'
 import pmSeed from '../data/pmSchedules.json'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 
 const emptyPlan = {
   pmNumber: '',
@@ -35,7 +36,7 @@ const emptyPlan = {
   personGroup: '',
   department: '',
   subDepartment: '',
-  pmStatus: 'Active',
+  pmStatus: 'ACTIVE',
   lastGeneratedCycle: ''
 }
 const pmTemplateHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'ROUTE', 'LOCATION', 'JPNUM', 'NEXTDATE', 'LEAD TIME (DAYS)', 'FREQUENCY', 'FREQUNIT', 'PMCOUNTER', 'WORKTYPE', 'WOSTATUS', 'STORELOC', 'SUPERVISOR', 'LEAD', 'PERSONGROUP', 'department', 'sub department']
@@ -72,7 +73,7 @@ const mapPmImportRows = rows => rows.map(row => ({
   personGroup: row.PERSONGROUP || '',
   department: row.department || row.DEPARTMENT || '',
   subDepartment: row['sub department'] || row['SUB DEPARTMENT'] || '',
-  pmStatus: row['PM Status'] || row.PMSTATUS || 'Active',
+  pmStatus: normalizeStatus('preventiveMaintenance', row['PM Status'] || row.PMSTATUS, 'ACTIVE'),
   lastGeneratedCycle: ''
 })).filter(plan => plan.pmNumber && plan.description)
 
@@ -90,7 +91,7 @@ const addFrequency = plan => {
 
 export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], workOrders = [], onGenerate, onOpenWorkOrder }) {
   const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
-  const [plans, setPlans] = useState(pmSeed)
+  const [plans, setPlans] = useState(() => pmSeed.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') })))
   const [mode, setMode] = useState('list')
   const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
   const [form, setForm] = useState(emptyPlan)
@@ -152,7 +153,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   }
   const generate = () => {
     const cutoff = new Date('2026-08-31')
-    const due = plans.filter(plan => plan.pmStatus === 'Active' && new Date(plan.startDate) <= cutoff && plan.lastGeneratedCycle !== cycleKey(plan))
+    const due = plans.filter(plan => plan.pmStatus === 'ACTIVE' && new Date(plan.startDate) <= cutoff && plan.lastGeneratedCycle !== cycleKey(plan))
     const made = due.map((plan, index) => ({ ...plan, workOrder: `PMWO-${20260801 + index}`, cycle: cycleKey(plan), nextDue: addFrequency(plan) }))
     setPlans(rows => rows.map(plan => {
       const generated = made.find(item => item.pmNumber === plan.pmNumber)
@@ -187,8 +188,9 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         onChange={value => { setPmTab(value); setFilters(emptyStandardFilters); setPage(1) }}
         tabs={[
           { key: 'All', label: 'All PM Schedules', count: plans.length },
-          { key: 'Active', label: 'Active', count: plans.filter(plan => plan.pmStatus === 'Active').length },
-          { key: 'Inactive', label: 'Inactive', count: plans.filter(plan => plan.pmStatus === 'Inactive').length }
+          { key: 'ACTIVE', label: 'Active', count: plans.filter(plan => plan.pmStatus === 'ACTIVE').length },
+          { key: 'INACTIVE', label: 'Inactive', count: plans.filter(plan => plan.pmStatus === 'INACTIVE').length },
+          { key: 'DRAFT', label: 'Draft', count: plans.filter(plan => plan.pmStatus === 'DRAFT').length }
         ]}
       />
 

@@ -12,6 +12,7 @@ import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 
 const empty = {
   assetnum: '',
@@ -75,7 +76,7 @@ export default function AssetsPage({ initialAssets = [], workOrders = [] }) {
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Assets_Template.xlsx" />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(rows)} />
+            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(rows.map(row => ({ ...row, status: normalizeStatus('asset', row.status, 'OPERATING') })))} />
             <Button onClick={() => setAdding(true)}><Plus size={17} />Add asset</Button>
           </div>
         )}
@@ -114,7 +115,7 @@ export default function AssetsPage({ initialAssets = [], workOrders = [] }) {
             { key: 'site', label: 'Site' },
             { key: 'department', label: 'Department' },
             { key: 'modelnum', label: 'Model' },
-            { key: 'status', label: 'Status', render: value => <Badge tone={value === 'OPERATING' ? 'green' : 'orange'}>{value || 'UNKNOWN'}</Badge> }
+            { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value || 'UNKNOWN'}{value ? ` · ${statusDescription('asset', value)}` : ''}</Badge> }
           ]}
         />
       </section>

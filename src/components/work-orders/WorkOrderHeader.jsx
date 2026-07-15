@@ -18,6 +18,7 @@ export default function WorkOrderHeader({
   number,
   workType,
   status,
+  statusDescription,
   description,
   isPM,
   autoSaveState,
@@ -29,7 +30,9 @@ export default function WorkOrderHeader({
   close,
   reroute,
   printWorkOrder,
-  setWorkAssigned,
+  setWorkApproved,
+  setWorkWaitingSchedule,
+  setWorkScheduled,
   setWorkStarted,
   completeWork,
   setWorkClosed
@@ -59,9 +62,12 @@ export default function WorkOrderHeader({
           </button>
 
           <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-1.5">
-            <div className={statusClass}><span>Current status</span><strong>{status}</strong></div>
-            {status === 'Waiting' && <button className={primaryButtonClass} disabled={!overviewReady} onClick={() => setWorkAssigned(true)}><Users size={15} />Change status: Assign</button>}
-            {status === 'ASSIGNED' && <button className={primaryButtonClass} disabled={!preparationReady} onClick={() => setWorkStarted(true)}><Wrench size={15} />Change status: Start</button>}
+            <div className={statusClass}><span>{statusDescription || 'Current status'}</span><strong>{status}</strong></div>
+            {status === 'WAPPR' && <button className={primaryButtonClass} disabled={!overviewReady} onClick={() => setWorkApproved(true)}><Users size={15} />Change status: Approve</button>}
+            {status === 'APPR' && <button className={primaryButtonClass} onClick={() => setWorkWaitingSchedule(true)}><Users size={15} />Change status: Send to schedule</button>}
+            {status === 'WSCH' && <button className={primaryButtonClass} disabled={!preparationReady} onClick={() => setWorkScheduled(true)}><Users size={15} />Change status: Schedule</button>}
+            {status === 'SCHED' && <button className={primaryButtonClass} disabled={!preparationReady} onClick={() => setWorkStarted(true)}><Wrench size={15} />Change status: Start work</button>}
+            {status === 'HOLD' && <button className={outlineButtonClass} disabled title="Resolve material or permit hold before continuing"><Wrench size={15} />Status on hold</button>}
             {status === 'INPRG' && <button className={primaryButtonClass} disabled={!failureReady} onClick={completeWork} title={!failureReady ? 'Failure Code and Problem Code are required before completion' : ''}><Check size={15} />Change status: Complete</button>}
             {status === 'COMP' && <button className={primaryButtonClass} disabled={!actualReady} onClick={() => setWorkClosed(true)}><Check size={15} />Change status: Close</button>}
           </div>

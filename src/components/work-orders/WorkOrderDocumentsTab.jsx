@@ -85,7 +85,7 @@ export default function WorkOrderDocumentsTab({
           {!ptwFiles.length && (
             <div className="m-3 flex items-center gap-2 rounded-xl bg-[var(--app-badge-orange-bg)] p-3 text-xs text-[var(--app-badge-orange-text)]">
               <AlertTriangle size={16} />
-              <span>Work Order status is Waiting for Permit until a PTW document is attached.</span>
+              <span>Work Order status is HOLD until a PTW document is attached.</span>
             </div>
           )}
         </section>

@@ -1,6 +1,7 @@
 import { AlertTriangle, Building2, CalendarClock, ClipboardList, MapPin, ShieldCheck, UserRound } from 'lucide-react'
 import { DetailHeader, DetailTabs, FocusCard, InfoCard, ProfileStrip, TimelineCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
+import { statusDescription, statusTone } from '../../lib/statusMatrix'
 
 const severityTone = severity => {
   if (severity === 'Critical' || severity === 'High') return 'orange'
@@ -8,14 +9,8 @@ const severityTone = severity => {
   return 'green'
 }
 
-const statusTone = status => {
-  if (status === 'Closed') return 'green'
-  if (status === 'Under review') return 'blue'
-  return 'orange'
-}
-
 export default function IncidentDetailPage({ incident, onBack }) {
-  const open = incident.status !== 'Closed'
+  const open = !['RESOLVED', 'CLOSED'].includes(incident.status)
   const reportedDate = incident.reportedDate ? new Date(incident.reportedDate).toLocaleString() : 'Not recorded'
 
   return (
@@ -25,7 +20,7 @@ export default function IncidentDetailPage({ incident, onBack }) {
         eyebrow="INCIDENT RECORD"
         id={incident.incidentNumber}
         title={incident.description}
-        status={incident.status || 'Open'}
+        status={`${incident.status || 'NEW'} · ${statusDescription('incident', incident.status || 'NEW')}`}
         statusTone={statusTone(incident.status)}
         onBack={onBack}
         backLabel="Back to incidents"
@@ -57,7 +52,7 @@ export default function IncidentDetailPage({ incident, onBack }) {
           metrics={[
             { icon: MapPin, label: 'Site', value: incident.site, note: incident.location || 'Location not set' },
             { icon: AlertTriangle, label: 'Severity', value: incident.severity, note: 'Client fields can be extended after confirmation' },
-            { icon: ClipboardList, label: 'Status', value: incident.status || 'Open', note: 'Tracked independently from work orders' }
+            { icon: ClipboardList, label: 'Status', value: `${incident.status || 'NEW'} · ${statusDescription('incident', incident.status || 'NEW')}`, note: 'Tracked independently from work orders' }
           ]}
         />
 
@@ -68,7 +63,7 @@ export default function IncidentDetailPage({ incident, onBack }) {
           items={[
             ['Incident Number', incident.incidentNumber],
             ['Description', incident.description],
-            ['Status', incident.status],
+            ['Status', `${incident.status} · ${statusDescription('incident', incident.status)}`],
             ['Severity', incident.severity]
           ]}
         />
@@ -103,7 +98,7 @@ export default function IncidentDetailPage({ incident, onBack }) {
           title="Incident Timeline"
           rows={[
             { icon: AlertTriangle, text: 'Incident was reported and registered.', value: reportedDate },
-            { icon: ClipboardList, text: 'Initial review status.', value: incident.status || 'Open' },
+            { icon: ClipboardList, text: 'Initial review status.', value: `${incident.status || 'NEW'} · ${statusDescription('incident', incident.status || 'NEW')}` },
             { icon: ShieldCheck, text: 'Corrective action relationship.', value: 'Standalone module' }
           ]}
         />
@@ -113,7 +108,7 @@ export default function IncidentDetailPage({ incident, onBack }) {
         reportTitle="Incident Report"
         reportSubtitle="Standalone incident report"
         number={incident.incidentNumber}
-        status={incident.status || 'Open'}
+        status={`${incident.status || 'NEW'} · ${statusDescription('incident', incident.status || 'NEW')}`}
         description={incident.description}
         summary={[['Severity', incident.severity], ['Site', incident.site], ['Department', incident.department]]}
         sections={[

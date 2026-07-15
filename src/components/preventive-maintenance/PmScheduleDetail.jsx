@@ -2,6 +2,7 @@ import { CalendarClock, ChevronRight, FileSpreadsheet, Settings2, Sparkles } fro
 import Badge from '../ui/Badge'
 import { DetailHeader, DetailTabs, InfoCard, ProfileStrip } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
+import { statusDescription, statusTone } from '../../lib/statusMatrix'
 
 export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, workOrders, onBack, onOpenWorkOrder }) {
   const asset = assets.find(item => item.assetnum === plan.asset)
@@ -16,8 +17,8 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, wor
         eyebrow={`PREVENTIVE MAINTENANCE · ${plan.workType}`}
         id={plan.pmNumber}
         title={plan.description}
-        status={plan.pmStatus}
-        statusTone={plan.pmStatus === 'Active' ? 'green' : 'neutral'}
+        status={`${plan.pmStatus} · ${statusDescription('preventiveMaintenance', plan.pmStatus)}`}
+        statusTone={statusTone(plan.pmStatus)}
         onBack={onBack}
         backLabel="All PM Schedules"
         printLabel="Print PM"
@@ -49,7 +50,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, wor
               ['Frequency', `${plan.frequency} ${plan.freqUnit}`],
               ['Lead Time', `${plan.leadTime} days`],
               ['Work Type', plan.workType],
-              ['WO Status', `${plan.woStatus} · Waiting`],
+              ['WO Status', `${plan.woStatus} · Waiting for Schedule`],
               ['PM Counter', plan.pmCounter],
               ['Last Generated Cycle', plan.lastGeneratedCycle || 'Not generated']
             ]}

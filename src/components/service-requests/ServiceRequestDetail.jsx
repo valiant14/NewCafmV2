@@ -5,6 +5,7 @@ import Button from '../ui/Button'
 import { Field, Section } from '../ui/FormControls'
 import departments from '../../data/departments.json'
 import GenericPrintReport from '../ui/GenericPrintReport'
+import { statusDescription, statusTone } from '../../lib/statusMatrix'
 
 export default function ServiceRequestDetail({ request, assets, workOrders, failureOptions, onBack, onSubmit, onApprove, onOpenWorkOrder, modal = false }) {
   const [form, setForm] = useState(request)
@@ -50,7 +51,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
             {!isNew && <p className="text-[9px] font-extrabold uppercase tracking-[.18em] text-[#7a8780]">JOB REQUEST · {form.requestType?.toUpperCase()}</p>}
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-extrabold tracking-[-.045em] text-[var(--app-ink)]">{form.sr === 'AUTO' ? 'New job request' : form.sr}</h1>
-              <Badge tone={form.status === 'CONVERTED' ? 'green' : 'orange'}>{form.status}</Badge>
+              <Badge tone={statusTone(form.status)}>{form.status} · {statusDescription('serviceRequest', form.status)}</Badge>
             </div>
             <p className="mt-2 text-sm text-[var(--app-muted)]">{isNew ? 'Tell us what happened and where.' : form.description}</p>
           </div>
@@ -59,7 +60,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" onClick={() => window.print()}><Printer size={15} /> Print</Button>
-              {form.status === 'CONVERTED' && form.convertedWorkOrder ? (
+              {form.status === 'RESOLVED' && form.convertedWorkOrder ? (
                 <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>
               ) : (
                 <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} />Approve & convert to CM</Button>
@@ -89,7 +90,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
 
       {!isNew && <nav className="flex gap-1 border-b border-[var(--app-line)]">{['Request Details', 'Attachments', 'Department Review'].map(tab => <button key={tab} className={`relative px-3 py-3 text-[11px] ${activeTab === tab ? 'font-bold text-[#315a47] after:absolute after:bottom-[-1px] after:left-2 after:right-2 after:h-0.5 after:bg-[#477e63]' : 'text-[#7a847e]'}`} onClick={() => setActiveTab(tab)}>{tab}</button>)}</nav>}
 
-      {!isNew && form.status !== 'CONVERTED' && !canConvert && (
+      {!isNew && form.status !== 'RESOLVED' && !canConvert && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#f0d4bd] bg-[#fff7ef] p-4 text-[#9a5a2f]">
           <div className="flex items-center gap-3"><AlertTriangle size={18} /><div><strong>Complete required information before CM conversion</strong><span className="block text-xs">Missing: {missingConversionFields.join(', ')}</span></div></div>
           <Button variant="outline" onClick={() => setActiveTab(form.asset?.trim() ? 'Department Review' : 'Request Details')}>Complete fields <ChevronRight size={14} /></Button>

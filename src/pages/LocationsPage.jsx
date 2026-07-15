@@ -11,6 +11,8 @@ import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
+import Badge from '../components/ui/Badge'
 
 const locationFields = [
   { key: 'location', label: 'Location', required: true, placeholder: 'RC-1031-RD-001-00-054' },
@@ -65,7 +67,7 @@ export default function LocationsPage({ initialLocations = [] }) {
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Locations_Template.xlsx" />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setLocations(rows)} />
+            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setLocations(rows.map(row => ({ ...row, status: normalizeStatus('location', row.status, 'OPERATING') })))} />
             <Button onClick={() => setModalOpen(true)}><Plus size={17} />Add location</Button>
           </div>
         )}
@@ -89,7 +91,7 @@ export default function LocationsPage({ initialLocations = [] }) {
               { key: 'location', label: 'Location', render: value => <strong className="mono">{value}</strong> },
               { key: 'description', label: 'Description' },
               { key: 'type', label: 'Type' },
-              { key: 'status', label: 'Status' },
+              { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} · {statusDescription('location', value)}</Badge> },
               { key: 'priority', label: 'Priority' },
               { key: 'priority  description', label: 'Priority Description' },
               { key: 'site', label: 'Site' },

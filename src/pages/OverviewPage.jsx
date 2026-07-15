@@ -89,7 +89,7 @@ export default function OverviewPage({ onNavigate }) {
         <Metric label="SLA compliance" value={`${slaCompliance}%`} detail="Based on target finish/start dates" icon={Gauge} tone="green" />
         <Metric label="SLA violations" value={overdueOrders.length} detail="Open work orders past target" icon={AlertTriangle} tone="orange" />
         <Metric label="PM vs CM" value={`${pmCount}/${cmCount}`} detail="Preventive compared with corrective" icon={CalendarClock} tone="blue" />
-        <Metric label="Open workload" value={openOrders.length} detail="Waiting, assigned, or in progress" icon={ClipboardList} tone="purple" />
+        <Metric label="Open workload" value={openOrders.length} detail="Approval, schedule, hold, or in progress" icon={ClipboardList} tone="purple" />
       </section>
 
       <section className="mb-7 rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">

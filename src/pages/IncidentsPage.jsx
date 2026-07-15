@@ -12,6 +12,7 @@ import PageHeader from '../components/ui/PageHeader'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 
 const incidentSeed = [
   {
@@ -21,7 +22,7 @@ const incidentSeed = [
     department: 'Civil',
     location: 'RC-1031-RD-001-OO-054',
     severity: 'High',
-    status: 'Open',
+    status: 'NEW',
     reportedBy: 'Maha Alotaibi',
     reportedDate: '2026-07-14T09:15'
   },
@@ -32,13 +33,12 @@ const incidentSeed = [
     department: 'Electrical',
     location: 'RC-1031-EL-002',
     severity: 'Medium',
-    status: 'Under review',
+    status: 'INPRG',
     reportedBy: 'Ahmed Faisal',
     reportedDate: '2026-07-13T14:30'
   }
 ]
 
-const statusTone = status => status === 'Closed' ? 'green' : status === 'Under review' ? 'blue' : 'orange'
 const incidentTemplateHeaders = ['incidentNumber', 'description', 'site', 'department', 'location', 'severity', 'status', 'reportedBy', 'reportedDate']
 
 export default function IncidentsPage() {
@@ -52,8 +52,8 @@ export default function IncidentsPage() {
   const [selected, setSelected] = useState(rows.find(row => row.incidentNumber === routeId) || null)
 
   const tabRows = useMemo(() => {
-    if (tab === 'Open') return rows.filter(row => row.status !== 'Closed')
-    if (tab === 'Closed') return rows.filter(row => row.status === 'Closed')
+    if (tab === 'Open') return rows.filter(row => !['RESOLVED', 'CLOSED'].includes(row.status))
+    if (tab === 'Closed') return rows.filter(row => row.status === 'CLOSED')
     return rows
   }, [rows, tab])
   const filteredRows = useMemo(() => applyStandardFilters(tabRows, filters, { date: ['reportedDate'] }), [tabRows, filters])
@@ -63,7 +63,7 @@ export default function IncidentsPage() {
     setRows(current => [
       {
         incidentNumber: nextNumber,
-        status: 'Open',
+        status: 'NEW',
         reportedDate: new Date().toISOString().slice(0, 16),
         ...form
       },
@@ -91,7 +91,7 @@ export default function IncidentsPage() {
       department: row.department || '',
       location: row.location || '',
       severity: row.severity || 'Medium',
-      status: row.status || 'Open',
+      status: normalizeStatus('incident', row.status, 'NEW'),
       reportedBy: row.reportedBy || '',
       reportedDate: row.reportedDate || ''
     })))
@@ -119,8 +119,8 @@ export default function IncidentsPage() {
       <IndexTabs
         tabs={[
           { label: 'All Incidents', count: rows.length },
-          { label: 'Open', count: rows.filter(row => row.status !== 'Closed').length },
-          { label: 'Closed', count: rows.filter(row => row.status === 'Closed').length }
+          { label: 'Open', count: rows.filter(row => !['RESOLVED', 'CLOSED'].includes(row.status)).length },
+          { label: 'Closed', count: rows.filter(row => row.status === 'CLOSED').length }
         ]}
         active={tab}
         onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
@@ -145,7 +145,7 @@ export default function IncidentsPage() {
             { key: 'department', label: 'Department' },
             { key: 'location', label: 'Location' },
             { key: 'severity', label: 'Severity', render: value => <Badge tone={value === 'Critical' || value === 'High' ? 'orange' : 'blue'}>{value}</Badge> },
-            { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value}</Badge> },
+            { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} · {statusDescription('incident', value)}</Badge> },
             { key: 'reportedBy', label: 'Reported By' },
             { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
           ]}
@@ -167,7 +167,7 @@ export default function IncidentsPage() {
             { key: 'department', label: 'Department', required: true },
             { key: 'location', label: 'Location', required: true },
             { key: 'severity', label: 'Severity', required: true, options: ['Low', 'Medium', 'High', 'Critical'] },
-            { key: 'status', label: 'Status', required: true, options: ['Open', 'Under review', 'Closed'] },
+            { key: 'status', label: 'Status', required: true, options: ['NEW', 'INPRG', 'RESOLVED', 'CLOSED'] },
             { key: 'reportedBy', label: 'Reported By', required: true },
             { key: 'reportedDate', label: 'Reported Date', type: 'datetime-local' }
           ]}

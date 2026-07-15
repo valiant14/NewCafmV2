@@ -7,14 +7,7 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { ClipboardCheck, ClipboardList, PackageOpen, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
-
-const statusTone = status => {
-  if (status === 'Delivered') return 'green'
-  if (status === 'Partially Delivered') return 'orange'
-  if (status === 'Released' || status === 'Out for Delivery') return 'blue'
-  if (status === 'Arranged' || status === 'Partially Arranged') return 'purple'
-  return 'neutral'
-}
+import { statusDescription, statusTone } from '../lib/statusMatrix'
 
 const nextQuantity = row => {
   const requested = Number(row.quantity || 0)
@@ -46,22 +39,22 @@ export default function ReservationsPage({ rows = [], onUpdate }) {
   const arrange = row => {
     const q = nextQuantity(row)
     const arrangedQuantity = Math.min(q.requested, q.available)
-    onUpdate?.(row.reservation, { arrangedQuantity, status: arrangedQuantity >= q.requested ? 'Arranged' : 'Partially Arranged' })
+    onUpdate?.(row.reservation, { arrangedQuantity, status: 'STAGED', statusDescription: statusDescription('inventoryUsage', 'STAGED') })
   }
   const release = row => {
     const q = nextQuantity(row)
-    onUpdate?.(row.reservation, { releasedQuantity: q.arranged || Math.min(q.requested, q.available), status: 'Released' })
+    onUpdate?.(row.reservation, { releasedQuantity: q.arranged || Math.min(q.requested, q.available), status: 'STAGED', statusDescription: statusDescription('inventoryUsage', 'STAGED') })
   }
   const deliver = row => {
     const q = nextQuantity(row)
     const deliveredQuantity = q.released || q.arranged || Math.min(q.requested, q.available)
-    onUpdate?.(row.reservation, { deliveredQuantity, status: deliveredQuantity >= q.requested ? 'Delivered' : 'Partially Delivered' })
+    onUpdate?.(row.reservation, { deliveredQuantity, status: deliveredQuantity >= q.requested ? 'COMPLETE' : 'STAGED', statusDescription: statusDescription('inventoryUsage', deliveredQuantity >= q.requested ? 'COMPLETE' : 'STAGED') })
   }
 
   const actionFor = row => {
-    if (row.status === 'Delivered' || row.status === 'Partially Delivered') return <Badge tone={row.status === 'Delivered' ? 'green' : 'orange'}>{row.status === 'Delivered' ? 'Complete' : 'Partial'}</Badge>
-    if (row.status === 'Released' || row.status === 'Out for Delivery') return <Button className="h-8 px-3 text-xs" onClick={() => deliver(row)}><Truck size={14} />Delivered</Button>
-    if (row.status === 'Arranged' || row.status === 'Partially Arranged') return <Button className="h-8 px-3 text-xs" onClick={() => release(row)}><PackageOpen size={14} />Release from store</Button>
+    if (row.status === 'COMPLETE') return <Badge tone="green">Complete</Badge>
+    if (Number(row.releasedQuantity || 0) > Number(row.deliveredQuantity || 0)) return <Button className="h-8 px-3 text-xs" onClick={() => deliver(row)}><Truck size={14} />Deliver</Button>
+    if (Number(row.arrangedQuantity || 0) > Number(row.releasedQuantity || 0)) return <Button className="h-8 px-3 text-xs" onClick={() => release(row)}><PackageOpen size={14} />Release from store</Button>
     return <Button className="h-8 px-3 text-xs" onClick={() => arrange(row)}><ClipboardCheck size={14} />Arrange</Button>
   }
 
@@ -96,7 +89,7 @@ export default function ReservationsPage({ rows = [], onUpdate }) {
               { key: 'releasedQuantity', label: 'Released', render: value => value || 0 },
               { key: 'deliveredQuantity', label: 'Delivered', render: value => value || 0 },
               { key: 'source', label: 'Store / Source' },
-              { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value}</Badge> },
+              { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} · {statusDescription('inventoryUsage', value)}</Badge> },
               { key: 'action', label: 'Next Step', sortable: false, render: (_, row) => actionFor(row) }
             ]}
           />

@@ -54,7 +54,7 @@ export default function PmScheduleForm({ form, setForm, assets, jobPlans, depart
           <Field label="SUPERVISOR" value={form.supervisor} onChange={event => set('supervisor', event.target.value)} />
           <Field label="LEAD" value={form.lead} onChange={event => set('lead', event.target.value)} />
           <Field label="PERSONGROUP" value={form.personGroup} onChange={event => set('personGroup', event.target.value)} placeholder="C1-HVAC" />
-          <Field label="PM Status" value={form.pmStatus} options={['Active', 'Inactive']} onChange={event => set('pmStatus', event.target.value)} />
+          <Field label="PM Status" value={form.pmStatus} options={['ACTIVE', 'INACTIVE', 'DRAFT']} onChange={event => set('pmStatus', event.target.value)} />
           <Field label="department" value={form.department} onChange={event => setForm(current => ({ ...current, department: event.target.value, subDepartment: '' }))} options={['', ...departments.map(department => department.name)]} />
           <Field label="sub department" value={form.subDepartment} onChange={event => set('subDepartment', event.target.value)} options={['', ...(selectedDepartment?.subDepartments || []).map(sub => sub.name)]} />
         </div>

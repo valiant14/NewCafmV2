@@ -6,6 +6,7 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { ShoppingCart } from 'lucide-react'
 import { useState } from 'react'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { statusDescription, statusTone } from '../lib/statusMatrix'
 
 export default function PurchaseRequestsPage({ rows = [] }) {
   const [filters, setFilters] = useState(emptyStandardFilters)
@@ -44,7 +45,7 @@ export default function PurchaseRequestsPage({ rows = [] }) {
               { key: 'source', label: 'Source' },
               { key: 'site', label: 'Site' },
               { key: 'department', label: 'Department' },
-              { key: 'status', label: 'Status', render: value => <Badge tone="orange">{value}</Badge> },
+              { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} · {statusDescription('purchaseRequisition', value)}</Badge> },
               { key: 'createdAt', label: 'Created' }
             ]}
           />
