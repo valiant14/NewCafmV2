@@ -45,7 +45,6 @@ export default function AppShell({
               >
                 <Icon size={18} />
                 <span>{item.name}</span>
-                {item.counter && <b className="ml-auto rounded-full bg-[var(--app-sidebar-accent)] px-2 py-0.5 text-[10px] text-[var(--app-sidebar-accent-ink)]">{counters[item.counter] || 0}</b>}
               </button>
             )
           })}
