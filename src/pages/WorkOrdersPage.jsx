@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Printer } from 'lucide-react'
 import CreateWorkOrderModal from '../components/work-orders/CreateWorkOrderModal'
 import WorkOrdersTable from '../components/work-orders/WorkOrdersTable'
@@ -26,6 +26,12 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
   const [pageSize, setPageSize] = useState(10)
   const [sort, setSort] = useState({ key: 'WORKORDER', direction: 'asc' })
   const [filters, setFilters] = useState(emptyStandardFilters)
+
+  useEffect(() => {
+    if (!selected?.WORKORDER) return
+    const latest = rows.find(order => String(order.WORKORDER) === String(selected.WORKORDER))
+    if (latest && latest !== selected) setSelected(latest)
+  }, [rows, selected])
 
   const orderType = order => (order['WORK TYPE '] || order['WORK TYPE  '] || 'PM').trim()
   const typedRows = rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)

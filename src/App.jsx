@@ -75,6 +75,33 @@ const toLocationPriority = value => {
 }
 const maximoWorkOrderStatusDescriptions = new Proxy({}, { get: (_, status) => statusDescription('workOrder', status) })
 
+function WorkOrderWorkflowNotice({ status, missing = [], nextStep }) {
+  const clear = missing.length === 0
+  return (
+    <section className={`rounded-2xl border px-4 py-3 ${clear ? 'border-[var(--app-line)] bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'border-[var(--app-badge-orange-text)]/20 bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]'}`}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-[9px] font-extrabold uppercase tracking-[.16em] opacity-80">Workflow guidance</p>
+          <h3 className="mt-1 text-sm font-extrabold">{clear ? 'Ready for the next workflow action' : 'Update needed before the next workflow action'}</h3>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {clear ? (
+              <span className="rounded-full bg-white/60 px-2.5 py-1 text-[10px] font-bold">No blocking fields</span>
+            ) : missing.map(item => (
+              <span className="rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold" key={item}>{item}</span>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-xl bg-white/70 px-3 py-2 text-xs">
+          <span className="block text-[9px] font-extrabold uppercase tracking-[.14em] opacity-70">Current status</span>
+          <strong>{status}</strong>
+          <span className="mx-2 opacity-50">·</span>
+          <span>{nextStep}</span>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function WorkOrderEditor({ order, onClose, page = false, onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder }) {
   const workType=(order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const isPM = workType === 'PM'
@@ -197,6 +224,21 @@ function WorkOrderEditor({ order, onClose, page = false, onCreatePurchaseRequest
   const actualReady=Boolean(technicianRemarks.trim()&&completionNotes.trim()&&actualLabor.trim()&&Number(actualHours)>0&&actualMaterialsReady&&actualToolsReady&&failureReady)
   const preparationReady=overviewReady&&planReady
   const status = workClosed ? 'CLOSE' : workCompleted ? 'COMP' : workStarted ? 'INPRG' : (materialBlocked || ptwBlocked) ? 'HOLD' : workScheduled ? 'SCHED' : workWaitingSchedule ? 'WSCH' : workApproved ? 'APPR' : 'WAPPR'
+  const planMissing=[!plannedLaborReady&&'Plan: labor and estimated hours',isCM&&!plannedMaterialsReady&&'Plan: required materials',isCM&&!plannedToolsReady&&'Plan: required tools'].filter(Boolean)
+  const failureMissing=[isCM&&!failureClass&&'Failure: failure code',isCM&&!problemCode&&'Failure: problem code'].filter(Boolean)
+  const actualMissing=[!technicianRemarks.trim()&&'Actual: technician remarks',!completionNotes.trim()&&'Actual: completion notes',!actualLabor.trim()&&'Actual: labor',!Number(actualHours)&&'Actual: labor hours',!actualMaterialsReady&&'Actual: materials',!actualToolsReady&&'Actual: tools'].filter(Boolean)
+  const holdMissing=[materialBlocked&&'Material Requests: create PR or resolve stock',ptwBlocked&&'PTW & Files: attach permit file'].filter(Boolean)
+  const workflowMissing=status==='WAPPR'?overviewMissing:status==='APPR'?[...overviewMissing]:status==='WSCH'||status==='SCHED'?[...overviewMissing,...planMissing,...holdMissing]:status==='HOLD'?holdMissing:status==='INPRG'?failureMissing:status==='COMP'?actualMissing:[]
+  const workflowNextStep={
+    WAPPR: overviewReady?'Click Change status: Approve':'Complete Work Order overview fields',
+    APPR: 'Click Change status: Send to schedule',
+    WSCH: preparationReady?'Click Change status: Schedule':'Complete overview and plan requirements',
+    SCHED: preparationReady?'Click Change status: Start work':'Complete planning before starting work',
+    HOLD: 'Resolve material or permit hold before continuing',
+    INPRG: failureReady?'Click Change status: Complete':'Complete failure classification before completion',
+    COMP: actualReady?'Click Change status: Close':'Complete Actual tab before closeout',
+    CLOSE: 'Workflow complete'
+  }[status] || 'Review the work order'
   const actualsEditable = true
   const number = order.WORKORDER || 'AUTO'
   const targetFinishTime=targetFinish?new Date(targetFinish).getTime():null
@@ -249,8 +291,9 @@ function WorkOrderEditor({ order, onClose, page = false, onCreatePurchaseRequest
   }
   useEffect(()=>{if(!saveReady.current){saveReady.current=true;return}setAutoSaveState('Unsaved changes')},[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterReading,waterConsumption,energyConsumption,meterReadingDate,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
-    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={order['DESCRIPITION '] || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} onSave={saveChanges} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} reroute={reroute} printWorkOrder={printWorkOrder} setWorkApproved={setWorkApproved} setWorkWaitingSchedule={setWorkWaitingSchedule} setWorkScheduled={setWorkScheduled} setWorkStarted={setWorkStarted} completeWork={completeWork} setWorkClosed={setWorkClosed} />
+    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} onSave={saveChanges} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} printWorkOrder={printWorkOrder} setWorkApproved={setWorkApproved} setWorkWaitingSchedule={setWorkWaitingSchedule} setWorkScheduled={setWorkScheduled} setWorkStarted={setWorkStarted} completeWork={completeWork} setWorkClosed={setWorkClosed} />
     <WorkOrderTabs tabs={workOrderTabs} active={tab} onChange={setTab} showFailureDot={!isPM} />
+    <WorkOrderWorkflowNotice status={status} missing={workflowMissing} nextStep={workflowNextStep} />
     <div className={workOrderBodyClass}>
       {tab==='Overview' && <WorkOrderOverviewTab number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={toDateTimeInput(order['REPORTED DATE']||order['REPORT DATE'])||new Date().toISOString().slice(0,16)} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
       {tab==='Plan' && <WorkOrderPlanTab isPM={isPM} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialMaster} toolMaster={toolMaster} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} updatePlannedResourceField={updatePlannedResourceField} />}
