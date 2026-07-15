@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, Boxes, CalendarClock, ChevronRight, ClipboardList, Gauge, MoreHorizontal, Plus, ShieldCheck, Sparkles } from 'lucide-react'
+import { AlertTriangle, Boxes, CalendarClock, ChevronRight, ClipboardList, Gauge, MoreHorizontal, PackageCheck, Plus, ShieldCheck, ShoppingCart, Sparkles, Truck } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -43,21 +43,30 @@ const Donut = ({ value, label }) => (
   </div>
 )
 
-export default function OverviewPage({ onNavigate }) {
+export default function OverviewPage({ onNavigate, workOrders: liveWorkOrders = workOrders, purchaseRequests = [], purchaseOrders = [], reservations = [] }) {
   const [imported, setImported] = useState('')
   const operating = assets.filter(asset => asset.status === 'OPERATING').length
   const now = Date.now()
-  const openOrders = workOrders.filter(order => !['COMP', 'COMPLETED', 'CLOSE', 'CLOSED'].includes(String(order.STATUS || '').toUpperCase()))
+  const workOrderRows = liveWorkOrders
+  const openOrders = workOrderRows.filter(order => !['COMP', 'COMPLETED', 'CLOSE', 'CLOSED'].includes(String(order.STATUS || '').toUpperCase()))
   const overdueOrders = openOrders.filter(order => {
     const target = excelDate(order['TARGET FINISH '] || order['TARGET START '])
     const due = target && target !== '-' ? new Date(target).getTime() : null
     return due && due < now
   })
-  const pmCount = workOrders.filter(order => String(order['WORK TYPE '] || '').trim() === 'PM').length
-  const cmCount = workOrders.filter(order => String(order['WORK TYPE '] || '').trim() === 'CM').length
-  const slaCompliance = workOrders.length ? Math.round(((workOrders.length - overdueOrders.length) / workOrders.length) * 100) : 100
-  const siteCompliance = [...new Set(workOrders.map(order => order.SITE).filter(Boolean))].slice(0, 4).map(site => {
-    const siteRows = workOrders.filter(order => order.SITE === site)
+  const pmCount = workOrderRows.filter(order => String(order['WORK TYPE '] || '').trim() === 'PM').length
+  const cmCount = workOrderRows.filter(order => String(order['WORK TYPE '] || '').trim() === 'CM').length
+  const slaCompliance = workOrderRows.length ? Math.round(((workOrderRows.length - overdueOrders.length) / workOrderRows.length) * 100) : 100
+  const openPurchaseRequests = purchaseRequests.filter(row => !['CLOSE', 'CAN'].includes(String(row.status || '').toUpperCase()))
+  const openPurchaseOrders = purchaseOrders.filter(row => !['CLOSE', 'CAN'].includes(String(row.status || '').toUpperCase()))
+  const activeReservations = reservations.filter(row => !['COMPLETE', 'CANCELLED'].includes(String(row.status || '').toUpperCase()))
+  const connectedOperations = [
+    ...purchaseRequests.map(row => ({ type: 'Purchase Request', reference: row.purchaseRequest, workOrder: row.workOrder, item: row.item, status: row.status, next: row.purchaseOrder ? `Linked to ${row.purchaseOrder}` : 'Awaiting approval' })),
+    ...purchaseOrders.map(row => ({ type: 'Purchase Order', reference: row.purchaseOrder, workOrder: row.workOrder, item: row.item, status: row.status, next: row.status === 'CLOSE' ? 'Received and closed' : 'Procurement follow-up' })),
+    ...reservations.map(row => ({ type: row.type === 'Material' ? 'Reservation' : 'Allocation', reference: row.reservation, workOrder: row.workOrder, item: row.item, status: row.status, next: row.status === 'COMPLETE' ? 'Delivered to work order' : 'Store fulfillment' }))
+  ].slice(0, 8)
+  const siteCompliance = [...new Set(workOrderRows.map(order => order.SITE).filter(Boolean))].slice(0, 4).map(site => {
+    const siteRows = workOrderRows.filter(order => order.SITE === site)
     const siteOverdue = overdueOrders.filter(order => order.SITE === site)
     return { site, value: siteRows.length ? Math.round(((siteRows.length - siteOverdue.length) / siteRows.length) * 100) : 100 }
   })
@@ -79,7 +88,7 @@ export default function OverviewPage({ onNavigate }) {
       <ImportNotice fileName={imported} subject="workspace" onClear={() => setImported('')} />
 
       <section className="mb-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Open work orders" value={workOrders.length} detail="All awaiting approval" icon={ClipboardList} tone="orange" />
+        <Metric label="Open work orders" value={openOrders.length} detail="Approval, schedule, hold, or execution" icon={ClipboardList} tone="orange" />
         <Metric label="Assets online" value={`${operating}/${assets.length}`} detail="100% operational" icon={Boxes} tone="green" />
         <Metric label="PM programs" value={pmRecords.length} detail="Recurring schedules" icon={CalendarClock} tone="blue" />
         <Metric label="Failure codes" value={failureCodes.length.toLocaleString()} detail="Searchable library" icon={ShieldCheck} tone="purple" />
@@ -90,6 +99,12 @@ export default function OverviewPage({ onNavigate }) {
         <Metric label="SLA violations" value={overdueOrders.length} detail="Open work orders past target" icon={AlertTriangle} tone="orange" />
         <Metric label="PM vs CM" value={`${pmCount}/${cmCount}`} detail="Preventive compared with corrective" icon={CalendarClock} tone="blue" />
         <Metric label="Open workload" value={openOrders.length} detail="Approval, schedule, hold, or in progress" icon={ClipboardList} tone="purple" />
+      </section>
+
+      <section className="mb-7 grid gap-4 md:grid-cols-3">
+        <Metric label="Open purchase requests" value={openPurchaseRequests.length} detail="Material shortages awaiting approval" icon={ShoppingCart} tone="orange" />
+        <Metric label="Open purchase orders" value={openPurchaseOrders.length} detail="Approved procurement still in process" icon={PackageCheck} tone="blue" />
+        <Metric label="Store fulfillment" value={activeReservations.length} detail="Reservations or allocations not yet delivered" icon={Truck} tone="green" />
       </section>
 
       <section className="mb-7 rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
@@ -117,13 +132,13 @@ export default function OverviewPage({ onNavigate }) {
             <Button variant="ghost" onClick={() => onNavigate('Work Orders')}>View all <ChevronRight size={16} /></Button>
           </header>
           <DataTable
-            rows={workOrders}
+            rows={workOrderRows}
             search=""
             pageSize={5}
             showFooter={false}
             columns={[
               { key: 'WORKORDER', label: 'Order', render: value => <strong className="mono">#{value}</strong> },
-              { key: 'DESCRIPITION', label: 'Description' },
+              { key: 'DESCRIPITION ', label: 'Description' },
               { key: 'LOCATION PRIORTY', label: 'Location', render: value => <Badge tone={value?.trim() === 'VIP' ? 'purple' : 'orange'}>{value}</Badge> },
               { key: 'STATUS', label: 'Status', render: value => <Badge tone="orange">{value}</Badge> },
               { key: 'TARGET START ', label: 'Target', render: excelDate }
@@ -143,7 +158,7 @@ export default function OverviewPage({ onNavigate }) {
             <Donut value={96} label="healthy" />
             <div className="mt-5 grid gap-3">
               <div className="flex items-center justify-between rounded-2xl bg-[var(--app-soft-bg)] p-3 text-sm"><span className="flex items-center gap-2 text-[var(--app-muted)]"><i className="h-2 w-2 rounded-full bg-[var(--success)]" />Operational</span><strong>{operating}</strong></div>
-              <div className="flex items-center justify-between rounded-2xl bg-[var(--app-soft-bg)] p-3 text-sm"><span className="flex items-center gap-2 text-[var(--app-muted)]"><i className="h-2 w-2 rounded-full bg-[var(--warning)]" />Open orders</span><strong>{workOrders.length}</strong></div>
+              <div className="flex items-center justify-between rounded-2xl bg-[var(--app-soft-bg)] p-3 text-sm"><span className="flex items-center gap-2 text-[var(--app-muted)]"><i className="h-2 w-2 rounded-full bg-[var(--warning)]" />Open orders</span><strong>{openOrders.length}</strong></div>
             </div>
           </article>
 
@@ -157,6 +172,32 @@ export default function OverviewPage({ onNavigate }) {
           </article>
         </aside>
       </section>
+
+      {connectedOperations.length > 0 && (
+        <section className="mb-7 overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <header className="flex items-center justify-between gap-4 border-b border-[var(--app-line)] px-5 py-4">
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">CONNECTED OPERATIONS</p>
+              <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Work order supply chain</h2>
+            </div>
+            <Button variant="ghost" onClick={() => onNavigate('Purchase Requests')}>Open procurement <ChevronRight size={16} /></Button>
+          </header>
+          <DataTable
+            rows={connectedOperations}
+            rowKey="reference"
+            pageSize={8}
+            showFooter={false}
+            columns={[
+              { key: 'type', label: 'Operation' },
+              { key: 'reference', label: 'Reference', render: value => <strong className="mono">{value}</strong> },
+              { key: 'workOrder', label: 'Work Order' },
+              { key: 'item', label: 'Item' },
+              { key: 'status', label: 'Status', render: value => <Badge tone={value === 'CLOSE' || value === 'COMPLETE' ? 'green' : 'orange'}>{value}</Badge> },
+              { key: 'next', label: 'Current Link' }
+            ]}
+          />
+        </section>
+      )}
 
       <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
         <header className="mb-4 flex items-center justify-between gap-4">

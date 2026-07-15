@@ -271,6 +271,7 @@ export default function App() {
   const [allWorkOrders,setAllWorkOrders]=useState(workOrders)
   const [serviceRequests,setServiceRequests]=useState(serviceRequestSeed)
   const [purchaseRequests,setPurchaseRequests]=useState([])
+  const [purchaseOrders,setPurchaseOrders]=useState([])
   const [reservations,setReservations]=useState([])
   const workOrderNotifications = buildWorkOrderNotifications(allWorkOrders)
   const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false); window.history.pushState({},'',pathForPage(name)) }
@@ -283,11 +284,25 @@ export default function App() {
   const openConvertedWorkOrder=number=>{setActive('Work Orders');setSearch('');window.history.pushState({},'',`/work-orders/${number}`)}
   const todayStamp=()=>new Date().toISOString().slice(0,10)
   const createPurchaseRequest=record=>{
+    const existing=purchaseRequests.find(row=>row.workOrder===record.workOrder&&row.item===record.item)
+    if(existing) return existing
     const created={purchaseRequest:`PR-2026-${String(purchaseRequests.length+1).padStart(4,'0')}`,status:'WAPPR',statusDescription:statusDescription('purchaseRequisition','WAPPR'),createdAt:todayStamp(),...record}
     setPurchaseRequests(rows=>rows.some(row=>row.workOrder===created.workOrder&&row.item===created.item)?rows:[created,...rows])
     return created
   }
+  const createPurchaseOrderFromRequest=request=>{
+    const existing=purchaseOrders.find(order=>order.purchaseRequest===request.purchaseRequest)
+    if(existing) return existing
+    const created={purchaseOrder:`PO-2026-${String(purchaseOrders.length+1).padStart(4,'0')}`,purchaseRequest:request.purchaseRequest,workOrder:request.workOrder,type:request.type,item:request.item,quantity:request.quantity,source:request.source,site:request.site,department:request.department,status:'WAPPR',statusDescription:statusDescription('purchaseOrder','WAPPR'),createdAt:todayStamp()}
+    setPurchaseOrders(rows=>rows.some(order=>order.purchaseRequest===request.purchaseRequest)?rows:[created,...rows])
+    setPurchaseRequests(rows=>rows.map(row=>row.purchaseRequest===request.purchaseRequest?{...row,status:'APPR',statusDescription:statusDescription('purchaseRequisition','APPR'),purchaseOrder:created.purchaseOrder,approvedAt:todayStamp()}:row))
+    return created
+  }
+  const updatePurchaseRequest=(reference,patch)=>setPurchaseRequests(rows=>rows.map(row=>row.purchaseRequest===reference?{...row,...patch,statusDescription:patch.status?statusDescription('purchaseRequisition',patch.status):row.statusDescription}:row))
+  const updatePurchaseOrder=(reference,patch)=>setPurchaseOrders(rows=>rows.map(row=>row.purchaseOrder===reference?{...row,...patch,statusDescription:patch.status?statusDescription('purchaseOrder',patch.status):row.statusDescription}:row))
   const createReservation=record=>{
+    const existing=reservations.find(row=>row.workOrder===record.workOrder&&row.item===record.item&&row.status===record.status)
+    if(existing) return existing
     const prefix=record.type==='Material'?'RSV':'ALC'
     const created={reservation:`${prefix}-2026-${String(reservations.length+1).padStart(4,'0')}`,status:'ENTERED',statusDescription:statusDescription('inventoryUsage','ENTERED'),createdAt:todayStamp(),arrangedQuantity:0,releasedQuantity:0,deliveredQuantity:0,...record}
     setReservations(rows=>rows.some(row=>row.workOrder===created.workOrder&&row.item===created.item&&row.status===created.status)?rows:[created,...rows])
@@ -328,7 +343,7 @@ export default function App() {
     ]}/>,
     'Labor': <LaborPage/>,
     'Materials': <MaterialsPage/>,
-    'Purchase Requests': <PurchaseRequestsPage rows={purchaseRequests}/>,
+    'Purchase Requests': <PurchaseRequestsPage rows={purchaseRequests} purchaseOrders={purchaseOrders} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest} onUpdateOrder={updatePurchaseOrder}/>,
     'Reservations': <ReservationsPage rows={reservations} onUpdate={updateReservation}/>,
     'Tools & Equipment': <ToolsPage/>,
     'Roles & Permissions': <RolesPermissionsPage/>,
@@ -350,7 +365,7 @@ export default function App() {
       onNavigate={navigate}
       onOpenWorkOrders={() => { setActive('Work Orders'); setMobileOpen(false); window.history.pushState({}, '', '/work-orders') }}
     >
-      {active === 'Overview' ? <OverviewPage onNavigate={navigate} /> : pages[active]}
+      {active === 'Overview' ? <OverviewPage onNavigate={navigate} workOrders={allWorkOrders} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} reservations={reservations} /> : pages[active]}
     </AppShell>
   )
 }

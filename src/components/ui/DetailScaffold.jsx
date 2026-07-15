@@ -54,15 +54,17 @@ export function ProfileStrip({ icon: Icon, tone = 'default', eyebrow, title, des
   )
 }
 
-export function DetailTabs({ tabs = ['Details'] }) {
+export function DetailTabs({ tabs = ['Details'], active = tabs[0], onChange }) {
   return (
     <nav className="flex gap-1 border-b border-[var(--app-line)]">
-      {tabs.map((tab, index) => (
+      {tabs.map(tab => (
         <button
           key={tab}
+          type="button"
+          onClick={() => onChange?.(tab)}
           className={cn(
-            'relative px-3 py-3 text-[11px] text-[var(--app-muted)]',
-            index === 0 && 'font-bold text-[var(--app-primary)] after:absolute after:bottom-[-1px] after:left-2 after:right-2 after:h-0.5 after:bg-[var(--app-primary)]'
+            'relative px-3 py-3 text-[11px] text-[var(--app-muted)] transition hover:text-[var(--app-primary)]',
+            active === tab && 'font-bold text-[var(--app-primary)] after:absolute after:bottom-[-1px] after:left-2 after:right-2 after:h-0.5 after:bg-[var(--app-primary)]'
           )}
         >
           {tab}
