@@ -75,7 +75,7 @@ const toLocationPriority = value => {
 }
 const maximoWorkOrderStatusDescriptions = new Proxy({}, { get: (_, status) => statusDescription('workOrder', status) })
 
-function WorkOrderEditor({ order, onClose, page = false, onCreatePurchaseRequest, onCreateReservation }) {
+function WorkOrderEditor({ order, onClose, page = false, onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder }) {
   const workType=(order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const isPM = workType === 'PM'
   const isCM = workType === 'CM'
@@ -209,7 +209,44 @@ function WorkOrderEditor({ order, onClose, page = false, onCreatePurchaseRequest
   const downloadFile=file=>{const blob=new Blob([`Mock CAFM attachment\n\nName: ${file.name}\nType: ${file.type||'Document'}\nSize: ${file.size||'Unknown'}\n\nReal storage integration can replace this generated download.`],{type:'text/plain'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=file.name?.includes('.')?file.name:`${file.name||'attachment'}.txt`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url)}
   const completeWork=()=>{if(!failureReady){setTab('Failure');return}const now=toDateTimeInput(new Date());setActualFinish(now);setActualStart(current=>current||now);setActualMaterials(current=>current.length?current:plannedResources.filter(row=>row.type==='Material').map(row=>({...row,actualQuantity:''})));setActualTools(current=>current.length?current:plannedResources.filter(row=>['Tool','Equipment'].includes(row.type)).map(row=>({...row,actualQuantity:''})));setWorkCompleted(true)}
   const printWorkOrder=()=>{if(isPM&&tab!=='Plan')setTab('Plan');setTimeout(()=>window.print(),60)}
-  const saveChanges=()=>{setAutoSaveState('Saving');setTimeout(()=>setAutoSaveState('Saved'),350)}
+  const saveChanges=()=>{
+    const updatedOrder = {
+      ...order,
+      WORKORDER: number,
+      'DESCRIPITION ': description,
+      'LONG DESCRIPTION': longDescription,
+      PRIORTY: Number(String(priority).charAt(0)) || Number(priority) || 3,
+      SITE: siteValue,
+      ASSET: assetValue,
+      'LOCATION ': locationValue,
+      'DEPARTMENT ': department,
+      'SUB DEPARTMENT  NAME': subDepartment,
+      'ASSIGNED DEPARTMENT': assignedDepartment,
+      'WORK GROUP': workGroup,
+      SUPERVISOR: supervisor,
+      'LABOR CRAFT CODE': laborCraft,
+      STATUS: status,
+      'STATUS DESCRIPITION': maximoWorkOrderStatusDescriptions[status] || status,
+      'TARGET START ': targetStart,
+      'TARGET FINISH ': targetFinish,
+      'ACTUAL START ': actualStart,
+      'ACTUAL FINISH ': actualFinish,
+      'FAILURE CODE': failureClass,
+      'PROBLEM CODE': problemCode,
+      'CAUSE CODE': causeCode,
+      'REMEDY CODE': remedyCode,
+      'JOB PLAN TASKS': plannedTasks,
+      'PLANNED LABOR': plannedLabor,
+      'PLANNED RESOURCES': plannedResources,
+      'METER READING': meterReading,
+      'WATER CONSUMPTION': waterConsumption,
+      'ENERGY CONSUMPTION': energyConsumption,
+      'METER READING DATE': meterReadingDate
+    }
+    setAutoSaveState('Saving')
+    onUpdateWorkOrder?.(number, updatedOrder)
+    setTimeout(()=>setAutoSaveState('Saved'),350)
+  }
   useEffect(()=>{if(!saveReady.current){saveReady.current=true;return}setAutoSaveState('Unsaved changes')},[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterReading,waterConsumption,energyConsumption,meterReadingDate,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
     <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={order['DESCRIPITION '] || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} onSave={saveChanges} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} reroute={reroute} printWorkOrder={printWorkOrder} setWorkApproved={setWorkApproved} setWorkWaitingSchedule={setWorkWaitingSchedule} setWorkScheduled={setWorkScheduled} setWorkStarted={setWorkStarted} completeWork={completeWork} setWorkClosed={setWorkClosed} />
@@ -257,12 +294,13 @@ export default function App() {
     return created
   }
   const updateReservation=(reference,patch)=>setReservations(rows=>rows.map(row=>row.reservation===reference?{...row,...patch}:row))
+  const updateWorkOrder=(number,patch)=>setAllWorkOrders(rows=>rows.map(order=>String(order.WORKORDER)===String(number)?{...order,...patch}:order))
   const createWorkOrder=form=>{const next=Math.max(...allWorkOrders.map(order=>Number(order.WORKORDER)||0),56545134)+1;const created={'WORKORDER':String(next),'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':toLocationPriority(form.priority),'ASSET':form.asset,'STATUS':'WAPPR','WORK TYPE ':form.type,'STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':'','SUB DEPARTMENT  NAME':'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null};setAllWorkOrders(rows=>[...rows,created]);return created}
   const generatePmWorkOrder=(pm,tasks)=>setAllWorkOrders(rows=>rows.some(order=>order['PM NUMBER']===pm.pmNumber&&order['PM CYCLE']===pm.cycle)?rows:[...rows,{'WORKORDER':pm.workOrder,'DESCRIPITION ':pm.description,'LOCATION ':pm.location,'LOCATION PRIORTY':3,'ASSET':pm.asset,'STATUS':pm.woStatus||'WSCH','WORK TYPE ':'PM','STATUS DESCRIPITION':maximoWorkOrderStatusDescriptions[pm.woStatus||'WSCH']||'Waiting for Schedule','DEPARTMENT ':pm.department,'SUB DEPARTMENT  NAME':pm.subDepartment,'ASSIGNED DEPARTMENT':pm.department,'PRIORTY':3,'SITE':pm.site,'TARGET START ':pm.startDate,'TARGET FINISH ':pm.startDate,'PM NUMBER':pm.pmNumber,'PM CYCLE':pm.cycle,'JOB PLAN':pm.jobPlan,'JOB PLAN TASKS':tasks,'ESTIMATED DURATION':tasks.reduce((sum,task)=>sum+Number(task['TASK DURATION IN HOUR']||0),0)*24,'ROUTE':pm.route,'LEAD TIME (DAYS)':pm.leadTime,'FREQUENCY':pm.frequency,'FREQUNIT':pm.freqUnit,'PMCOUNTER':pm.pmCounter,'STORELOC':pm.storeLocation,'SUPERVISOR':pm.supervisor,'LEAD':pm.lead,'PERSONGROUP':pm.personGroup,'PM STATUS':pm.pmStatus}])
   const pages = {
     'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={serviceRequests} setRequests={setServiceRequests} assets={assets} workOrders={allWorkOrders} failureOptions={failureClassOptions}/>,
     'Incidents': <IncidentsPage/>,
-    'Work Orders': <WorkOrdersPage rows={allWorkOrders} assets={assets} onCreate={createWorkOrder} onImportRows={setAllWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} />} excelDate={excelDate} slaBreached={slaBreached}/>,
+    'Work Orders': <WorkOrdersPage rows={allWorkOrders} assets={assets} onCreate={createWorkOrder} onImportRows={setAllWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
     'Assets': <AssetsPage initialAssets={assets} workOrders={allWorkOrders} />,
     'Preventive Maintenance': <PreventiveMaintenancePage assets={assets} jobTasks={jobTasks} workOrders={allWorkOrders} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Meters': <MetersPage assets={assets} workOrders={allWorkOrders} />,

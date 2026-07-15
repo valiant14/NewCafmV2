@@ -38,6 +38,10 @@ const emptyLocation = {
   'builiding category': ''
 }
 const templateHeaders = Object.keys(emptyLocation)
+const normalizeLocationPriority = value => {
+  const priority = Number(String(value || '').trim())
+  return ['1', '2', '3'].includes(String(priority)) ? String(priority) : '3'
+}
 
 export default function LocationsPage({ initialLocations = [] }) {
   const [imported, setImported] = useState('')
@@ -67,7 +71,7 @@ export default function LocationsPage({ initialLocations = [] }) {
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Locations_Template.xlsx" />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setLocations(rows.map(row => ({ ...row, status: normalizeStatus('location', row.status, 'OPERATING') })))} />
+            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setLocations(rows.map(row => ({ ...row, status: normalizeStatus('location', row.status, 'OPERATING'), priority: normalizeLocationPriority(row.priority) })))} />
             <Button onClick={() => setModalOpen(true)}><Plus size={17} />Add location</Button>
           </div>
         )}
@@ -117,7 +121,11 @@ export default function LocationsPage({ initialLocations = [] }) {
           form={form}
           setForm={setForm}
           onClose={() => setModalOpen(false)}
-          onSave={saveLocation}
+          onSave={() => {
+            setLocations(current => [{ ...form, priority: normalizeLocationPriority(form.priority) }, ...current])
+            setForm(emptyLocation)
+            setModalOpen(false)
+          }}
         />
       )}
     </>
