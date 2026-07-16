@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import toolSeed from '../data/tools.json'
+import { workOrders } from '../data/cafmData'
 import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
 import Badge from '../components/ui/Badge'
@@ -24,6 +25,39 @@ const empty = {
   inspectionDue: ''
 }
 const templateHeaders = Object.keys(empty)
+const toolUsageMap = {
+  'TOOL-0001': [
+    { workOrder: '56545132', quantity: 1, type: 'CM', status: 'INPRG' },
+    { workOrder: 'PM-ALS-HV-00001-2026-01', quantity: 1, type: 'PM', status: 'COMP' }
+  ],
+  'TOOL-0002': [
+    { workOrder: 'PM-MS-MEC-FCU-001-2026-01', quantity: 1, type: 'PM', status: 'CLOSE' }
+  ],
+  'TOOL-0003': [
+    { workOrder: 'PM-MS-MEC-SAU-001-2026-01', quantity: 1, type: 'PM', status: 'APPR' }
+  ],
+  'TOOL-0004': [
+    { workOrder: 'PM-MS-MEC-FDA-001-2026-01', quantity: 1, type: 'PM', status: 'WAPPR' }
+  ],
+  'TOOL-0005': [
+    { workOrder: 'PMKG-L00-19-2026-01', quantity: 2, type: 'PM', status: 'COMP' }
+  ]
+}
+
+const findWorkOrder = reference => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
+const toolUsage = tool => (toolUsageMap[tool.toolNumber] || []).map((usage, index) => {
+  const order = findWorkOrder(usage.workOrder)
+  return {
+    reference: usage.workOrder,
+    description: order?.['DESCRIPITION '] || order?.DESCRIPTION || `${tool.description} usage`,
+    workType: usage.type,
+    quantity: usage.quantity,
+    status: order?.STATUS || usage.status,
+    site: order?.SITE || '1031',
+    department: order?.['DEPARTMENT '] || tool.category,
+    source: index === 0 ? 'Actual tool use' : 'Planned / allocated'
+  }
+})
 
 export default function ToolsPage() {
   const [rows, setRows] = useState(toolSeed)
@@ -52,6 +86,11 @@ export default function ToolsPage() {
     window.history.pushState({}, '', '/tools')
   }
 
+  const updateTool = (toolNumber, patch) => {
+    setRows(current => current.map(row => row.toolNumber === toolNumber ? { ...row, ...patch } : row))
+    setSelected(current => current?.toolNumber === toolNumber ? { ...current, ...patch } : current)
+  }
+
   const save = () => {
     if (!form.toolNumber || !form.description) return
     const row = { ...form, quantity: Number(form.quantity) }
@@ -62,7 +101,7 @@ export default function ToolsPage() {
   }
 
   if (selected) {
-    return <ToolDetailPage tool={selected} onBack={close} />
+    return <ToolDetailPage tool={selected} usageRows={toolUsage(selected)} onBack={close} onUpdate={updateTool} />
   }
 
   return (

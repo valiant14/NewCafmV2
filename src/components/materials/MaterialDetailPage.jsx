@@ -1,8 +1,13 @@
+import { useState } from 'react'
 import { Archive, BarChart3, Boxes, ClipboardList, PackageCheck, Warehouse } from 'lucide-react'
 import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
+import Badge from '../ui/Badge'
+import DataTable from '../ui/DataTable'
+import EmptyState from '../ui/EmptyState'
 import GenericPrintReport from '../ui/GenericPrintReport'
+import { statusTone } from '../../lib/statusMatrix'
 
-const statusTone = {
+const materialStatusTone = {
   Available: 'green',
   'Purchase Required': 'orange'
 }
@@ -18,9 +23,10 @@ function stockState(material) {
   return { available, coverage, needsPurchase }
 }
 
-export default function MaterialDetailPage({ material, onBack, onUpdate }) {
+export default function MaterialDetailPage({ material, usageRows = [], onBack, onUpdate }) {
+  const [tab, setTab] = useState('Material Details')
   const stock = stockState(material)
-  const tone = statusTone[material.availability] || 'green'
+  const tone = materialStatusTone[material.availability] || 'green'
   const changeStatus = event => onUpdate?.(material.itemNumber, { availability: event.target.value })
 
   return (
@@ -54,9 +60,9 @@ export default function MaterialDetailPage({ material, onBack, onUpdate }) {
           )}
         />
 
-        <DetailTabs tabs={['Material Details']} />
+        <DetailTabs tabs={['Material Details', 'Work Order Usage']} active={tab} onChange={setTab} />
 
-        <main className="space-y-4">
+        {tab === 'Material Details' && <main className="space-y-4">
           <section className="grid gap-3 md:grid-cols-4">
             {[
               { icon: Boxes, label: 'Balance', value: material.balance, note: `Total ${material.unit}` },
@@ -105,7 +111,35 @@ export default function MaterialDetailPage({ material, onBack, onUpdate }) {
             ]}
           />
           </section>
-        </main>
+        </main>}
+
+        {tab === 'Work Order Usage' && (
+          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+            {usageRows.length ? (
+              <DataTable
+                rows={usageRows}
+                rowKey="reference"
+                pagination
+                columns={[
+                  { key: 'reference', label: 'Work Order', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
+                  { key: 'description', label: 'Description' },
+                  { key: 'workType', label: 'Type' },
+                  { key: 'quantity', label: 'Consumed / Requested', render: (value, row) => `${value} ${row.unit || material.unit}` },
+                  { key: 'source', label: 'Source' },
+                  { key: 'department', label: 'Department' },
+                  { key: 'site', label: 'Site' },
+                  { key: 'status', label: 'WO Status', render: value => <Badge tone={statusTone(value)}>{value}</Badge> }
+                ]}
+              />
+            ) : (
+              <EmptyState
+                icon={PackageCheck}
+                title="No Work Order usage yet"
+                description="Work Orders that consume, reserve, or request this material will appear here."
+              />
+            )}
+          </section>
+        )}
       </div>
       <GenericPrintReport
         reportTitle="Material Report"

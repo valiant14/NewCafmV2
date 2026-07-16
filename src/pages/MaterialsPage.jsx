@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import materialSeed from '../data/materials.json'
+import { workOrders } from '../data/cafmData'
 import AddMaterialModal from '../components/materials/AddMaterialModal'
 import MaterialDetailPage from '../components/materials/MaterialDetailPage'
 import Badge from '../components/ui/Badge'
@@ -26,6 +27,43 @@ const empty = {
   availability: 'Available'
 }
 const templateHeaders = Object.keys(empty)
+const materialUsageMap = {
+  'MAT-0001': [
+    { workOrder: 'PM-ALS-HV-00001-2026-01', quantity: 4, type: 'PM', status: 'COMP' },
+    { workOrder: 'PM-MS-MEC-FCU-001-2026-01', quantity: 2, type: 'PM', status: 'CLOSE' }
+  ],
+  'MAT-0002': [
+    { workOrder: '56545132', quantity: 1, type: 'CM', status: 'INPRG' }
+  ],
+  'MAT-0003': [
+    { workOrder: 'PM-MS-MEC-SAU-001-2026-01', quantity: 3, type: 'PM', status: 'COMP' }
+  ],
+  'MAT-0004': [
+    { workOrder: '56545132', quantity: 6, type: 'CM', status: 'APPR' }
+  ],
+  'MAT-0005': [
+    { workOrder: 'PM-MS-MEC-FDA-001-2026-01', quantity: 8, type: 'PM', status: 'WAPPR' }
+  ],
+  'MAT-0006': [
+    { workOrder: 'PMKG-L00-19-2026-01', quantity: 5, type: 'PM', status: 'CLOSE' }
+  ]
+}
+
+const findWorkOrder = reference => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
+const materialUsage = material => (materialUsageMap[material.itemNumber] || []).map((usage, index) => {
+  const order = findWorkOrder(usage.workOrder)
+  return {
+    reference: usage.workOrder,
+    description: order?.['DESCRIPITION '] || order?.DESCRIPTION || `${material.description} usage`,
+    workType: usage.type,
+    quantity: usage.quantity,
+    unit: material.unit,
+    status: order?.STATUS || usage.status,
+    site: order?.SITE || '1031',
+    department: order?.['DEPARTMENT '] || material.category,
+    source: index === 0 ? 'Actual consumption' : 'Planned / reserved'
+  }
+})
 
 export default function MaterialsPage() {
   const [rows, setRows] = useState(materialSeed)
@@ -74,7 +112,7 @@ export default function MaterialsPage() {
   }
 
   if (selected) {
-    return <MaterialDetailPage material={selected} onBack={close} onUpdate={updateMaterial} />
+    return <MaterialDetailPage material={selected} usageRows={materialUsage(selected)} onBack={close} onUpdate={updateMaterial} />
   }
 
   return (

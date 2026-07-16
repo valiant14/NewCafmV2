@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import laborSeed from '../data/labor.json'
+import { workOrders } from '../data/cafmData'
 import AddLaborModal from '../components/labor/AddLaborModal'
 import LaborDetailPage from '../components/labor/LaborDetailPage'
 import Badge from '../components/ui/Badge'
@@ -25,6 +26,37 @@ const empty = {
   availability: 'Available'
 }
 const templateHeaders = Object.keys(empty)
+const laborWorkMap = {
+  'LAB-0001': ['56545132', 'PM-ALS-HV-00001-2026-01'],
+  'LAB-0002': ['56545132', 'PM-MS-MEC-FCU-001-2026-01'],
+  'LAB-0003': ['PM-MS-MEC-SAU-001-2026-01'],
+  'LAB-0004': ['PM-MS-MEC-FDA-001-2026-01'],
+  'LAB-0005': ['PMKG-L00-19-2026-01'],
+  'LAB-0006': ['56545132']
+}
+
+const workOrderNumber = order => String(order.WORKORDER || order['WORK ORDER'] || order.workOrder || '')
+const workOrderTitle = order => order['DESCRIPITION '] || order.DESCRIPTION || order.description || 'Work order'
+const workOrderDepartment = order => String(order['DEPARTMENT '] || order.department || '')
+const workOrderSubDepartment = order => String(order['SUB DEPARTMENT  NAME'] || order.subDepartment || '')
+const laborPastWork = labor => workOrders
+  .filter(order => {
+    const assignedNumbers = laborWorkMap[labor.personId] || []
+    const number = workOrderNumber(order)
+    return assignedNumbers.includes(number)
+      || workOrderDepartment(order) === labor.department
+      || workOrderSubDepartment(order) === labor.subDepartment
+  })
+  .slice(0, 8)
+  .map((order, index) => ({
+    reference: workOrderNumber(order) || `${labor.personId}-WO-${index + 1}`,
+    description: workOrderTitle(order),
+    status: order.STATUS || 'COMP',
+    workType: String(order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim(),
+    department: workOrderDepartment(order) || labor.department,
+    site: order.SITE || '1031',
+    targetFinish: order['TARGET FINISH '] || order['TARGET START '] || '-'
+  }))
 
 export default function LaborPage() {
   const [rows, setRows] = useState(laborSeed)
@@ -53,6 +85,11 @@ export default function LaborPage() {
     window.history.pushState({}, '', '/labor')
   }
 
+  const updateLabor = (personId, patch) => {
+    setRows(current => current.map(row => row.personId === personId ? { ...row, ...patch } : row))
+    setSelected(current => current?.personId === personId ? { ...current, ...patch } : current)
+  }
+
   const save = () => {
     if (!form.personId || !form.name || !form.craftCode) return
     setRows(current => [...current, form])
@@ -62,7 +99,7 @@ export default function LaborPage() {
   }
 
   if (selected) {
-    return <LaborDetailPage labor={selected} onBack={close} />
+    return <LaborDetailPage labor={selected} pastWork={laborPastWork(selected)} onBack={close} onUpdate={updateLabor} />
   }
 
   return (
