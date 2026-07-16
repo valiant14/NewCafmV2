@@ -33,7 +33,7 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
     if (latest && latest !== selected) setSelected(latest)
   }, [rows, selected])
 
-  const orderType = order => (order['WORK TYPE '] || order['WORK TYPE  '] || 'PM').trim()
+  const orderType = order => (order['WORK TYPE'] || order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const typedRows = rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)
   const filtered = applyStandardFilters(typedRows, filters, {
     site: ['SITE'],

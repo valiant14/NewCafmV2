@@ -24,6 +24,7 @@ import ReservationsPage from './pages/ReservationsPage'
 import UsersPage from './pages/UsersPage'
 import AppShell from './components/layout/AppShell'
 import JobPlanDetailPage from './components/job-plans/JobPlanDetailPage'
+import FailureLibraryDetailPage from './components/failure-library/FailureLibraryDetailPage'
 import WorkOrderDocumentsTab from './components/work-orders/WorkOrderDocumentsTab'
 import WorkOrderPrintReport from './components/work-orders/WorkOrderPrintReport'
 import WorkOrderPlanTab from './components/work-orders/WorkOrderPlanTab'
@@ -119,7 +120,7 @@ function WorkOrderWorkflowNotice({ status, missing = [], nextStep }) {
 }
 
 function WorkOrderEditor({ order, onClose, page = false, onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder }) {
-  const workType=(order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
+  const workType=(order['WORK TYPE'] || order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const isPM = workType === 'PM'
   const isCM = workType === 'CM'
   const [tab, setTab] = useState('Overview')
@@ -359,6 +360,9 @@ export default function App() {
     totalMinutes: jobTaskRecords.filter(row => row.JPNUM === task.JPNUM).reduce((sum, row) => sum + Math.max(1, Math.round(Number(row['TASK DURATION IN HOUR'] || 0) * 1440)), 0)
   }])).values()]
   const [selectedJobPlan,setSelectedJobPlan]=useState(jobPlanSummaryRows.find(plan => plan.JPNUM === jobPlanRouteId) || null)
+  const failureRouteId = decodeURIComponent(window.location.pathname.split('/failure-library/')[1] || '')
+  const failureClassRows = [...new Map(failureCodes.map(row => [row['FAILURE CLASS ID'], row])).values()]
+  const [selectedFailureClass,setSelectedFailureClass]=useState(failureClassRows.find(row => row['FAILURE CLASS ID'] === failureRouteId) || null)
   const convertRequest = request => {
     const number=String(56545135+allWorkOrders.filter(o=>String(o.WORKORDER).startsWith('56545')).length-3)
     const cm={'WORKORDER':number,'DESCRIPITION ':request.description,'LOCATION ':request.location,'LOCATION PRIORTY':toLocationPriority(request.priority),'ASSET':request.asset||'Unassigned','STATUS':'WAPPR','WORK TYPE ':'CM','STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':request.assignedDepartment||request.department,'SUB DEPARTMENT  NAME':request.subDepartment||'','PRIORTY':request.priority==='Emergency'?1:request.priority==='High'?2:3,'SITE':request.site,'TARGET START ':null,'TARGET FINISH ':null,'SOURCE SR':request.sr,'FAILURE CODE':request.failureCode||'','PROBLEM CODE':request.problemCode||'','CAUSE CODE':request.causeCode||'','REMEDY CODE':request.remedyCode||''}
@@ -424,7 +428,7 @@ export default function App() {
     ]} mapFormToRow={form => ({ ...form, status: form.status || 'ACTIVE', 'TASK DURATION IN HOUR': Number(form['TASK DURATION IN HOUR'] || 0) })} statusTabs={['DRAFT', 'ACTIVE', 'INACTIVE']} rowKey="JPNUM" onRowClick={row=>{setSelectedJobPlan(row);window.history.pushState({},'',`/job-plans/${row.JPNUM}`)}} columns={[
       {key:'JPNUM',label:'Plan',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Plan description'},{key:'taskCount',label:'Tasks'},{key:'totalMinutes',label:'Duration',render:v=>`${v} min`},{key:'status',label:'Status',render:v=>v||'ACTIVE'}
     ]}/>,
-    'Failure Library': <RegisterPage title="Failure library" eyebrow="RELIABILITY" description="Search the bilingual Maximo problem, cause, and remedy hierarchy." rows={failureCodes} search={search} setSearch={setSearch} action="Add code" modalTitle="Add failure code" modalNote="Create a failure hierarchy record. Cause and remedy can stay optional." modalFields={[
+    'Failure Library': selectedFailureClass ? <FailureLibraryDetailPage failureClass={selectedFailureClass} rows={failureCodes.filter(row=>row['FAILURE CLASS ID']===selectedFailureClass['FAILURE CLASS ID'])} workOrders={allWorkOrders.filter(order=>order['FAILURE CODE']===selectedFailureClass['FAILURE CLASS ID'])} onBack={()=>{setSelectedFailureClass(null);window.history.pushState({},'','/failure-library')}}/> : <RegisterPage title="Failure library" eyebrow="RELIABILITY" description="Search the bilingual Maximo problem, cause, and remedy hierarchy." rows={failureClassRows.map(row=>({...row, problemCount: failureCodes.filter(item=>item['FAILURE CLASS ID']===row['FAILURE CLASS ID']&&item['PROBLEM CODE']).length, causeCount: failureCodes.filter(item=>item['FAILURE CLASS ID']===row['FAILURE CLASS ID']&&item['CAUSE CODE']).length, remedyCount: failureCodes.filter(item=>item['FAILURE CLASS ID']===row['FAILURE CLASS ID']&&item['REMEDY CODE']).length}))} search={search} setSearch={setSearch} action="Add code" modalTitle="Add failure code" modalNote="Create a failure hierarchy record. Cause and remedy can stay optional." modalFields={[
       { key: 'FAILURE CLASS ID', label: 'Failure Class ID', required: true, placeholder: 'HVAC' },
       { key: 'DESCRIPTION', label: 'Class Description', required: true, full: true },
       { key: 'PROBLEM CODE', label: 'Problem Code', required: true },
@@ -433,8 +437,8 @@ export default function App() {
       { key: 'CC - DESCRIPTION', label: 'Cause Description', full: true },
       { key: 'REMEDY CODE', label: 'Remedy Code' },
       { key: 'RC - DESCRIPTION', label: 'Remedy Description', full: true }
-    ]} columns={[
-      {key:'FAILURE CLASS ID',label:'Class',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Class description'},{key:'PROBLEM CODE',label:'Problem code'},{key:'PC - DESCRIPTION',label:'Problem description'},{key:'CAUSE CODE',label:'Cause'}
+    ]} rowKey="FAILURE CLASS ID" onRowClick={row=>{setSelectedFailureClass(row);window.history.pushState({},'',`/failure-library/${encodeURIComponent(row['FAILURE CLASS ID'])}`)}} columns={[
+      {key:'FAILURE CLASS ID',label:'Class',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Class description'},{key:'problemCount',label:'Problems'},{key:'causeCount',label:'Causes'},{key:'remedyCount',label:'Remedies'}
     ]}/>,
     'Labor': <LaborPage/>,
     'Materials': <MaterialsPage/>,
