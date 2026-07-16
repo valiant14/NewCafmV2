@@ -2,6 +2,7 @@ import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
+import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { ClipboardCheck, ClipboardList, PackageOpen, Truck } from 'lucide-react'
@@ -27,9 +28,13 @@ const nextQuantity = row => {
   }
 }
 
+const reservationStatuses = ['ENTERED', 'STAGED', 'COMPLETE', 'CANCELLED']
+
 export default function ReservationsPage({ rows = [], onUpdate }) {
   const [filters, setFilters] = useState(emptyStandardFilters)
-  const visibleRows = applyStandardFilters(rows, filters, {
+  const [status, setStatus] = useState('All')
+  const statusRows = status === 'All' ? rows : rows.filter(row => row.status === status)
+  const visibleRows = applyStandardFilters(statusRows, filters, {
     site: ['site'],
     department: ['department'],
     status: ['status'],
@@ -63,14 +68,26 @@ export default function ReservationsPage({ rows = [], onUpdate }) {
       <PageHeader
         eyebrow="INVENTORY CONTROL"
         title="Reservations & Allocations"
-        description="Amazon-style fulfillment flow: Reserve, arrange stock, release from store, then deliver to the Work Order."
+        description="For available stock only: reserve or allocate, arrange stock, release from store, then deliver to the Work Order."
+      />
+      <IndexTabs
+        active={status}
+        onChange={setStatus}
+        tabs={[
+          { key: 'All', label: 'All Reservations', count: rows.length },
+          ...reservationStatuses.map(item => ({
+            key: item,
+            label: item,
+            count: rows.filter(row => row.status === item).length
+          }))
+        ]}
       />
       <StandardFilters
         filters={filters}
         setFilters={setFilters}
         siteOptions={optionsFromRows(rows, ['site'])}
         departmentOptions={optionsFromRows(rows, ['department'])}
-        statusOptions={optionsFromRows(rows, ['status'])}
+        statusOptions={reservationStatuses}
       />
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
         {visibleRows.length ? (

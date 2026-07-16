@@ -43,7 +43,7 @@ const incidentTemplateHeaders = ['incidentNumber', 'description', 'site', 'depar
 
 export default function IncidentsPage() {
   const [rows, setRows] = useState(incidentSeed)
-  const [tab, setTab] = useState('All Incidents')
+  const [tab, setTab] = useState('All')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({})
   const [imported, setImported] = useState('')
@@ -52,8 +52,7 @@ export default function IncidentsPage() {
   const [selected, setSelected] = useState(rows.find(row => row.incidentNumber === routeId) || null)
 
   const tabRows = useMemo(() => {
-    if (tab === 'Open') return rows.filter(row => !['RESOLVED', 'CLOSED'].includes(row.status))
-    if (tab === 'Closed') return rows.filter(row => row.status === 'CLOSED')
+    if (tab !== 'All') return rows.filter(row => row.status === tab)
     return rows
   }, [rows, tab])
   const filteredRows = useMemo(() => applyStandardFilters(tabRows, filters, { date: ['reportedDate'] }), [tabRows, filters])
@@ -122,9 +121,11 @@ export default function IncidentsPage() {
 
       <IndexTabs
         tabs={[
-          { label: 'All Incidents', count: rows.length },
-          { label: 'Open', count: rows.filter(row => !['RESOLVED', 'CLOSED'].includes(row.status)).length },
-          { label: 'Closed', count: rows.filter(row => row.status === 'CLOSED').length }
+          { key: 'All', label: 'All Incidents', count: rows.length },
+          { key: 'NEW', label: 'New', count: rows.filter(row => row.status === 'NEW').length },
+          { key: 'INPRG', label: 'In Progress', count: rows.filter(row => row.status === 'INPRG').length },
+          { key: 'RESOLVED', label: 'Resolved', count: rows.filter(row => row.status === 'RESOLVED').length },
+          { key: 'CLOSED', label: 'Closed', count: rows.filter(row => row.status === 'CLOSED').length }
         ]}
         active={tab}
         onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}

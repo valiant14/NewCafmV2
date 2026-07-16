@@ -102,7 +102,7 @@ export default function OverviewPage({ onNavigate, workOrders: liveWorkOrders = 
       </section>
 
       <section className="mb-7 grid gap-4 md:grid-cols-3">
-        <Metric label="Open purchase requests" value={openPurchaseRequests.length} detail="Material shortages awaiting approval" icon={ShoppingCart} tone="orange" />
+        <Metric label="Open purchase requisitions" value={openPurchaseRequests.length} detail="Material shortages awaiting approval" icon={ShoppingCart} tone="orange" />
         <Metric label="Open purchase orders" value={openPurchaseOrders.length} detail="Approved procurement still in process" icon={PackageCheck} tone="blue" />
         <Metric label="Store fulfillment" value={activeReservations.length} detail="Reservations or allocations not yet delivered" icon={Truck} tone="green" />
       </section>
@@ -180,7 +180,7 @@ export default function OverviewPage({ onNavigate, workOrders: liveWorkOrders = 
               <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">CONNECTED OPERATIONS</p>
               <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Work order supply chain</h2>
             </div>
-            <Button variant="ghost" onClick={() => onNavigate('Purchase Requests')}>Open procurement <ChevronRight size={16} /></Button>
+            <Button variant="ghost" onClick={() => onNavigate('Purchase Requisitions')}>Open requisitions <ChevronRight size={16} /></Button>
           </header>
           <DataTable
             rows={connectedOperations}

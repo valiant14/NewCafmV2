@@ -19,6 +19,7 @@ import RolesPermissionsPage from './pages/RolesPermissionsPage'
 import MetersPage from './pages/MetersPage'
 import LoginPage from './pages/LoginPage'
 import PurchaseRequestsPage from './pages/PurchaseRequestsPage'
+import PurchaseOrdersPage from './pages/PurchaseOrdersPage'
 import ReservationsPage from './pages/ReservationsPage'
 import AppShell from './components/layout/AppShell'
 import WorkOrderDocumentsTab from './components/work-orders/WorkOrderDocumentsTab'
@@ -402,9 +403,10 @@ export default function App() {
       { key: 'DESCRIPTION', label: 'Plan Description', required: true, full: true },
       { key: 'JOB TASK SEQUENCE', label: 'Task Sequence', required: true, type: 'number', defaultValue: 10 },
       { key: 'JOB TASK DESCRIPTION', label: 'Task Description', required: true, full: true },
-      { key: 'TASK DURATION IN HOUR', label: 'Duration in Hours', required: true, type: 'number', defaultValue: 1 }
-    ]} mapFormToRow={form => ({ ...form, 'TASK DURATION IN HOUR': Number(form['TASK DURATION IN HOUR'] || 0) })} columns={[
-      {key:'JPNUM',label:'Plan',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Plan description'},{key:'JOB TASK SEQUENCE',label:'Sequence'},{key:'JOB TASK DESCRIPTION',label:'Task'},{key:'TASK DURATION IN HOUR',label:'Duration',render:v=>`${Math.round(Number(v)*1440)} min`}
+      { key: 'TASK DURATION IN HOUR', label: 'Duration in Hours', required: true, type: 'number', defaultValue: 1 },
+      { key: 'status', label: 'Status', required: true, options: ['DRAFT', 'ACTIVE', 'INACTIVE'], defaultValue: 'ACTIVE' }
+    ]} mapFormToRow={form => ({ ...form, status: form.status || 'ACTIVE', 'TASK DURATION IN HOUR': Number(form['TASK DURATION IN HOUR'] || 0) })} statusTabs={['DRAFT', 'ACTIVE', 'INACTIVE']} columns={[
+      {key:'JPNUM',label:'Plan',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Plan description'},{key:'JOB TASK SEQUENCE',label:'Sequence'},{key:'JOB TASK DESCRIPTION',label:'Task'},{key:'TASK DURATION IN HOUR',label:'Duration',render:v=>`${Math.round(Number(v)*1440)} min`},{key:'status',label:'Status',render:v=>v||'ACTIVE'}
     ]}/>,
     'Failure Library': <RegisterPage title="Failure library" eyebrow="RELIABILITY" description="Search the bilingual Maximo problem, cause, and remedy hierarchy." rows={failureCodes} search={search} setSearch={setSearch} action="Add code" modalTitle="Add failure code" modalNote="Create a failure hierarchy record. Cause and remedy can stay optional." modalFields={[
       { key: 'FAILURE CLASS ID', label: 'Failure Class ID', required: true, placeholder: 'HVAC' },
@@ -420,7 +422,8 @@ export default function App() {
     ]}/>,
     'Labor': <LaborPage/>,
     'Materials': <MaterialsPage/>,
-    'Purchase Requests': <PurchaseRequestsPage rows={purchaseRequests} purchaseOrders={purchaseOrders} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest} onUpdateOrder={updatePurchaseOrder}/>,
+    'Purchase Requisitions': <PurchaseRequestsPage rows={purchaseRequests} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
+    'Purchase Orders': <PurchaseOrdersPage rows={purchaseOrders} onUpdateOrder={updatePurchaseOrder} onUpdateRequest={updatePurchaseRequest}/>,
     'Reservations': <ReservationsPage rows={reservations} onUpdate={updateReservation}/>,
     'Tools & Equipment': <ToolsPage/>,
     'Roles & Permissions': <RolesPermissionsPage/>,

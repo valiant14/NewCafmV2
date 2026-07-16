@@ -13,14 +13,18 @@ import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../
 
 const emptyFromFields = fields => Object.fromEntries((fields || []).map(field => [field.key, field.defaultValue ?? '']))
 
-export default function RegisterPage({ title, eyebrow, description, rows, columns, search, setSearch, action = 'Add record', modalTitle, modalNote, modalFields = [], mapFormToRow }) {
+export default function RegisterPage({ title, eyebrow, description, rows, columns, search, setSearch, action = 'Add record', modalTitle, modalNote, modalFields = [], mapFormToRow, statusTabs = [] }) {
   const [imported, setImported] = useState('')
   const [records, setRecords] = useState(rows)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(() => emptyFromFields(modalFields))
   const [filters, setFilters] = useState(emptyStandardFilters)
+  const [tab, setTab] = useState('All')
 
   useEffect(() => setRecords(rows), [rows])
+
+  const statusOf = row => String(row.status || row.STATUS || 'ACTIVE').toUpperCase()
+  const tabRecords = tab === 'All' ? records : records.filter(row => statusOf(row) === tab)
 
   const saveRecord = () => {
     const next = mapFormToRow ? mapFormToRow(form) : form
@@ -47,9 +51,11 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
       <ImportNotice fileName={imported} subject={title.toLowerCase()} onClear={() => setImported('')} />
 
       <IndexTabs
-        active="All"
+        active={tab}
+        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
         tabs={[
-          { key: 'All', label: `All ${title}`, count: records.length }
+          { key: 'All', label: `All ${title}`, count: records.length },
+          ...statusTabs.map(status => ({ key: status, label: status.charAt(0) + status.slice(1).toLowerCase(), count: records.filter(row => statusOf(row) === status).length }))
         ]}
       />
       <StandardFilters
@@ -61,7 +67,7 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
       />
 
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-        <DataTable rows={applyStandardFilters(records, filters)} columns={columns} search={search} pagination />
+        <DataTable rows={applyStandardFilters(tabRecords, filters)} columns={columns} search={search} pagination />
       </section>
 
       {modalOpen && (

@@ -60,7 +60,7 @@ export default function WorkOrderMaterialRequestsTab({
   }
 
   return (
-    <Section compact title="Material Requests" note="This list is created only from materials, tools, or equipment manually added in the Plan tab. The system does not auto-retrieve these from the Job Plan by default.">
+    <Section compact title="Material Requests" note="Available stock creates a Reservation / Allocation. Unavailable stock creates a Purchase Requisition for procurement.">
       {resourceRequests.length ? (
         <>
           <div className={tableClass}>
