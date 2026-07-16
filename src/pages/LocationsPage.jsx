@@ -48,8 +48,10 @@ export default function LocationsPage({ initialLocations = [] }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(emptyLocation)
   const [locations, setLocations] = useState(initialLocations)
+  const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
-  const visibleLocations = applyStandardFilters(locations, filters, {
+  const tabLocations = tab === 'All' ? locations : locations.filter(location => location.status === tab)
+  const visibleLocations = applyStandardFilters(tabLocations, filters, {
     site: ['site'],
     department: ['department'],
     status: ['status'],
@@ -77,7 +79,16 @@ export default function LocationsPage({ initialLocations = [] }) {
         )}
       />
       <ImportNotice fileName={imported} subject="location" onClear={() => setImported('')} />
-      <IndexTabs active="All" tabs={[{ key: 'All', label: 'All Locations', count: locations.length }]} />
+      <IndexTabs
+        active={tab}
+        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
+        tabs={[
+          { key: 'All', label: 'All Locations', count: locations.length },
+          { key: 'OPERATING', label: 'Operating', count: locations.filter(location => location.status === 'OPERATING').length },
+          { key: 'PLANNED', label: 'Planned', count: locations.filter(location => location.status === 'PLANNED').length },
+          { key: 'DECOMMISSIONED', label: 'Decommissioned', count: locations.filter(location => location.status === 'DECOMMISSIONED').length }
+        ]}
+      />
       <StandardFilters
         filters={filters}
         setFilters={setFilters}

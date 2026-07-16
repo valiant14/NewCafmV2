@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Check, Plus, Search, Sparkles, X } from 'lucide-react'
+import { AlertTriangle, Check, Plus, Sparkles, X } from 'lucide-react'
 import PmScheduleDetail from '../components/preventive-maintenance/PmScheduleDetail'
 import PmScheduleForm from '../components/preventive-maintenance/PmScheduleForm'
 import PmScheduleTable from '../components/preventive-maintenance/PmScheduleTable'
@@ -95,7 +95,6 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   const [mode, setMode] = useState('list')
   const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
   const [form, setForm] = useState(emptyPlan)
-  const [query, setQuery] = useState('')
   const [generation, setGeneration] = useState(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -115,7 +114,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   ], [jobTasks])
 
   const selected = plans.find(plan => plan.pmNumber === selectedId)
-  const tabRows = plans.filter(plan => (pmTab === 'All' || plan.pmStatus === pmTab) && Object.values(plan).some(value => String(value).toLowerCase().includes(query.toLowerCase())))
+  const tabRows = plans.filter(plan => pmTab === 'All' || plan.pmStatus === pmTab)
   const visible = applyStandardFilters(tabRows, filters, {
     site: ['site'],
     department: ['department', 'personGroup'],
@@ -151,6 +150,9 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
     setSelectedId('')
     window.history.pushState({}, '', '/preventive-maintenance')
   }
+  const updatePlan = (pmNumber, patch) => {
+    setPlans(rows => rows.map(plan => plan.pmNumber === pmNumber ? { ...plan, ...patch } : plan))
+  }
   const generate = () => {
     const cutoff = new Date('2026-08-31')
     const due = plans.filter(plan => plan.pmStatus === 'ACTIVE' && new Date(plan.startDate) <= cutoff && plan.lastGeneratedCycle !== cycleKey(plan))
@@ -164,7 +166,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   }
 
   if (selected) {
-    return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} />
+    return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} onUpdate={updatePlan} />
   }
 
   return (
@@ -173,7 +175,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         eyebrow="PREVENTIVE MAINTENANCE"
         title="PM Schedule"
         description="Maximo-aligned PM masters and automatic work-order generation."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" /><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows); if (imported.length) setPlans(imported) }} /><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" /><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows); if (imported.length) setPlans(imported) }} /><Button variant="outline" onClick={generate}><Sparkles size={16} />Generate WOs</Button><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
       />
 
       {generation && (
@@ -194,13 +196,6 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         ]}
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <label className="flex h-10 min-w-[320px] flex-1 items-center gap-2 rounded-xl border border-[#dfe5df] bg-white px-3 text-sm">
-          <Search size={16} className="text-[#7b8780]" />
-          <input className="w-full bg-transparent outline-none" value={query} onChange={event => { setQuery(event.target.value); setPage(1) }} placeholder="Search PMNUM, asset, location, JPNUM, or person group" />
-        </label>
-        <Button variant="outline" onClick={generate}><Sparkles size={16} />Run generation preview</Button>
-      </div>
       <StandardFilters
         filters={filters}
         setFilters={value => { setFilters(value); setPage(1) }}

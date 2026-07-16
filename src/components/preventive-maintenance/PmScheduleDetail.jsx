@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CalendarClock, ChevronRight, FileSpreadsheet, Settings2, Sparkles, UserRoundCheck } from 'lucide-react'
 import Badge from '../ui/Badge'
+import Button from '../ui/Button'
 import { DetailHeader, DetailTabs } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
@@ -45,7 +46,7 @@ function FieldGrid({ rows }) {
   )
 }
 
-export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, workOrders, onBack, onOpenWorkOrder }) {
+export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, workOrders, onBack, onOpenWorkOrder, onUpdate }) {
   const generatedTab = 'Generated Work Orders'
   const [activeTab, setActiveTab] = useState('PM Details')
   const asset = assets.find(item => normalize(item.assetnum) === normalize(plan.asset))
@@ -53,6 +54,8 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, wor
   const tasks = jobTasks.filter(task => normalize(task.JPNUM) === normalize(plan.jobPlan))
   const history = workOrders.filter(order => normalize(order['PM NUMBER']) === normalize(plan.pmNumber))
   const location = plan.location || asset?.location || 'From asset'
+  const inactive = plan.pmStatus === 'INACTIVE'
+  const changePmStatus = status => onUpdate?.(plan.pmNumber, { pmStatus: status })
 
   return (
     <section className="printable-record">
@@ -72,6 +75,11 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, wor
             { label: 'Job Plan', value: plan.jobPlan, note: linkedPlan?.description || 'Excel reference' },
             { label: 'Asset / Location', value: plan.asset || 'Location PM', note: location }
           ]}
+          actions={(
+            <Button variant={inactive ? 'outline' : 'primary'} onClick={() => changePmStatus(inactive ? 'ACTIVE' : 'INACTIVE')}>
+              {inactive ? 'Activate PM' : 'Set Inactive'}
+            </Button>
+          )}
         />
 
         <DetailTabs tabs={['PM Details', 'Job Plan', generatedTab]} active={activeTab} onChange={setActiveTab} />

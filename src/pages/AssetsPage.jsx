@@ -53,6 +53,10 @@ export default function AssetsPage({ initialAssets = [], workOrders = [] }) {
     setSelected(null)
     window.history.pushState({}, '', '/assets')
   }
+  const updateAsset = (assetnum, patch) => {
+    setRows(current => current.map(row => row.assetnum === assetnum ? { ...row, ...patch } : row))
+    setSelected(current => current?.assetnum === assetnum ? { ...current, ...patch } : current)
+  }
 
   const save = () => {
     if (!form.assetnum || !form.description || !form.site || !form.location) return
@@ -64,7 +68,7 @@ export default function AssetsPage({ initialAssets = [], workOrders = [] }) {
   }
 
   if (selected) {
-    return <AssetDetailPage asset={selected} workOrders={workOrders} onBack={close} />
+    return <AssetDetailPage asset={selected} workOrders={workOrders} onBack={close} onUpdate={updateAsset} />
   }
 
   return (
@@ -91,7 +95,9 @@ export default function AssetsPage({ initialAssets = [], workOrders = [] }) {
           { key: 'All', label: 'All Assets', count: rows.length },
           { key: 'OPERATING', label: 'Operating', count: rows.filter(row => row.status === 'OPERATING').length },
           { key: 'BROKEN', label: 'Broken', count: rows.filter(row => row.status === 'BROKEN').length },
-          { key: 'NOT READY', label: 'Not Ready', count: rows.filter(row => row.status === 'NOT READY').length }
+          { key: 'NOT READY', label: 'Not Ready', count: rows.filter(row => row.status === 'NOT READY').length },
+          { key: 'DECOMMISSIONED', label: 'Decommissioned', count: rows.filter(row => row.status === 'DECOMMISSIONED').length },
+          { key: 'RETIRED', label: 'Retired', count: rows.filter(row => row.status === 'RETIRED').length }
         ]}
       />
       <StandardFilters
