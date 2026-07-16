@@ -1,5 +1,5 @@
 ﻿import { Bell, ChevronRight, LogOut, Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import sederLogo from '../../Assets/seder-logo.svg'
 import { useAuth } from '../../providers/AuthProvider'
@@ -22,8 +22,19 @@ export default function AppShell({
 }) {
   const { user, logout } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [collapsedSections, setCollapsedSections] = useState({})
-  const sections = [...new Map(navigation.map(item => [item.section, navigation.filter(navItem => navItem.section === item.section)]))]
+  const sections = useMemo(
+    () => [...new Map(navigation.map(item => [item.section, navigation.filter(navItem => navItem.section === item.section)]))],
+    [navigation]
+  )
+  const activeSection = sections.find(([, items]) => items.some(item => item.name === active))?.[0]
+  const collapsedForActiveSection = () => Object.fromEntries(
+    sections.map(([sectionName]) => [sectionName, activeSection ? sectionName !== activeSection : false])
+  )
+  const [collapsedSections, setCollapsedSections] = useState(collapsedForActiveSection)
+
+  useEffect(() => {
+    setCollapsedSections(collapsedForActiveSection())
+  }, [active, activeSection, sections])
   const toggleSection = section => setCollapsedSections(current => {
     const currentlyCollapsed = current[section]
     return Object.fromEntries(sections.map(([sectionName]) => [sectionName, sectionName === section ? !currentlyCollapsed : true]))
