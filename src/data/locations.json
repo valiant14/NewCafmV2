@@ -1,0 +1,122 @@
+[
+  {
+    "location": "RC-1031-RD-001",
+    "description": "Riyadh District Main Building",
+    "type": "Building",
+    "status": "OPERATING",
+    "priority": "1",
+    "priority  description": "Royal",
+    "site": "1031",
+    "builiding": "RD-001",
+    "builiding category": "Main Facility",
+    "department": "Facilities"
+  },
+  {
+    "location": "RC-1031-RD-001-00",
+    "description": "Ground Floor - Main Building",
+    "type": "Floor",
+    "status": "OPERATING",
+    "priority": "2",
+    "priority  description": "VIP",
+    "site": "1031",
+    "builiding": "RD-001",
+    "builiding category": "Main Facility",
+    "department": "Facilities"
+  },
+  {
+    "location": "RC-1031-RD-001-00-054",
+    "description": "Meeting Room 054",
+    "type": "Room",
+    "status": "OPERATING",
+    "priority": "1",
+    "priority  description": "Royal",
+    "site": "1031",
+    "builiding": "RD-001",
+    "builiding category": "Office / Meeting",
+    "department": "Civil"
+  },
+  {
+    "location": "RC-1031-RD-001-00-055",
+    "description": "Mechanical Service Room 055",
+    "type": "Room",
+    "status": "OPERATING",
+    "priority": "2",
+    "priority  description": "Critical Services",
+    "site": "1031",
+    "builiding": "RD-001",
+    "builiding category": "MEP",
+    "department": "Mechanics"
+  },
+  {
+    "location": "RC-1031-RD-001-00-056",
+    "description": "Electrical Panel Room 056",
+    "type": "Room",
+    "status": "OPERATING",
+    "priority": "2",
+    "priority  description": "Critical Services",
+    "site": "1031",
+    "builiding": "RD-001",
+    "builiding category": "Electrical",
+    "department": "Electrical"
+  },
+  {
+    "location": "RC-1031-RD-01-00-ES01",
+    "description": "East Service Zone 01",
+    "type": "Zone",
+    "status": "OPERATING",
+    "priority": "3",
+    "priority  description": "Standard",
+    "site": "1031",
+    "builiding": "RD-001",
+    "builiding category": "Service Zone",
+    "department": "Mechanics"
+  },
+  {
+    "location": "RC-1034-AS-008",
+    "description": "Al Safa Building 008",
+    "type": "Building",
+    "status": "PLANNED",
+    "priority": "2",
+    "priority  description": "VIP",
+    "site": "1034",
+    "builiding": "AS-008",
+    "builiding category": "Future Expansion",
+    "department": "Facilities"
+  },
+  {
+    "location": "RC-1034-AS-008-04-190",
+    "description": "Fourth Floor Office 190",
+    "type": "Room",
+    "status": "OPERATING",
+    "priority": "3",
+    "priority  description": "Standard",
+    "site": "1034",
+    "builiding": "AS-008",
+    "builiding category": "Office",
+    "department": "Mechanics"
+  },
+  {
+    "location": "KG-L00-19",
+    "description": "King Gate Hallway 19",
+    "type": "Zone",
+    "status": "OPERATING",
+    "priority": "2",
+    "priority  description": "VIP",
+    "site": "1031",
+    "builiding": "KG",
+    "builiding category": "Public Area",
+    "department": "Housekeeping"
+  },
+  {
+    "location": "RC-1031-OLD-PLANT",
+    "description": "Old External Plant Area",
+    "type": "External",
+    "status": "DECOMMISSIONED",
+    "priority": "3",
+    "priority  description": "Standard",
+    "site": "1031",
+    "builiding": "OLD",
+    "builiding category": "External",
+    "department": "Facilities"
+  }
+]

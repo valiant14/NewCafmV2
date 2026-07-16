@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { ChevronRight, MapPin, Plus } from 'lucide-react'
+import mockLocations from '../data/locations.json'
+import { assets, workOrders } from '../data/cafmData'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
@@ -7,6 +9,7 @@ import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
+import LocationDetailPage from '../components/locations/LocationDetailPage'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
@@ -42,12 +45,27 @@ const normalizeLocationPriority = value => {
   const priority = Number(String(value || '').trim())
   return ['1', '2', '3'].includes(String(priority)) ? String(priority) : '3'
 }
+const normalizeLocationRow = row => ({
+  location: row.location || row['location '] || '',
+  description: row.description || row['description '] || '',
+  type: row.type || 'Room',
+  status: normalizeStatus('location', row.status || row['status '], 'OPERATING'),
+  priority: normalizeLocationPriority(row.priority),
+  'priority  description': row['priority  description'] || '',
+  site: String(row.site || ''),
+  builiding: row.builiding || row.building || '',
+  'builiding category': row['builiding category'] || row['building category'] || '',
+  department: row.department || ''
+})
 
 export default function LocationsPage({ initialLocations = [] }) {
+  const seededLocations = (initialLocations?.length ? initialLocations : mockLocations).map(normalizeLocationRow)
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(emptyLocation)
-  const [locations, setLocations] = useState(initialLocations)
+  const [locations, setLocations] = useState(seededLocations)
+  const routeId = decodeURIComponent(window.location.pathname.split('/locations/')[1] || '')
+  const [selected, setSelected] = useState(seededLocations.find(row => row.location === routeId) || null)
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const tabLocations = tab === 'All' ? locations : locations.filter(location => location.status === tab)
@@ -64,6 +82,54 @@ export default function LocationsPage({ initialLocations = [] }) {
     setModalOpen(false)
   }
 
+  const open = row => {
+    setSelected(row)
+    window.history.pushState({}, '', `/locations/${encodeURIComponent(row.location)}`)
+  }
+
+  const close = () => {
+    setSelected(null)
+    window.history.pushState({}, '', '/locations')
+  }
+
+  const updateLocation = (locationId, patch) => {
+    setLocations(current => current.map(row => row.location === locationId ? { ...row, ...patch } : row))
+    setSelected(current => current?.location === locationId ? { ...current, ...patch } : current)
+  }
+
+  const relatedAssets = location => assets
+    .filter(asset => asset.location === location.location || String(asset.location || '').startsWith(location.location))
+    .map(asset => ({
+      assetnum: asset.assetnum,
+      description: asset.description,
+      department: asset.department,
+      status: asset.status,
+      site: asset.site
+    }))
+
+  const relatedWorkOrders = location => workOrders
+    .filter(order => String(order['LOCATION '] || '').startsWith(location.location))
+    .map(order => ({
+      workOrder: order.WORKORDER,
+      description: order['DESCRIPITION '] || order.DESCRIPTION || 'Work order',
+      workType: String(order['WORK TYPE '] || order['WORK TYPE  '] || '').trim(),
+      status: order.STATUS,
+      department: order['DEPARTMENT '],
+      site: order.SITE
+    }))
+
+  if (selected) {
+    return (
+      <LocationDetailPage
+        location={selected}
+        assets={relatedAssets(selected)}
+        workOrders={relatedWorkOrders(selected)}
+        onBack={close}
+        onUpdate={updateLocation}
+      />
+    )
+  }
+
   return (
     <>
       <PageHeader
@@ -73,7 +139,7 @@ export default function LocationsPage({ initialLocations = [] }) {
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Locations_Template.xlsx" />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setLocations(rows.map(row => ({ ...row, status: normalizeStatus('location', row.status, 'OPERATING'), priority: normalizeLocationPriority(row.priority) })))} />
+            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setLocations(rows.map(normalizeLocationRow))} />
             <Button onClick={() => setModalOpen(true)}><Plus size={17} />Add location</Button>
           </div>
         )}
@@ -101,6 +167,7 @@ export default function LocationsPage({ initialLocations = [] }) {
           <DataTable
             rows={visibleLocations}
             rowKey="location"
+            onRowClick={open}
             pagination
             columns={[
               { key: 'location', label: 'Location', render: value => <strong className="mono">{value}</strong> },

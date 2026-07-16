@@ -9,6 +9,7 @@ import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
+import MeterDetailPage from '../components/meters/MeterDetailPage'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
@@ -77,6 +78,8 @@ export default function MetersPage({ assets = [], workOrders = [] }) {
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(emptyMeter)
+  const routeId = decodeURIComponent(window.location.pathname.split('/meters/')[1] || '')
+  const [selected, setSelected] = useState(rows.find(row => row.meterId === routeId) || null)
 
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, { date: ['readingDate'] })
@@ -86,6 +89,50 @@ export default function MetersPage({ assets = [], workOrders = [] }) {
     setRows(current => [{ ...form }, ...current])
     setForm(emptyMeter)
     setModalOpen(false)
+  }
+
+  const open = row => {
+    setSelected(row)
+    window.history.pushState({}, '', `/meters/${row.meterId}`)
+  }
+
+  const close = () => {
+    setSelected(null)
+    window.history.pushState({}, '', '/meters')
+  }
+
+  const updateMeter = (meterId, patch) => {
+    setRows(current => current.map(row => row.meterId === meterId ? { ...row, ...patch } : row))
+    setSelected(current => current?.meterId === meterId ? { ...current, ...patch } : current)
+  }
+
+  const pastReadingsFor = meter => {
+    const relatedRows = rows.filter(row => row.meterId === meter.meterId || (row.asset && row.asset === meter.asset))
+    const generated = Array.from({ length: 5 }, (_, index) => {
+      const reading = Number(meter.reading || 0)
+      const date = new Date(`${meter.readingDate || '2026-07-16'}T00:00:00`)
+      date.setDate(date.getDate() - ((index + 1) * 30))
+      return {
+        readingId: `${meter.meterId}-H${index + 1}`,
+        reading: Math.max(0, reading - ((index + 1) * 85)),
+        unit: meter.unit,
+        readingDate: date.toISOString().slice(0, 10),
+        source: 'Historical mock',
+        status: 'Posted'
+      }
+    })
+    return [...relatedRows.map((row, index) => ({
+      readingId: `${row.meterId}-${index}`,
+      reading: row.reading,
+      unit: row.unit,
+      readingDate: row.readingDate,
+      source: row.meterId === meter.meterId ? 'Current meter' : 'Same asset',
+      status: row.status
+    })), ...generated].sort((a, b) => String(b.readingDate).localeCompare(String(a.readingDate)))
+  }
+
+  if (selected) {
+    return <MeterDetailPage meter={selected} pastReadings={pastReadingsFor(selected)} onBack={close} onUpdate={updateMeter} />
   }
 
   return (
@@ -129,6 +176,7 @@ export default function MetersPage({ assets = [], workOrders = [] }) {
           <DataTable
             rows={visibleRows}
             rowKey="meterId"
+            onRowClick={open}
             pagination
             columns={[
               { key: 'meterId', label: 'Meter ID', render: value => <strong className="mono">{value}</strong> },
