@@ -97,7 +97,7 @@ export default function WorkOrderPrintReport({
           <div className="wo-print-logo"><img src={sederLogo} alt="Seder" /></div>
           <div>
             <strong>SEDER CAFM</strong>
-            <span>Maximo-style work order report</span>
+            <span>Work order report</span>
           </div>
         </div>
         <div className="wo-print-title">

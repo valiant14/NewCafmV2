@@ -10,6 +10,7 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
+import { printWithoutBrowserTitle } from '../lib/print'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 const workOrderTemplateHeaders = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTION', 'STATUS', 'WORK TYPE ', 'PRIORTY', 'SITE', 'DEPARTMENT ', 'SUB DEPARTMENT  NAME', 'LOCATION ', 'ASSET', 'TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'FAILURE CODE', 'PROBLEM CODE']
@@ -90,7 +91,7 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
     setSelected(created)
     window.history.replaceState({}, '', `/work-orders/${created.WORKORDER}`)
   }
-  const printList = () => setTimeout(() => window.print(), 60)
+  const printList = () => printWithoutBrowserTitle()
 
   const listView = (
     <div>

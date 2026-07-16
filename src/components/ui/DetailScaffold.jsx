@@ -2,6 +2,7 @@ import { Printer } from 'lucide-react'
 import Badge from './Badge'
 import Button from './Button'
 import { cn } from '../../lib/cn'
+import { printWithoutBrowserTitle } from '../../lib/print'
 
 export function DetailHeader({ eyebrow, id, title, status, statusTone = 'green', onBack, backLabel = 'Back', printLabel = 'Print record', stats = [], actions }) {
   return (
@@ -20,7 +21,7 @@ export function DetailHeader({ eyebrow, id, title, status, statusTone = 'green',
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {actions}
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="outline" onClick={() => printWithoutBrowserTitle()}>
             <Printer size={15} />
             {printLabel}
           </Button>

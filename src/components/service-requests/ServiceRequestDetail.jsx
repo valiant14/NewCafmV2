@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle, Building2, CalendarClock, Check, ChevronRight, MapPin, Printer, Upload, UserRound, X } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
+import { printWithoutBrowserTitle } from '../../lib/print'
 import { Field, Section } from '../ui/FormControls'
 import departments from '../../data/departments.json'
 import GenericPrintReport from '../ui/GenericPrintReport'
@@ -59,7 +60,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
             <button className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] text-[var(--app-muted)] transition hover:bg-[var(--app-table-hover-bg)] hover:text-[var(--app-ink)]" onClick={onBack} aria-label="Close new job request"><X size={20} /></button>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" onClick={() => window.print()}><Printer size={15} /> Print</Button>
+              <Button variant="outline" onClick={() => printWithoutBrowserTitle()}><Printer size={15} /> Print</Button>
               {form.status === 'RESOLVED' && form.convertedWorkOrder ? (
                 <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>
               ) : (
