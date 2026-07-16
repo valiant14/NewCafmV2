@@ -13,7 +13,7 @@ import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../
 
 const emptyFromFields = fields => Object.fromEntries((fields || []).map(field => [field.key, field.defaultValue ?? '']))
 
-export default function RegisterPage({ title, eyebrow, description, rows, columns, search, setSearch, action = 'Add record', modalTitle, modalNote, modalFields = [], mapFormToRow, statusTabs = [] }) {
+export default function RegisterPage({ title, eyebrow, description, rows, columns, search, setSearch, action = 'Add record', modalTitle, modalNote, modalFields = [], mapFormToRow, statusTabs = [], rowKey, onRowClick }) {
   const [imported, setImported] = useState('')
   const [records, setRecords] = useState(rows)
   const [modalOpen, setModalOpen] = useState(false)
@@ -67,7 +67,7 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
       />
 
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-        <DataTable rows={applyStandardFilters(tabRecords, filters)} columns={columns} search={search} pagination />
+        <DataTable rows={applyStandardFilters(tabRecords, filters)} columns={columns} rowKey={rowKey} onRowClick={onRowClick} search={search} pagination />
       </section>
 
       {modalOpen && (
