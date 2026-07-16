@@ -21,6 +21,7 @@ import LoginPage from './pages/LoginPage'
 import PurchaseRequestsPage from './pages/PurchaseRequestsPage'
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage'
 import ReservationsPage from './pages/ReservationsPage'
+import UsersPage from './pages/UsersPage'
 import AppShell from './components/layout/AppShell'
 import JobPlanDetailPage from './components/job-plans/JobPlanDetailPage'
 import WorkOrderDocumentsTab from './components/work-orders/WorkOrderDocumentsTab'
@@ -441,6 +442,7 @@ export default function App() {
     'Purchase Orders': <PurchaseOrdersPage rows={purchaseOrders} onUpdateOrder={updatePurchaseOrder} onUpdateRequest={updatePurchaseRequest}/>,
     'Reservations': <ReservationsPage rows={reservations} onUpdate={updateReservation}/>,
     'Tools & Equipment': <ToolsPage/>,
+    'Users': <UsersPage/>,
     'Roles & Permissions': <RolesPermissionsPage/>,
     'Settings': <SettingsPage/>
   }

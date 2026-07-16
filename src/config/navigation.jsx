@@ -33,6 +33,7 @@ export const navigationItems = [
   { name: 'Purchase Orders', path: '/purchase-orders', icon: ReceiptText },
   { name: 'Reservations', path: '/reservations', icon: ClipboardList },
   { name: 'Tools & Equipment', path: '/tools', icon: Wrench },
+  { name: 'Users', path: '/users', icon: Users },
   { name: 'Roles & Permissions', path: '/roles-permissions', icon: UserCog }
 ]
 

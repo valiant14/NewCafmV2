@@ -1,0 +1,50 @@
+[
+  {
+    "userId": "USR-0001",
+    "username": "demo",
+    "name": "Ahmed Faisal",
+    "email": "ahmed.faisal@seder-cafm.local",
+    "role": "Facility Manager",
+    "laborId": "",
+    "site": "All Sites",
+    "department": "All Departments",
+    "status": "Active",
+    "lastLogin": "2026-07-16 09:12"
+  },
+  {
+    "userId": "USR-0002",
+    "username": "omar.harbi",
+    "name": "Omar Al Harbi",
+    "email": "omar.harbi@seder-cafm.local",
+    "role": "HVAC Supervisor",
+    "laborId": "LAB-0001",
+    "site": "Riyadh / 1031",
+    "department": "HVAC",
+    "status": "Active",
+    "lastLogin": "2026-07-15 16:40"
+  },
+  {
+    "userId": "USR-0003",
+    "username": "fahad.qahtani",
+    "name": "Fahad Al Qahtani",
+    "email": "fahad.qahtani@seder-cafm.local",
+    "role": "HVAC Supervisor",
+    "laborId": "LAB-0002",
+    "site": "Riyadh / 1031",
+    "department": "HVAC",
+    "status": "Active",
+    "lastLogin": "2026-07-15 11:05"
+  },
+  {
+    "userId": "USR-0004",
+    "username": "saad.shammari",
+    "name": "Saad Al Shammari",
+    "email": "saad.shammari@seder-cafm.local",
+    "role": "Civil Technician",
+    "laborId": "LAB-0005",
+    "site": "Riyadh / 1031",
+    "department": "Civil",
+    "status": "Inactive",
+    "lastLogin": "2026-07-10 08:22"
+  }
+]
