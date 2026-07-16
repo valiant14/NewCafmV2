@@ -37,16 +37,14 @@ export default function UserDetailPage({ user, role, labor, onBack, onUpdate }) 
             { label: 'Linked Labor', value: user.laborId || 'Not linked' }
           ]}
           actions={(
-            <label className="flex items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 py-2 text-xs font-bold text-[var(--app-muted)]">
-              Status
-              <select
-                value={user.status}
-                onChange={changeStatus}
-                className="min-w-[140px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 py-2 text-xs font-extrabold text-[var(--app-ink)] outline-none focus:border-[var(--app-primary)]"
-              >
-                {userStatuses.map(status => <option key={status} value={status}>{status}</option>)}
-              </select>
-            </label>
+            <select
+              value={user.status}
+              onChange={changeStatus}
+              className="h-10 min-w-[150px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+              aria-label="Change user status"
+            >
+              {userStatuses.map(status => <option key={status} value={status}>{status}</option>)}
+            </select>
           )}
         />
 

@@ -30,16 +30,14 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpda
           backLabel="Back to assets"
           printLabel="Print asset"
           actions={(
-            <label className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-bold text-[var(--app-muted)]">
-              Change status
-              <select
-                className="h-8 rounded-lg border border-[var(--app-line)] bg-[var(--app-soft-bg)] px-2 text-xs font-extrabold text-[var(--app-ink)] outline-none"
-                value={status}
-                onChange={event => changeStatus(event.target.value)}
-              >
-                {statusOptions('asset').map(option => <option value={option} key={option}>{option} · {statusDescription('asset', option)}</option>)}
-              </select>
-            </label>
+            <select
+              className="h-10 min-w-[190px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+              value={status}
+              onChange={event => changeStatus(event.target.value)}
+              aria-label="Change asset status"
+            >
+              {statusOptions('asset').map(option => <option value={option} key={option}>{option} · {statusDescription('asset', option)}</option>)}
+            </select>
           )}
           stats={[
             { label: 'Site / Location', value: asset.site || '-', note: asset.location || 'Location not set' },

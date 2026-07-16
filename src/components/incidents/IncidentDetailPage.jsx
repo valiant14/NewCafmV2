@@ -37,16 +37,14 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
             { label: 'Reported By', value: incident.reportedBy || '-', note: reportedDate }
           ]}
           actions={(
-            <label className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-bold text-[var(--app-muted)]">
-              Change status
-              <select
-                className="h-8 rounded-lg border border-[var(--app-line)] bg-[var(--app-soft-bg)] px-2 text-xs font-extrabold text-[var(--app-ink)] outline-none"
-                value={status}
-                onChange={event => changeStatus(event.target.value)}
-              >
-                {statusOptions('incident').map(option => <option value={option} key={option}>{option} · {statusDescription('incident', option)}</option>)}
-              </select>
-            </label>
+            <select
+              className="h-10 min-w-[170px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+              value={status}
+              onChange={event => changeStatus(event.target.value)}
+              aria-label="Change incident status"
+            >
+              {statusOptions('incident').map(option => <option value={option} key={option}>{option} · {statusDescription('incident', option)}</option>)}
+            </select>
           )}
         />
 

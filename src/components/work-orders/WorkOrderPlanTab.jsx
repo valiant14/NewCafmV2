@@ -7,11 +7,13 @@ const secondaryAddButtonClass = 'mb-2 inline-flex items-center gap-2 rounded-lg 
 const actionRowClass = 'flex flex-wrap gap-2'
 const tableClass = 'overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)]'
 const headBaseClass = 'gap-2 bg-[var(--app-table-header-bg)] px-3 py-2 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]'
-const laborHeadClass = `grid grid-cols-[1fr_120px_1fr_40px] ${headBaseClass}`
+const laborHeadClass = `grid grid-cols-[1fr_120px_1fr] ${headBaseClass}`
+const editableLaborHeadClass = `grid grid-cols-[1fr_120px_1fr_40px] ${headBaseClass}`
 const resourceHeadClass = `grid grid-cols-[120px_1fr_110px_40px] ${headBaseClass}`
 const taskHeadClass = `grid grid-cols-[90px_1fr_120px_40px] ${headBaseClass}`
 const rowBaseClass = 'items-center gap-2 border-t border-[var(--app-line)] px-3 py-2 text-[length:var(--app-table-font-size)] text-[var(--app-table-text)] hover:bg-[var(--app-table-hover-bg)] [&_input]:h-9 [&_input]:rounded-lg [&_input]:border [&_input]:border-[var(--app-line)] [&_input]:bg-[var(--app-table-bg)] [&_input]:px-2.5 [&_input]:text-[length:var(--app-table-font-size)] [&_input]:text-[var(--app-table-text)] [&_select]:h-9 [&_select]:rounded-lg [&_select]:border [&_select]:border-[var(--app-line)] [&_select]:bg-[var(--app-table-bg)] [&_select]:px-2.5 [&_select]:text-[length:var(--app-table-font-size)] [&_select]:text-[var(--app-table-text)] [&_button]:rounded-lg [&_button]:p-2 [&_button]:text-[var(--app-muted)] [&_button:hover]:bg-[var(--app-table-hover-bg)]'
-const laborRowClass = `grid grid-cols-[1fr_120px_1fr_40px] ${rowBaseClass}`
+const laborRowClass = `grid grid-cols-[1fr_120px_1fr] ${rowBaseClass}`
+const editableLaborRowClass = `grid grid-cols-[1fr_120px_1fr_40px] ${rowBaseClass}`
 const resourceRowClass = `grid grid-cols-[120px_1fr_110px_40px] ${rowBaseClass}`
 const taskRowClass = `grid grid-cols-[90px_1fr_120px_40px] ${rowBaseClass}`
 const emptyClass = 'border-t border-[var(--app-line)] px-3 py-6 text-center text-sm text-[var(--app-muted)]'
@@ -43,9 +45,14 @@ export default function WorkOrderPlanTab({
         <datalist id="planned-craft-options">{plannedCraftOptions.map(item => <option value={item.value} key={item.value}>{item.label}</option>)}</datalist>
         <datalist id="planned-crew-options">{plannedCrewOptions.map(item => <option value={item.value} key={item.value}>{item.label}</option>)}</datalist>
         <div className={tableClass}>
-          <div className={laborHeadClass}><span>Labor craft</span><span>Estimated hours</span><span>Assigned crew</span><span /></div>
+          <div className={isPM ? laborHeadClass : editableLaborHeadClass}>
+            <span>Labor craft</span>
+            <span>Estimated hours</span>
+            <span>Assigned crew</span>
+            {!isPM && <span />}
+          </div>
           {plannedLabor.map((row, index) => (
-            <div className={laborRowClass} key={index}>
+            <div className={isPM ? laborRowClass : editableLaborRowClass} key={index}>
               <input value={row.craft} list="planned-craft-options" readOnly={isPM} onChange={event => updatePlanRow(setPlannedLabor, index, 'craft', event.target.value)} placeholder="Search craft code or description" />
               <input value={row.hours} readOnly={isPM} type="number" onChange={event => updatePlanRow(setPlannedLabor, index, 'hours', event.target.value)} placeholder="Hours" />
               <input value={row.crew} list="planned-crew-options" readOnly={isPM} onChange={event => updatePlanRow(setPlannedLabor, index, 'crew', event.target.value)} placeholder="Search technician or crew" />

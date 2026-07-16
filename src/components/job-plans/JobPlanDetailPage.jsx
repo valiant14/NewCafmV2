@@ -34,16 +34,14 @@ export default function JobPlanDetailPage({ plan, tasks = [], workOrders = [], o
             { label: 'Status', value: statusDescription('jobPlan', status) }
           ]}
           actions={(
-            <label className="flex items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 py-2 text-xs font-bold text-[var(--app-muted)]">
-              Status
-              <select
-                value={status}
-                onChange={changeStatus}
-                className="min-w-[140px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 py-2 text-xs font-extrabold text-[var(--app-ink)] outline-none focus:border-[var(--app-primary)]"
-              >
-                {jobPlanStatuses.map(item => <option key={item} value={item}>{item}</option>)}
-              </select>
-            </label>
+            <select
+              value={status}
+              onChange={changeStatus}
+              className="h-10 min-w-[150px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+              aria-label="Change job plan status"
+            >
+              {jobPlanStatuses.map(item => <option key={item} value={item}>{item}</option>)}
+            </select>
           )}
         />
 

@@ -37,16 +37,14 @@ export default function MeterDetailPage({ meter, pastReadings = [], onBack, onUp
             { label: 'Reading Date', value: meter.readingDate }
           ]}
           actions={(
-            <label className="flex items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 py-2 text-xs font-bold text-[var(--app-muted)]">
-              Status
-              <select
-                value={meter.status}
-                onChange={changeStatus}
-                className="min-w-[150px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 py-2 text-xs font-extrabold text-[var(--app-ink)] outline-none focus:border-[var(--app-primary)]"
-              >
-                {meterStatuses.map(status => <option key={status} value={status}>{status}</option>)}
-              </select>
-            </label>
+            <select
+              value={meter.status}
+              onChange={changeStatus}
+              className="h-10 min-w-[160px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+              aria-label="Change meter status"
+            >
+              {meterStatuses.map(status => <option key={status} value={status}>{status}</option>)}
+            </select>
           )}
         />
 

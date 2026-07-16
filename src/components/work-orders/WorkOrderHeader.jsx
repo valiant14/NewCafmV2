@@ -9,6 +9,7 @@ const descriptionClass = 'mt-1 text-[length:var(--app-page-description-font-size
 const actionsClass = 'flex flex-wrap items-center justify-end gap-2'
 const primaryButtonClass = 'inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-transparent bg-[var(--app-primary)] px-4 text-xs font-bold text-white shadow-[0_8px_20px_rgba(49,90,71,.18)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50'
 const outlineButtonClass = 'inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-4 text-xs font-bold text-[var(--app-muted)] transition hover:bg-[var(--app-soft-bg-hover)] disabled:cursor-not-allowed disabled:opacity-50'
+const statusSelectClass = 'h-10 min-w-[190px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]'
 
 export { primaryButtonClass as workOrderPrimaryButtonClass, outlineButtonClass as workOrderOutlineButtonClass }
 
@@ -21,10 +22,6 @@ export default function WorkOrderHeader({
   isPM,
   autoSaveState,
   onSave,
-  overviewReady,
-  preparationReady,
-  failureReady,
-  actualReady,
   close,
   printWorkOrder,
   onStatusChange,
@@ -55,19 +52,17 @@ export default function WorkOrderHeader({
                 : <Save size={15} />}
             {saveLabel}
           </button>
-          <label className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-bold text-[var(--app-muted)]">
-            Change status
-            <select
-              className="h-8 rounded-lg border border-[var(--app-line)] bg-[var(--app-soft-bg)] px-2 text-xs font-extrabold text-[var(--app-ink)] outline-none"
-              value={status}
-              onChange={event => onStatusChange?.(event.target.value)}
-              title={statusDescription || status}
-            >
-              {statusOptions.map(option => (
-                <option value={option.value} key={option.value}>{option.value} · {option.label}</option>
-              ))}
-            </select>
-          </label>
+          <select
+            className={statusSelectClass}
+            value={status}
+            onChange={event => onStatusChange?.(event.target.value)}
+            title={statusDescription || status}
+            aria-label="Change work order status"
+          >
+            {statusOptions.map(option => (
+              <option value={option.value} key={option.value}>{option.value} · {option.label}</option>
+            ))}
+          </select>
         </div>
       </div>
     </header>
