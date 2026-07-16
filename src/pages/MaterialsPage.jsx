@@ -54,6 +54,11 @@ export default function MaterialsPage() {
     window.history.pushState({}, '', '/materials')
   }
 
+  const updateMaterial = (itemNumber, patch) => {
+    setRows(current => current.map(row => row.itemNumber === itemNumber ? { ...row, ...patch } : row))
+    setSelected(current => current?.itemNumber === itemNumber ? { ...current, ...patch } : current)
+  }
+
   const save = () => {
     if (!form.itemNumber || !form.description) return
     const row = {
@@ -69,7 +74,7 @@ export default function MaterialsPage() {
   }
 
   if (selected) {
-    return <MaterialDetailPage material={selected} onBack={close} />
+    return <MaterialDetailPage material={selected} onBack={close} onUpdate={updateMaterial} />
   }
 
   return (
