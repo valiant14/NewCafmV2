@@ -82,6 +82,10 @@ export default function IncidentsPage() {
     setSelected(null)
     window.history.pushState({}, '', '/incidents')
   }
+  const updateIncident = (incidentNumber, patch) => {
+    setRows(current => current.map(row => row.incidentNumber === incidentNumber ? { ...row, ...patch } : row))
+    setSelected(current => current?.incidentNumber === incidentNumber ? { ...current, ...patch } : current)
+  }
 
   const importRows = importedRows => {
     setRows(importedRows.map((row, index) => ({
@@ -97,7 +101,7 @@ export default function IncidentsPage() {
     })))
   }
 
-  if (selected) return <IncidentDetailPage incident={selected} onBack={close} />
+  if (selected) return <IncidentDetailPage incident={selected} onBack={close} onUpdate={updateIncident} />
 
   return (
     <div className="space-y-5">

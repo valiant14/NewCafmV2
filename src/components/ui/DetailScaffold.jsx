@@ -3,7 +3,7 @@ import Badge from './Badge'
 import Button from './Button'
 import { cn } from '../../lib/cn'
 
-export function DetailHeader({ eyebrow, id, title, status, statusTone = 'green', onBack, backLabel = 'Back', printLabel = 'Print record' }) {
+export function DetailHeader({ eyebrow, id, title, status, statusTone = 'green', onBack, backLabel = 'Back', printLabel = 'Print record', stats = [], actions }) {
   return (
     <header className="rounded-3xl border border-[var(--app-line)] bg-white p-6 shadow-[0_14px_36px_rgba(32,55,45,.08)]">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -18,11 +18,25 @@ export function DetailHeader({ eyebrow, id, title, status, statusTone = 'green',
           </div>
           {title && <p className="mt-2 max-w-3xl text-sm text-[var(--app-muted)]">{title}</p>}
         </div>
-        <Button variant="outline" onClick={() => window.print()}>
-          <Printer size={15} />
-          {printLabel}
-        </Button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {actions}
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer size={15} />
+            {printLabel}
+          </Button>
+        </div>
       </div>
+      {stats.length > 0 && (
+        <div className="mt-5 grid gap-3 border-t border-[var(--app-line)] pt-4 md:grid-cols-2 xl:grid-cols-4">
+          {stats.map(stat => (
+            <div key={stat.label} className="rounded-2xl bg-[var(--app-soft-bg)] px-3 py-2.5">
+              <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{stat.label}</span>
+              <strong className="mt-1 block truncate text-sm text-[var(--app-ink)]">{stat.value || '-'}</strong>
+              {stat.note && <small className="mt-0.5 block truncate text-[11px] text-[var(--app-muted)]">{stat.note}</small>}
+            </div>
+          ))}
+        </div>
+      )}
     </header>
   )
 }

@@ -1,4 +1,4 @@
-import { Check, Printer, Save, Users, Wrench } from 'lucide-react'
+import { Check, Printer, Save } from 'lucide-react'
 import Badge from '../ui/Badge'
 
 const headerClass = 'grid gap-3 border-b border-[var(--app-line)] bg-transparent pb-3'
@@ -27,26 +27,10 @@ export default function WorkOrderHeader({
   actualReady,
   close,
   printWorkOrder,
-  setWorkApproved,
-  setWorkWaitingSchedule,
-  setWorkScheduled,
-  setWorkStarted,
-  completeWork,
-  setWorkClosed
+  onStatusChange,
+  statusOptions = []
 }) {
   const saveLabel = autoSaveState === 'Saving' ? 'Saving...' : autoSaveState === 'Saved' ? 'Saved' : 'Save'
-  const nextStatusAction = () => {
-    if (status === 'WAPPR') return { label: 'Change status: Approve', disabled: !overviewReady, icon: Users, onClick: () => setWorkApproved(true) }
-    if (status === 'APPR') return { label: 'Change status: Send to schedule', disabled: false, icon: Users, onClick: () => setWorkWaitingSchedule(true) }
-    if (status === 'WSCH') return { label: 'Change status: Schedule', disabled: !preparationReady, icon: Users, onClick: () => setWorkScheduled(true) }
-    if (status === 'SCHED') return { label: 'Change status: Start work', disabled: !preparationReady, icon: Wrench, onClick: () => setWorkStarted(true) }
-    if (status === 'HOLD') return { label: 'Status on hold', disabled: true, icon: Wrench, onClick: undefined }
-    if (status === 'INPRG') return { label: 'Change status: Complete', disabled: !failureReady, icon: Check, onClick: completeWork, title: !failureReady ? 'Failure Code and Problem Code are required before completion' : '' }
-    if (status === 'COMP') return { label: 'Change status: Close', disabled: !actualReady, icon: Check, onClick: () => setWorkClosed(true) }
-    return { label: 'No status change', disabled: true, icon: Check, onClick: undefined }
-  }
-  const action = nextStatusAction()
-  const StatusIcon = action.icon
 
   return (
     <header className={headerClass}>
@@ -71,9 +55,19 @@ export default function WorkOrderHeader({
                 : <Save size={15} />}
             {saveLabel}
           </button>
-          <button className={primaryButtonClass} disabled={action.disabled} onClick={action.onClick} title={action.title || statusDescription || status}>
-            <StatusIcon size={15} />{action.label}
-          </button>
+          <label className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-bold text-[var(--app-muted)]">
+            Change status
+            <select
+              className="h-8 rounded-lg border border-[var(--app-line)] bg-[var(--app-soft-bg)] px-2 text-xs font-extrabold text-[var(--app-ink)] outline-none"
+              value={status}
+              onChange={event => onStatusChange?.(event.target.value)}
+              title={statusDescription || status}
+            >
+              {statusOptions.map(option => (
+                <option value={option.value} key={option.value}>{option.value} · {option.label}</option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
     </header>
