@@ -1,5 +1,6 @@
 ﻿import { Bell, ChevronRight, LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import sederLogo from '../../Assets/seder-logo.svg'
 import { useAuth } from '../../providers/AuthProvider'
 import Button from '../ui/Button'
@@ -21,6 +22,16 @@ export default function AppShell({
 }) {
   const { user, logout } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [collapsedSections, setCollapsedSections] = useState({})
+  const sections = [...new Map(navigation.map(item => [item.section, navigation.filter(navItem => navItem.section === item.section)]))]
+  const toggleSection = section => setCollapsedSections(current => {
+    const currentlyCollapsed = current[section]
+    return Object.fromEntries(sections.map(([sectionName]) => [sectionName, sectionName === section ? !currentlyCollapsed : true]))
+  })
+  const navigateFromSidebar = item => {
+    setCollapsedSections(Object.fromEntries(sections.map(([sectionName]) => [sectionName, sectionName !== item.section])))
+    onNavigate(item.name)
+  }
 
   return (
     <div className="app-shell min-h-screen bg-[var(--app-bg)] text-[var(--app-ink)] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
@@ -32,20 +43,35 @@ export default function AppShell({
           </button>
         </div>
 
-        <nav className="grid gap-1">
-          <span className="nav-label px-3 pb-2 text-[length:var(--app-nav-label-font-size)] font-extrabold tracking-[0.18em] text-[var(--app-sidebar-muted)]">WORKSPACE</span>
-          {navigation.map(item => {
-            const Icon = item.icon
-            const selected = active === item.name
+        <nav className="grid gap-1 overflow-y-auto pr-1">
+          {sections.map(([section, items], index) => {
+            const collapsed = collapsedSections[section]
             return (
-              <button
-                key={item.name}
-                onClick={() => onNavigate(item.name)}
-                className={`flex items-center gap-3 rounded-xl border-l-4 px-3 py-3 text-left text-[length:var(--app-nav-font-size)] transition ${selected ? 'active border-[var(--app-sidebar-accent)] bg-[var(--app-sidebar-active)] text-white' : 'border-transparent text-[var(--app-sidebar-muted)] hover:bg-[var(--app-sidebar-hover)] hover:text-[var(--app-sidebar-text)]'}`}
-              >
-                <Icon size={18} />
-                <span>{item.name}</span>
-              </button>
+              <div key={section} className="grid gap-1">
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section)}
+                  className={`nav-label flex items-center justify-between rounded-lg px-3 pb-1 pt-3 text-left text-[length:var(--app-nav-label-font-size)] font-extrabold uppercase tracking-[0.18em] text-[var(--app-sidebar-muted)] transition hover:bg-[var(--app-sidebar-hover)] hover:text-[var(--app-sidebar-text)] ${index === 0 ? 'pt-0' : ''}`}
+                  aria-expanded={!collapsed}
+                >
+                  <span>{section}</span>
+                  {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                </button>
+                {!collapsed && items.map(item => {
+                  const Icon = item.icon
+                  const selected = active === item.name
+                  return (
+                    <button
+                      key={item.name}
+                      onClick={() => navigateFromSidebar(item)}
+                      className={`flex items-center gap-3 rounded-xl border-l-4 px-3 py-3 text-left text-[length:var(--app-nav-font-size)] transition ${selected ? 'active border-[var(--app-sidebar-accent)] bg-[var(--app-sidebar-active)] text-white' : 'border-transparent text-[var(--app-sidebar-muted)] hover:bg-[var(--app-sidebar-hover)] hover:text-[var(--app-sidebar-text)]'}`}
+                    >
+                      <Icon size={18} />
+                      <span>{item.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
             )
           })}
         </nav>

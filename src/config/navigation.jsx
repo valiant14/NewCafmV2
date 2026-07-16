@@ -17,24 +17,24 @@ import {
 } from 'lucide-react'
 
 export const navigationItems = [
-  { name: 'Overview', path: '/', icon: LayoutDashboard },
-  { name: 'Job Requests', path: '/job-requests', icon: FileText },
-  { name: 'Incidents', path: '/incidents', icon: AlertTriangle },
-  { name: 'Work Orders', path: '/work-orders', icon: ClipboardList, counter: 'workOrders' },
-  { name: 'Assets', path: '/assets', icon: Boxes },
-  { name: 'Preventive Maintenance', path: '/preventive-maintenance', icon: CalendarClock },
-  { name: 'Meters', path: '/meters', icon: Gauge },
-  { name: 'Locations', path: '/locations', icon: MapPin },
-  { name: 'Job Plans', path: '/job-plans', icon: Wrench },
-  { name: 'Failure Library', path: '/failure-library', icon: ShieldCheck },
-  { name: 'Labor', path: '/labor', icon: Users },
-  { name: 'Materials', path: '/materials', icon: PackageCheck },
-  { name: 'Purchase Requisitions', path: '/purchase-requisitions', icon: ShoppingCart },
-  { name: 'Purchase Orders', path: '/purchase-orders', icon: ReceiptText },
-  { name: 'Reservations', path: '/reservations', icon: ClipboardList },
-  { name: 'Tools & Equipment', path: '/tools', icon: Wrench },
-  { name: 'Users', path: '/users', icon: Users },
-  { name: 'Roles & Permissions', path: '/roles-permissions', icon: UserCog }
+  { section: 'Workspace', name: 'Overview', path: '/', icon: LayoutDashboard },
+  { section: 'Workspace', name: 'Work Orders', path: '/work-orders', icon: ClipboardList, counter: 'workOrders' },
+  { section: 'Workspace', name: 'Job Requests', path: '/job-requests', icon: FileText },
+  { section: 'Workspace', name: 'Preventive Maintenance', path: '/preventive-maintenance', icon: CalendarClock },
+  { section: 'Workspace', name: 'Incidents', path: '/incidents', icon: AlertTriangle },
+  { section: 'Workspace', name: 'Job Plans', path: '/job-plans', icon: Wrench },
+  { section: 'Workspace', name: 'Assets', path: '/assets', icon: Boxes },
+  { section: 'Workspace', name: 'Labor', path: '/labor', icon: Users },
+  { section: 'Workspace', name: 'Locations', path: '/locations', icon: MapPin },
+  { section: 'Workspace', name: 'Failure Library', path: '/failure-library', icon: ShieldCheck },
+  { section: 'Workspace', name: 'Meters', path: '/meters', icon: Gauge },
+  { section: 'Supply Chain', name: 'Materials', path: '/materials', icon: PackageCheck },
+  { section: 'Supply Chain', name: 'Tools & Equipment', path: '/tools', icon: Wrench },
+  { section: 'Supply Chain', name: 'Reservations', path: '/reservations', icon: ClipboardList },
+  { section: 'Supply Chain', name: 'Purchase Requisitions', path: '/purchase-requisitions', icon: ShoppingCart },
+  { section: 'Supply Chain', name: 'Purchase Orders', path: '/purchase-orders', icon: ReceiptText },
+  { section: 'Settings', name: 'Users', path: '/users', icon: Users },
+  { section: 'Settings', name: 'Roles & Permissions', path: '/roles-permissions', icon: UserCog }
 ]
 
 export const routeToPage = pathname => {
