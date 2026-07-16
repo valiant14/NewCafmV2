@@ -19,6 +19,7 @@ import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../
 const emptyUser = {
   userId: '',
   username: '',
+  password: '1234',
   name: '',
   email: '',
   role: 'Civil Technician',
@@ -32,6 +33,7 @@ const emptyUser = {
 const fields = [
   { key: 'userId', label: 'User ID', required: true, placeholder: 'USR-0005' },
   { key: 'username', label: 'Username', required: true },
+  { key: 'password', label: 'Password', required: true, type: 'password', placeholder: 'Set temporary password' },
   { key: 'name', label: 'Name', required: true },
   { key: 'email', label: 'Email' },
   { key: 'role', label: 'Role', required: true, options: rolePermissionRows.map(row => row.role) },
@@ -78,7 +80,7 @@ export default function UsersPage() {
   }
 
   const save = () => {
-    if (!form.userId || !form.username || !form.name || !form.role) return
+    if (!form.userId || !form.username || !form.password || !form.name || !form.role) return
     setRows(current => [{ ...form }, ...current])
     setModalOpen(false)
     setForm(emptyUser)

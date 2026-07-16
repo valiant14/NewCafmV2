@@ -1,19 +1,19 @@
 import { createContext, useContext, useMemo, useState } from 'react'
+import userAccounts from '../data/users.json'
+import { rolePermissionRows } from '../data/roles'
 
 const AuthContext = createContext(null)
 const storageKey = 'seder-cafm-auth-user'
 
 export const demoUsers = [
-  {
-    username: 'demo',
-    password: '1234',
-    name: 'Ahmed Faisal',
-    role: 'Facility Manager',
-    department: 'Facilities',
-    site: 'All Sites',
-    initials: 'AF',
-    permissions: ['cafm:read', 'cafm:write', 'work-orders:approve', 'admin:permissions']
-  }
+  ...userAccounts.map(account => {
+    const role = rolePermissionRows.find(row => row.role === account.role)
+    return {
+      ...account,
+      initials: account.name.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase(),
+      permissions: role?.permissions || {}
+    }
+  })
 ]
 
 const safeStoredUser = () => {

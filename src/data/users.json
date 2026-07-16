@@ -2,6 +2,7 @@
   {
     "userId": "USR-0001",
     "username": "demo",
+    "password": "1234",
     "name": "Ahmed Faisal",
     "email": "ahmed.faisal@seder-cafm.local",
     "role": "Facility Manager",
@@ -14,6 +15,7 @@
   {
     "userId": "USR-0002",
     "username": "omar.harbi",
+    "password": "1234",
     "name": "Omar Al Harbi",
     "email": "omar.harbi@seder-cafm.local",
     "role": "HVAC Supervisor",
@@ -26,6 +28,7 @@
   {
     "userId": "USR-0003",
     "username": "fahad.qahtani",
+    "password": "1234",
     "name": "Fahad Al Qahtani",
     "email": "fahad.qahtani@seder-cafm.local",
     "role": "HVAC Supervisor",
@@ -38,6 +41,7 @@
   {
     "userId": "USR-0004",
     "username": "saad.shammari",
+    "password": "1234",
     "name": "Saad Al Shammari",
     "email": "saad.shammari@seder-cafm.local",
     "role": "Civil Technician",

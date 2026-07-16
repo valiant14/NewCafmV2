@@ -8,6 +8,7 @@ import GenericPrintReport from '../ui/GenericPrintReport'
 
 const userStatuses = ['Active', 'Inactive', 'Locked']
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
+const maskPassword = password => password ? '•'.repeat(Math.min(12, Math.max(6, String(password).length))) : 'Not set'
 
 export default function UserDetailPage({ user, role, labor, onBack, onUpdate }) {
   const [tab, setTab] = useState('User Details')
@@ -81,6 +82,7 @@ export default function UserDetailPage({ user, role, labor, onBack, onUpdate }) 
               items={[
                 ['User ID', user.userId],
                 ['Username', user.username],
+                ['Password', maskPassword(user.password)],
                 ['Name', user.name],
                 ['Email', user.email],
                 ['Status', user.status],
