@@ -4,6 +4,7 @@ import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { printWithoutBrowserTitle } from '../../lib/print'
 import { Field, Section } from '../ui/FormControls'
+import { ModalFooter, ModalHeader, ModalPanel } from '../ui/ModalFrame'
 import departments from '../../data/departments.json'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
@@ -74,6 +75,55 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
     else setForm(onApprove(form))
   }
 
+  // ServiceRequestsPage renders this inside its own ModalOverlay, and only ever with
+  // status NEW - so `modal` and `isNew` are the same condition. The intake form is built
+  // from the same primitives and column spans as CreateWorkOrderModal.
+  if (modal) return (
+    <ModalPanel className="max-w-4xl" labelledBy="new-job-request-title">
+      <ModalHeader
+        eyebrow="NEW SERVICE REQUEST"
+        title="New job request"
+        titleId="new-job-request-title"
+        description="Tell us what happened and where."
+        onClose={onBack}
+      />
+
+      <div className="overflow-auto px-6 py-5">
+        {submitError && (
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-orange-800">
+            <div className="flex items-center gap-2"><AlertTriangle size={17} /><span>{submitError}</span></div>
+            <button onClick={() => setSubmitError('')} aria-label="Dismiss"><X size={14} /></button>
+          </div>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Priority" value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} />
+          <Field label="Reported By" value={form.reportedBy} required onChange={update('reportedBy')} />
+          <div className="md:col-span-2"><Field label="Description" value={form.description} required onChange={update('description')} /></div>
+          <Field label="Site" value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" />
+          <Field label="Location" value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
+          <div className="md:col-span-2"><Field label="Asset" value={form.asset} onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" /></div>
+          <div className="md:col-span-2"><Field label="Long Description" value={form.longDescription} type="textarea" onChange={update('longDescription')} /></div>
+        </div>
+
+        <div className="mt-5">
+          <p className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">Attachments</p>
+          <div className="relative mt-2 grid min-h-28 cursor-pointer place-items-center content-center gap-1.5 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-header-bg)] p-5 text-center text-[var(--app-muted)]">
+            <Upload size={22} />
+            <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
+            <span className="text-xs">Photos, PDFs and supporting documents · multiple files supported</span>
+            <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple />
+          </div>
+        </div>
+      </div>
+
+      <ModalFooter>
+        <Button variant="outline" onClick={onBack}>Cancel</Button>
+        <Button onClick={handlePrimary}><Check size={15} /> Submit request</Button>
+      </ModalFooter>
+    </ModalPanel>
+  )
+
   return (
     <div className={modal ? 'flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-2xl' : 'printable-record'}>
       <div className={modal ? '' : 'print-report-screen space-y-5'}>
@@ -140,20 +190,6 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
             </div>
           )}
 
-          {isNew && (
-            <Section title="" note="">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Priority" value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} />
-                <Field label="Description" value={form.description} required onChange={update('description')} />
-                <Field label="Site" value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" />
-                <Field label="Location" value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
-                <Field label="Asset" value={form.asset} onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" />
-                <Field label="Long Description" value={form.longDescription} type="textarea" onChange={update('longDescription')} />
-                <Field label="Reported By" value={form.reportedBy} required onChange={update('reportedBy')} />
-              </div>
-            </Section>
-          )}
-
           {!isNew && activeTab === 'Request Details' && (
             <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
               <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-[var(--app-line)] pb-4">
@@ -196,7 +232,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
             </section>
           )}
 
-          {(isNew || activeTab === 'Attachments') && (
+          {activeTab === 'Attachments' && (
             <Section title="Attachments" note="Add photos or documents that help explain the request">
               <div className="relative grid min-h-28 cursor-pointer place-items-center content-center gap-2 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-hover-bg)] p-5 text-center text-[var(--app-muted)]">
                 <Upload size={25} />
@@ -208,12 +244,6 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
           )}
         </main>
 
-        {isNew && (
-          <footer className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-[var(--app-line)] bg-[var(--app-panel)] p-5">
-            <Button variant="outline" onClick={onBack}>Cancel</Button>
-            <Button onClick={handlePrimary}><Check size={15} /> Submit request</Button>
-          </footer>
-        )}
       </div>
 
       {!modal && !isNew && (
