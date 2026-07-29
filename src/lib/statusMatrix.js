@@ -70,6 +70,35 @@ export const STATUS_MATRIX = {
 
 export const statusOptions = application => Object.keys(STATUS_MATRIX[application] || {})
 
+// The work order lifecycle is forward-only, with one step back allowed so a misclick can
+// be corrected. HOLD is reachable from any active status and returns to where it came
+// from; CAN is only available before work starts; CLOSE is terminal.
+const workOrderChain = ['WAPPR', 'APPR', 'WSCH', 'SCHED', 'INPRG', 'COMP', 'CLOSE']
+const cancellableBefore = ['WAPPR', 'APPR', 'WSCH', 'SCHED']
+
+export const workOrderTransitions = (current, heldFrom = '') => {
+  const status = String(current || '').toUpperCase()
+  if (status === 'CLOSE' || status === 'CAN') return []
+  if (status === 'HOLD') {
+    // Resume where the hold started; fall back to the front of the chain if unknown.
+    const resume = workOrderChain.includes(String(heldFrom).toUpperCase()) ? String(heldFrom).toUpperCase() : 'WAPPR'
+    return [resume, 'CAN']
+  }
+  const index = workOrderChain.indexOf(status)
+  if (index === -1) return ['WAPPR']
+  const next = []
+  if (index > 0) next.push(workOrderChain[index - 1])
+  if (index < workOrderChain.length - 1) next.push(workOrderChain[index + 1])
+  if (status !== 'COMP') next.push('HOLD')
+  if (cancellableBefore.includes(status)) next.push('CAN')
+  return next
+}
+
+export const canTransitionWorkOrder = (from, to, heldFrom) => (
+  String(from || '').toUpperCase() === String(to || '').toUpperCase() ||
+  workOrderTransitions(from, heldFrom).includes(String(to || '').toUpperCase())
+)
+
 export const statusDescription = (application, status) => STATUS_MATRIX[application]?.[status] || status || ''
 
 export const normalizeStatus = (application, value, fallback) => {

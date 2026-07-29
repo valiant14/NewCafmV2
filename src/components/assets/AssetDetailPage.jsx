@@ -4,6 +4,7 @@ import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
 import { DetailHeader, DetailTabs, InfoCard, TimelineCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
+import { systemLabel } from '../../lib/departments'
 import { statusDescription, statusOptions, statusTone as matrixStatusTone } from '../../lib/statusMatrix'
 
 export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpdate }) {
@@ -42,6 +43,7 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpda
           stats={[
             { label: 'Site / Location', value: asset.site || '-', note: asset.location || 'Location not set' },
             { label: 'Department', value: asset.department || 'Not configured', note: asset['sub department'] || 'No sub department' },
+            { label: 'System', value: asset.system || 'Not assigned', note: systemLabel(asset.system) || 'No system code' },
             { label: 'Open Work Orders', value: openOrders.length, note: `${assetWorkOrders.length} total linked` },
             { label: 'Priority', value: asset.prioity || '-', note: 'Asset criticality' }
           ]}
@@ -119,7 +121,7 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpda
         summary={[['Site', asset.site], ['Location', asset.location], ['Department', asset.department]]}
         sections={[
           { title: 'Asset Information', rows: [[['Asset Number', asset.assetnum], ['Description', asset.description], ['Short Name', asset['asset short name']], ['Parent Asset', asset.parent]]] },
-          { title: 'Site Context', rows: [[['Site', asset.site], ['Location', asset.location], ['Department', asset.department], ['Sub Department', asset['sub department']]]] },
+          { title: 'Site Context', rows: [[['Site', asset.site], ['Location', asset.location], ['Department', asset.department], ['Sub Department', asset['sub department']]], [['System', systemLabel(asset.system)]]] },
           { title: 'Model and Serial', rows: [[['Model Number', asset.modelnum], ['Serial Number', asset.serialnum], ['Install Date', asset.installdate], ['Quantity', asset.quantity]]] }
         ]}
         tables={[{

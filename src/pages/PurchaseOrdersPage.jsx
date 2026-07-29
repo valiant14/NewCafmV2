@@ -9,8 +9,9 @@ import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { statusDescription, statusTone } from '../lib/statusMatrix'
+import { nowLocalDate } from '../lib/datetime'
 
-const todayStamp = () => new Date().toISOString().slice(0, 10)
+const todayStamp = () => nowLocalDate()
 const purchaseOrderStatuses = ['WAPPR', 'APPR', 'INPRG', 'CLOSE', 'CAN']
 
 export default function PurchaseOrdersPage({

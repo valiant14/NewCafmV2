@@ -6,12 +6,12 @@ import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../component
 import PageHeader from '../components/ui/PageHeader'
 import { useTheme } from '../providers/ThemeProvider'
 
-export default function SettingsPage() {
+export default function SettingsPage({ projectName = '', onProjectNameChange }) {
   const { themeName, setThemeName, fontSizeName, setFontSizeName, themes, fontSizes } = useTheme()
   const [draft, setDraft] = useState({
     theme: themeName,
     fontSize: fontSizeName,
-    projectName: 'Royal Court Facilities',
+    projectName,
     notificationWindow: '30'
   })
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const save = () => {
     setThemeName(draft.theme)
     setFontSizeName(draft.fontSize)
+    onProjectNameChange?.(draft.projectName)
     setConfirmOpen(false)
     setSaved(true)
   }

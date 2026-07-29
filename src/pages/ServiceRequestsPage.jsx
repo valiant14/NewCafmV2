@@ -6,13 +6,16 @@ import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
+import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
-import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { nowLocalDateTime } from '../lib/datetime'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
+import { useAuth } from '../providers/AuthProvider'
 
 export const initialRequests = [{
   sr: 'SR-2026-0041',
@@ -40,7 +43,7 @@ const blankRequest = () => ({
   asset: '',
   department: '',
   reportedBy: '',
-  reportedDate: new Date().toISOString().slice(0, 16),
+  reportedDate: nowLocalDateTime(),
   priority: 'Medium',
   requestType: 'Service',
   failureCode: '',
@@ -48,7 +51,27 @@ const blankRequest = () => ({
 })
 const templateHeaders = Object.keys(blankRequest()).filter(key => key !== 'sr')
 
+const exportColumns = [
+  { key: 'sr', label: 'SR Number' },
+  { key: 'description', label: 'Description' },
+  { key: 'longDescription', label: 'Long Description' },
+  { key: 'site', label: 'Site' },
+  { key: 'location', label: 'Location' },
+  { key: 'asset', label: 'Asset' },
+  { key: 'department', label: 'Department' },
+  { key: 'subDepartment', label: 'Sub Department' },
+  { key: 'assignedDepartment', label: 'Assigned Department' },
+  { key: 'reportedBy', label: 'Reported By' },
+  { key: 'reportedDate', label: 'Reported Date' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'requestType', label: 'Request Type' },
+  { key: 'failureCode', label: 'Failure Code' },
+  { key: 'status', label: 'Status' },
+  { key: 'convertedWorkOrder', label: 'Converted Work Order' }
+]
+
 export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, failureOptions }) {
+  const { user } = useAuth()
   const requestFromPath = () => {
     const id = decodeURIComponent((window.location.pathname.split('/job-requests/')[1] || window.location.pathname.split('/service-requests/')[1] || ''))
     return id === 'new' ? blankRequest() : requests.find(request => request.sr === id) || null
@@ -56,7 +79,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   const [selected, setSelected] = useState(requestFromPath)
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
-  const [filters, setFilters] = useState(emptyStandardFilters)
+  const [filters, setFilters] = useState(() => scopedStandardFilters(user, requests))
   const tabRows = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? request.status === 'WAPPR' : request.status === 'RESOLVED')
   const visible = applyStandardFilters(tabRows, filters, { date: ['reportedDate'] })
 
@@ -75,7 +98,9 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     window.history.pushState({}, '', '/job-requests')
   }
   const submit = request => {
-    const submitted = { ...request, sr: `SR-2026-${String(requests.length + 42).padStart(4, '0')}`, status: 'WAPPR', requestType: 'Service' }
+    // blankRequest() stamps when the form is constructed - which is route-evaluation
+    // time - so the reported time is taken again at the moment of submission.
+    const submitted = { ...request, reportedDate: nowLocalDateTime(), sr: `SR-2026-${String(requests.length + 42).padStart(4, '0')}`, status: 'WAPPR', requestType: 'Service' }
     setRequests(list => [...list, submitted])
     setSelected(submitted)
     window.history.replaceState({}, '', `/job-requests/${submitted.sr}`)
@@ -95,12 +120,12 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
         eyebrow="REQUEST INTAKE"
         title="Job Requests"
         description="Submit, review, approve, and convert job requests into Corrective Maintenance work orders."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={templateHeaders} fileName="Job_Requests_Template.xlsx" /><ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRequests(rows.map((row, index) => ({ ...blankRequest(), ...row, status: normalizeStatus('serviceRequest', row.status, 'NEW'), sr: row.sr || `SR-IMPORT-${String(index + 1).padStart(4, '0')}` })))} /><Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={templateHeaders} fileName="Job_Requests_Template.xlsx" /><ExportExcelButton module="Job Requests" rows={visible} columns={exportColumns} /><ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRequests(rows.map((row, index) => ({ ...blankRequest(), ...row, status: normalizeStatus('serviceRequest', row.status, 'NEW'), sr: row.sr || `SR-IMPORT-${String(index + 1).padStart(4, '0')}` })))} /><Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button></div>}
       />
       <ImportNotice fileName={imported} subject="job request" onClear={() => setImported('')} />
       <IndexTabs
         active={tab}
-        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
+        onChange={value => { setTab(value); setFilters(scopedStandardFilters(user, requests)) }}
         tabs={[
           { key: 'All', label: 'All Job Requests', count: requests.length },
           { key: 'Awaiting Review', label: 'Awaiting Review', count: requests.filter(request => request.status === 'WAPPR').length },

@@ -128,9 +128,25 @@ export default function FailureLibraryDetailPage({ failureClass, rows = [], work
         description={failureClass.DESCRIPTION}
         summary={[['Problems', problems.length], ['Causes', causes.length], ['Remedies', remedies.length]]}
         sections={[
-          { title: 'Failure Class', rows: [[['Class ID', failureClass['FAILURE CLASS ID']], ['Description', failureClass.DESCRIPTION], ['Problems', problems.length], ['Linked WOs', workOrders.length]]] },
-          { title: 'Problem Hierarchy', rows: rows.slice(0, 12).map(row => ([['Problem', row['PROBLEM CODE']], ['Problem Description', row['PC - DESCRIPTION']], ['Cause', row['CAUSE CODE'] || '-'], ['Remedy', row['REMEDY CODE'] || '-']])) }
+          { title: 'Failure Class', rows: [[['Class ID', failureClass['FAILURE CLASS ID']], ['Description', failureClass.DESCRIPTION], ['Problems', problems.length], ['Linked WOs', workOrders.length]]] }
         ]}
+        tables={[{
+          title: 'Problem Hierarchy',
+          columns: [
+            { key: 'problem', label: 'Problem' },
+            { key: 'problemDescription', label: 'Problem Description' },
+            { key: 'cause', label: 'Cause' },
+            { key: 'remedy', label: 'Remedy' }
+          ],
+          rows: rows.map((row, index) => ({
+            key: `${row['PROBLEM CODE']}-${index}`,
+            problem: row['PROBLEM CODE'],
+            problemDescription: row['PC - DESCRIPTION'],
+            cause: row['CAUSE CODE'] || '-',
+            remedy: row['REMEDY CODE'] || '-'
+          })),
+          emptyText: 'No problem codes recorded for this failure class.'
+        }]}
       />
     </section>
   )

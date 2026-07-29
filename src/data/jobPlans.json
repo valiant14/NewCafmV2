@@ -1,0 +1,32 @@
+[
+  {
+    "JPNUM": "JP415001",
+    "DESCRIPTION": "Air Handling Unit (Quarterly)",
+    "status": "ACTIVE"
+  },
+  {
+    "JPNUM": "JP415002",
+    "DESCRIPTION": "Package A/C Unit",
+    "status": "DRAFT"
+  },
+  {
+    "JPNUM": "JP415003",
+    "DESCRIPTION": "Fan Coil Unit",
+    "status": "DRAFT"
+  },
+  {
+    "JPNUM": "JP415004",
+    "DESCRIPTION": "Split A/C Unit",
+    "status": "DRAFT"
+  },
+  {
+    "JPNUM": "JP415010",
+    "DESCRIPTION": "Fire Damper",
+    "status": "DRAFT"
+  },
+  {
+    "JPNUM": "JP000020",
+    "DESCRIPTION": "Cleaning of Hallway",
+    "status": "DRAFT"
+  }
+]

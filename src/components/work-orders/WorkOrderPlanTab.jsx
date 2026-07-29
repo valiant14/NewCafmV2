@@ -20,6 +20,8 @@ const emptyClass = 'border-t border-[var(--app-line)] px-3 py-6 text-center text
 
 export default function WorkOrderPlanTab({
   isPM,
+  tasksLocked = isPM,
+  jobPlanNumber,
   plannedLabor,
   setPlannedLabor,
   plannedResources,
@@ -84,18 +86,23 @@ export default function WorkOrderPlanTab({
         </div>
       </Section>
 
-      <Section compact title="Job Tasks" note="Configure sequence, instructions, and expected duration">
-        {!isPM && <button className={addButtonClass} onClick={() => setPlannedTasks(rows => [...rows, { sequence: (rows.length + 1) * 10, description: '', duration: '' }])}><Plus size={15} />Add task</button>}
+      <Section compact title="Job Tasks" note={tasksLocked ? `Generated from job plan ${jobPlanNumber}` : 'Configure sequence, instructions, and expected duration'}>
+        {!tasksLocked && <button className={addButtonClass} onClick={() => setPlannedTasks(rows => [...rows, { sequence: (rows.length + 1) * 10, description: '', duration: '' }])}><Plus size={15} />Add task</button>}
         <div className={tableClass}>
           <div className={taskHeadClass}><span>Sequence</span><span>Task instruction</span><span>Duration (min)</span><span /></div>
           {plannedTasks.map((row, index) => (
             <div className={taskRowClass} key={index}>
-              <input type="number" value={row.sequence} readOnly={isPM} onChange={event => updatePlanRow(setPlannedTasks, index, 'sequence', event.target.value)} />
-              <input value={row.description} readOnly={isPM} onChange={event => updatePlanRow(setPlannedTasks, index, 'description', event.target.value)} placeholder="Describe the task to complete" />
-              <input type="number" value={row.duration} readOnly={isPM} onChange={event => updatePlanRow(setPlannedTasks, index, 'duration', event.target.value)} placeholder="Minutes" />
-              {!isPM && <button onClick={() => setPlannedTasks(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
+              <input type="number" value={row.sequence} readOnly={tasksLocked} onChange={event => updatePlanRow(setPlannedTasks, index, 'sequence', event.target.value)} />
+              <input value={row.description} readOnly={tasksLocked} onChange={event => updatePlanRow(setPlannedTasks, index, 'description', event.target.value)} placeholder="Describe the task to complete" />
+              <input type="number" value={row.duration} readOnly={tasksLocked} onChange={event => updatePlanRow(setPlannedTasks, index, 'duration', event.target.value)} placeholder="Minutes" />
+              {!tasksLocked && <button onClick={() => setPlannedTasks(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
             </div>
           ))}
+          {!plannedTasks.length && (
+            <div className={emptyClass}>
+              {jobPlanNumber ? `Job plan ${jobPlanNumber} has no task lines. Add the tasks manually below.` : 'No job plan linked. Add the tasks required to complete this work order.'}
+            </div>
+          )}
         </div>
       </Section>
     </div>

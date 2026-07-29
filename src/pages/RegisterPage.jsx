@@ -4,6 +4,7 @@ import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
+import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
@@ -13,7 +14,7 @@ import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../
 
 const emptyFromFields = fields => Object.fromEntries((fields || []).map(field => [field.key, field.defaultValue ?? '']))
 
-export default function RegisterPage({ title, eyebrow, description, rows, columns, search, setSearch, action = 'Add record', modalTitle, modalNote, modalFields = [], mapFormToRow, statusTabs = [], rowKey, onRowClick }) {
+export default function RegisterPage({ title, eyebrow, description, rows, columns, search, setSearch, action = 'Add record', modalTitle, modalNote, modalFields = [], mapFormToRow, statusTabs = [], rowKey, onRowClick, onCreate }) {
   const [imported, setImported] = useState('')
   const [records, setRecords] = useState(rows)
   const [modalOpen, setModalOpen] = useState(false)
@@ -25,10 +26,14 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
 
   const statusOf = row => String(row.status || row.STATUS || 'ACTIVE').toUpperCase()
   const tabRecords = tab === 'All' ? records : records.filter(row => statusOf(row) === tab)
+  const visibleRecords = applyStandardFilters(tabRecords, filters)
 
   const saveRecord = () => {
     const next = mapFormToRow ? mapFormToRow(form) : form
-    setRecords(current => [next, ...current])
+    // Local state is reset whenever `rows` changes identity, so when the parent owns the
+    // data it has to save through the callback or the record is lost on the next render.
+    if (onCreate) onCreate(next)
+    else setRecords(current => [next, ...current])
     setForm(emptyFromFields(modalFields))
     setModalOpen(false)
   }
@@ -42,6 +47,7 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={modalFields.map(field => field.key)} fileName={`${title.replace(/\s+/g, '_')}_Template.xlsx`} />
+            <ExportExcelButton module={title} rows={visibleRecords} columns={columns} />
             <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRecords(rows)} />
             <Button onClick={() => setModalOpen(true)}><Plus size={17} />{action}</Button>
           </div>
@@ -67,7 +73,7 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
       />
 
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-        <DataTable rows={applyStandardFilters(tabRecords, filters)} columns={columns} rowKey={rowKey} onRowClick={onRowClick} search={search} pagination />
+        <DataTable rows={visibleRecords} columns={columns} rowKey={rowKey} onRowClick={onRowClick} search={search} pagination />
       </section>
 
       {modalOpen && (

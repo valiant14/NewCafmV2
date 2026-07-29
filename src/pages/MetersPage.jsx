@@ -12,7 +12,9 @@ import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import MeterDetailPage from '../components/meters/MeterDetailPage'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
-import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { useAuth } from '../providers/AuthProvider'
+import { nowLocalDate, toLocalDateInput } from '../lib/datetime'
 
 const emptyMeter = {
   meterId: '',
@@ -23,11 +25,14 @@ const emptyMeter = {
   meterType: 'General',
   reading: '',
   unit: '',
-  readingDate: new Date().toISOString().slice(0, 10),
+  readingDate: '',
   status: 'Active'
 }
 
 const templateHeaders = Object.keys(emptyMeter)
+// Stamped when the form opens rather than when the module loads, so a session left open
+// past midnight does not file readings under yesterday.
+const blankMeter = () => ({ ...emptyMeter, readingDate: nowLocalDate() })
 const fields = [
   { key: 'meterId', label: 'Meter ID', required: true, placeholder: 'MTR-0001' },
   { key: 'asset', label: 'Asset', required: true },
@@ -41,7 +46,7 @@ const fields = [
   { key: 'status', label: 'Status', options: ['Active', 'Inactive', 'Needs Review'] }
 ]
 
-const seedMeters = (assets = [], workOrders = []) => {
+export const seedMeters = (assets = [], workOrders = []) => {
   const assetMeters = assets.slice(0, 6).map((asset, index) => ({
     meterId: `MTR-${String(index + 1).padStart(4, '0')}`,
     asset: asset.assetnum,
@@ -72,12 +77,13 @@ const seedMeters = (assets = [], workOrders = []) => {
 }
 
 export default function MetersPage({ assets = [], workOrders = [] }) {
+  const { user } = useAuth()
   const [rows, setRows] = useState(() => seedMeters(assets, workOrders))
   const [tab, setTab] = useState('All')
-  const [filters, setFilters] = useState(emptyStandardFilters)
+  const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows))
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState(emptyMeter)
+  const [form, setForm] = useState(blankMeter)
   const routeId = decodeURIComponent(window.location.pathname.split('/meters/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.meterId === routeId) || null)
 
@@ -87,7 +93,7 @@ export default function MetersPage({ assets = [], workOrders = [] }) {
   const save = () => {
     if (!form.meterId || !form.asset || !form.reading) return
     setRows(current => [{ ...form }, ...current])
-    setForm(emptyMeter)
+    setForm(blankMeter())
     setModalOpen(false)
   }
 
@@ -116,7 +122,7 @@ export default function MetersPage({ assets = [], workOrders = [] }) {
         readingId: `${meter.meterId}-H${index + 1}`,
         reading: Math.max(0, reading - ((index + 1) * 85)),
         unit: meter.unit,
-        readingDate: date.toISOString().slice(0, 10),
+        readingDate: toLocalDateInput(date),
         source: 'Historical mock',
         status: 'Posted'
       }
@@ -145,7 +151,7 @@ export default function MetersPage({ assets = [], workOrders = [] }) {
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Meters_Template.xlsx" />
             <ExcelImportButton fileName={imported} onFile={setImported} onImport={setRows} />
-            <Button onClick={() => setModalOpen(true)}><Plus size={17} />Add meter reading</Button>
+            <Button onClick={() => { setForm(blankMeter()); setModalOpen(true) }}><Plus size={17} />Add meter reading</Button>
           </div>
         )}
       />
@@ -154,7 +160,7 @@ export default function MetersPage({ assets = [], workOrders = [] }) {
 
       <IndexTabs
         active={tab}
-        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
+        onChange={value => { setTab(value); setFilters(scopedStandardFilters(user, rows)) }}
         tabs={[
           { key: 'All', label: 'All Meters', count: rows.length },
           { key: 'Active', label: 'Active', count: rows.filter(row => row.status === 'Active').length },

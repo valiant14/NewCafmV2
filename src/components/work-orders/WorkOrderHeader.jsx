@@ -60,7 +60,9 @@ export default function WorkOrderHeader({
             aria-label="Change work order status"
           >
             {statusOptions.map(option => (
-              <option value={option.value} key={option.value}>{option.value} · {option.label}</option>
+              <option value={option.value} key={option.value} disabled={option.disabled} title={option.reason}>
+                {option.value} · {option.label}{option.disabled && option.reason ? ` — ${option.reason}` : ''}
+              </option>
             ))}
           </select>
         </div>

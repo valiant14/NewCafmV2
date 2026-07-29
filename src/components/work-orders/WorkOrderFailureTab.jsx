@@ -31,6 +31,8 @@ function FailureStage({ item, index }) {
 
 export default function WorkOrderFailureTab({
   isCM,
+  causeApplicable = false,
+  remedyApplicable = false,
   failureClass,
   changeFailure,
   failureClassOptions,
@@ -54,16 +56,16 @@ export default function WorkOrderFailureTab({
       <div className={fieldsClass}>
         <Field label="Failure Code" value={failureClass} required={isCM} onChange={changeFailure} suggestions={failureClassOptions} placeholder="Search code or description" />
         <Field label="Problem Code" value={problemCode} required={isCM} onChange={event => { setProblemCode(event.target.value); setCauseCode(''); setRemedyCode('') }} suggestions={problemOptions} placeholder={failureClass ? 'Search matching problems' : 'Select failure code first'} />
-        <Field label="Cause Code (Optional)" value={causeCode} onChange={event => { setCauseCode(event.target.value); setRemedyCode('') }} suggestions={causeOptions} placeholder={problemCode ? 'Search cause code or description' : 'Select problem code first'} />
-        <Field label="Remedy Code (Optional)" value={remedyCode} onChange={event => setRemedyCode(event.target.value)} suggestions={remedyOptions} placeholder={problemCode ? 'Search remedy code or description' : 'Select problem code first'} />
+        <Field label={causeApplicable ? 'Cause Code' : 'Cause Code (Optional)'} required={causeApplicable} value={causeCode} onChange={event => { setCauseCode(event.target.value); setRemedyCode('') }} suggestions={causeOptions} placeholder={problemCode ? 'Search cause code or description' : 'Select problem code first'} />
+        <Field label={remedyApplicable ? 'Remedy Code' : 'Remedy Code (Optional)'} required={remedyApplicable} value={remedyCode} onChange={event => setRemedyCode(event.target.value)} suggestions={remedyOptions} placeholder={problemCode ? 'Search remedy code or description' : 'Select problem code first'} />
       </div>
 
       <div className={mapClass}>
         {[
           { step: '01', label: 'Failure class', code: failureClass, description: failureDescription, required: true },
           { step: '02', label: 'Problem', code: problemCode, description: problemDescription, required: true },
-          { step: '03', label: 'Cause', code: causeCode, description: causeDescription },
-          { step: '04', label: 'Remedy', code: remedyCode, description: remedyDescription }
+          { step: '03', label: 'Cause', code: causeCode, description: causeDescription, required: causeApplicable },
+          { step: '04', label: 'Remedy', code: remedyCode, description: remedyDescription, required: remedyApplicable }
         ].map((item, index) => <FailureStage item={item} index={index} key={item.label} />)}
       </div>
 

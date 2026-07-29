@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import Combobox from './Combobox'
 
 export function Field({ label, value = '', required, locked, type = 'text', options, suggestions, onChange, placeholder }) {
   const listId = useId()
@@ -7,10 +8,9 @@ export function Field({ label, value = '', required, locked, type = 'text', opti
   return <label className="grid min-w-0 gap-2">
     <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">{label}{required && <b className="text-[var(--app-required)]">*</b>}</span>
     {options ? <select className={`${controlClass} h-11`} value={value} onChange={onChange}>{options.map(option => <option key={option}>{option}</option>)}</select> :
-      type === 'textarea' ? <textarea className={`${controlClass} min-h-[86px] py-3 leading-relaxed`} value={value} onChange={onChange} rows="3" /> : <>
-        <input className={`${controlClass} h-11`} type={type} value={value} onChange={onChange} list={suggestions?.length ? listId : undefined} placeholder={placeholder} />
-        {suggestions?.length ? <datalist id={listId}>{suggestions.map(item => <option value={item.value ?? item} key={item.value ?? item}>{item.label || item.value || item}</option>)}</datalist> : null}
-      </>}
+      type === 'textarea' ? <textarea className={`${controlClass} min-h-[86px] py-3 leading-relaxed`} value={value} onChange={onChange} rows="3" /> :
+      suggestions?.length ? <Combobox inputId={listId} className={`${controlClass} h-11`} value={value} suggestions={suggestions} onChange={onChange} placeholder={placeholder} /> :
+      <input className={`${controlClass} h-11`} type={type} value={value} onChange={onChange} placeholder={placeholder} />}
   </label>
 }
 

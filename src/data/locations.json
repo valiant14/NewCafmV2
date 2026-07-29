@@ -118,5 +118,53 @@
     "builiding": "OLD",
     "builiding category": "External",
     "department": "Facilities"
+  },
+  {
+    "location": "RC-1031-RD-001-00-090",
+    "description": "Diwan Main Store",
+    "type": "Store",
+    "status": "OPERATING",
+    "priority": "2",
+    "priority  description": "Critical Services",
+    "site": "1031",
+    "builiding": "RD-001",
+    "builiding category": "Store",
+    "department": "Facilities"
+  },
+  {
+    "location": "RC-1031-RD-001-00-091",
+    "description": "HVAC Store",
+    "type": "Store",
+    "status": "OPERATING",
+    "priority": "2",
+    "priority  description": "Critical Services",
+    "site": "1031",
+    "builiding": "RD-001",
+    "builiding category": "Store",
+    "department": "Mechanics"
+  },
+  {
+    "location": "RC-1031-RD-001-00-092",
+    "description": "Electrical Store",
+    "type": "Store",
+    "status": "OPERATING",
+    "priority": "2",
+    "priority  description": "Critical Services",
+    "site": "1031",
+    "builiding": "RD-001",
+    "builiding category": "Store",
+    "department": "Electrical"
+  },
+  {
+    "location": "RC-1031-RD-001-00-093",
+    "description": "Civil Store",
+    "type": "Store",
+    "status": "OPERATING",
+    "priority": "2",
+    "priority  description": "Critical Services",
+    "site": "1031",
+    "builiding": "RD-001",
+    "builiding category": "Store",
+    "department": "Civil"
   }
 ]

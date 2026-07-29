@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import Combobox from './Combobox'
 import { cn } from '../../lib/cn'
 
 export default function Field({ label, value = '', required, locked, type = 'text', options, suggestions, onChange, placeholder }) {
@@ -22,27 +23,25 @@ export default function Field({ label, value = '', required, locked, type = 'tex
         </select>
       ) : type === 'textarea' ? (
         <textarea className={controlClass} value={value} onChange={onChange} readOnly={locked} rows="3" placeholder={placeholder} />
+      ) : suggestions?.length ? (
+        <Combobox
+          inputId={listId}
+          className={controlClass}
+          value={value}
+          suggestions={suggestions}
+          onChange={onChange}
+          placeholder={placeholder}
+          disabled={locked}
+        />
       ) : (
-        <>
-          <input
-            className={controlClass}
-            type={type}
-            value={value}
-            onChange={onChange}
-            readOnly={locked}
-            list={suggestions?.length ? listId : undefined}
-            placeholder={placeholder}
-          />
-          {suggestions?.length ? (
-            <datalist id={listId}>
-              {suggestions.map(item => (
-                <option value={item.value ?? item} key={item.value ?? item}>
-                  {item.label || item.value || item}
-                </option>
-              ))}
-            </datalist>
-          ) : null}
-        </>
+        <input
+          className={controlClass}
+          type={type}
+          value={value}
+          onChange={onChange}
+          readOnly={locked}
+          placeholder={placeholder}
+        />
       )}
     </label>
   )

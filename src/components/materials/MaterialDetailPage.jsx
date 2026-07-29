@@ -3,6 +3,7 @@ import { Archive, BarChart3, Boxes, ClipboardList, PackageCheck, Warehouse } fro
 import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
 import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
+import { stockForItem, storeLabel } from '../../lib/inventory'
 import EmptyState from '../ui/EmptyState'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusTone } from '../../lib/statusMatrix'
@@ -26,6 +27,11 @@ function stockState(material) {
 export default function MaterialDetailPage({ material, usageRows = [], onBack, onUpdate }) {
   const [tab, setTab] = useState('Material Details')
   const stock = stockState(material)
+  const storeStock = stockForItem(material.itemNumber).map(row => ({
+    ...row,
+    storeName: storeLabel(row.storeroom),
+    available: Math.max(0, Number(row.balance || 0) - Number(row.reserved || 0))
+  }))
   const tone = materialStatusTone[material.availability] || 'green'
   const changeStatus = event => onUpdate?.(material.itemNumber, { availability: event.target.value })
 
@@ -42,7 +48,7 @@ export default function MaterialDetailPage({ material, usageRows = [], onBack, o
           backLabel="Back to materials"
           stats={[
             { label: 'Unit', value: material.unit },
-            { label: 'Storeroom', value: material.storeroom },
+            { label: 'Stores', value: storeStock.map(row => row.storeName).join(', ') || 'Not stocked' },
             { label: 'Available Balance', value: `${stock.available} ${material.unit}` },
             { label: 'Reserved', value: `${material.reserved || 0} ${material.unit}` }
           ]}
@@ -100,7 +106,7 @@ export default function MaterialDetailPage({ material, usageRows = [], onBack, o
             kicker="INVENTORY"
             title="Stock Position"
             items={[
-              ['Storeroom', material.storeroom],
+              ['Stores', storeStock.map(row => row.storeName).join(', ') || 'Not stocked'],
               ['Current Balance', material.balance],
               ['Reserved', material.reserved],
               ['Available Balance', stock.available],
@@ -108,6 +114,25 @@ export default function MaterialDetailPage({ material, usageRows = [], onBack, o
               ['Purchase Required', stock.needsPurchase ? 'Yes' : 'No']
             ]}
           />
+          </section>
+
+          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)] lg:col-span-2">
+            <header className="border-b border-[var(--app-line)] px-5 py-4">
+              <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">STORE INVENTORY</p>
+              <h2 className="text-base font-extrabold text-[var(--app-ink)]">Held in {storeStock.length} store{storeStock.length === 1 ? '' : 's'}</h2>
+            </header>
+            <DataTable
+              rows={storeStock}
+              rowKey="storeroom"
+              showFooter={false}
+              columns={[
+                { key: 'storeName', label: 'Store' },
+                { key: 'storeroom', label: 'Store Code', render: value => <strong className="mono">{value}</strong> },
+                { key: 'balance', label: 'Balance' },
+                { key: 'reserved', label: 'Reserved' },
+                { key: 'available', label: 'Available' }
+              ]}
+            />
           </section>
         </main>}
 

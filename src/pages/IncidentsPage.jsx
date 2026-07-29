@@ -6,15 +6,18 @@ import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
+import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
-import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
+import { nowLocalDateTime } from '../lib/datetime'
+import { useAuth } from '../providers/AuthProvider'
 
-const incidentSeed = [
+export const incidentSeed = [
   {
     incidentNumber: 'INC-2026-0001',
     description: 'Water leak created a slip hazard near meeting room',
@@ -39,15 +42,27 @@ const incidentSeed = [
   }
 ]
 
+const exportColumns = [
+  { key: 'incidentNumber', label: 'Incident Number' },
+  { key: 'description', label: 'Description' },
+  { key: 'site', label: 'Site' },
+  { key: 'department', label: 'Department' },
+  { key: 'location', label: 'Location' },
+  { key: 'severity', label: 'Severity' },
+  { key: 'status', label: 'Status' },
+  { key: 'reportedBy', label: 'Reported By' },
+  { key: 'reportedDate', label: 'Reported Date' }
+]
+
 const incidentTemplateHeaders = ['incidentNumber', 'description', 'site', 'department', 'location', 'severity', 'status', 'reportedBy', 'reportedDate']
 
-export default function IncidentsPage() {
-  const [rows, setRows] = useState(incidentSeed)
+export default function IncidentsPage({ rows, setRows }) {
+  const { user } = useAuth()
   const [tab, setTab] = useState('All')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({})
   const [imported, setImported] = useState('')
-  const [filters, setFilters] = useState(emptyStandardFilters)
+  const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows))
   const routeId = decodeURIComponent(window.location.pathname.split('/incidents/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.incidentNumber === routeId) || null)
 
@@ -63,7 +78,7 @@ export default function IncidentsPage() {
       {
         incidentNumber: nextNumber,
         status: 'NEW',
-        reportedDate: new Date().toISOString().slice(0, 16),
+        reportedDate: nowLocalDateTime(),
         ...form
       },
       ...current
@@ -111,6 +126,7 @@ export default function IncidentsPage() {
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={incidentTemplateHeaders} fileName="Incidents_Template.xlsx" />
+            <ExportExcelButton module="Incidents" rows={filteredRows} columns={exportColumns} />
             <ExcelImportButton label="Import Excel" fileName={imported} onFile={setImported} onImport={importRows} />
             <Button onClick={() => { setForm({ severity: 'Medium' }); setModalOpen(true) }}><Plus size={15} />New incident</Button>
           </div>
@@ -128,7 +144,7 @@ export default function IncidentsPage() {
           { key: 'CLOSED', label: 'Closed', count: rows.filter(row => row.status === 'CLOSED').length }
         ]}
         active={tab}
-        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
+        onChange={value => { setTab(value); setFilters(scopedStandardFilters(user, rows)) }}
       />
       <StandardFilters
         filters={filters}

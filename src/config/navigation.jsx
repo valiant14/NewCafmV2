@@ -8,9 +8,11 @@ import {
   LayoutDashboard,
   MapPin,
   PackageCheck,
+  Warehouse,
   ReceiptText,
   ShoppingCart,
   ShieldCheck,
+  SlidersHorizontal,
   UserCog,
   Users,
   Wrench
@@ -29,12 +31,14 @@ export const navigationItems = [
   { section: 'Workspace', name: 'Failure Library', path: '/failure-library', icon: ShieldCheck },
   { section: 'Workspace', name: 'Meters', path: '/meters', icon: Gauge },
   { section: 'Supply Chain', name: 'Materials', path: '/materials', icon: PackageCheck },
+  { section: 'Supply Chain', name: 'Stores', path: '/stores', icon: Warehouse },
   { section: 'Supply Chain', name: 'Tools & Equipment', path: '/tools', icon: Wrench },
   { section: 'Supply Chain', name: 'Reservations', path: '/reservations', icon: ClipboardList },
   { section: 'Supply Chain', name: 'Purchase Requisitions', path: '/purchase-requisitions', icon: ShoppingCart },
   { section: 'Supply Chain', name: 'Purchase Orders', path: '/purchase-orders', icon: ReceiptText },
   { section: 'Settings', name: 'Users', path: '/users', icon: Users },
-  { section: 'Settings', name: 'Roles & Permissions', path: '/roles-permissions', icon: UserCog }
+  { section: 'Settings', name: 'Roles & Permissions', path: '/roles-permissions', icon: UserCog },
+  { section: 'Settings', name: 'Settings', path: '/settings', icon: SlidersHorizontal }
 ]
 
 export const routeToPage = pathname => {

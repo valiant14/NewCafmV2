@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react'
+import { AlertTriangle, Check } from 'lucide-react'
 import Button from '../ui/Button'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
 
@@ -29,13 +29,15 @@ function MasterRecordField({ field, value, onChange }) {
           value={value ?? ''}
           onChange={event => onChange(field.key, event.target.value)}
           placeholder={field.placeholder}
+          readOnly={field.locked}
+          disabled={field.locked}
         />
       )}
     </label>
   )
 }
 
-export default function MasterRecordModal({ title, note, fields, form, setForm, onClose, onSave, submitLabel = 'Create record' }) {
+export default function MasterRecordModal({ title, note, fields, form, setForm, onClose, onSave, submitLabel = 'Create record', error = '' }) {
   const requiredFields = fields.filter(field => field.required)
   const valid = requiredFields.every(field => String(form[field.key] ?? '').trim())
 
@@ -48,6 +50,13 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
       <ModalPanel className="max-w-4xl rounded-2xl" labelledBy="master-record-title">
         <ModalHeader eyebrow="MASTER DATA" title={title} titleId="master-record-title" description={note} onClose={onClose} />
 
+        {error && (
+          <div className="mx-6 mt-5 flex items-center gap-2 rounded-2xl border border-[var(--app-badge-orange-text)]/25 bg-[var(--app-badge-orange-bg)] p-3 text-sm text-[var(--app-badge-orange-text)]">
+            <AlertTriangle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="grid gap-5 overflow-auto px-6 py-5 md:grid-cols-2">
           {fields.map(field => (
             <MasterRecordField key={field.key} field={field} value={form[field.key]} onChange={updateField} />
@@ -55,7 +64,7 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
         </div>
 
         <ModalFooter className="justify-between">
-          <span className="text-xs text-[var(--app-muted)]">{valid ? 'Ready to create' : 'Complete the required fields'}</span>
+          <span className="text-xs text-[var(--app-muted)]">{error ? 'Resolve the issue above' : valid ? 'Ready to create' : 'Complete the required fields'}</span>
           <div className="flex items-center gap-2">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel

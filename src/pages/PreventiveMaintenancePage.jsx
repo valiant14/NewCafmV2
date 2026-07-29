@@ -10,10 +10,15 @@ import IndexTabs from '../components/ui/IndexTabs'
 import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
+import TableSearch from '../components/ui/TableSearch'
 import departments from '../data/departments.json'
 import pmSeed from '../data/pmSchedules.json'
-import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
+import { useAuth } from '../providers/AuthProvider'
+import { parseLocal, toLocalDateInput } from '../lib/datetime'
+import { countPmDueState, pmDueState } from '../lib/pmSchedule'
+import { filterRows } from '../lib/tableSearch'
 
 const emptyPlan = {
   pmNumber: '',
@@ -39,17 +44,18 @@ const emptyPlan = {
   pmStatus: 'ACTIVE',
   lastGeneratedCycle: ''
 }
+const searchKeys = ['pmNumber', 'description', 'jobPlan', 'asset', 'location', 'route', 'department', 'subDepartment', 'supervisor', 'personGroup', 'storeLocation', 'workType']
+
 const pmTemplateHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'ROUTE', 'LOCATION', 'JPNUM', 'NEXTDATE', 'LEAD TIME (DAYS)', 'FREQUENCY', 'FREQUNIT', 'PMCOUNTER', 'WORKTYPE', 'WOSTATUS', 'STORELOC', 'SUPERVISOR', 'LEAD', 'PERSONGROUP', 'department', 'sub department']
 
 const normalizeDate = value => {
   if (!value) return ''
-  const parsed = new Date(value)
-  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10)
+  if (parseLocal(value)) return toLocalDateInput(value)
   const match = String(value).match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/)
   if (!match) return String(value)
   const months = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 }
   const year = Number(match[3].length === 2 ? `20${match[3]}` : match[3])
-  return new Date(year, months[match[2]] ?? 0, Number(match[1])).toISOString().slice(0, 10)
+  return toLocalDateInput(new Date(year, months[match[2]] ?? 0, Number(match[1])))
 }
 
 const mapPmImportRows = rows => rows.map(row => ({
@@ -80,16 +86,17 @@ const mapPmImportRows = rows => rows.map(row => ({
 const cycleKey = plan => `${plan.pmNumber}-${plan.startDate}`
 
 const addFrequency = plan => {
-  const date = new Date(plan.startDate)
+  const date = parseLocal(plan.startDate) || new Date()
   const amount = Number(plan.frequency) || 1
   if (plan.freqUnit === 'DAYS') date.setDate(date.getDate() + amount)
   if (plan.freqUnit === 'WEEKS') date.setDate(date.getDate() + amount * 7)
   if (plan.freqUnit === 'MONTHS') date.setMonth(date.getMonth() + amount)
   if (plan.freqUnit === 'YEARS') date.setFullYear(date.getFullYear() + amount)
-  return date.toISOString().slice(0, 10)
+  return toLocalDateInput(date)
 }
 
 export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], workOrders = [], onGenerate, onOpenWorkOrder }) {
+  const { user } = useAuth()
   const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
   const [plans, setPlans] = useState(() => pmSeed.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') })))
   const [mode, setMode] = useState('list')
@@ -100,7 +107,8 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   const [pageSize, setPageSize] = useState(10)
   const [pmTab, setPmTab] = useState('All')
   const [sort, setSort] = useState({ key: 'pmNumber', direction: 'asc' })
-  const [filters, setFilters] = useState(emptyStandardFilters)
+  const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState(() => scopedStandardFilters(user, plans, ['site']))
 
   const jobPlans = useMemo(() => [
     ...new Map(jobTasks
@@ -114,8 +122,14 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   ], [jobTasks])
 
   const selected = plans.find(plan => plan.pmNumber === selectedId)
-  const tabRows = plans.filter(plan => pmTab === 'All' || plan.pmStatus === pmTab)
-  const visible = applyStandardFilters(tabRows, filters, {
+  const matchesTab = plan => {
+    if (pmTab === 'All') return true
+    if (pmTab === 'OVERDUE' || pmTab === 'DUE_SOON') return pmDueState(plan) === pmTab
+    return plan.pmStatus === pmTab
+  }
+  const tabRows = plans.filter(matchesTab)
+  const searched = filterRows(tabRows, search, searchKeys)
+  const visible = applyStandardFilters(searched, filters, {
     site: ['site'],
     department: ['department', 'personGroup'],
     status: ['pmStatus', 'woStatus'],
@@ -187,9 +201,11 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
 
       <IndexTabs
         active={pmTab}
-        onChange={value => { setPmTab(value); setFilters(emptyStandardFilters); setPage(1) }}
+        onChange={value => { setPmTab(value); setFilters(scopedStandardFilters(user, plans, ['site'])); setPage(1) }}
         tabs={[
           { key: 'All', label: 'All PM Schedules', count: plans.length },
+          { key: 'OVERDUE', label: 'Overdue', count: countPmDueState(plans, 'OVERDUE') },
+          { key: 'DUE_SOON', label: 'Due Soon', count: countPmDueState(plans, 'DUE_SOON') },
           { key: 'ACTIVE', label: 'Active', count: plans.filter(plan => plan.pmStatus === 'ACTIVE').length },
           { key: 'INACTIVE', label: 'Inactive', count: plans.filter(plan => plan.pmStatus === 'INACTIVE').length },
           { key: 'DRAFT', label: 'Draft', count: plans.filter(plan => plan.pmStatus === 'DRAFT').length }
@@ -202,6 +218,14 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         siteOptions={optionsFromRows(plans, ['site'])}
         departmentOptions={optionsFromRows(plans, ['department', 'personGroup'])}
         statusOptions={optionsFromRows(plans, ['pmStatus', 'woStatus'])}
+      />
+
+      <TableSearch
+        value={search}
+        onChange={value => { setSearch(value); setPage(1) }}
+        placeholder="Search PM plan, job plan, asset, location"
+        resultCount={visible.length}
+        totalCount={tabRows.length}
       />
 
       <PmScheduleTable
