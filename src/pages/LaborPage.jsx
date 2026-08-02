@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import laborSeed from '../data/labor.json'
+import { laborWorkMap } from '../data/laborWorkMap'
 import { workOrders } from '../data/cafmData'
 import AddLaborModal from '../components/labor/AddLaborModal'
 import LaborDetailPage from '../components/labor/LaborDetailPage'
@@ -26,15 +27,6 @@ const empty = {
   availability: 'Available'
 }
 const templateHeaders = Object.keys(empty)
-const laborWorkMap = {
-  'LAB-0001': ['56545132', 'PM-ALS-HV-00001-2026-01'],
-  'LAB-0002': ['56545132', 'PM-MS-MEC-FCU-001-2026-01'],
-  'LAB-0003': ['PM-MS-MEC-SAU-001-2026-01'],
-  'LAB-0004': ['PM-MS-MEC-FDA-001-2026-01'],
-  'LAB-0005': ['PMKG-L00-19-2026-01'],
-  'LAB-0006': ['56545132']
-}
-
 const workOrderNumber = order => String(order.WORKORDER || order['WORK ORDER'] || order.workOrder || '')
 const workOrderTitle = order => order['DESCRIPITION '] || order.DESCRIPTION || order.description || 'Work order'
 const workOrderDepartment = order => String(order['DEPARTMENT '] || order.department || '')

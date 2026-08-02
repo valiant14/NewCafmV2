@@ -11,6 +11,7 @@ import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import MeterDetailPage from '../components/meters/MeterDetailPage'
 import PageHeader from '../components/ui/PageHeader'
+import { seedMeters } from '../data/meters'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
 import { useAuth } from '../providers/AuthProvider'
@@ -45,36 +46,6 @@ const fields = [
   { key: 'readingDate', label: 'Reading Date', type: 'date', required: true },
   { key: 'status', label: 'Status', options: ['Active', 'Inactive', 'Needs Review'] }
 ]
-
-export const seedMeters = (assets = [], workOrders = []) => {
-  const assetMeters = assets.slice(0, 6).map((asset, index) => ({
-    meterId: `MTR-${String(index + 1).padStart(4, '0')}`,
-    asset: asset.assetnum,
-    location: asset.location,
-    site: String(asset.site || '1031'),
-    department: asset.department || asset['sub department'] || 'Facilities',
-    meterType: index % 2 ? 'Water' : 'Energy',
-    reading: String(1200 + index * 145),
-    unit: index % 2 ? 'm³' : 'kWh',
-    readingDate: `2026-07-${String(10 + index).padStart(2, '0')}`,
-    status: 'Active'
-  }))
-  const workOrderMeters = workOrders
-    .filter(order => order['METER READING'])
-    .map((order, index) => ({
-      meterId: `WO-MTR-${order.WORKORDER || index + 1}`,
-      asset: order.ASSET || '',
-      location: order['LOCATION '] || '',
-      site: String(order.SITE || ''),
-      department: order['DEPARTMENT '] || '',
-      meterType: 'General',
-      reading: order['METER READING'],
-      unit: '',
-      readingDate: order['METER READING DATE'] || '',
-      status: 'Active'
-    }))
-  return [...assetMeters, ...workOrderMeters]
-}
 
 export default function MetersPage({ assets = [], workOrders = [] }) {
   const { user } = useAuth()

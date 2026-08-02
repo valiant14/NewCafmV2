@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronRight, MapPin, Plus } from 'lucide-react'
-import mockLocations from '../data/locations.json'
+import locationSeed from '../data/locations.json'
 import { assets, workOrders } from '../data/cafmData'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -78,7 +78,7 @@ const normalizeLocationRow = row => ({
 
 export default function LocationsPage({ initialLocations = [] }) {
   const { user } = useAuth()
-  const seededLocations = (initialLocations?.length ? initialLocations : mockLocations).map(normalizeLocationRow)
+  const seededLocations = (initialLocations?.length ? initialLocations : locationSeed).map(normalizeLocationRow)
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [codeError, setCodeError] = useState('')
