@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { materials as materialSeed, materialUsageMap, workOrders as defaultWorkOrders } from '../data/workspaceData'
+import { materialUsageMap } from '../config/runtimeDefaults'
 import AddMaterialModal from '../components/materials/AddMaterialModal'
 import MaterialDetailPage from '../components/materials/MaterialDetailPage'
 import Badge from '../components/ui/Badge'
@@ -31,13 +31,13 @@ const empty = {
 const templateHeaders = Object.keys(empty)
 
 // Balances now live per store, so the register shows the roll-up across all of them.
-const withStock = row => ({
+const withStock = (row, stockRows, storeRows) => ({
   ...row,
-  balance: totalBalance(row.itemNumber) || Number(row.balance) || 0,
-  reserved: totalReserved(row.itemNumber) || Number(row.reserved) || 0,
-  available: totalAvailable(row.itemNumber),
-  stores: storesHolding(row.itemNumber).map(storeLabel).join(', ') || row.storeroom || '',
-  availability: availabilityFor(row)
+  balance: totalBalance(row.itemNumber, stockRows) || Number(row.balance) || 0,
+  reserved: totalReserved(row.itemNumber, stockRows) || Number(row.reserved) || 0,
+  available: totalAvailable(row.itemNumber, stockRows),
+  stores: storesHolding(row.itemNumber, stockRows).map(code => storeLabel(code, storeRows)).join(', ') || row.storeroom || '',
+  availability: availabilityFor(row, stockRows)
 })
 
 const exportColumns = [
@@ -70,8 +70,7 @@ const materialUsage = (material, workOrders) => (materialUsageMap[material.itemN
   }
 }).filter(Boolean)
 
-export default function MaterialsPage({ workOrders = defaultWorkOrders }) {
-  const [rows, setRows] = useState(materialSeed)
+export default function MaterialsPage({ rows = [], setRows, stockRows = [], storeRows = [], workOrders = [] }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -79,7 +78,7 @@ export default function MaterialsPage({ workOrders = defaultWorkOrders }) {
   const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/materials/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.itemNumber === routeId) || null)
-  const stockedRows = rows.map(withStock)
+  const stockedRows = rows.map(row => withStock(row, stockRows, storeRows))
   const tabRows = tab === 'All' ? stockedRows : stockedRows.filter(row => row.availability === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
     site: ['site', 'storeroom'],
@@ -99,7 +98,7 @@ export default function MaterialsPage({ workOrders = defaultWorkOrders }) {
   }
 
   const updateMaterial = (itemNumber, patch) => {
-    setRows(current => current.map(row => row.itemNumber === itemNumber ? { ...row, ...patch } : row))
+    setRows?.(current => current.map(row => row.itemNumber === itemNumber ? { ...row, ...patch } : row))
     setSelected(current => current?.itemNumber === itemNumber ? { ...current, ...patch } : current)
   }
 
@@ -111,14 +110,14 @@ export default function MaterialsPage({ workOrders = defaultWorkOrders }) {
       reserved: Number(form.reserved),
       reorderLevel: Number(form.reorderLevel)
     }
-    setRows(current => [...current, row])
+    setRows?.(current => [...current, row])
     setAdding(false)
     setForm(empty)
     open(row)
   }
 
   if (selected) {
-    return <MaterialDetailPage material={selected} usageRows={materialUsage(selected, workOrders)} onBack={close} onUpdate={updateMaterial} />
+    return <MaterialDetailPage material={selected} stockRows={stockRows} storeRows={storeRows} usageRows={materialUsage(selected, workOrders)} onBack={close} onUpdate={updateMaterial} />
   }
 
   return (

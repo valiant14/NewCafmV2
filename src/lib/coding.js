@@ -1,16 +1,49 @@
-import { codingStructure as structure } from '../data/workspaceData'
+import { codingStructure as structure } from '../config/runtimeDefaults'
 
-// Patterns live in codingStructure.json as strings and are compiled here, so swapping in
-// the approved structure for a project is a data edit rather than a code change.
-const assetSegment = structure.asset.segment
+const coding = {
+  project: 'RC',
+  asset: {
+    segment: '[A-Z]{3}-\\d{3}-\\d{4}',
+    pattern: 'TYPE-SERIES-SEQUENCE',
+    types: [],
+    defaultSeries: '100',
+    seriesLength: 3,
+    sequenceLength: 4
+  },
+  location: {
+    segment: 'RC-\\d{4}-[A-Z]{2}-\\d{3}-\\d{2}-\\d{3}',
+    pattern: 'RC-SITE-BUILDING-FLOOR-ROOM',
+    siteLength: 4,
+    floorLength: 2,
+    roomLength: 3
+  },
+  ...(structure && !Array.isArray(structure) ? structure : {}),
+  asset: {
+    segment: structure?.asset?.segment || '[A-Z]{3}-\\d{3}-\\d{4}',
+    pattern: structure?.asset?.pattern || 'TYPE-SERIES-SEQUENCE',
+    types: structure?.asset?.types || [],
+    defaultSeries: structure?.asset?.defaultSeries || '100',
+    seriesLength: structure?.asset?.seriesLength || 3,
+    sequenceLength: structure?.asset?.sequenceLength || 4
+  },
+  location: {
+    segment: structure?.location?.segment || 'RC-\\d{4}-[A-Z]{2}-\\d{3}-\\d{2}-\\d{3}',
+    pattern: structure?.location?.pattern || 'RC-SITE-BUILDING-FLOOR-ROOM',
+    siteLength: structure?.location?.siteLength || 4,
+    floorLength: structure?.location?.floorLength || 2,
+    roomLength: structure?.location?.roomLength || 3
+  }
+}
+
+const assetSegment = coding.asset.segment
 const assetPattern = new RegExp(`^${assetSegment}(-${assetSegment})*$`)
-const locationPattern = new RegExp(`^${structure.location.segment}$`)
+const locationPattern = new RegExp(`^${coding.location.segment}$`)
 
 const clean = value => String(value ?? '').trim().toUpperCase()
 
-export const assetTypes = structure.asset.types
+export const assetTypes = coding.asset.types
 export const assetTypeName = code => assetTypes.find(type => type.code === clean(code))?.name || ''
-export const projectPrefix = structure.project
+export const projectPrefix = coding.project
 
 const pad = (value, length) => String(value).padStart(length, '0')
 
@@ -26,7 +59,7 @@ export const validateAssetCode = (code, { rows = [], parentCode = '', ignore = '
   const value = clean(code)
   if (!value) return { valid: false, reason: 'Asset number is required.' }
   if (!assetPattern.test(value)) {
-    return { valid: false, reason: `Asset number must follow ${structure.asset.pattern} (for example SSU-100-0001).` }
+    return { valid: false, reason: `Asset number must follow ${coding.asset.pattern} (for example SSU-100-0001).` }
   }
   const parent = clean(parentCode)
   if (parent && !value.startsWith(`${parent}-`)) {
@@ -43,7 +76,7 @@ export const conformsToAssetCode = code => assetPattern.test(clean(code))
 export const nextAssetCode = (rows = [], { type, series, parentCode = '' } = {}) => {
   const typeCode = clean(type)
   if (!typeCode) return ''
-  const seriesCode = pad(clean(series) || structure.asset.defaultSeries, structure.asset.seriesLength)
+  const seriesCode = pad(clean(series) || coding.asset.defaultSeries, coding.asset.seriesLength)
   const parent = clean(parentCode)
   const prefix = parent ? `${parent}-${typeCode}-${seriesCode}` : `${typeCode}-${seriesCode}`
   const highest = rows.reduce((max, row) => {
@@ -54,7 +87,7 @@ export const nextAssetCode = (rows = [], { type, series, parentCode = '' } = {})
     if (tail.includes('-')) return max
     return Math.max(max, Number(tail) || 0)
   }, 0)
-  return `${prefix}-${pad(highest + 1, structure.asset.sequenceLength)}`
+  return `${prefix}-${pad(highest + 1, coding.asset.sequenceLength)}`
 }
 
 export const conformsToLocationCode = code => locationPattern.test(clean(code))
@@ -65,7 +98,7 @@ export const validateLocationCode = (code, { rows = [], site = '', building = ''
   const value = clean(code)
   if (!value) return { valid: false, reason: 'Location code is required.' }
   if (!locationPattern.test(value)) {
-    return { valid: false, reason: `Location must follow ${structure.location.pattern} (for example RC-1031-RD-001-00-054).` }
+    return { valid: false, reason: `Location must follow ${coding.location.pattern} (for example RC-1031-RD-001-00-054).` }
   }
   const parts = value.split('-')
   if (clean(site) && parts[1] !== clean(site)) {
@@ -85,11 +118,11 @@ export const nextLocationCode = ({ site = '', building = '', floor = '', room = 
   const siteCode = clean(site)
   const buildingCode = clean(building)
   if (!siteCode || !buildingCode) return ''
-  const base = `${structure.project}-${pad(siteCode, structure.location.siteLength)}-${buildingCode}`
+  const base = `${coding.project}-${pad(siteCode, coding.location.siteLength)}-${buildingCode}`
   if (!String(floor).trim()) return base
-  const floorCode = pad(clean(floor), structure.location.floorLength)
+  const floorCode = pad(clean(floor), coding.location.floorLength)
   if (!String(room).trim()) return `${base}-${floorCode}`
-  return `${base}-${floorCode}-${pad(clean(room), structure.location.roomLength)}`
+  return `${base}-${floorCode}-${pad(clean(room), coding.location.roomLength)}`
 }
 
 export const countNonConforming = (rows = [], key, test) => rows.filter(row => row?.[key] && !test(row[key])).length

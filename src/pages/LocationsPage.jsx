@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronRight, MapPin, Plus } from 'lucide-react'
-import { assets, locationsMaster as locationSeed, workOrders } from '../data/workspaceData'
+import { assets, locationsMaster as locationSeed, workOrders } from '../config/runtimeDefaults'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'

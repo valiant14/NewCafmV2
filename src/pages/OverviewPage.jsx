@@ -6,7 +6,7 @@ import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import LineChart from '../components/ui/LineChart'
-import { assets, excelDate, excelToDate, failureCodes, pmRecords, seedMeters, workOrders } from '../data/workspaceData'
+import { excelDate, excelToDate } from '../config/runtimeDefaults'
 import { pmDueLabel, pmDueTone } from '../lib/pmSchedule'
 import { parseLocal } from '../lib/datetime'
 import { effectiveTargetTime, isOnHold } from '../lib/holdPeriods'
@@ -117,13 +117,10 @@ const HealthRow = ({ label, weight, value, note }) => (
   </div>
 )
 
-// The dashboard reads raw workbook PM rows; pmDueState expects the normalised plan shape
-// the PM page uses, so map across the three fields it needs.
 const pmPlanFromRecord = pm => ({
-  pmStatus: 'ACTIVE',
-  // NEXTDATE arrives as an Excel serial (44562), which parseLocal would read as 1970.
-  startDate: excelToDate(pm.NEXTDATE) || pm.NEXTDATE,
-  leadTime: pm['LEAD TIME (DAYS)']
+  pmStatus: pm.pmStatus || 'ACTIVE',
+  startDate: excelToDate(pm.startDate) || pm.startDate,
+  leadTime: pm.leadTime
 })
 
 const closedStatuses = ['COMP', 'COMPLETED', 'CLOSE', 'CLOSED']
@@ -147,9 +144,12 @@ export default function OverviewPage({
   onNavigate,
   onOpenWorkOrderTab,
   projectName = '',
-  assets: liveAssets = assets,
+  assets: liveAssets = [],
   incidents = [],
-  workOrders: liveWorkOrders = workOrders,
+  workOrders: liveWorkOrders = [],
+  pmRecords = [],
+  failureCodes = [],
+  meters = [],
   purchaseRequests = [],
   purchaseOrders = [],
   reservations = []
@@ -234,9 +234,6 @@ export default function OverviewPage({
     ? Math.round(measuredHealth.reduce((sum, item) => sum + (item.value * item.weight), 0) / healthWeight)
     : null
 
-  // Meters are a pure function of assets and work orders, so the dashboard derives them
-  // rather than duplicating the Meters page's state.
-  const meters = seedMeters(assetRows, workOrderRows)
   const utilityTrend = type => {
     const typeMeters = meters.filter(meter => meter.meterType === type)
     if (!typeMeters.length) return []

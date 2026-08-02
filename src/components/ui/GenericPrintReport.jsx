@@ -106,7 +106,7 @@ export default function GenericPrintReport({
       </section>
 
       <footer className="wo-print-footer">
-        <span>Generated from Seder CAFM workspace data</span>
+        <span>Generated from Seder CAFM</span>
         <span>Seder CAFM</span>
       </footer>
     </article>

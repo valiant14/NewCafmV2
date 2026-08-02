@@ -6,7 +6,6 @@ import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
 import ExportExcelButton from '../components/ui/ExportExcelButton'
 import PageHeader from '../components/ui/PageHeader'
-import { materials as materialsSeed } from '../data/workspaceData'
 import { storeLocation, storeStockRows, storeSummary } from '../lib/inventory'
 import { scopeRowsForUser } from '../lib/accessControl'
 import { useAuth } from '../providers/AuthProvider'
@@ -33,10 +32,10 @@ const stockColumns = [
   { key: 'reorderLevel', label: 'Reorder Level' }
 ]
 
-export default function StoresPage({ materials = materialsSeed, scopeUser }) {
+export default function StoresPage({ materials = [], stockRows = [], storeRows = [], locationRows = [], scopeUser }) {
   const { user } = useAuth()
   const routeId = decodeURIComponent(window.location.pathname.split('/stores/')[1] || '')
-  const summary = scopeRowsForUser(storeSummary(materials), scopeUser || user, ['site'])
+  const summary = scopeRowsForUser(storeSummary(materials, stockRows, storeRows, locationRows), scopeUser || user, ['site'])
   const [selected, setSelected] = useState(summary.find(store => store.code === routeId) || null)
 
   const open = store => {
@@ -49,8 +48,8 @@ export default function StoresPage({ materials = materialsSeed, scopeUser }) {
   }
 
   if (selected) {
-    const rows = storeStockRows(selected.code, materials)
-    const location = storeLocation(selected.code)
+    const rows = storeStockRows(selected.code, materials, stockRows)
+    const location = storeLocation(selected.code, storeRows, locationRows)
     return (
       <>
         <PageHeader

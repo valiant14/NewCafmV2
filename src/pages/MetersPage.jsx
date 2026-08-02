@@ -11,7 +11,6 @@ import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import MeterDetailPage from '../components/meters/MeterDetailPage'
 import PageHeader from '../components/ui/PageHeader'
-import { seedMeters } from '../data/workspaceData'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
 import { useAuth } from '../providers/AuthProvider'
@@ -47,9 +46,8 @@ const fields = [
   { key: 'status', label: 'Status', options: ['Active', 'Inactive', 'Needs Review'] }
 ]
 
-export default function MetersPage({ assets = [], workOrders = [] }) {
+export default function MetersPage({ rows = [], setRows, assets = [], workOrders = [] }) {
   const { user } = useAuth()
-  const [rows, setRows] = useState(() => seedMeters(assets, workOrders))
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows))
   const [imported, setImported] = useState('')
@@ -63,7 +61,7 @@ export default function MetersPage({ assets = [], workOrders = [] }) {
 
   const save = () => {
     if (!form.meterId || !form.asset || !form.reading) return
-    setRows(current => [{ ...form }, ...current])
+    setRows?.(current => [{ ...form }, ...current])
     setForm(blankMeter())
     setModalOpen(false)
   }
@@ -79,7 +77,7 @@ export default function MetersPage({ assets = [], workOrders = [] }) {
   }
 
   const updateMeter = (meterId, patch) => {
-    setRows(current => current.map(row => row.meterId === meterId ? { ...row, ...patch } : row))
+    setRows?.(current => current.map(row => row.meterId === meterId ? { ...row, ...patch } : row))
     setSelected(current => current?.meterId === meterId ? { ...current, ...patch } : current)
   }
 

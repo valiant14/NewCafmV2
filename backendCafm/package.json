@@ -7,6 +7,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "db:check": "node src/db/checkConnection.js",
+    "db:seed-core": "node src/db/runSqlFile.js sql/002_seed_core.sql",
     "db:create-admin": "node src/db/createAdminUser.js"
   },
   "dependencies": {
