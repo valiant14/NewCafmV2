@@ -13,7 +13,7 @@ import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { nowLocalDateTime } from '../lib/datetime'
-import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 import { useAuth } from '../providers/AuthProvider'
 
@@ -62,7 +62,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   const [selected, setSelected] = useState(requestFromPath)
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
-  const [filters, setFilters] = useState(() => scopedStandardFilters(user, requests))
+  const [filters, setFilters] = useScopedFilters(user, requests)
   const tabRows = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? request.status === 'WAPPR' : request.status === 'RESOLVED')
   const visible = applyStandardFilters(tabRows, filters, { department: ['department', 'assignedDepartment', 'subDepartment'], date: ['reportedDate'] })
 

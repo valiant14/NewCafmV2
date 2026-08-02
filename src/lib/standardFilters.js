@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { normalizeDepartmentName } from './departments'
 
 export const emptyStandardFilters = {
@@ -47,6 +48,36 @@ export function scopedStandardFilters(user, rows = [], siteKeys = ['site', 'SITE
   const site = siteCodeFromUser(user)
   if (!site || !rows.some(row => valueFromKeys(row, siteKeys) === site)) return emptyStandardFilters
   return { ...emptyStandardFilters, site }
+}
+
+// Pages used to seed their filters with `useState(() => scopedStandardFilters(...))`, which
+// runs once and never again - so an administrator changing the user's site left the list
+// filtered by the old one and looking empty. This keeps the manual filtering behaviour but
+// re-applies the default when the user's scope actually changes.
+export function useScopedFilters(user, rows = [], siteKeys = ['site', 'SITE']) {
+  const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows, siteKeys))
+  const scope = siteCodeFromUser(user)
+  const lastScope = useRef(scope)
+  // Rows arrive asynchronously, so the first render often has none and the default cannot
+  // be resolved yet. Tracked so it can be applied once they land, without stomping a
+  // filter the user has since chosen.
+  const seeded = useRef(rows.length > 0)
+
+  // Callers pass siteKeys as an inline literal, so depend on its contents rather than its
+  // identity - otherwise the effect re-runs on every render.
+  const siteKeyId = siteKeys.join('|')
+
+  useEffect(() => {
+    const scopeChanged = lastScope.current !== scope
+    const nowSeeded = !seeded.current && rows.length > 0
+    if (!scopeChanged && !nowSeeded) return
+    lastScope.current = scope
+    seeded.current = seeded.current || rows.length > 0
+    setFilters(scopedStandardFilters(user, rows, siteKeys))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, rows, user, siteKeyId])
+
+  return [filters, setFilters]
 }
 
 export function applyStandardFilters(rows = [], filters = emptyStandardFilters, keys = {}) {

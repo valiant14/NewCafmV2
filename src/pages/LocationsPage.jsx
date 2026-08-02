@@ -13,7 +13,7 @@ import LocationDetailPage from '../components/locations/LocationDetailPage'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
-import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 import { conformsToLocationCode, nextLocationCode, validateLocationCode } from '../lib/coding'
 import { useAuth } from '../providers/AuthProvider'
@@ -88,7 +88,7 @@ export default function LocationsPage({ rows: controlledRows, setRows: setContro
   const routeId = decodeURIComponent(window.location.pathname.split('/locations/')[1] || '')
   const [selected, setSelected] = useState(seededLocations.find(row => row.location === routeId) || null)
   const [tab, setTab] = useState('All')
-  const [filters, setFilters] = useState(() => scopedStandardFilters(user, seededLocations, ['site']))
+  const [filters, setFilters] = useScopedFilters(user, seededLocations, ['site'])
   const tabLocations = tab === 'All' ? locations : locations.filter(location => location.status === tab)
   const visibleLocations = applyStandardFilters(tabLocations, filters, {
     site: ['site'],

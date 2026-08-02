@@ -12,7 +12,7 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
-import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 import { conformsToAssetCode, validateAssetCode } from '../lib/coding'
 import { useAuth } from '../providers/AuthProvider'
@@ -64,7 +64,7 @@ export default function AssetsPage({ rows: controlledRows, setRows: setControlle
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
-  const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows))
+  const [filters, setFilters] = useScopedFilters(user, rows)
   const routeId = decodeURIComponent(window.location.pathname.split('/assets/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.assetnum === routeId) || null)
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)

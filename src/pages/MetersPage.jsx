@@ -12,7 +12,7 @@ import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import MeterDetailPage from '../components/meters/MeterDetailPage'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
-import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { useAuth } from '../providers/AuthProvider'
 import { nowLocalDate, toLocalDateInput } from '../lib/datetime'
 
@@ -49,7 +49,7 @@ const fields = [
 export default function MetersPage({ rows = [], setRows, assets = [], workOrders = [] }) {
   const { user } = useAuth()
   const [tab, setTab] = useState('All')
-  const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows))
+  const [filters, setFilters] = useScopedFilters(user, rows)
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(blankMeter)

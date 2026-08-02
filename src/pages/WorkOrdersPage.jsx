@@ -13,7 +13,7 @@ import ExportExcelButton from '../components/ui/ExportExcelButton'
 import StandardFilters from '../components/ui/StandardFilters'
 import TableSearch from '../components/ui/TableSearch'
 import { printWithoutBrowserTitle } from '../lib/print'
-import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { applyStandardFilters, optionsFromRows, useScopedFilters } from '../lib/standardFilters'
 import { statusDescription } from '../lib/statusMatrix'
 import { filterRows } from '../lib/tableSearch'
 import { useAuth } from '../providers/AuthProvider'
@@ -70,7 +70,7 @@ export default function WorkOrdersPage({ rows, assets, siteRecords = [], departm
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [sort, setSort] = useState({ key: 'WORKORDER', direction: 'asc' })
-  const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows, ['SITE']))
+  const [filters, setFilters] = useScopedFilters(user, rows, ['SITE'])
   const [search, setSearch] = useState('')
 
   useEffect(() => {

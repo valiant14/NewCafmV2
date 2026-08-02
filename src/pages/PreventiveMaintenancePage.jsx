@@ -11,7 +11,7 @@ import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import TableSearch from '../components/ui/TableSearch'
-import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 import { useAuth } from '../providers/AuthProvider'
 import { parseLocal, toLocalDateInput } from '../lib/datetime'
@@ -108,7 +108,7 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, assets =
   const [pmTab, setPmTab] = useState('All')
   const [sort, setSort] = useState({ key: 'pmNumber', direction: 'asc' })
   const [search, setSearch] = useState('')
-  const [filters, setFilters] = useState(() => scopedStandardFilters(user, plans, ['site']))
+  const [filters, setFilters] = useScopedFilters(user, plans, ['site'])
 
   const jobPlans = useMemo(() => [
     ...new Map(jobTasks

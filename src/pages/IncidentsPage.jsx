@@ -12,7 +12,7 @@ import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
-import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 import { nowLocalDateTime } from '../lib/datetime'
 import { useAuth } from '../providers/AuthProvider'
@@ -37,7 +37,7 @@ export default function IncidentsPage({ rows, setRows }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({})
   const [imported, setImported] = useState('')
-  const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows))
+  const [filters, setFilters] = useScopedFilters(user, rows)
   const routeId = decodeURIComponent(window.location.pathname.split('/incidents/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.incidentNumber === routeId) || null)
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { api, getAuthToken, setAuthToken } from '../services/api'
 
 const AuthContext = createContext(null)
@@ -19,6 +19,23 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => initialToken ? safeStoredUser() : null)
   const [token, setToken] = useState(initialToken)
   const [authError, setAuthError] = useState('')
+
+  // An administrator editing the signed-in user's scope has to reach the live session -
+  // otherwise site, department and permissions stay on the snapshot taken at login and the
+  // only way to pick them up is a logout. Written through to storage so a refresh keeps them.
+  const applySessionUpdate = useCallback(patch => {
+    if (!patch || !Object.keys(patch).length) return
+    setUser(current => {
+      if (!current) return current
+      // Nothing changed - bail before setting state, or this loops against the effect
+      // in App that feeds it.
+      const changed = Object.keys(patch).some(key => !Object.is(current[key], patch[key]))
+      if (!changed) return current
+      const next = { ...current, ...patch }
+      localStorage.setItem(storageKey, JSON.stringify(next))
+      return next
+    })
+  }, [])
 
   const login = async ({ username, password }) => {
     try {
@@ -54,8 +71,9 @@ export function AuthProvider({ children }) {
     authError,
     login,
     logout,
+    applySessionUpdate,
     isAuthenticated: Boolean(user && token)
-  }), [user, token, authError])
+  }), [user, token, authError, applySessionUpdate])
 
   return (
     <AuthContext.Provider value={value}>

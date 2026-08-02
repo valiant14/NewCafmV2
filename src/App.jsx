@@ -678,7 +678,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
 }
 
 export default function App() {
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, applySessionUpdate } = useAuth()
   const [active, setActive] = useState(()=>routeToPage(window.location.pathname))
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -761,6 +761,26 @@ export default function App() {
       departmentScope: account.department || role.department
     } : { ...user, ...account, siteScope: account.site, departmentScope: account.department }
   }, [user, userRecords, rolePermissionRecords])
+
+  // effectiveUser already reflects an edited user record, but only for the data arrays
+  // below. Everything that reads useAuth().user directly - eleven components - would keep
+  // the snapshot taken at login until a logout. Pushing the merged scope back into the
+  // session makes those current too, so changing a user's site takes effect immediately.
+  useEffect(() => {
+    if (!user || !effectiveUser) return
+    applySessionUpdate({
+      site: effectiveUser.site,
+      department: effectiveUser.department,
+      role: effectiveUser.role,
+      status: effectiveUser.status,
+      permissions: effectiveUser.permissions,
+      siteScope: effectiveUser.siteScope,
+      departmentScope: effectiveUser.departmentScope
+    })
+    // applySessionUpdate no-ops when nothing actually differs, which is what stops this
+    // effect and the session state from feeding each other.
+  }, [effectiveUser, user, applySessionUpdate])
+
   const scopedAssets = useMemo(() => scopeRowsForUser(assetRecords, effectiveUser, ['site'], ['department', 'sub department']), [assetRecords, effectiveUser])
   const scopedWorkOrders = useMemo(() => scopeRowsForUser(allWorkOrders, effectiveUser, ['SITE'], ['DEPARTMENT ', 'ASSIGNED DEPARTMENT', 'SUB DEPARTMENT  NAME']), [allWorkOrders, effectiveUser])
   const scopedServiceRequests = useMemo(() => scopeRowsForUser(serviceRequests, effectiveUser, ['site'], ['department', 'assignedDepartment', 'subDepartment']), [serviceRequests, effectiveUser])
