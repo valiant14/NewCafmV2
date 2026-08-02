@@ -19,6 +19,8 @@ import PurchaseRequestsPage from './pages/PurchaseRequestsPage'
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage'
 import ReservationsPage from './pages/ReservationsPage'
 import UsersPage from './pages/UsersPage'
+import SitesSettingsPage from './pages/SitesSettingsPage'
+import DepartmentsSettingsPage from './pages/DepartmentsSettingsPage'
 import AppShell from './components/layout/AppShell'
 import JobPlanDetailPage from './components/job-plans/JobPlanDetailPage'
 import FailureLibraryDetailPage from './components/failure-library/FailureLibraryDetailPage'
@@ -105,6 +107,26 @@ const taskToPlanRow = (task, index = 0) => ({
 })
 const assetFromMaster = (assetNumber, masterAssets = []) => masterAssets.find(asset => cleanText(asset.assetnum) === cleanText(assetNumber))
 const assetDescriptionFromMaster = (assetNumber, masterAssets = []) => masterAssets.find(asset => cleanText(asset.assetnum) === cleanText(assetNumber))?.description?.trim() || ''
+const initialSiteRecords = () => [...new Set([
+  ...assets.map(asset => asset.site),
+  ...locations.map(location => location.site),
+  ...workOrders.map(order => order.SITE)
+].filter(Boolean).map(site => String(site).trim()))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(code => ({
+  code,
+  name: code === '1031' ? 'Riyadh' : `Site ${code}`,
+  region: code === '1031' ? 'Central' : '',
+  city: code === '1031' ? 'Riyadh' : '',
+  status: 'Active'
+}))
+const initialDepartmentRecords = () => {
+  const rows = departments.flatMap(department => (department.subDepartments || []).map(subDepartment => ({
+    subDepartmentCode: subDepartment.code,
+    department: department.name,
+    description: subDepartment.name,
+    status: 'Active'
+  })))
+  return [...new Map(rows.map(row => [row.subDepartmentCode, row])).values()]
+}
 
 function WorkOrderWorkflowNotice({ status, missing = [], nextStep }) {
   const clear = missing.length === 0
@@ -469,6 +491,8 @@ export default function App() {
   const [reservations,setReservations]=useState([])
   const [rolePermissionRecords,setRolePermissionRecords]=useState(rolePermissionRows)
   const [userRecords,setUserRecords]=useState(userSeed)
+  const [siteRecords,setSiteRecords]=useState(initialSiteRecords)
+  const [departmentRecords,setDepartmentRecords]=useState(initialDepartmentRecords)
   const [projectName,setProjectName]=useState(readProjectName)
   const changeProjectName=name=>setProjectName(writeProjectName(name))
   const effectiveUser = useMemo(() => {
@@ -484,14 +508,20 @@ export default function App() {
       departmentScope: account.department || role.department
     } : { ...user, ...account, siteScope: account.site, departmentScope: account.department }
   }, [user, userRecords, rolePermissionRecords])
-  const scopedAssets = useMemo(() => scopeRowsForUser(assets, effectiveUser, ['site']), [effectiveUser])
-  const scopedWorkOrders = useMemo(() => scopeRowsForUser(allWorkOrders, effectiveUser, ['SITE']), [allWorkOrders, effectiveUser])
-  const scopedServiceRequests = useMemo(() => scopeRowsForUser(serviceRequests, effectiveUser, ['site']), [serviceRequests, effectiveUser])
-  const scopedIncidents = useMemo(() => scopeRowsForUser(incidents, effectiveUser, ['site']), [incidents, effectiveUser])
-  const scopedLocations = useMemo(() => scopeRowsForUser(locations, effectiveUser, ['site']), [effectiveUser])
-  const scopedPurchaseRequests = useMemo(() => scopeRowsForUser(purchaseRequests, effectiveUser, ['site']), [purchaseRequests, effectiveUser])
-  const scopedPurchaseOrders = useMemo(() => scopeRowsForUser(purchaseOrders, effectiveUser, ['site']), [purchaseOrders, effectiveUser])
-  const scopedReservations = useMemo(() => scopeRowsForUser(reservations, effectiveUser, ['site']), [reservations, effectiveUser])
+  const scopedAssets = useMemo(() => scopeRowsForUser(assets, effectiveUser, ['site'], ['department', 'sub department']), [effectiveUser])
+  const scopedWorkOrders = useMemo(() => scopeRowsForUser(allWorkOrders, effectiveUser, ['SITE'], ['DEPARTMENT ', 'ASSIGNED DEPARTMENT', 'SUB DEPARTMENT  NAME']), [allWorkOrders, effectiveUser])
+  const scopedServiceRequests = useMemo(() => scopeRowsForUser(serviceRequests, effectiveUser, ['site'], ['department', 'assignedDepartment', 'subDepartment']), [serviceRequests, effectiveUser])
+  const scopedIncidents = useMemo(() => scopeRowsForUser(incidents, effectiveUser, ['site'], ['department']), [incidents, effectiveUser])
+  const scopedLocations = useMemo(() => scopeRowsForUser(locations, effectiveUser, ['site'], ['department']), [effectiveUser])
+  const scopedPurchaseRequests = useMemo(() => scopeRowsForUser(purchaseRequests, effectiveUser, ['site'], ['department']), [purchaseRequests, effectiveUser])
+  const scopedPurchaseOrders = useMemo(() => scopeRowsForUser(purchaseOrders, effectiveUser, ['site'], ['department']), [purchaseOrders, effectiveUser])
+  const scopedReservations = useMemo(() => scopeRowsForUser(reservations, effectiveUser, ['site'], ['department']), [reservations, effectiveUser])
+  const siteScopeOptions = useMemo(() => ['All Sites', ...siteRecords.filter(site => site.status !== 'Inactive').map(site => site.name ? `${site.name} / ${site.code}` : site.code)], [siteRecords])
+  const departmentScopeOptions = useMemo(() => {
+    const activeRows = departmentRecords.filter(department => department.status !== 'Inactive')
+    const values = activeRows.flatMap(department => [department.department, department.description]).filter(Boolean)
+    return ['All Departments', ...new Set(values)]
+  }, [departmentRecords])
   const workOrderNotifications = buildWorkOrderNotifications(scopedWorkOrders)
   const allowedNavigation = useMemo(() => filterNavigationForUser(navigationItems, effectiveUser), [effectiveUser])
   const fallbackPage = firstAllowedPage(navigationItems, effectiveUser)
@@ -698,8 +728,10 @@ export default function App() {
     'Purchase Orders': <PurchaseOrdersPage rows={scopedPurchaseOrders} onUpdateOrder={updatePurchaseOrder} onUpdateRequest={updatePurchaseRequest}/>,
     'Reservations': <ReservationsPage rows={scopedReservations} onUpdate={updateReservation}/>,
     'Tools & Equipment': <ToolsPage workOrders={scopedWorkOrders}/>,
-    'Users': <UsersPage rows={userRecords} setRows={setUserRecords} roleRows={rolePermissionRecords} scopeUser={effectiveUser}/>,
-    'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={setRolePermissionRecords}/>,
+    'Users': <UsersPage rows={userRecords} setRows={setUserRecords} roleRows={rolePermissionRecords} scopeUser={effectiveUser} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
+    'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={setRolePermissionRecords} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
+    'Sites': <SitesSettingsPage rows={siteRecords} setRows={setSiteRecords}/>,
+    'Departments': <DepartmentsSettingsPage rows={departmentRecords} setRows={setDepartmentRecords}/>,
     'Settings': <SettingsPage projectName={projectName} onProjectNameChange={changeProjectName}/>
   }
   if (!isAuthenticated) return <LoginPage />

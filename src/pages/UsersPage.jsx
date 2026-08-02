@@ -46,16 +46,21 @@ const baseFields = [
 const templateHeaders = Object.keys(emptyUser)
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
 
-export default function UsersPage({ rows = userSeed, setRows, roleRows = rolePermissionRows, scopeUser }) {
+export default function UsersPage({ rows = userSeed, setRows, roleRows = rolePermissionRows, scopeUser, siteOptions = [], departmentOptions = [] }) {
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(emptyUser)
   const routeId = decodeURIComponent(window.location.pathname.split('/users/')[1] || '')
-  const fields = baseFields.map(field => field.key === 'role' ? { ...field, options: roleRows.map(row => row.role) } : field)
+  const fields = baseFields.map(field => {
+    if (field.key === 'role') return { ...field, options: roleRows.map(row => row.role) }
+    if (field.key === 'site') return { ...field, suggestions: siteOptions, placeholder: 'All Sites or Riyadh / 1031, Jeddah / 1032' }
+    if (field.key === 'department') return { ...field, suggestions: departmentOptions, placeholder: 'All Departments or HVAC, Civil' }
+    return field
+  })
 
-  const scopedRows = scopeRowsForUser(rows, scopeUser, ['site'])
+  const scopedRows = scopeRowsForUser(rows, scopeUser, ['site'], ['department'])
   const [selected, setSelected] = useState(scopedRows.find(row => row.userId === routeId || row.username === routeId) || null)
   const tabRows = tab === 'All' ? scopedRows : scopedRows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
@@ -93,6 +98,8 @@ export default function UsersPage({ rows = userSeed, setRows, roleRows = rolePer
         user={selected}
         role={roleRows.find(row => row.role === selected.role)}
         labor={laborRows.find(row => row.personId === selected.laborId)}
+        siteOptions={siteOptions}
+        departmentOptions={departmentOptions}
         onBack={close}
         onUpdate={updateUser}
       />

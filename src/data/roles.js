@@ -18,6 +18,8 @@ export const permissionModules = [
   'Purchase Orders',
   'Users',
   'Roles & Permissions',
+  'Sites',
+  'Departments',
   'Settings'
 ]
 export const permissionActions = ['view', 'create', 'edit', 'approve', 'close', 'import']

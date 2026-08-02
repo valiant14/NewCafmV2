@@ -12,7 +12,7 @@ import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../
 
 const headers = ['role', 'user', 'site', 'department', 'scope', 'status', ...permissionActions]
 
-export default function RolesPermissionsPage({ rows = rolePermissionRows, setRows }) {
+export default function RolesPermissionsPage({ rows = rolePermissionRows, setRows, siteOptions = [], departmentOptions = [] }) {
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/roles-permissions/')[1] || '')
@@ -36,7 +36,7 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
   }
 
   if (selectedRole) {
-    return <RolePermissionDetailPage role={selectedRole} onBack={close} onUpdate={updateRole} />
+    return <RolePermissionDetailPage role={selectedRole} siteOptions={siteOptions} departmentOptions={departmentOptions} onBack={close} onUpdate={updateRole} />
   }
 
   return (

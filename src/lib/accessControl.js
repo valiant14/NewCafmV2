@@ -18,6 +18,8 @@ const pagePermissionAliases = {
   'Purchase Orders': ['Purchase Orders', 'Inventory'],
   Users: ['Users', 'Administration'],
   'Roles & Permissions': ['Roles & Permissions', 'Administration'],
+  Sites: ['Sites', 'Administration'],
+  Departments: ['Departments', 'Administration'],
   Settings: ['Settings', 'Administration']
 }
 
@@ -38,6 +40,12 @@ export const siteCodesFromScope = value => {
 }
 
 export const siteCodesForUser = user => siteCodesFromScope(user?.siteScope || user?.site)
+export const scopeValuesFromText = value => {
+  const text = String(value || '').trim()
+  if (!text || /^all departments$/i.test(text) || /^all$/i.test(text)) return []
+  if (text.split(/[,;|]+/).some(part => /^all departments$/i.test(part.trim()))) return []
+  return text.split(/[,;|]+/).map(part => part.trim().toLowerCase()).filter(Boolean)
+}
 
 export const canViewPage = (user, pageName) => {
   if (!user) return false
@@ -54,6 +62,11 @@ const valueFromKeys = (row, keys = []) => {
   return ''
 }
 
+const valuesFromKeys = (row, keys = []) => keys
+  .map(key => row?.[key])
+  .filter(value => value !== undefined && value !== null && String(value).trim() !== '')
+  .map(value => String(value).trim())
+
 export const canViewSite = (user, site) => {
   const scope = siteCodesForUser(user)
   if (!scope.length) return true
@@ -61,8 +74,26 @@ export const canViewSite = (user, site) => {
   return !rowSite || scope.includes(rowSite)
 }
 
-export const scopeRowsForUser = (rows = [], user, siteKeys = ['site', 'SITE']) =>
-  rows.filter(row => canViewSite(user, valueFromKeys(row, siteKeys)))
+export const canViewDepartment = (user, department) => {
+  const scope = scopeValuesFromText(user?.departmentScope || user?.department)
+  if (!scope.length) return true
+  const rowDepartment = String(department || '').trim().toLowerCase()
+  return !rowDepartment || scope.includes(rowDepartment)
+}
+
+export const canViewAnyDepartment = (user, row, departmentKeys = []) => {
+  const scope = scopeValuesFromText(user?.departmentScope || user?.department)
+  if (!scope.length || !departmentKeys.length) return true
+  const values = valuesFromKeys(row, departmentKeys).map(value => value.toLowerCase())
+  if (!values.length) return true
+  return values.some(value => scope.includes(value))
+}
+
+export const scopeRowsForUser = (rows = [], user, siteKeys = ['site', 'SITE'], departmentKeys = []) =>
+  rows.filter(row => (
+    canViewSite(user, valueFromKeys(row, siteKeys)) &&
+    canViewAnyDepartment(user, row, departmentKeys)
+  ))
 
 export const filterNavigationForUser = (navigationItems, user) =>
   navigationItems.filter(item => canViewPage(user, item.name))

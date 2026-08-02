@@ -13,6 +13,7 @@ import {
   ShoppingCart,
   ShieldCheck,
   SlidersHorizontal,
+  Building2,
   UserCog,
   Users,
   Wrench
@@ -38,6 +39,8 @@ export const navigationItems = [
   { section: 'Supply Chain', name: 'Purchase Orders', path: '/purchase-orders', icon: ReceiptText },
   { section: 'Settings', name: 'Users', path: '/users', icon: Users },
   { section: 'Settings', name: 'Roles & Permissions', path: '/roles-permissions', icon: UserCog },
+  { section: 'Settings', name: 'Sites', path: '/sites', icon: Building2 },
+  { section: 'Settings', name: 'Departments', path: '/departments', icon: Users },
   { section: 'Settings', name: 'Settings', path: '/settings', icon: SlidersHorizontal }
 ]
 

@@ -11,7 +11,7 @@ const userStatuses = ['Active', 'Inactive', 'Locked']
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
 const maskPassword = password => password ? '•'.repeat(Math.min(12, Math.max(6, String(password).length))) : 'Not set'
 
-export default function UserDetailPage({ user, role, labor, onBack, onUpdate }) {
+export default function UserDetailPage({ user, role, labor, siteOptions = [], departmentOptions = [], onBack, onUpdate }) {
   const [tab, setTab] = useState('User Details')
   const changeStatus = event => onUpdate?.(user.userId, { status: event.target.value })
   const updateField = key => event => onUpdate?.(user.userId, { [key]: event.target.value })
@@ -95,8 +95,8 @@ export default function UserDetailPage({ user, role, labor, onBack, onUpdate }) 
                 <h2 className="text-base font-extrabold text-[var(--app-ink)]">User Site Access</h2>
               </header>
               <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Site Scope" value={user.site || ''} onChange={updateField('site')} placeholder="All Sites or 1031, 1032" />
-                <Field label="Department Scope" value={user.department || ''} onChange={updateField('department')} placeholder="All Departments or HVAC" />
+                <Field label="Site Scope" value={user.site || ''} onChange={updateField('site')} suggestions={siteOptions} placeholder="All Sites or Riyadh / 1031, Jeddah / 1032" />
+                <Field label="Department Scope" value={user.department || ''} onChange={updateField('department')} suggestions={departmentOptions} placeholder="All Departments or HVAC, Civil" />
               </div>
             </section>
           </main>

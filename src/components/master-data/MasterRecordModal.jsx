@@ -1,6 +1,7 @@
 import { AlertTriangle, Check } from 'lucide-react'
 import Button from '../ui/Button'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
+import Combobox from '../ui/Combobox'
 
 function MasterRecordField({ field, value, onChange }) {
   const inputId = `master-${field.key}`
@@ -20,6 +21,16 @@ function MasterRecordField({ field, value, onChange }) {
             </option>
           ))}
         </select>
+      ) : field.suggestions ? (
+        <Combobox
+          inputId={inputId}
+          className="h-10 w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+          value={value ?? ''}
+          suggestions={field.suggestions}
+          onChange={event => onChange(field.key, event.target.value)}
+          placeholder={field.placeholder}
+          disabled={field.locked}
+        />
       ) : (
         <input
           className="h-10 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
