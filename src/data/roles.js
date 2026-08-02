@@ -1,5 +1,29 @@
-export const permissionModules = ['Job Requests', 'Work Orders', 'PM', 'Assets', 'Inventory', 'Incidents', 'Reports']
+export const permissionModules = [
+  'Overview',
+  'Job Requests',
+  'Work Orders',
+  'Preventive Maintenance',
+  'Incidents',
+  'Job Plans',
+  'Assets',
+  'Labor',
+  'Locations',
+  'Failure Library',
+  'Meters',
+  'Materials',
+  'Stores',
+  'Tools & Equipment',
+  'Reservations',
+  'Purchase Requisitions',
+  'Purchase Orders',
+  'Users',
+  'Roles & Permissions',
+  'Settings'
+]
 export const permissionActions = ['view', 'create', 'edit', 'approve', 'close', 'import']
+
+const allModules = permissionModules
+const supervisorModules = ['Overview', 'Work Orders', 'Preventive Maintenance', 'Job Plans', 'Assets', 'Materials', 'Stores', 'Tools & Equipment', 'Reservations', 'Purchase Requisitions', 'Purchase Orders', 'Meters']
 
 export const rolePermissionRows = [
   {
@@ -10,12 +34,12 @@ export const rolePermissionRows = [
     scope: 'Full CMMS access',
     status: 'Active',
     permissions: {
-      view: permissionModules,
-      create: permissionModules,
-      edit: permissionModules,
-      approve: permissionModules,
-      close: permissionModules,
-      import: permissionModules
+      view: allModules,
+      create: allModules,
+      edit: allModules,
+      approve: allModules,
+      close: allModules,
+      import: allModules
     }
   },
   {
@@ -26,12 +50,12 @@ export const rolePermissionRows = [
     scope: 'Manage HVAC work orders and PM schedules',
     status: 'Active',
     permissions: {
-      view: ['Work Orders', 'PM', 'Assets', 'Inventory', 'Reports'],
-      create: ['Work Orders', 'PM'],
-      edit: ['Work Orders', 'PM'],
+      view: supervisorModules,
+      create: ['Work Orders', 'Preventive Maintenance', 'Job Plans', 'Purchase Requisitions', 'Reservations'],
+      edit: ['Work Orders', 'Preventive Maintenance', 'Job Plans', 'Materials', 'Stores', 'Tools & Equipment', 'Reservations'],
       approve: ['Work Orders'],
       close: ['Work Orders'],
-      import: ['PM']
+      import: ['Preventive Maintenance', 'Materials', 'Tools & Equipment']
     }
   },
   {

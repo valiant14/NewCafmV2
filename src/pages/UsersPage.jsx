@@ -28,13 +28,13 @@ const emptyUser = {
   lastLogin: ''
 }
 
-const fields = [
+const baseFields = [
   { key: 'userId', label: 'User ID', required: true, placeholder: 'USR-0005' },
   { key: 'username', label: 'Username', required: true },
   { key: 'password', label: 'Password', required: true, type: 'password', placeholder: 'Set temporary password' },
   { key: 'name', label: 'Name', required: true },
   { key: 'email', label: 'Email' },
-  { key: 'role', label: 'Role', required: true, options: rolePermissionRows.map(row => row.role) },
+  { key: 'role', label: 'Role', required: true },
   { key: 'laborId', label: 'Linked Labor', options: ['', ...laborRows.map(row => row.personId)] },
   { key: 'site', label: 'Site Scope' },
   { key: 'department', label: 'Department Scope' },
@@ -45,7 +45,7 @@ const fields = [
 const templateHeaders = Object.keys(emptyUser)
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
 
-export default function UsersPage() {
+export default function UsersPage({ roleRows = rolePermissionRows }) {
   const [rows, setRows] = useState(userSeed)
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
@@ -54,6 +54,7 @@ export default function UsersPage() {
   const [form, setForm] = useState(emptyUser)
   const routeId = decodeURIComponent(window.location.pathname.split('/users/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.userId === routeId || row.username === routeId) || null)
+  const fields = baseFields.map(field => field.key === 'role' ? { ...field, options: roleRows.map(row => row.role) } : field)
 
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
@@ -89,7 +90,7 @@ export default function UsersPage() {
     return (
       <UserDetailPage
         user={selected}
-        role={rolePermissionRows.find(row => row.role === selected.role)}
+        role={roleRows.find(row => row.role === selected.role)}
         labor={laborRows.find(row => row.personId === selected.laborId)}
         onBack={close}
         onUpdate={updateUser}

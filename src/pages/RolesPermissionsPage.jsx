@@ -12,9 +12,8 @@ import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../
 
 const headers = ['role', 'user', 'site', 'department', 'scope', 'status', ...permissionActions]
 
-export default function RolesPermissionsPage() {
+export default function RolesPermissionsPage({ rows = rolePermissionRows, setRows }) {
   const [tab, setTab] = useState('All')
-  const [rows, setRows] = useState(rolePermissionRows)
   const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/roles-permissions/')[1] || '')
   const [selectedRole, setSelectedRole] = useState(rows.find(row => row.role === routeId) || null)
@@ -32,7 +31,7 @@ export default function RolesPermissionsPage() {
   }
 
   const updateRole = (roleName, patch) => {
-    setRows(current => current.map(row => row.role === roleName ? { ...row, ...patch } : row))
+    setRows?.(current => current.map(row => row.role === roleName ? { ...row, ...patch } : row))
     setSelectedRole(current => current?.role === roleName ? { ...current, ...patch } : current)
   }
 
@@ -49,7 +48,7 @@ export default function RolesPermissionsPage() {
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={headers} fileName="Roles_Permissions_Template.xlsx" />
-            <ExcelImportButton label="Import Excel" onImport={importedRows => setRows(importedRows.map(row => ({ ...row, permissions: row.permissions || {} })))} />
+            <ExcelImportButton label="Import Excel" onImport={importedRows => setRows?.(importedRows.map(row => ({ ...row, permissions: row.permissions || {} })))} />
           </div>
         )}
       />

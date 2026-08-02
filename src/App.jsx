@@ -33,7 +33,7 @@ import WorkOrderMetersTab from './components/work-orders/WorkOrderMetersTab'
 import WorkOrderHeader, { workOrderOutlineButtonClass, workOrderPrimaryButtonClass } from './components/work-orders/WorkOrderHeader'
 import WorkOrderTabs from './components/work-orders/WorkOrderTabs'
 import { navigationItems, pathForPage, routeToPage } from './config/navigation'
-import { assets, departments, excelDate, failureClassOptions, failureCodes, incidentSeed, jobPlans as jobPlanSeed, jobTasks, labor as laborMaster, locations, materials as materialMaster, pmRecords, serviceRequestSeed, slaBreached, statusMatrix, toDateTimeInput, tools as toolMaster, uniqueCodeOptions, workOrders, workOrderSeeds } from './data/workspaceData'
+import { assets, departments, excelDate, failureClassOptions, failureCodes, incidentSeed, jobPlans as jobPlanSeed, jobTasks, labor as laborMaster, locations, materials as materialMaster, pmRecords, rolePermissionRows, serviceRequestSeed, slaBreached, statusMatrix, toDateTimeInput, tools as toolMaster, uniqueCodeOptions, workOrders, workOrderSeeds } from './data/workspaceData'
 import { useAuth } from './providers/AuthProvider'
 import { nowLocalDate, nowLocalDateTime } from './lib/datetime'
 import { printWithoutBrowserTitle } from './lib/print'
@@ -42,6 +42,7 @@ import { storeLabel, storesHolding, totalAvailable } from './lib/inventory'
 import { readProjectName, writeProjectName } from './lib/projectSettings'
 import { canTransitionWorkOrder, statusDescription, statusOptions, workOrderTransitions } from './lib/statusMatrix'
 import { HOLD_MATERIAL, effectiveTargetTime, endHold, holdSince, isOnHold, startHold } from './lib/holdPeriods'
+import { canViewPage, filterNavigationForUser, firstAllowedPage } from './lib/accessControl'
 
 
 const buildWorkOrderNotifications = rows => {
@@ -450,7 +451,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
 }
 
 export default function App() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const [active, setActive] = useState(()=>routeToPage(window.location.pathname))
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -466,10 +467,47 @@ export default function App() {
   const [purchaseRequests,setPurchaseRequests]=useState([])
   const [purchaseOrders,setPurchaseOrders]=useState([])
   const [reservations,setReservations]=useState([])
+  const [rolePermissionRecords,setRolePermissionRecords]=useState(rolePermissionRows)
   const [projectName,setProjectName]=useState(readProjectName)
   const changeProjectName=name=>setProjectName(writeProjectName(name))
   const workOrderNotifications = buildWorkOrderNotifications(allWorkOrders)
-  const navigate = name => { setActive(name); setSearch(''); setMobileOpen(false); window.history.pushState({},'',pathForPage(name)) }
+  const effectiveUser = useMemo(() => {
+    if (!user) return null
+    const role = rolePermissionRecords.find(row => row.role === user.role)
+    return role ? { ...user, permissions: role.permissions || {}, roleStatus: role.status } : user
+  }, [user, rolePermissionRecords])
+  const allowedNavigation = useMemo(() => filterNavigationForUser(navigationItems, effectiveUser), [effectiveUser])
+  const fallbackPage = firstAllowedPage(navigationItems, effectiveUser)
+  const canNavigate = name => canViewPage(effectiveUser, name)
+  const activePage = canNavigate(active) ? active : fallbackPage
+  const navigate = name => {
+    if (!canNavigate(name)) {
+      const fallback = fallbackPage || 'Overview'
+      setActive(fallback)
+      setSearch('')
+      setMobileOpen(false)
+      window.history.replaceState({}, '', pathForPage(fallback))
+      return
+    }
+    setActive(name); setSearch(''); setMobileOpen(false); window.history.pushState({},'',pathForPage(name))
+  }
+  useEffect(() => {
+    if (!isAuthenticated || !effectiveUser) return
+    const syncRouteAccess = () => {
+      const routePage = routeToPage(window.location.pathname)
+      if (canViewPage(effectiveUser, routePage)) {
+        setActive(routePage)
+        return
+      }
+      if (fallbackPage) {
+        setActive(fallbackPage)
+        window.history.replaceState({}, '', pathForPage(fallbackPage))
+      }
+    }
+    syncRouteAccess()
+    window.addEventListener('popstate', syncRouteAccess)
+    return () => window.removeEventListener('popstate', syncRouteAccess)
+  }, [isAuthenticated, effectiveUser, fallbackPage])
   const jobPlanRouteId = decodeURIComponent(window.location.pathname.split('/job-plans/')[1] || '')
   // Memoised: rebuilt inline this array got a new identity every render, and
   // RegisterPage resyncs on `rows`, which silently wiped anything the user added.
@@ -502,7 +540,7 @@ export default function App() {
     setAllWorkOrders(rows=>rows.some(o=>o['SOURCE SR']===request.sr)?rows:[...rows,cm])
     return cm
   }
-  const openConvertedWorkOrder=number=>{setActive('Work Orders');setSearch('');window.history.pushState({},'',`/work-orders/${number}`)}
+  const openConvertedWorkOrder=number=>{if(!canNavigate('Work Orders')) return navigate(fallbackPage);setActive('Work Orders');setSearch('');window.history.pushState({},'',`/work-orders/${number}`)}
   // Deep link carries the target number so the tab only applies to that order, never
   // to whichever work order the user opens next.
   const [workOrderDeepLink,setWorkOrderDeepLink]=useState(null)
@@ -643,16 +681,17 @@ export default function App() {
     'Purchase Orders': <PurchaseOrdersPage rows={purchaseOrders} onUpdateOrder={updatePurchaseOrder} onUpdateRequest={updatePurchaseRequest}/>,
     'Reservations': <ReservationsPage rows={reservations} onUpdate={updateReservation}/>,
     'Tools & Equipment': <ToolsPage/>,
-    'Users': <UsersPage/>,
-    'Roles & Permissions': <RolesPermissionsPage/>,
+    'Users': <UsersPage roleRows={rolePermissionRecords}/>,
+    'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={setRolePermissionRecords}/>,
     'Settings': <SettingsPage projectName={projectName} onProjectNameChange={changeProjectName}/>
   }
   if (!isAuthenticated) return <LoginPage />
+  if (!activePage) return <LoginPage />
 
   return (
     <AppShell
-      active={active}
-      navigation={navigationItems}
+      active={activePage}
+      navigation={allowedNavigation}
       projectName={projectName}
       counters={{ workOrders: allWorkOrders.length }}
       overdueCount={workOrderNotifications.filter(item => item.type === 'overdue').length}
@@ -662,9 +701,9 @@ export default function App() {
       onMobileOpen={() => setMobileOpen(true)}
       onMobileClose={() => setMobileOpen(false)}
       onNavigate={navigate}
-      onOpenWorkOrders={() => { setActive('Work Orders'); setMobileOpen(false); window.history.pushState({}, '', '/work-orders') }}
+      onOpenWorkOrders={() => navigate('Work Orders')}
     >
-      {active === 'Overview' ? <OverviewPage onNavigate={navigate} onOpenWorkOrderTab={openWorkOrderTab} projectName={projectName} incidents={incidents} workOrders={allWorkOrders} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} reservations={reservations} /> : pages[active]}
+      {activePage === 'Overview' ? <OverviewPage onNavigate={navigate} onOpenWorkOrderTab={openWorkOrderTab} projectName={projectName} incidents={incidents} workOrders={allWorkOrders} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} reservations={reservations} /> : pages[activePage]}
     </AppShell>
   )
 }
