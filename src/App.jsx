@@ -39,6 +39,7 @@ import WorkOrderHeader, { workOrderOutlineButtonClass, workOrderPrimaryButtonCla
 import WorkOrderTabs from './components/work-orders/WorkOrderTabs'
 import { navigationItems, pathForPage, routeToPage } from './config/navigation'
 import { assets, workOrders, pmRecords, jobTasks, failureCodes, locations, statusMatrix, failureClassOptions, uniqueCodeOptions, excelDate, toDateTimeInput, slaBreached } from './data/cafmData'
+import workOrderSeeds from './data/workOrderSeeds'
 import { useAuth } from './providers/AuthProvider'
 import { nowLocalDate, nowLocalDateTime } from './lib/datetime'
 import { printWithoutBrowserTitle } from './lib/print'
@@ -46,6 +47,7 @@ import { systemNamesForDepartment, workGroupsForDepartment } from './lib/departm
 import { storeLabel, storesHolding, totalAvailable } from './lib/inventory'
 import { readProjectName, writeProjectName } from './lib/projectSettings'
 import { canTransitionWorkOrder, statusDescription, statusOptions, workOrderTransitions } from './lib/statusMatrix'
+import { HOLD_MATERIAL, effectiveTargetTime, endHold, holdSince, isOnHold, startHold } from './lib/holdPeriods'
 
 
 const buildWorkOrderNotifications = rows => {
@@ -54,10 +56,20 @@ const buildWorkOrderNotifications = rows => {
   return rows
     .map(order => {
       const target = toDateTimeInput(order['TARGET FINISH ']) || toDateTimeInput(order['TARGET START '])
-      const due = target ? new Date(target).getTime() : null
-      if (!due) return null
+      const rawDue = target ? new Date(target).getTime() : null
+      if (!rawDue) return null
       const closed = ['COMP', 'COMPLETED', 'CLOSE', 'CLOSED'].includes(String(order.STATUS || '').toUpperCase())
       if (closed) return null
+      // A job waiting on stock is not late - its clock is stopped, so it is reported as
+      // paused rather than counted against the SLA.
+      if (isOnHold(order)) return {
+        type: 'paused',
+        workOrder: order.WORKORDER,
+        description: order['DESCRIPITION '] || order.DESCRIPTION || 'Work order',
+        message: `SLA Paused – awaiting material since ${new Date(holdSince(order)).toLocaleString()}.`
+      }
+      // Time already spent on hold is given back before judging lateness.
+      const due = effectiveTargetTime(rawDue, order, now)
       if (due < now) return {
         type: 'overdue',
         workOrder: order.WORKORDER,
@@ -135,6 +147,16 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const saveReady = useRef(false)
   const [selectedStatus,setSelectedStatus]=useState(normalizeWoStatus(order.STATUS))
   const [heldFrom,setHeldFrom]=useState(order['HELD FROM']||'')
+  const [holdPeriods,setHoldPeriods]=useState(Array.isArray(order.holdPeriods)?order.holdPeriods:[])
+  // The editor seeds its state from `order` once, but the parent swaps that object
+  // whenever the stored work order changes - Save, or the hold/resume buttons. Keyed on
+  // the stored STATUS so it re-syncs on those, and never stomps an unsaved selection made
+  // in the status dropdown (which does not change the stored order).
+  useEffect(()=>{
+    setSelectedStatus(normalizeWoStatus(order.STATUS))
+    setHeldFrom(order['HELD FROM']||'')
+    setHoldPeriods(Array.isArray(order.holdPeriods)?order.holdPeriods:[])
+  },[order.WORKORDER,order.STATUS])
   const [workCompleted,setWorkCompleted]=useState(['COMP','COMPLETED','CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
   const [workClosed,setWorkClosed]=useState(['CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
   const [workStarted,setWorkStarted]=useState(['INPRG','COMP','COMPLETED','CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
@@ -161,8 +183,10 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const [remedyCode,setRemedyCode]=useState(order['REMEDY CODE']||'')
   const jobPlanNumber = getWorkOrderJobPlan(order)
   const jobPlanTaskRows = order['JOB PLAN TASKS']?.length ? order['JOB PLAN TASKS'] : jobPlanNumber ? jobTasks.filter(task => cleanText(task.JPNUM) === jobPlanNumber) : []
-  const [plannedLabor,setPlannedLabor]=useState(isPM?[{craft:'HVAC Technician',hours:'2',crew:'HVAC Team A'}]:[{craft:'',hours:'',crew:''}])
-  const [plannedResources,setPlannedResources]=useState([])
+  // saveChanges writes these back onto the order, so reopening a saved work order must
+  // read them again - otherwise planned rows silently vanish on every revisit.
+  const [plannedLabor,setPlannedLabor]=useState(order['PLANNED LABOR']?.length?order['PLANNED LABOR']:isPM?[{craft:'HVAC Technician',hours:'2',crew:'HVAC Team A'}]:[{craft:'',hours:'',crew:''}])
+  const [plannedResources,setPlannedResources]=useState(order['PLANNED RESOURCES']?.length?order['PLANNED RESOURCES']:[])
   const [plannedTasks,setPlannedTasks]=useState(isPM?jobPlanTaskRows.map(taskToPlanRow):[{sequence:10,description:'',duration:''}])
   const tasksFromJobPlan=isPM&&jobPlanTaskRows.length>0
   // Written by convertRequest but, until now, never read anywhere except its own dedupe guard.
@@ -265,8 +289,13 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     // The select disables invalid options, but guard here too so no other caller can
     // drive the work order off the workflow.
     if(!canTransitionWorkOrder(selectedStatus,next,heldFrom)) return
-    if(next==='HOLD') setHeldFrom(selectedStatus)
-    else if(selectedStatus==='HOLD') setHeldFrom('')
+    const wasHold=['HOLD',HOLD_MATERIAL].includes(selectedStatus)
+    if(['HOLD',HOLD_MATERIAL].includes(next)) setHeldFrom(selectedStatus)
+    else if(wasHold) setHeldFrom('')
+    // Only the material hold stops the SLA clock, so only it opens a hold period. Going
+    // via the status select and via the header buttons must produce the same record.
+    if(next===HOLD_MATERIAL) setHoldPeriods(current=>startHold({holdPeriods:current}))
+    else if(selectedStatus===HOLD_MATERIAL) setHoldPeriods(current=>endHold({holdPeriods:current}))
     setSelectedStatus(next)
     setWorkApproved(['APPR','WSCH','SCHED','INPRG','COMP','CLOSE'].includes(next))
     setWorkWaitingSchedule(['WSCH','SCHED','INPRG','COMP','CLOSE'].includes(next))
@@ -289,7 +318,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     :target==='COMP'?[...failureMissing]
     :target==='CLOSE'?[...actualMissing,...failureMissing]
     :[]
-  const workflowMissing=missingFor(status).length?missingFor(status):status==='HOLD'?holdMissing:[]
+  const workflowMissing=missingFor(status).length?missingFor(status):['HOLD',HOLD_MATERIAL].includes(status)?holdMissing:[]
   const allowedStatuses=workOrderTransitions(status,heldFrom)
   const statusChoices=statusOptions('workOrder').map(value=>{
     const reachable=value===status||allowedStatuses.includes(value)
@@ -303,16 +332,36 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     WSCH: preparationReady?'Select SCHED when scheduled':'Complete overview and plan requirements',
     SCHED: preparationReady?'Select INPRG when work starts':'Complete planning before starting work',
     HOLD: 'Resolve material or permit hold before continuing',
+    [HOLD_MATERIAL]: 'SLA is paused. Resume once the material is available',
     INPRG: failureReady?'Select COMP when execution is completed':'Complete failure classification before completion',
     COMP: actualReady?'Select CLOSE after Actual tab is complete':'Complete Actual tab before closeout',
     CLOSE: 'Workflow complete'
   }[status] || 'Review the work order'
   const actualsEditable = true
   const number = order.WORKORDER || 'AUTO'
-  const targetFinishTime=targetFinish?new Date(targetFinish).getTime():null
+  const rawTargetFinishTime=targetFinish?new Date(targetFinish).getTime():null
   const actualFinishTime=actualFinish?new Date(actualFinish).getTime():null
-  const slaBreachedNow=Boolean(targetFinishTime&&((actualFinishTime&&actualFinishTime>targetFinishTime)||(!actualFinishTime&&Date.now()>targetFinishTime)))
-  const slaLabel=!targetFinishTime?'Not defined':actualFinishTime?(slaBreachedNow?'No – SLA Breached':'Yes – SLA Met'):(slaBreachedNow?'No – SLA Breached':'Pending – Within SLA')
+  const onMaterialHold=status===HOLD_MATERIAL||isOnHold({holdPeriods})
+  // The deadline moves forward by whatever time this order has already spent on hold, so
+  // waiting on stock never eats into the SLA.
+  const targetFinishTime=effectiveTargetTime(rawTargetFinishTime,{holdPeriods})
+  const slaBreachedNow=Boolean(!onMaterialHold&&targetFinishTime&&((actualFinishTime&&actualFinishTime>targetFinishTime)||(!actualFinishTime&&Date.now()>targetFinishTime)))
+  const slaLabel=onMaterialHold?'SLA Paused'
+    :!targetFinishTime?'Not defined'
+    :actualFinishTime?(slaBreachedNow?'No – SLA Breached':'Yes – SLA Met')
+    :(slaBreachedNow?'No – SLA Breached':'Pending – Within SLA')
+  const putOnMaterialHold=()=>{
+    const periods=startHold({holdPeriods})
+    setHoldPeriods(periods); setHeldFrom(status); setSelectedStatus(HOLD_MATERIAL)
+    // Pushed straight to the shared list so the badge updates without waiting for Save.
+    onUpdateWorkOrder?.(number,{STATUS:HOLD_MATERIAL,'STATUS DESCRIPITION':statusDescription('workOrder',HOLD_MATERIAL),'HELD FROM':status,holdPeriods:periods})
+  }
+  const resumeFromMaterialHold=()=>{
+    const periods=endHold({holdPeriods})
+    const resume=workOrderTransitions(HOLD_MATERIAL,heldFrom)[0]||'WAPPR'
+    setHoldPeriods(periods); setHeldFrom(''); setSelectedStatus(resume)
+    onUpdateWorkOrder?.(number,{STATUS:resume,'STATUS DESCRIPITION':statusDescription('workOrder',resume),'HELD FROM':'',holdPeriods:periods})
+  }
   const close = () => onClose()
   const reroute=()=>{setTab('Overview');setAssignedDepartment('');setSupervisor('');setWorkStarted(false);setWorkScheduled(false);setWorkWaitingSchedule(false);setWorkApproved(false)}
   const addFiles=(setter)=>event=>{const files=Array.from(event.target.files||[]).map(file=>({name:file.name,size:file.size>1048576?`${(file.size/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(file.size/1024))} KB`,type:file.type||'Document'}));setter(current=>[...current,...files]);event.target.value=''}
@@ -336,6 +385,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
       'WORK GROUP': workGroup,
       'SYSTEM': systemValue,
       'HELD FROM': heldFrom,
+      holdPeriods,
       SUPERVISOR: supervisor,
       'LABOR CRAFT CODE': laborCraft,
       STATUS: status,
@@ -372,7 +422,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   }
   useEffect(()=>{if(!saveReady.current){saveReady.current=true;return}setAutoSaveState('Unsaved changes')},[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterReading,waterConsumption,energyConsumption,meterReadingDate,selectedStatus,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
-    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} onSave={saveChanges} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} printWorkOrder={printWorkOrder} onStatusChange={changeStatus} statusOptions={statusChoices} />
+    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} onSave={saveChanges} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} printWorkOrder={printWorkOrder} onStatusChange={changeStatus} statusOptions={statusChoices} onMaterialHold={putOnMaterialHold} onResume={resumeFromMaterialHold} onMaterialHoldStatus={status===HOLD_MATERIAL} canMaterialHold={allowedStatuses.includes(HOLD_MATERIAL)} />
     <WorkOrderTabs tabs={workOrderTabs} active={tab} onChange={setTab} showFailureDot={!isPM} />
     <WorkOrderWorkflowNotice status={status} missing={workflowMissing} nextStep={workflowNextStep} />
     <div className={workOrderBodyClass}>
@@ -392,7 +442,9 @@ export default function App() {
   const [active, setActive] = useState(()=>routeToPage(window.location.pathname))
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [allWorkOrders,setAllWorkOrders]=useState(workOrders)
+  // The workbook's work order sheet is header-only, so the seeds are what make the
+  // material-hold and SLA-pause behaviour visible on first load.
+  const [allWorkOrders,setAllWorkOrders]=useState([...workOrders,...workOrderSeeds])
   const [serviceRequests,setServiceRequests]=useState(serviceRequestSeed)
   const [incidents,setIncidents]=useState(incidentSeed)
   const [jobTaskRecords,setJobTaskRecords]=useState(jobTasks.map(task => ({ ...task, status: task.status || 'ACTIVE' })))

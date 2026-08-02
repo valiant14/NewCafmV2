@@ -10,6 +10,8 @@ import { assets, excelDate, excelToDate, failureCodes, pmRecords, workOrders } f
 import { seedMeters } from './MetersPage'
 import { pmDueLabel, pmDueTone } from '../lib/pmSchedule'
 import { parseLocal } from '../lib/datetime'
+import { effectiveTargetTime, isOnHold } from '../lib/holdPeriods'
+import { statusDescription, statusTone } from '../lib/statusMatrix'
 import { printWithoutBrowserTitle } from '../lib/print'
 
 const iconTone = {
@@ -159,10 +161,14 @@ export default function OverviewPage({
   const openOrders = workOrderRows.filter(order => !isClosed(order))
   const closedOrders = workOrderRows.filter(isClosed)
   const overdueOrders = openOrders.filter(order => {
+    // Work held for material has a stopped clock, and held time is added back onto the
+    // target - so these are excluded from SLA violations rather than counted unfairly.
+    if (isOnHold(order)) return false
     const target = excelDate(order['TARGET FINISH '] || order['TARGET START '])
     const due = target && target !== '-' ? new Date(target).getTime() : null
-    return due && due < now
+    return due && effectiveTargetTime(due, order, now) < now
   })
+  const pausedOrders = openOrders.filter(isOnHold)
   const pmCount = workOrderRows.filter(order => String(order['WORK TYPE '] || '').trim() === 'PM').length
   const cmCount = workOrderRows.filter(order => String(order['WORK TYPE '] || '').trim() === 'CM').length
   const slaCompliance = workOrderRows.length ? Math.round(((workOrderRows.length - overdueOrders.length) / workOrderRows.length) * 100) : 100
@@ -205,8 +211,10 @@ export default function OverviewPage({
     return target && target !== '-' ? new Date(target).getTime() : null
   }
   const missedTarget = order => {
-    const due = targetTime(order)
-    if (!due) return false
+    if (isOnHold(order)) return false
+    const raw = targetTime(order)
+    if (!raw) return false
+    const due = effectiveTargetTime(raw, order, now)
     if (!isClosed(order)) return due < now
     const finish = excelDate(order['ACTUAL FINISH '])
     const finished = finish && finish !== '-' ? new Date(finish).getTime() : null
@@ -388,7 +396,7 @@ export default function OverviewPage({
                 { key: 'WORKORDER', label: 'Order', render: value => <strong className="mono">#{value}</strong> },
                 { key: 'DESCRIPITION ', label: 'Description' },
                 { key: 'LOCATION PRIORTY', label: 'Location', render: value => <Badge tone={String(value ?? '').trim() === 'VIP' ? 'purple' : 'orange'}>{value ?? '-'}</Badge> },
-                { key: 'STATUS', label: 'Status', render: value => <Badge tone="orange">{value}</Badge> },
+                { key: 'STATUS', label: 'Status', render: value => <Badge tone={statusTone(value)}>{statusDescription('workOrder', value) || value}</Badge> },
                 { key: 'TARGET START ', label: 'Target', render: excelDate }
               ]}
             />

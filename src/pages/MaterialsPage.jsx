@@ -15,7 +15,7 @@ import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
-import { availabilityFor, storeLabel, storesHolding, totalAvailable, totalBalance, totalReserved } from '../lib/inventory'
+import { availabilityFor, materialStatusTone, storeLabel, storesHolding, totalAvailable, totalBalance, totalReserved } from '../lib/inventory'
 
 const empty = {
   itemNumber: '',
@@ -26,7 +26,8 @@ const empty = {
   balance: 0,
   reserved: 0,
   reorderLevel: 0,
-  availability: 'Available'
+  availability: 'Available',
+  status: 'Available'
 }
 const templateHeaders = Object.keys(empty)
 
@@ -50,7 +51,8 @@ const exportColumns = [
   { key: 'reserved', label: 'Total Reserved' },
   { key: 'available', label: 'Available' },
   { key: 'reorderLevel', label: 'Reorder Level' },
-  { key: 'availability', label: 'Availability' }
+  { key: 'availability', label: 'Availability' },
+  { key: 'status', label: 'Material Status' }
 ]
 const materialUsageMap = {
   'MAT-0001': [
@@ -192,7 +194,8 @@ export default function MaterialsPage() {
             { key: 'reserved', label: 'Reserved' },
             { key: 'available', label: 'Available', render: (value, row) => <Badge tone={value > row.reorderLevel ? 'green' : 'orange'}>{value}</Badge> },
             { key: 'reorderLevel', label: 'Reorder level' },
-            { key: 'availability', label: 'Availability', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> }
+            { key: 'availability', label: 'Availability', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> },
+            { key: 'status', label: 'Material Status', render: value => value ? <Badge tone={materialStatusTone(value)}>{value}</Badge> : '—' }
           ]}
         />
       </section>

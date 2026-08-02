@@ -66,6 +66,14 @@ stateDiagram-v2
     INPRG --> HOLD
     HOLD --> INPRG
 
+    WAPPR --> ON_HOLD_MATERIAL
+    APPR --> ON_HOLD_MATERIAL
+    WSCH --> ON_HOLD_MATERIAL
+    SCHED --> ON_HOLD_MATERIAL
+    INPRG --> ON_HOLD_MATERIAL
+    ON_HOLD_MATERIAL --> WAPPR
+    ON_HOLD_MATERIAL --> CAN
+
     WAPPR --> CAN
     APPR --> CAN
     WSCH --> CAN
@@ -74,10 +82,14 @@ stateDiagram-v2
     CAN --> [*]
 ```
 
-Three rules govern the diagram:
+Four rules govern the diagram:
 
 - **HOLD** is reachable from any active status and returns to the status it was held from — not to the front
   of the chain. A job paused at INPRG resumes at INPRG.
+- **ON_HOLD_MATERIAL** behaves identically in the state machine but means something specific: the job is
+  waiting on stock. It is the only status that **pauses the SLA clock** — see 1.5. (The diagram shows its
+  resume edge to WAPPR, the fallback when no held-from status is recorded; in practice it returns to
+  whichever status it was held from, exactly like HOLD.)
 - **CAN** (cancel) is only available **before work starts**. Once a job reaches INPRG it must be completed or
   held; cancelling it would discard labour already booked against it.
 - **CLOSE** is terminal. There is no transition out of a closed work order.
@@ -86,15 +98,16 @@ Three rules govern the diagram:
 
 | Status | Meaning | May move to | Notes |
 | --- | --- | --- | --- |
-| WAPPR | Waiting for Approval | APPR, HOLD, CAN |  |
-| APPR | Approved | WAPPR, WSCH, HOLD, CAN |  |
-| WSCH | Waiting for Schedule | APPR, SCHED, HOLD, CAN |  |
-| SCHED | Scheduled | WSCH, INPRG, HOLD, CAN |  |
-| INPRG | In Progress | SCHED, COMP, HOLD |  |
+| WAPPR | Waiting for Approval | APPR, HOLD, ON_HOLD_MATERIAL, CAN |  |
+| APPR | Approved | WAPPR, WSCH, HOLD, ON_HOLD_MATERIAL, CAN |  |
+| WSCH | Waiting for Schedule | APPR, SCHED, HOLD, ON_HOLD_MATERIAL, CAN |  |
+| SCHED | Scheduled | WSCH, INPRG, HOLD, ON_HOLD_MATERIAL, CAN |  |
+| INPRG | In Progress | SCHED, COMP, HOLD, ON_HOLD_MATERIAL |  |
 | COMP | Completed | INPRG, CLOSE | Cannot be put on hold once complete |
 | CLOSE | Closed | — | Terminal - no further transitions |
 | CAN | Cancelled | — | Terminal - no further transitions |
 | HOLD | On Hold | INPRG, CAN | Returns to the status it was held from (INPRG shown as the example) |
+| ON_HOLD_MATERIAL | On Hold – Material | WAPPR, CAN |  |
 
 <!-- /generated -->
 
@@ -159,6 +172,20 @@ against it. The requisition is linked to the work order.
 finish has passed while still open is reported as an SLA violation. **See Document 4** — target dates are
 currently entered by hand rather than derived from priority, which is the main limitation of SLA reporting
 today.
+
+**SLA pause on material hold.** A work order that cannot proceed because a required material is out of stock
+would otherwise breach its SLA through no fault of the maintenance team. Moving it to **ON_HOLD_MATERIAL**
+stops the clock:
+
+- Each hold is recorded as a period on the work order (`holdPeriods`), so a job may be held more than once
+  and the history is preserved.
+- While held, the work order reports **SLA Paused** in place of its target date, and is excluded from
+  overdue notifications and from the dashboard's SLA violation count.
+- On resume, the total time spent on hold is **added back onto the target finish**. A job held for four days
+  gets four more days before it is late — the wait is given back rather than merely ignored.
+
+This applies only to ON_HOLD_MATERIAL. The generic HOLD does not pause the clock, because a permit or access
+delay is not the same kind of excuse as an empty shelf.
 
 ---
 

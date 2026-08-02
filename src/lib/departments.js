@@ -21,6 +21,18 @@ export const workGroupsForDepartment = name => matchDepartment(name)?.workGroups
 
 export const subDepartmentsForDepartment = name => matchDepartment(name)?.subDepartments || departments.flatMap(department => department.subDepartments)
 
+export const allSubDepartments = departments.flatMap(department => department.subDepartments || [])
+
+// The client's asset sheet stores the sub department as its code (`4-1-1`), while every
+// other record and every dropdown uses the name (`HVAC`). Resolves either to the name so
+// an asset agrees with the work order it is raised against.
+export const subDepartmentName = value => {
+  const key = String(value ?? '').trim().toLowerCase()
+  if (!key) return ''
+  const match = allSubDepartments.find(sub => sub.code.toLowerCase() === key || sub.name.toLowerCase() === key)
+  return match?.name || String(value).trim()
+}
+
 export const systemCodeFor = name => {
   const key = String(name || '').trim().toLowerCase()
   return allSystems.find(system => system.name.toLowerCase() === key)?.code || ''

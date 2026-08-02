@@ -50,6 +50,12 @@ technician can see the parent relationship from the tag alone.
 | SSU-200-0001 | SPLIT UNIT | Split Unit | — | RC-1031-RD-001-00-056 | 1031 | OPERATING |
 | FCU-100-0001 | FAN COIL UNIT | Fan Coil Unit | — |  | 1034 | OPERATING |
 | FCU-100-0001-RGS-500-0009 | FAN COIL UNIT | Fan Coil Unit | FCU-100-0001 | RC-1034-AS-008-04-190 | 1034 | OPERATING |
+| ALS-HV-00001 | SPLIT A/C UNIT | — | — | RC-1031-RD-001-00-055 | 1031 | OPERATING |
+| ALS-HV-00002 | SPLIT A/C UNIT | — | — | RC-1031-RD-001-00-055 | 1031 | OPERATING |
+| ALS-HV-00003 | PACKAGE A/C UNIT | — | — | RC-1031-RD-01-00-ES01 | 1031 | OPERATING |
+| MS-MEC-FCU-001 | FAN COIL UNIT | — | — | RC-1034-AS-008-04-190 | 1034 | OPERATING |
+| MS-MEC-SAU-001 | SPLIT A/C UNIT | — | — | RC-1031-RD-01-00-ES01 | 1031 | OPERATING |
+| MS-MEC-FDA-001 | FIRE DAMPER | — | — | RC-1031-RD-001-00-055 | 1031 | OPERATING |
 
 <!-- /generated -->
 
@@ -59,7 +65,9 @@ technician can see the parent relationship from the tag alone.
 
 | Type code | Series in use | Assets |
 | --- | --- | --- |
+| ALS | HV | 3 |
 | FCU | 100 | 2 |
+| MS | MEC | 3 |
 | SSU | 100 | 1 |
 | SSU | 200 | 1 |
 | WWU | 100 | 1 |

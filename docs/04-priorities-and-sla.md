@@ -76,7 +76,8 @@ Assets carry a priority of their own, used to break ties when several jobs compe
 
 | Priority | Assets |
 | --- | --- |
-| 1 | 2 |
+| 1 | 3 |
+| 2 | 5 |
 | 3 | 3 |
 
 <!-- /generated -->

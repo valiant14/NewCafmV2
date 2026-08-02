@@ -17,7 +17,8 @@ export const STATUS_MATRIX = {
     COMP: 'Completed',
     CLOSE: 'Closed',
     CAN: 'Cancelled',
-    HOLD: 'On Hold'
+    HOLD: 'On Hold',
+    ON_HOLD_MATERIAL: 'On Hold – Material'
   },
   preventiveMaintenance: {
     ACTIVE: 'Active',
@@ -75,11 +76,14 @@ export const statusOptions = application => Object.keys(STATUS_MATRIX[applicatio
 // from; CAN is only available before work starts; CLOSE is terminal.
 const workOrderChain = ['WAPPR', 'APPR', 'WSCH', 'SCHED', 'INPRG', 'COMP', 'CLOSE']
 const cancellableBefore = ['WAPPR', 'APPR', 'WSCH', 'SCHED']
+// Both holds behave identically in the state machine. They differ in what they mean -
+// ON_HOLD_MATERIAL says the job is waiting on stock, and it is the one that pauses SLA.
+const holdStatuses = ['HOLD', 'ON_HOLD_MATERIAL']
 
 export const workOrderTransitions = (current, heldFrom = '') => {
   const status = String(current || '').toUpperCase()
   if (status === 'CLOSE' || status === 'CAN') return []
-  if (status === 'HOLD') {
+  if (holdStatuses.includes(status)) {
     // Resume where the hold started; fall back to the front of the chain if unknown.
     const resume = workOrderChain.includes(String(heldFrom).toUpperCase()) ? String(heldFrom).toUpperCase() : 'WAPPR'
     return [resume, 'CAN']
@@ -89,7 +93,7 @@ export const workOrderTransitions = (current, heldFrom = '') => {
   const next = []
   if (index > 0) next.push(workOrderChain[index - 1])
   if (index < workOrderChain.length - 1) next.push(workOrderChain[index + 1])
-  if (status !== 'COMP') next.push('HOLD')
+  if (status !== 'COMP') next.push(...holdStatuses)
   if (cancellableBefore.includes(status)) next.push('CAN')
   return next
 }
@@ -120,6 +124,6 @@ export const statusTone = status => {
   if (['ACTIVE', 'OPERATING', 'APPR', 'COMP', 'CLOSE', 'CLOSED', 'COMPLETE', 'RESOLVED'].includes(status)) return 'green'
   if (['INPRG', 'SCHED', 'STAGED'].includes(status)) return 'blue'
   if (['WSCH', 'DRAFT', 'PLANNED', 'ENTERED'].includes(status)) return 'purple'
-  if (['WAPPR', 'HOLD', 'CAN', 'CANCELLED', 'BROKEN', 'NOT READY', 'DECOMMISSIONED', 'RETIRED', 'INACTIVE'].includes(status)) return 'orange'
+  if (['WAPPR', 'HOLD', 'ON_HOLD_MATERIAL', 'CAN', 'CANCELLED', 'BROKEN', 'NOT READY', 'DECOMMISSIONED', 'RETIRED', 'INACTIVE'].includes(status)) return 'orange'
   return 'neutral'
 }

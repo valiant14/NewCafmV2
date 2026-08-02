@@ -1,10 +1,13 @@
 import { AlertTriangle, Check, PackageCheck, Wrench } from 'lucide-react'
 import Section from '../ui/Section'
+import Badge from '../ui/Badge'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
+import { materialStatusFor, materialStatusTone } from '../../lib/inventory'
+import materialsSeed from '../../data/materials.json'
 
 const tableClass = 'overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)]'
-const headClass = 'grid grid-cols-[1.3fr_120px_140px_160px_150px_190px] gap-3 bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]'
-const rowClass = 'grid grid-cols-[1.3fr_120px_140px_160px_150px_190px] items-center gap-3 border-t border-[var(--app-line)] px-4 py-3 text-[length:var(--app-table-font-size)] text-[var(--app-table-text)] hover:bg-[var(--app-table-hover-bg)]'
+const headClass = 'grid grid-cols-[1.2fr_100px_130px_140px_130px_150px_180px] gap-3 bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]'
+const rowClass = 'grid grid-cols-[1.2fr_100px_130px_140px_130px_150px_180px] items-center gap-3 border-t border-[var(--app-line)] px-4 py-3 text-[length:var(--app-table-font-size)] text-[var(--app-table-text)] hover:bg-[var(--app-table-hover-bg)]'
 const resourceIconClass = type => `grid h-9 w-9 place-items-center rounded-xl ${type === 'Material' ? 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'bg-[var(--app-badge-blue-bg)] text-[var(--app-badge-blue-text)]'}`
 const summaryClass = blocked => `mt-3 flex items-start gap-3 rounded-2xl p-4 ${blocked ? 'bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]' : 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]'}`
 const emptyClass = 'grid min-h-40 place-items-center content-center gap-2 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-soft-bg)] p-6 text-center text-[var(--app-muted)]'
@@ -69,6 +72,7 @@ export default function WorkOrderMaterialRequestsTab({
               <span>Requested quantity</span>
               <span>Store / source</span>
               <span>Availability</span>
+              <span>Material status</span>
               <span>Request status</span>
               <span>Action</span>
             </div>
@@ -87,6 +91,11 @@ export default function WorkOrderMaterialRequestsTab({
                   <span>{resource.quantity || 'Not set'}</span>
                   <span>{stock.source}</span>
                   <span className={availabilityClass(stock.availability)}>{stock.availability}</span>
+                  {/* Supply-chain position of the item itself. Display only - nothing here
+                      raises a purchase request. */}
+                  <span>{materialStatusFor(stock.itemNumber, materialsSeed)
+                    ? <Badge tone={materialStatusTone(materialStatusFor(stock.itemNumber, materialsSeed))}>{materialStatusFor(stock.itemNumber, materialsSeed)}</Badge>
+                    : <span className="text-[var(--app-muted)]">—</span>}</span>
                   <span className={statusClass(resource.requestStatus)}>{resource.requestStatus ? `${resource.requestStatus} · ${statusDescription(resource.requestStatus === 'WAPPR' ? 'purchaseRequisition' : 'inventoryUsage', resource.requestStatus)}${resource.transactionRef ? ` · ${resource.transactionRef}` : ''}` : `Stock: ${stock.availableQuantity ?? '-'}`}</span>
                   <button className={stock.availability === 'Available' ? primaryButtonClass : outlineButtonClass} onClick={() => actionResource(index, resource)}>
                     {stock.availability === 'Available' ? (resource.type === 'Material' ? 'Reserve' : 'Allocate') : 'Create purchase request'}
@@ -99,8 +108,8 @@ export default function WorkOrderMaterialRequestsTab({
           <div className={summaryClass(materialBlocked)}>
             {materialBlocked ? <AlertTriangle size={18} /> : <Check size={18} />}
             <div className="grid gap-1">
-              <strong className="text-sm">{materialBlocked ? 'Work order on HOLD' : 'Resources ready for execution'}</strong>
-              <span className="text-xs">{materialBlocked ? 'One or more planned material items require purchase. Work Order status changes automatically to HOLD until the request is created or stock is available.' : 'Planned materials, tools, and equipment are available for reservation or allocation.'}</span>
+              <strong className="text-sm">{materialBlocked ? 'Material shortage blocks scheduling' : 'Resources ready for execution'}</strong>
+              <span className="text-xs">{materialBlocked ? 'One or more planned material items require purchase. Scheduling stays blocked until the request is created or stock is available — use “Put on Hold (Material)” in the header to pause the SLA clock while you wait.' : 'Planned materials, tools, and equipment are available for reservation or allocation.'}</span>
             </div>
           </div>
         </>

@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { statusOptions, workOrderTransitions } from '../src/lib/statusMatrix.js'
 import { permissionActions, permissionModules, rolePermissionRows } from '../src/data/roles.js'
+import assetSeeds from '../src/data/assetSeeds.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
@@ -31,7 +32,9 @@ const rowsToObjects = (rows = []) => {
 }
 
 const failureCodes = rowsToObjects(workbooks['FAILURE CODE']['FAILURE CODE'])
-const assets = rowsToObjects(workbooks.assets.assets)
+// Same merged register the app sees: the client's asset sheet plus the six assets its PM
+// sheet references but the asset sheet omits. See src/data/assetSeeds.js.
+const assets = [...rowsToObjects(workbooks.assets.assets), ...assetSeeds]
 const clean = v => String(v ?? '').trim().toUpperCase()
 const locationPattern = new RegExp(`^${structure.location.segment}$`)
 const assetPattern = new RegExp(`^${structure.asset.segment}(-${structure.asset.segment})*$`)

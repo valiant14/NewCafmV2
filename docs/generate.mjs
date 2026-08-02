@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { statusDescription, statusOptions, workOrderTransitions } from '../src/lib/statusMatrix.js'
 import { permissionActions, permissionModules, rolePermissionRows } from '../src/data/roles.js'
+import assetSeeds from '../src/data/assetSeeds.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
@@ -34,7 +35,9 @@ const rowsToObjects = (rows = []) => {
 }
 
 const failureCodes = rowsToObjects(workbooks['FAILURE CODE']['FAILURE CODE'])
-const assets = rowsToObjects(workbooks.assets.assets)
+// Same merged register the app sees: the client's asset sheet plus the six assets its PM
+// sheet references but the asset sheet omits. See src/data/assetSeeds.js.
+const assets = [...rowsToObjects(workbooks.assets.assets), ...assetSeeds]
 const maximoMatrix = rowsToObjects(workbooks.IBM_Maximo_Status_Matrix['Maximo Status Matrix'])
 
 // src/lib/coding.js compiles these from the same JSON, but it cannot be imported here -

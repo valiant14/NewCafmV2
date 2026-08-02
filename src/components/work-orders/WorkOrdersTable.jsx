@@ -1,5 +1,7 @@
 import { ChevronRight } from 'lucide-react'
 import Badge from '../ui/Badge'
+import { statusDescription, statusTone } from '../../lib/statusMatrix'
+import { isOnHold } from '../../lib/holdPeriods'
 
 const headers = ['WORKORDER', 'DESCRIPITION', 'LOCATION', 'LOCATION PRIORTY', 'ASSET', 'STATUS', 'WORK TYPE', 'STATUS DESCRIPITION', 'DEPARTMENT', 'SUB DEPARTMENT', 'SUB DEPARTMENT NAME', 'TARGET START', 'TARGET FINISH', 'ACTUAL START', 'ACTUAL FINISH', 'REPORTED DATE', 'PRIORTY', 'SITE', 'JOP PLAN', 'DURATION', 'PM', '']
 
@@ -28,14 +30,16 @@ export default function WorkOrdersTable({ rows, currentPage, pageSize, pageCount
                 <td className="px-4 py-3.5 text-[var(--app-table-text)]">{order['LOCATION '] || '-'}</td>
                 <td className="px-4 py-3.5"><Badge tone={String(order['LOCATION PRIORTY'] || '').trim() === 'VIP' ? 'purple' : 'neutral'}>{order['LOCATION PRIORTY'] || '-'}</Badge></td>
                 <td className="px-4 py-3.5"><strong>{order.ASSET || '-'}</strong></td>
-                <td className="px-4 py-3.5"><Badge tone="orange">{order.STATUS || '-'}</Badge></td>
+                <td className="px-4 py-3.5"><Badge tone={statusTone(order.STATUS)}>{statusDescription('workOrder', order.STATUS) || order.STATUS || '-'}</Badge></td>
                 <td className="px-4 py-3.5"><Badge tone="blue">{orderType(order)}</Badge></td>
                 <td className="px-4 py-3.5">{order['STATUS DESCRIPITION'] || '-'}</td>
                 <td className="px-4 py-3.5">{order['DEPARTMENT '] || '-'}</td>
                 <td className="px-4 py-3.5">{order['SUB DEPARTMENT '] || '-'}</td>
                 <td className="px-4 py-3.5">{order['SUB DEPARTMENT  NAME'] || '-'}</td>
                 <td className="px-4 py-3.5">{excelDate(order['TARGET START '])}</td>
-                <td className="px-4 py-3.5">{excelDate(order['TARGET FINISH '])}</td>
+                {/* The clock is stopped while material is awaited, so the deadline is not
+                    the meaningful thing to show - the pause is. */}
+                <td className="px-4 py-3.5">{isOnHold(order) ? <Badge tone="orange">SLA Paused</Badge> : excelDate(order['TARGET FINISH '])}</td>
                 <td className="px-4 py-3.5">{excelDate(order['ACTUAL START '])}</td>
                 <td className="px-4 py-3.5">{excelDate(order['ACTUAL FINISH '])}</td>
                 <td className="px-4 py-3.5">{excelDate(order['REPORTED DATE '])}</td>

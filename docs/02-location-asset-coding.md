@@ -71,7 +71,7 @@ a room roll up to the floor and the building automatically.
 | RC-1031-RD-01-00-ES01 | East Service Zone 01 | Zone | 1031 | RD-001 | Mechanics | **No** |
 | RC-1034-AS-008 | Al Safa Building 008 | Building | 1034 | AS-008 | Facilities | Yes |
 | RC-1034-AS-008-04-190 | Fourth Floor Office 190 | Room | 1034 | AS-008 | Mechanics | Yes |
-| KG-L00-19 | King Gate Hallway 19 | Zone | 1031 | KG | Housekeeping | **No** |
+| KG-L00-19 | King Gate Hallway 19 | Zone | 1031 | KG | Cleaning | **No** |
 | RC-1031-OLD-PLANT | Old External Plant Area | External | 1031 | OLD | Facilities | **No** |
 | RC-1031-RD-001-00-090 | Diwan Main Store | Store | 1031 | RD-001 | Facilities | Yes |
 | RC-1031-RD-001-00-091 | HVAC Store | Store | 1031 | RD-001 | Mechanics | Yes |
@@ -138,6 +138,12 @@ letters and must not collide with an existing type.
 | SSU-200-0001 | SPLIT UNIT | Split Unit | — | RC-1031-RD-001-00-056 | 1031 | OPERATING |
 | FCU-100-0001 | FAN COIL UNIT | Fan Coil Unit | — |  | 1034 | OPERATING |
 | FCU-100-0001-RGS-500-0009 | FAN COIL UNIT | Fan Coil Unit | FCU-100-0001 | RC-1034-AS-008-04-190 | 1034 | OPERATING |
+| ALS-HV-00001 | SPLIT A/C UNIT | — | — | RC-1031-RD-001-00-055 | 1031 | OPERATING |
+| ALS-HV-00002 | SPLIT A/C UNIT | — | — | RC-1031-RD-001-00-055 | 1031 | OPERATING |
+| ALS-HV-00003 | PACKAGE A/C UNIT | — | — | RC-1031-RD-01-00-ES01 | 1031 | OPERATING |
+| MS-MEC-FCU-001 | FAN COIL UNIT | — | — | RC-1034-AS-008-04-190 | 1034 | OPERATING |
+| MS-MEC-SAU-001 | SPLIT A/C UNIT | — | — | RC-1031-RD-01-00-ES01 | 1031 | OPERATING |
+| MS-MEC-FDA-001 | FIRE DAMPER | — | — | RC-1031-RD-001-00-055 | 1031 | OPERATING |
 
 <!-- /generated -->
 
@@ -153,7 +159,7 @@ not retrospectively corrected. This is the current state:
 | Record set | Rows | Conforming | Non-conforming |
 | --- | --- | --- | --- |
 | Locations | 14 | 11 | 3 |
-| Assets | 5 | 5 | 0 |
+| Assets | 11 | 5 | 6 |
 
 The 3 non-conforming location codes and why each fails:
 
@@ -165,11 +171,30 @@ The 3 non-conforming location codes and why each fails:
 
 <!-- /generated -->
 
-**Recommendation.** The non-conforming codes should be re-issued before go-live rather than after. Once work
-orders, PM schedules and meter readings accumulate against a code, changing it means migrating every
-reference; the cost of the correction rises with every month it is deferred. None of these codes were
-auto-corrected by the system, because silently renaming a location that a technician knows by its label is
-more dangerous than reporting it.
+### Two asset coding schemes are in use
+
+The six non-conforming assets are not our data — they are the client's. **The workbook's asset sheet and its
+PM sheet use different schemes for the same estate:**
+
+| Source | Scheme | Examples |
+|---|---|---|
+| Asset sheet | `{TYPE}-{SERIES}-{SEQUENCE}` — the structure documented above | `SSU-100-0001`, `FCU-100-0001` |
+| PM sheet | Site / discipline prefix | `ALS-HV-00001`, `MS-MEC-FCU-001` |
+
+The PM sheet also references six assets that do not appear on the asset sheet at all. Those six have been
+added to the register under their **original codes**, because renaming them would connect the data at the
+cost of hiding the problem — and because a technician in the field knows the asset by the number on the PM
+schedule.
+
+**This is the single most important item in this document.** Until one scheme is chosen, an asset can be
+referenced two ways, PM history and corrective history accumulate against different identifiers for the same
+equipment, and no reliability figure for that asset can be trusted.
+
+**Recommendation.** Agree one scheme, then re-issue the non-conforming codes before go-live rather than
+after. Once work orders, PM schedules and meter readings accumulate against a code, changing it means
+migrating every reference; the cost of the correction rises with every month it is deferred. None of these
+codes were auto-corrected by the system, because silently renaming an asset or location that a technician
+knows by its label is more dangerous than reporting it.
 
 ---
 
@@ -187,6 +212,7 @@ asset record.
 | CIVIL | Civil | Building Fabric (4-3-1), Carpentry (4-3-2), Painting (4-3-3) | 4 | 3 |
 | LAND | Landscape | Irrigation (4-4-1), Softscape (4-4-2) | 3 | 2 |
 | CLEAN | Cleaning | Internal Cleaning (4-5-1), External Cleaning (4-5-2) | 3 | 1 |
+| FAC | Facilities | Building Management (4-6-1), Stores & Logistics (4-6-2) | 2 | 2 |
 
 <!-- /generated -->
 

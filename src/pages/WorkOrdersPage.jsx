@@ -14,6 +14,7 @@ import StandardFilters from '../components/ui/StandardFilters'
 import TableSearch from '../components/ui/TableSearch'
 import { printWithoutBrowserTitle } from '../lib/print'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { statusDescription } from '../lib/statusMatrix'
 import { filterRows } from '../lib/tableSearch'
 import { useAuth } from '../providers/AuthProvider'
 
@@ -205,7 +206,7 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
             workOrder: order.WORKORDER,
             description: order['DESCRIPITION '],
             type: orderType(order),
-            status: order.STATUS,
+            status: statusDescription('workOrder', order.STATUS) || order.STATUS,
             site: order.SITE,
             department: order['DEPARTMENT '],
             targetStart: excelDate(order['TARGET START '])

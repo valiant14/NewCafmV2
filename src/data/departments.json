@@ -196,5 +196,21 @@
     "workGroups": [
       "C1-CLEANING"
     ]
+  },
+  {
+    "code": "FAC",
+    "name": "Facilities",
+    "subDepartments": [
+      { "code": "4-6-1", "name": "Building Management" },
+      { "code": "4-6-2", "name": "Stores & Logistics" }
+    ],
+    "systems": [
+      { "code": "FAC-BLD", "name": "Building Infrastructure" },
+      { "code": "FAC-STR", "name": "Stores & Materials Handling" }
+    ],
+    "workGroups": [
+      "C1-FACILITIES",
+      "C1-STORES"
+    ]
   }
 ]

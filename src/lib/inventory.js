@@ -40,6 +40,21 @@ export const availabilityFor = (item, rows = inventorySeed) => {
   return available > 0 && available > Number(item?.reorderLevel || 0) ? 'Available' : 'Purchase Required'
 }
 
+// Where an item stands in the supply chain, distinct from whether stock is on the shelf:
+// Allocated means it is reserved against a job, On PR/On PO mean it is being procured.
+// Display only for now - nothing in the app writes these transitions yet.
+export const MATERIAL_STATUSES = ['Available', 'Allocated', 'On PR', 'On PO']
+
+export const materialStatusTone = status => ({
+  Available: 'green',
+  Allocated: 'blue',
+  'On PR': 'purple',
+  'On PO': 'orange'
+}[String(status || '').trim()] || 'neutral')
+
+export const materialStatusFor = (itemNumber, materials = []) =>
+  materials.find(item => clean(item.itemNumber) === clean(itemNumber))?.status || ''
+
 export const storeSummary = (materials = [], rows = inventorySeed) => storerooms.map(store => {
   const stock = stockForStore(store.code, rows)
   return {

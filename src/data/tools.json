@@ -1,8 +1,56 @@
 [
-  { "toolNumber": "TOOL-0001", "description": "Digital multimeter", "category": "Electrical Test", "location": "Tool Crib A", "quantity": 5, "status": "Available", "inspectionDue": "2026-09-15" },
-  { "toolNumber": "TOOL-0002", "description": "Refrigerant recovery machine", "category": "HVAC Equipment", "location": "HVAC Workshop", "quantity": 2, "status": "Available", "inspectionDue": "2026-08-30" },
-  { "toolNumber": "TOOL-0003", "description": "Portable ladder 6 m", "category": "Access Equipment", "location": "Tool Crib B", "quantity": 3, "status": "Allocated", "inspectionDue": "2026-07-28" },
-  { "toolNumber": "TOOL-0004", "description": "Pipe threading machine", "category": "Plumbing Equipment", "location": "Mechanical Workshop", "quantity": 1, "status": "Maintenance", "inspectionDue": "2026-07-18" },
-  { "toolNumber": "TOOL-0005", "description": "Thermal imaging camera", "category": "Inspection Equipment", "location": "Engineering Office", "quantity": 2, "status": "Available", "inspectionDue": "2026-11-10" },
-  { "toolNumber": "TOOL-0006", "description": "Cordless drill set", "category": "Power Tools", "location": "Tool Crib A", "quantity": 8, "status": "Available", "inspectionDue": "2026-10-05" }
+  {
+    "toolNumber": "TOOL-0001",
+    "description": "Digital multimeter",
+    "category": "Electrical Test",
+    "location": "ELEC-STORE",
+    "quantity": 5,
+    "status": "Available",
+    "inspectionDue": "2026-09-15"
+  },
+  {
+    "toolNumber": "TOOL-0002",
+    "description": "Refrigerant recovery machine",
+    "category": "HVAC Equipment",
+    "location": "HVAC-STORE",
+    "quantity": 2,
+    "status": "Available",
+    "inspectionDue": "2026-08-30"
+  },
+  {
+    "toolNumber": "TOOL-0003",
+    "description": "Portable ladder 6 m",
+    "category": "Access Equipment",
+    "location": "DIWAN-MAIN",
+    "quantity": 3,
+    "status": "Allocated",
+    "inspectionDue": "2026-07-28"
+  },
+  {
+    "toolNumber": "TOOL-0004",
+    "description": "Pipe threading machine",
+    "category": "Plumbing Equipment",
+    "location": "HVAC-STORE",
+    "quantity": 1,
+    "status": "Maintenance",
+    "inspectionDue": "2026-07-18"
+  },
+  {
+    "toolNumber": "TOOL-0005",
+    "description": "Thermal imaging camera",
+    "category": "Inspection Equipment",
+    "location": "ELEC-STORE",
+    "quantity": 2,
+    "status": "Available",
+    "inspectionDue": "2026-11-10"
+  },
+  {
+    "toolNumber": "TOOL-0006",
+    "description": "Cordless drill set",
+    "category": "Power Tools",
+    "location": "DIWAN-MAIN",
+    "quantity": 8,
+    "status": "Available",
+    "inspectionDue": "2026-10-05"
+  }
 ]
