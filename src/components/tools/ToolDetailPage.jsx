@@ -1,19 +1,10 @@
-import { useState } from 'react'
-import { BarChart3, ClipboardCheck, MapPin, ShieldCheck, TimerReset, Wrench } from 'lucide-react'
-import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
-import Badge from '../ui/Badge'
-import DataTable from '../ui/DataTable'
-import EmptyState from '../ui/EmptyState'
-import GenericPrintReport from '../ui/GenericPrintReport'
-import { statusTone as workOrderStatusTone } from '../../lib/statusMatrix'
+import { AlertTriangle, BadgeCheck, CalendarClock, ClipboardCheck, MapPin, Printer, ShieldCheck, TimerReset, Wrench } from 'lucide-react'
 
 const statusTone = {
   Available: 'green',
   Allocated: 'orange',
   Maintenance: 'orange'
 }
-
-const toolStatuses = ['Available', 'Allocated', 'Maintenance']
 
 function daysUntil(dateValue) {
   if (!dateValue) return null
@@ -27,150 +18,148 @@ function inspectionState(tool) {
   const dueSoon = days !== null && days <= 30
   const overdue = days !== null && days < 0
   const label = overdue ? 'Inspection overdue' : dueSoon ? 'Inspection due soon' : 'Inspection current'
+  const progress = days === null ? 0 : Math.max(8, Math.min(100, Math.round((days / 120) * 100)))
 
-  return { days, dueSoon, overdue, label }
+  return { days, dueSoon, overdue, label, progress }
 }
 
-export default function ToolDetailPage({ tool, usageRows = [], onBack, onUpdate }) {
-  const [tab, setTab] = useState('Tool Details')
+function DetailItem({ label, value }) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong>{value || '-'}</strong>
+    </div>
+  )
+}
+
+function MetricCard({ icon: Icon, label, value, note }) {
+  return (
+    <article className="resource-metric-card">
+      <Icon size={17} />
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{note}</small>
+      </div>
+    </article>
+  )
+}
+
+export default function ToolDetailPage({ tool, onBack }) {
   const inspection = inspectionState(tool)
   const tone = statusTone[tool.status] || 'green'
-  const availableUnits = tool.status === 'Available' ? Number(tool.quantity || 0) : Math.max(0, Number(tool.quantity || 0) - 1)
-  const changeStatus = event => onUpdate?.(tool.toolNumber, { status: event.target.value })
+  const availableUnits = tool.status === 'Available' ? tool.quantity : Math.max(0, tool.quantity - 1)
 
   return (
-    <section className="printable-record">
-      <div className="print-report-screen space-y-5">
-        <DetailHeader
-          eyebrow="TOOL & EQUIPMENT"
-          id={tool.toolNumber}
-          title={tool.description}
-          status={tool.status}
-          statusTone={tone}
-          onBack={onBack}
-          backLabel="Back to tools"
-          stats={[
-            { label: 'Category', value: tool.category },
-            { label: 'Location', value: tool.location },
-            { label: 'Available Units', value: availableUnits },
-            { label: 'Inspection Due', value: tool.inspectionDue || '-' }
-          ]}
-          actions={(
-            <select
-              value={tool.status}
-              onChange={changeStatus}
-              className="h-10 min-w-[160px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
-              aria-label="Change tool status"
-            >
-              {toolStatuses.map(status => <option key={status} value={status}>{status}</option>)}
-            </select>
-          )}
-        />
+    <section className="master-detail-page resource-detail-page tool-detail-page">
+      <header className="record-page-header resource-detail-header">
+        <div className="record-header-copy">
+          <div className="record-header-nav">
+            <button className="back-link" onClick={onBack}>← Back to tools</button>
+            <span className="record-kicker">TOOL & EQUIPMENT</span>
+          </div>
+          <div className="wo-title-line">
+            <h1>{tool.toolNumber}</h1>
+            <span className={`badge ${tone}`}><i />{tool.status}</span>
+          </div>
+          <p>{tool.description}</p>
+        </div>
 
-        <DetailTabs tabs={['Tool Details', 'Work Order Usage']} active={tab} onChange={setTab} />
+        <div className="record-header-actions">
+          <button className="outline" onClick={() => window.print()}><Printer size={15} />Print record</button>
+        </div>
+      </header>
 
-        {tab === 'Tool Details' && <main className="space-y-4">
-          <section className="grid gap-3 md:grid-cols-4">
-            {[
-              { icon: Wrench, label: 'Quantity', value: tool.quantity, note: 'Total units' },
-              { icon: ClipboardCheck, label: 'Available', value: availableUnits, note: 'Ready units' },
-              { icon: TimerReset, label: 'Inspection Window', value: inspection.days === null ? '-' : `${inspection.days}d`, note: inspection.label },
-              { icon: BarChart3, label: 'Control Status', value: tool.status, note: inspection.overdue ? 'Review required' : 'Current state' }
-            ].map(metric => {
-              const Icon = metric.icon
-              return (
-                <div key={metric.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{metric.label}</span>
-                    <Icon size={16} className="text-[var(--app-primary)]" />
-                  </div>
-                  <strong className="mt-2 block text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{metric.value}</strong>
-                  <small className="text-[11px] font-semibold text-[var(--app-muted)]">{metric.note}</small>
-                </div>
-              )
-            })}
-          </section>
+      <section className="resource-profile-strip">
+        <div className="resource-icon tool"><Wrench size={25} /></div>
+        <div>
+          <span>Controlled Resource</span>
+          <strong>{tool.description}</strong>
+          <p>{tool.category} · {tool.location}</p>
+        </div>
+        <div className="resource-profile-status">
+          <span>Quantity</span>
+          <strong>{tool.quantity}</strong>
+        </div>
+        <div className="resource-profile-status">
+          <span>Inspection Due</span>
+          <strong>{tool.inspectionDue || '-'}</strong>
+        </div>
+      </section>
 
-          <section className="grid gap-4 lg:grid-cols-2">
-            <InfoCard
-              icon={Wrench}
-              kicker="RESOURCE"
-              title="Tool Information"
-              items={[
-                ['Description', tool.description],
-                ['Tool Number', tool.toolNumber],
-                ['Category', tool.category],
-                ['Quantity', tool.quantity]
-              ]}
-            />
+      <nav className="record-tabs">
+        <button className="active">Tool Details</button>
+      </nav>
 
-            <InfoCard
-              icon={MapPin}
-              kicker="CONTROL"
-              title="Location & Inspection"
-              items={[
-                ['Location', tool.location],
-                ['Status', tool.status],
-                ['Available Units', availableUnits],
-                ['Inspection Due', tool.inspectionDue],
-                ['Inspection State', inspection.label],
-                ['Overdue', inspection.overdue ? 'Yes' : 'No']
-              ]}
-            />
-          </section>
+      <main className="resource-detail-content">
+        <section className="resource-focus-card">
+          <div className="resource-focus-head">
+            <div>
+              <span>RESOURCE READINESS</span>
+              <h2>{tool.status === 'Available' && !inspection.dueSoon ? 'Ready for work order use' : inspection.label}</h2>
+              <p>{availableUnits} unit{availableUnits === 1 ? '' : 's'} available from {tool.location}. Inspection due {tool.inspectionDue || 'not scheduled'}.</p>
+            </div>
+            {tool.status === 'Available' && !inspection.dueSoon ? <ShieldCheck size={30} /> : <AlertTriangle size={30} />}
+          </div>
 
-          {inspection.dueSoon && (
-            <section className="flex items-start gap-3 rounded-2xl border border-[var(--app-badge-orange-text)]/20 bg-[var(--app-badge-orange-bg)] p-4 text-[var(--app-badge-orange-text)]">
-              <ShieldCheck size={18} />
-              <div>
-                <h3 className="text-sm font-extrabold">{inspection.label}</h3>
-                <p className="mt-1 text-xs font-semibold opacity-80">Review inspection before assigning this tool or equipment to a Work Order.</p>
-              </div>
-            </section>
-          )}
-        </main>}
+          <div className={`resource-readiness-bar ${tool.status !== 'Available' || inspection.dueSoon ? 'warning' : ''}`}>
+            <span style={{ width: `${inspection.progress}%` }} />
+          </div>
 
-        {tab === 'Work Order Usage' && (
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-            {usageRows.length ? (
-              <DataTable
-                rows={usageRows}
-                rowKey="reference"
-                pagination
-                columns={[
-                  { key: 'reference', label: 'Work Order', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
-                  { key: 'description', label: 'Description' },
-                  { key: 'workType', label: 'Type' },
-                  { key: 'quantity', label: 'Requested / Used' },
-                  { key: 'source', label: 'Source' },
-                  { key: 'department', label: 'Department' },
-                  { key: 'site', label: 'Site' },
-                  { key: 'status', label: 'WO Status', render: value => <Badge tone={workOrderStatusTone(value)}>{value}</Badge> }
-                ]}
-              />
-            ) : (
-              <EmptyState
-                icon={Wrench}
-                title="No Work Order usage yet"
-                description="Work Orders that request, allocate, or use this tool/equipment will appear here."
-              />
-            )}
-          </section>
-        )}
-      </div>
-      <GenericPrintReport
-        reportTitle="Tool Report"
-        reportSubtitle="Tool and equipment report"
-        number={tool.toolNumber}
-        status={tool.status}
-        description={tool.description}
-        summary={[['Category', tool.category], ['Location', tool.location], ['Inspection Due', tool.inspectionDue]]}
-        sections={[
-          { title: 'Tool Information', rows: [[['Tool Number', tool.toolNumber], ['Description', tool.description], ['Category', tool.category], ['Quantity', tool.quantity]]] },
-          { title: 'Location and Inspection', rows: [[['Location', tool.location], ['Status', tool.status], ['Inspection Due', tool.inspectionDue], ['Inspection State', inspection.label]]] },
-          { title: 'Availability', rows: [[['Available Units', availableUnits], ['Inspection Window', inspection.days === null ? '-' : `${inspection.days} days`], ['Due Soon', inspection.dueSoon ? 'Yes' : 'No'], ['Overdue', inspection.overdue ? 'Yes' : 'No']]] }
-        ]}
-      />
+          <div className="resource-metric-grid">
+            <MetricCard icon={ClipboardCheck} label="Status" value={tool.status} note="Current control state" />
+            <MetricCard icon={Wrench} label="Available Units" value={availableUnits} note="Ready for planning" />
+            <MetricCard icon={TimerReset} label="Inspection Window" value={inspection.days === null ? '-' : `${inspection.days}d`} note={inspection.label} />
+          </div>
+        </section>
+
+        <section className="resource-detail-card">
+          <header>
+            <Wrench size={18} />
+            <div>
+              <span>RESOURCE</span>
+              <h2>Tool Information</h2>
+            </div>
+          </header>
+          <div className="resource-detail-list">
+            <DetailItem label="Description" value={tool.description} />
+            <DetailItem label="Tool Number" value={tool.toolNumber} />
+            <DetailItem label="Category" value={tool.category} />
+            <DetailItem label="Quantity" value={tool.quantity} />
+          </div>
+        </section>
+
+        <section className="resource-detail-card">
+          <header>
+            <MapPin size={18} />
+            <div>
+              <span>CONTROL</span>
+              <h2>Location & Inspection</h2>
+            </div>
+          </header>
+          <div className="resource-detail-list">
+            <DetailItem label="Location" value={tool.location} />
+            <DetailItem label="Status" value={tool.status} />
+            <DetailItem label="Inspection Due" value={tool.inspectionDue} />
+            <DetailItem label="Inspection State" value={inspection.label} />
+          </div>
+        </section>
+
+        <section className="resource-detail-card resource-wide-card">
+          <header>
+            <CalendarClock size={18} />
+            <div>
+              <span>WORK ORDER USE</span>
+              <h2>Tool Request Context</h2>
+            </div>
+          </header>
+          <div className="resource-timeline">
+            <div><BadgeCheck size={15} /><span>Selectable from the Work Order Plan tab as a required tool or equipment.</span><strong>{tool.toolNumber}</strong></div>
+            <div><BadgeCheck size={15} /><span>Status controls whether the resource is ready, allocated, or under maintenance.</span><strong>{tool.status}</strong></div>
+            <div><BadgeCheck size={15} /><span>Inspection due date helps prevent unsafe equipment assignment.</span><strong>{tool.inspectionDue || '-'}</strong></div>
+          </div>
+        </section>
+      </main>
     </section>
   )
 }

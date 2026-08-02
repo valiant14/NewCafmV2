@@ -6,7 +6,7 @@ import { printWithoutBrowserTitle } from '../../lib/print'
 
 export function DetailHeader({ eyebrow, id, title, status, statusTone = 'green', onBack, backLabel = 'Back', printLabel = 'Print record', stats = [], actions }) {
   return (
-    <header className="rounded-3xl border border-[var(--app-line)] bg-white p-6 shadow-[0_14px_36px_rgba(32,55,45,.08)]">
+    <header className="rounded-[2rem] border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_18px_50px_rgba(15,23,42,.06)]">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <button className="mb-4 inline-flex items-center text-xs font-bold text-[var(--app-muted)] transition hover:text-[var(--app-primary)]" onClick={onBack}>
@@ -50,7 +50,7 @@ export function ProfileStrip({ icon: Icon, tone = 'default', eyebrow, title, des
   }[tone] || 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]'
 
   return (
-    <section className="grid gap-4 rounded-3xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.05)] md:grid-cols-[auto_1fr_repeat(2,minmax(150px,auto))] md:items-center">
+    <section className="grid gap-4 rounded-[2rem] border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_18px_50px_rgba(15,23,42,.06)] md:grid-cols-[auto_1fr_repeat(2,minmax(150px,auto))] md:items-center">
       <div className={cn('flex h-14 w-14 items-center justify-center rounded-2xl', iconTone)}>
         {Icon ? <Icon size={25} /> : null}
       </div>
@@ -60,7 +60,7 @@ export function ProfileStrip({ icon: Icon, tone = 'default', eyebrow, title, des
         <p className="mt-1 text-sm text-[var(--app-muted)]">{description}</p>
       </div>
       {stats.map(stat => (
-        <div key={stat.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4">
+        <div key={stat.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
           <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{stat.label}</span>
           <strong className="mt-1 block text-base text-[var(--app-ink)]">{stat.value || '-'}</strong>
         </div>
@@ -71,15 +71,15 @@ export function ProfileStrip({ icon: Icon, tone = 'default', eyebrow, title, des
 
 export function DetailTabs({ tabs = ['Details'], active = tabs[0], onChange }) {
   return (
-    <nav className="flex gap-1 border-b border-[var(--app-line)]">
+    <nav className="flex flex-wrap gap-2 rounded-[2rem] border border-[var(--app-line)] bg-[var(--app-panel)] p-2 shadow-[0_18px_50px_rgba(15,23,42,.06)]">
       {tabs.map(tab => (
         <button
           key={tab}
           type="button"
           onClick={() => onChange?.(tab)}
           className={cn(
-            'relative px-3 py-3 text-[11px] text-[var(--app-muted)] transition hover:text-[var(--app-primary)]',
-            active === tab && 'font-bold text-[var(--app-primary)] after:absolute after:bottom-[-1px] after:left-2 after:right-2 after:h-0.5 after:bg-[var(--app-primary)]'
+            'rounded-2xl px-3 py-2.5 text-[11px] font-bold text-[var(--app-muted)] transition hover:bg-[var(--app-soft-bg)] hover:text-[var(--app-primary)]',
+            active === tab && 'bg-[var(--app-soft-bg)] text-[var(--app-primary)] shadow-[inset_0_0_0_1px_var(--app-line)]'
           )}
         >
           {tab}
@@ -91,22 +91,20 @@ export function DetailTabs({ tabs = ['Details'], active = tabs[0], onChange }) {
 
 export function FocusCard({ icon: Icon, eyebrow, title, description, progress = 100, warning = false, metrics = [] }) {
   return (
-    <section className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)] lg:col-span-2">
+    <section className="rounded-[2rem] border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_18px_50px_rgba(15,23,42,.06)] lg:col-span-2">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[#7b8780]">{eyebrow}</span>
+          <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">{eyebrow}</span>
           <h2 className="mt-1 text-xl font-extrabold tracking-[-.03em] text-[var(--app-ink)]">{title}</h2>
           <p className="mt-1 text-sm text-[var(--app-muted)]">{description}</p>
         </div>
         {Icon && <Icon className={warning ? 'text-[var(--warning)]' : 'text-[var(--success)]'} size={30} />}
       </div>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#eef2ed]">
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-[var(--app-soft-bg)]">
         <span className={cn('block h-full rounded-full', warning ? 'bg-[var(--warning)]' : 'bg-[var(--success)]')} style={{ width: `${progress}%` }} />
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-3">
-        {metrics.map(metric => (
-          <MetricCard key={metric.label} {...metric} />
-        ))}
+        {metrics.map(metric => <MetricCard key={metric.label} {...metric} />)}
       </div>
     </section>
   )
@@ -129,7 +127,7 @@ export function MetricCard({ icon: Icon, label, value, note }) {
 
 export function InfoCard({ icon: Icon, kicker, title, items = [], wide = false }) {
   return (
-    <section className={cn('rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]', wide && 'lg:col-span-2')}>
+    <section className={cn('rounded-[2rem] border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_18px_50px_rgba(15,23,42,.06)]', wide && 'lg:col-span-2')}>
       <header className="mb-4 flex items-center gap-3 border-b border-[var(--app-line)] pb-4">
         {Icon && <Icon className="text-[var(--app-muted)]" size={18} />}
         <div>
@@ -151,7 +149,7 @@ export function InfoCard({ icon: Icon, kicker, title, items = [], wide = false }
 
 export function TimelineCard({ icon: Icon, kicker, title, rows = [] }) {
   return (
-    <section className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)] lg:col-span-2">
+    <section className="rounded-[2rem] border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_18px_50px_rgba(15,23,42,.06)] lg:col-span-2">
       <header className="mb-4 flex items-center gap-3 border-b border-[var(--app-line)] pb-4">
         {Icon && <Icon className="text-[var(--app-muted)]" size={18} />}
         <div>

@@ -26,7 +26,7 @@ function FieldTable({ title, rows = [] }) {
 
 function DataTable({ title, columns = [], rows = [], emptyText = 'No records.' }) {
   return (
-    <section className="wo-print-section wo-print-section-table">
+    <section className="wo-print-section">
       <h2>{title}</h2>
       <table className="wo-print-data-table">
         <thead>
@@ -107,7 +107,7 @@ export default function GenericPrintReport({
 
       <footer className="wo-print-footer">
         <span>Generated from Seder CAFM mock data</span>
-        <span>Seder CAFM</span>
+        <span>Page 1</span>
       </footer>
     </article>
   )

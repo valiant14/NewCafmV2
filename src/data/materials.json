@@ -1,8 +1,8 @@
 [
-  { "itemNumber": "MAT-0001", "description": "Air filter 500 × 500 mm", "category": "HVAC Filters", "unit": "EA", "storeroom": "DIWAN-MAIN", "balance": 24, "reserved": 4, "reorderLevel": 10, "availability": "Available", "status": "Available" },
-  { "itemNumber": "MAT-0002", "description": "Fan belt A-42", "category": "Mechanical Spares", "unit": "EA", "storeroom": "DIWAN-MAIN", "balance": 3, "reserved": 2, "reorderLevel": 6, "availability": "Purchase Required", "status": "On PR" },
-  { "itemNumber": "MAT-0003", "description": "Refrigerant R410A", "category": "HVAC Consumables", "unit": "KG", "storeroom": "HVAC-STORE", "balance": 18, "reserved": 5, "reorderLevel": 8, "availability": "Available", "status": "Allocated" },
-  { "itemNumber": "MAT-0004", "description": "LED lamp 18W", "category": "Electrical", "unit": "EA", "storeroom": "ELEC-STORE", "balance": 75, "reserved": 12, "reorderLevel": 25, "availability": "Available", "status": "Available" },
-  { "itemNumber": "MAT-0005", "description": "PVC pipe 25 mm", "category": "Plumbing", "unit": "M", "storeroom": "DIWAN-MAIN", "balance": 0, "reserved": 0, "reorderLevel": 20, "availability": "Purchase Required", "status": "On PO" },
-  { "itemNumber": "MAT-0006", "description": "White emulsion paint", "category": "Civil Consumables", "unit": "L", "storeroom": "CIVIL-STORE", "balance": 42, "reserved": 8, "reorderLevel": 15, "availability": "Available", "status": "Allocated" }
+  { "itemNumber": "MAT-0001", "description": "Air filter 500 × 500 mm", "category": "HVAC Filters", "unit": "EA", "storeroom": "DIWAN-MAIN", "balance": 24, "reserved": 4, "reorderLevel": 10, "availability": "Available" },
+  { "itemNumber": "MAT-0002", "description": "Fan belt A-42", "category": "Mechanical Spares", "unit": "EA", "storeroom": "DIWAN-MAIN", "balance": 3, "reserved": 2, "reorderLevel": 6, "availability": "Purchase Required" },
+  { "itemNumber": "MAT-0003", "description": "Refrigerant R410A", "category": "HVAC Consumables", "unit": "KG", "storeroom": "HVAC-STORE", "balance": 18, "reserved": 5, "reorderLevel": 8, "availability": "Available" },
+  { "itemNumber": "MAT-0004", "description": "LED lamp 18W", "category": "Electrical", "unit": "EA", "storeroom": "ELEC-STORE", "balance": 75, "reserved": 12, "reorderLevel": 25, "availability": "Available" },
+  { "itemNumber": "MAT-0005", "description": "PVC pipe 25 mm", "category": "Plumbing", "unit": "M", "storeroom": "DIWAN-MAIN", "balance": 0, "reserved": 0, "reorderLevel": 20, "availability": "Purchase Required" },
+  { "itemNumber": "MAT-0006", "description": "White emulsion paint", "category": "Civil Consumables", "unit": "L", "storeroom": "CIVIL-STORE", "balance": 42, "reserved": 8, "reorderLevel": 15, "availability": "Available" }
 ]

@@ -9,57 +9,14 @@ import GenericPrintReport from '../components/ui/GenericPrintReport'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
-import ExportExcelButton from '../components/ui/ExportExcelButton'
 import StandardFilters from '../components/ui/StandardFilters'
-import TableSearch from '../components/ui/TableSearch'
 import { printWithoutBrowserTitle } from '../lib/print'
-import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
-import { statusDescription } from '../lib/statusMatrix'
-import { filterRows } from '../lib/tableSearch'
-import { useAuth } from '../providers/AuthProvider'
-
-// Restricted to text columns: matching every value would hit Excel date serials and the
-// internal task/resource arrays, which produce meaningless results.
-const searchKeys = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTION', 'STATUS', 'STATUS DESCRIPITION', 'WORK TYPE ', 'SITE', 'DEPARTMENT ', 'SUB DEPARTMENT  NAME', 'ASSIGNED DEPARTMENT', 'WORK GROUP', 'SYSTEM', 'LOCATION ', 'ASSET', 'ASSET DESCRIPTION', 'SUPERVISOR', 'SOURCE SR', 'FAILURE CODE', 'PROBLEM CODE']
-
-// excelDate renders a falsy value as an em dash, which is fine on screen but wrong in a
-// spreadsheet cell - blank should stay blank.
-const exportColumns = excelDate => {
-  const asDate = value => (value === null || value === undefined || value === '' ? '' : excelDate(value))
-  return [
-    { key: 'WORKORDER', label: 'Work Order' },
-    { key: 'DESCRIPITION ', label: 'Description' },
-    { key: 'WORK TYPE ', label: 'Type' },
-    { key: 'STATUS', label: 'Status' },
-    { key: 'STATUS DESCRIPITION', label: 'Status Description' },
-    { key: 'PRIORTY', label: 'Priority' },
-    { key: 'SITE', label: 'Site' },
-    { key: 'DEPARTMENT ', label: 'Department' },
-    { key: 'SUB DEPARTMENT  NAME', label: 'Sub Department' },
-    { key: 'ASSIGNED DEPARTMENT', label: 'Assigned Department' },
-    { key: 'WORK GROUP', label: 'Work Group' },
-    { key: 'SYSTEM', label: 'System' },
-    { key: 'LOCATION ', label: 'Location' },
-    { key: 'ASSET', label: 'Asset' },
-    { key: 'ASSET DESCRIPTION', label: 'Asset Description' },
-    { key: 'TARGET START ', label: 'Target Start', exportValue: asDate },
-    { key: 'TARGET FINISH ', label: 'Target Finish', exportValue: asDate },
-    { key: 'ACTUAL START ', label: 'Actual Start', exportValue: asDate },
-    { key: 'ACTUAL FINISH ', label: 'Actual Finish', exportValue: asDate },
-    { key: 'REPORTED DATE ', label: 'Reported Date', exportValue: asDate },
-    { key: 'SOURCE SR', label: 'Source Job Request' },
-    { key: 'REPORTED BY', label: 'Reported By' },
-    { key: 'FAILURE CODE', label: 'Failure Code' },
-    { key: 'PROBLEM CODE', label: 'Problem Code' },
-    { key: 'CAUSE CODE', label: 'Cause Code' },
-    { key: 'REMEDY CODE', label: 'Remedy Code' }
-  ]
-}
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { normalizeWorkOrderRows } from '../lib/workOrderMapping'
 
 const workOrderTemplateHeaders = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTION', 'STATUS', 'WORK TYPE ', 'PRIORTY', 'SITE', 'DEPARTMENT ', 'SUB DEPARTMENT  NAME', 'LOCATION ', 'ASSET', 'TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'FAILURE CODE', 'PROBLEM CODE']
 
 export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, EditorComponent, excelDate }) {
-  const { user } = useAuth()
   const [selected, setSelected] = useState(() => {
     const id = decodeURIComponent(window.location.pathname.split('/work-orders/')[1] || '')
     return rows.find(order => String(order.WORKORDER) === id) || null
@@ -70,8 +27,7 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [sort, setSort] = useState({ key: 'WORKORDER', direction: 'asc' })
-  const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows, ['SITE']))
-  const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState(emptyStandardFilters)
 
   useEffect(() => {
     if (!selected?.WORKORDER) return
@@ -81,13 +37,12 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
 
   const orderType = order => (order['WORK TYPE'] || order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const typedRows = rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)
-  const scoped = applyStandardFilters(typedRows, filters, {
+  const filtered = applyStandardFilters(typedRows, filters, {
     site: ['SITE'],
     department: ['DEPARTMENT ', 'ASSIGNED DEPARTMENT'],
     status: ['STATUS'],
     date: ['TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'REPORTED DATE ']
   })
-  const filtered = filterRows(scoped, search, searchKeys)
   const sortValue = (order, key) => {
     if (key === 'WORK TYPE') return orderType(order)
     if (key === 'DESCRIPITION') return order['DESCRIPITION ']
@@ -146,7 +101,7 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
           eyebrow="MAINTENANCE OPERATIONS"
           title="Work Orders"
           description="Track, plan, execute, and close every maintenance work order."
-          actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={workOrderTemplateHeaders} fileName="Work_Orders_Template.xlsx" /><ExportExcelButton module="Work Orders" rows={sorted} columns={exportColumns(excelDate)} /><ExcelImportButton fileName={imported} onFile={setImported} onImport={importedRows => onImportRows?.(importedRows)} /><Button variant="outline" onClick={printList}><Printer size={16} /> Print list</Button><Button onClick={openCreate}><Plus size={17} />New work order</Button></div>}
+          actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={workOrderTemplateHeaders} fileName="Work_Orders_Template.xlsx" /><ExcelImportButton fileName={imported} onFile={setImported} onImport={importedRows => onImportRows?.(normalizeWorkOrderRows(importedRows))} /><Button variant="outline" onClick={printList}><Printer size={16} /> Print list</Button><Button onClick={openCreate}><Plus size={17} />New work order</Button></div>}
         />
         <ImportNotice fileName={imported} subject="work order" onClear={() => setImported('')} />
         <IndexTabs
@@ -160,13 +115,6 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
           siteOptions={optionsFromRows(rows, ['SITE'])}
           departmentOptions={optionsFromRows(rows, ['DEPARTMENT ', 'ASSIGNED DEPARTMENT'])}
           statusOptions={optionsFromRows(rows, ['STATUS'])}
-        />
-        <TableSearch
-          value={search}
-          onChange={value => { setSearch(value); setPage(1) }}
-          placeholder="Search work order, asset, location, status"
-          resultCount={filtered.length}
-          totalCount={typedRows.length}
         />
         <WorkOrdersTable
           rows={paginated}
@@ -206,7 +154,7 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
             workOrder: order.WORKORDER,
             description: order['DESCRIPITION '],
             type: orderType(order),
-            status: statusDescription('workOrder', order.STATUS) || order.STATUS,
+            status: order.STATUS,
             site: order.SITE,
             department: order['DEPARTMENT '],
             targetStart: excelDate(order['TARGET START '])

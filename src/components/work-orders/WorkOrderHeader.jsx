@@ -1,6 +1,5 @@
-import { Check, PackageX, Play, Printer, Save } from 'lucide-react'
+import { Check, Printer, Save } from 'lucide-react'
 import Badge from '../ui/Badge'
-import { statusTone } from '../../lib/statusMatrix'
 
 const headerClass = 'grid gap-3 border-b border-[var(--app-line)] bg-transparent pb-3'
 const headerTopClass = 'flex flex-wrap items-start justify-between gap-3'
@@ -26,11 +25,7 @@ export default function WorkOrderHeader({
   close,
   printWorkOrder,
   onStatusChange,
-  statusOptions = [],
-  onMaterialHold,
-  onResume,
-  onMaterialHoldStatus = false,
-  canMaterialHold = false
+  statusOptions = []
 }) {
   const saveLabel = autoSaveState === 'Saving' ? 'Saving...' : autoSaveState === 'Saved' ? 'Saved' : 'Save'
 
@@ -42,21 +37,12 @@ export default function WorkOrderHeader({
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h2 className={titleClass}>{number === 'AUTO' ? 'New work order' : `Work order #${number}`}</h2>
             <Badge tone={isPM ? 'blue' : 'purple'}>{workType}</Badge>
-            <Badge tone={statusTone(status)}>{statusDescription || status}</Badge>
+            <Badge tone="orange">{status}</Badge>
           </div>
           <p className={descriptionClass}>{description || 'Enter work order information'}</p>
         </div>
 
         <div className={`${actionsClass} self-center`}>
-          {onMaterialHoldStatus ? (
-            <button className={outlineButtonClass} onClick={onResume} title="Resume work and restart the SLA clock">
-              <Play size={15} />Resume
-            </button>
-          ) : canMaterialHold && (
-            <button className={outlineButtonClass} onClick={onMaterialHold} title="Pause the SLA clock while waiting for material">
-              <PackageX size={15} />Put on Hold (Material)
-            </button>
-          )}
           <button className={outlineButtonClass} onClick={printWorkOrder}><Printer size={15} />Print</button>
           <button className={primaryButtonClass} disabled={autoSaveState === 'Saving'} onClick={onSave}>
             {autoSaveState === 'Saving'
@@ -74,9 +60,7 @@ export default function WorkOrderHeader({
             aria-label="Change work order status"
           >
             {statusOptions.map(option => (
-              <option value={option.value} key={option.value} disabled={option.disabled} title={option.reason}>
-                {option.value} · {option.label}{option.disabled && option.reason ? ` — ${option.reason}` : ''}
-              </option>
+              <option value={option.value} key={option.value}>{option.value} · {option.label}</option>
             ))}
           </select>
         </div>

@@ -6,8 +6,6 @@ const columnClass = 'grid content-start gap-3'
 const gridClass = 'grid grid-cols-1 gap-4 md:grid-cols-2'
 
 export default function WorkOrderOverviewTab({
-  projectName,
-  sourceRequest,
   number,
   status,
   workType,
@@ -40,9 +38,6 @@ export default function WorkOrderOverviewTab({
   setSupervisor,
   workGroup,
   workGroupOptions,
-  systemValue,
-  setSystemValue,
-  systemOptions,
   supervisor,
   supervisorOptions,
   laborCraft,
@@ -82,7 +77,7 @@ export default function WorkOrderOverviewTab({
             <Field label="Asset" value={assetValue} required onChange={changeAsset} suggestions={assetOptions} placeholder="Search asset number or description" />
             <Field label="Location" value={locationValue} required onChange={event => setLocationValue(event.target.value)} suggestions={locationOptions} placeholder="Search or select a location" />
             <Field label="Asset Description" value={assetDescription} required onChange={event => setAssetDescription(event.target.value)} placeholder="Required asset description" />
-            <Field label="Project" value={projectName} required locked />
+            <Field label="Project" value="Royal Court Facilities" required locked />
           </div>
         </Section>
       </div>
@@ -90,32 +85,20 @@ export default function WorkOrderOverviewTab({
       <div className={columnClass}>
         <Section compact title="Department & Ownership" note="Responsible department, assignment, and craft routing">
           <div className={gridClass}>
-            <Field label="Department" value={department} required onChange={event => { setDepartment(event.target.value); setSubDepartment(''); setSystemValue('') }} suggestions={departmentOptions} placeholder="Search department" />
+            <Field label="Department" value={department} required onChange={event => { setDepartment(event.target.value); setSubDepartment('') }} suggestions={departmentOptions} placeholder="Search department" />
             <Field label="Sub Department" value={subDepartment} onChange={event => setSubDepartment(event.target.value)} suggestions={subDepartmentOptions} placeholder="Search sub department" />
             <Field label="Assigned Department" value={assignedDepartment} required onChange={event => { setAssignedDepartment(event.target.value); setWorkGroup(''); setSupervisor('') }} suggestions={departmentOptions} placeholder="Search assigned department" />
-            <Field label="System" value={systemValue} onChange={event => setSystemValue(event.target.value)} suggestions={systemOptions} placeholder="Search or select a system" />
             <Field label="Work Group" value={workGroup} onChange={event => setWorkGroup(event.target.value)} suggestions={workGroupOptions} placeholder="Search or select a work group" />
             <Field label="Supervisor" value={supervisor} onChange={event => setSupervisor(event.target.value)} suggestions={supervisorOptions} placeholder="Search supervisor name or craft" />
             <Field label="Labor Craft Code" value={laborCraft} onChange={event => setLaborCraft(event.target.value)} suggestions={laborCraftOptions} placeholder="Search craft code or description" />
           </div>
         </Section>
 
-        {sourceRequest && (
-          <Section compact title="Originating Job Request" note="Raised as a service request and converted to this work order">
-            <div className={gridClass}>
-              <Field label="Job Request (SR)" value={sourceRequest.sr} locked />
-              <Field label="Reported By" value={sourceRequest.reportedBy || 'Not recorded'} locked />
-              <Field label="Requested Priority" value={sourceRequest.priority || 'Not recorded'} locked />
-              <Field label="Request Type" value={sourceRequest.requestType || 'Service'} locked />
-            </div>
-          </Section>
-        )}
-
         <Section compact title="Target Dates" note="Schedule and actual timing for SLA tracking">
           <div className={gridClass}>
             <Field label="Reported Date" value={reportedDate} type="datetime-local" locked />
-            <Field label="Target Start" value={targetStart} required onChange={event => setTargetStart(event.target.value)} type="datetime-local" locked={isPM} />
-            <Field label="Target Finish" value={targetFinish} required onChange={event => setTargetFinish(event.target.value)} type="datetime-local" />
+            <Field label="Target Start" value={targetStart} onChange={event => setTargetStart(event.target.value)} type="datetime-local" locked={isPM} />
+            <Field label="Target Finish" value={targetFinish} onChange={event => setTargetFinish(event.target.value)} type="datetime-local" />
             <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" />
             <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" />
             <Field label="SLA Met?" value={slaLabel} locked />

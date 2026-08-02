@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import userSeed from '../data/users.json'
-import laborRows from '../data/labor.json'
 import { rolePermissionRows } from '../data/roles'
 import UserDetailPage from '../components/users/UserDetailPage'
 import Badge from '../components/ui/Badge'
@@ -30,25 +28,23 @@ const emptyUser = {
   lastLogin: ''
 }
 
-const fields = [
-  { key: 'userId', label: 'User ID', required: true, placeholder: 'USR-0005' },
-  { key: 'username', label: 'Username', required: true },
-  { key: 'password', label: 'Password', required: true, type: 'password', placeholder: 'Set temporary password' },
-  { key: 'name', label: 'Name', required: true },
-  { key: 'email', label: 'Email' },
-  { key: 'role', label: 'Role', required: true, options: rolePermissionRows.map(row => row.role) },
-  { key: 'laborId', label: 'Linked Labor', options: ['', ...laborRows.map(row => row.personId)] },
-  { key: 'site', label: 'Site Scope' },
-  { key: 'department', label: 'Department Scope' },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive', 'Locked'] },
-  { key: 'lastLogin', label: 'Last Login' }
-]
-
 const templateHeaders = Object.keys(emptyUser)
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
 
-export default function UsersPage() {
-  const [rows, setRows] = useState(userSeed)
+export default function UsersPage({ rows = [], setRows, laborRows = [], onUpdateUser }) {
+  const fields = [
+    { key: 'userId', label: 'User ID', required: true, placeholder: 'USR-0005' },
+    { key: 'username', label: 'Username', required: true },
+    { key: 'password', label: 'Password', required: true, type: 'password', placeholder: 'Set temporary password' },
+    { key: 'name', label: 'Name', required: true },
+    { key: 'email', label: 'Email' },
+    { key: 'role', label: 'Role', required: true, options: rolePermissionRows.map(row => row.role) },
+    { key: 'laborId', label: 'Linked Labor', options: ['', ...laborRows.map(row => row.personId)] },
+    { key: 'site', label: 'Site Scope' },
+    { key: 'department', label: 'Department Scope' },
+    { key: 'status', label: 'Status', options: ['Active', 'Inactive', 'Locked'] },
+    { key: 'lastLogin', label: 'Last Login' }
+  ]
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [imported, setImported] = useState('')
@@ -75,13 +71,14 @@ export default function UsersPage() {
   }
 
   const updateUser = (userId, patch) => {
-    setRows(current => current.map(row => row.userId === userId ? { ...row, ...patch } : row))
+    if (onUpdateUser) onUpdateUser(userId, patch)
+    else setRows?.(current => current.map(row => row.userId === userId ? { ...row, ...patch } : row))
     setSelected(current => current?.userId === userId ? { ...current, ...patch } : current)
   }
 
   const save = () => {
     if (!form.userId || !form.username || !form.password || !form.name || !form.role) return
-    setRows(current => [{ ...form }, ...current])
+    setRows?.(current => [{ ...form }, ...current])
     setModalOpen(false)
     setForm(emptyUser)
     open(form)

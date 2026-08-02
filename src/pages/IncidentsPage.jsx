@@ -6,63 +6,22 @@ import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
-import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
-import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
-import { nowLocalDateTime } from '../lib/datetime'
-import { useAuth } from '../providers/AuthProvider'
-
-export const incidentSeed = [
-  {
-    incidentNumber: 'INC-2026-0001',
-    description: 'Water leak created a slip hazard near meeting room',
-    site: '1031',
-    department: 'Civil',
-    location: 'RC-1031-RD-001-OO-054',
-    severity: 'High',
-    status: 'NEW',
-    reportedBy: 'Maha Alotaibi',
-    reportedDate: '2026-07-14T09:15'
-  },
-  {
-    incidentNumber: 'INC-2026-0002',
-    description: 'Electrical panel access blocked by stored materials',
-    site: '1031',
-    department: 'Electrical',
-    location: 'RC-1031-EL-002',
-    severity: 'Medium',
-    status: 'INPRG',
-    reportedBy: 'Ahmed Faisal',
-    reportedDate: '2026-07-13T14:30'
-  }
-]
-
-const exportColumns = [
-  { key: 'incidentNumber', label: 'Incident Number' },
-  { key: 'description', label: 'Description' },
-  { key: 'site', label: 'Site' },
-  { key: 'department', label: 'Department' },
-  { key: 'location', label: 'Location' },
-  { key: 'severity', label: 'Severity' },
-  { key: 'status', label: 'Status' },
-  { key: 'reportedBy', label: 'Reported By' },
-  { key: 'reportedDate', label: 'Reported Date' }
-]
 
 const incidentTemplateHeaders = ['incidentNumber', 'description', 'site', 'department', 'location', 'severity', 'status', 'reportedBy', 'reportedDate']
 
-export default function IncidentsPage({ rows, setRows }) {
-  const { user } = useAuth()
+export default function IncidentsPage({ rows = [], setRows, onUpdateIncident }) {
   const [tab, setTab] = useState('All')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({})
   const [imported, setImported] = useState('')
-  const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows))
+  const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/incidents/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.incidentNumber === routeId) || null)
 
@@ -74,11 +33,11 @@ export default function IncidentsPage({ rows, setRows }) {
 
   const addIncident = () => {
     const nextNumber = `INC-2026-${String(rows.length + 1).padStart(4, '0')}`
-    setRows(current => [
+    setRows?.(current => [
       {
         incidentNumber: nextNumber,
         status: 'NEW',
-        reportedDate: nowLocalDateTime(),
+        reportedDate: new Date().toISOString().slice(0, 16),
         ...form
       },
       ...current
@@ -97,12 +56,13 @@ export default function IncidentsPage({ rows, setRows }) {
     window.history.pushState({}, '', '/incidents')
   }
   const updateIncident = (incidentNumber, patch) => {
-    setRows(current => current.map(row => row.incidentNumber === incidentNumber ? { ...row, ...patch } : row))
+    if (onUpdateIncident) onUpdateIncident(incidentNumber, patch)
+    else setRows?.(current => current.map(row => row.incidentNumber === incidentNumber ? { ...row, ...patch } : row))
     setSelected(current => current?.incidentNumber === incidentNumber ? { ...current, ...patch } : current)
   }
 
   const importRows = importedRows => {
-    setRows(importedRows.map((row, index) => ({
+    setRows?.(importedRows.map((row, index) => ({
       incidentNumber: row.incidentNumber || `INC-IMPORT-${String(index + 1).padStart(4, '0')}`,
       description: row.description || '',
       site: row.site || '',
@@ -126,7 +86,6 @@ export default function IncidentsPage({ rows, setRows }) {
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={incidentTemplateHeaders} fileName="Incidents_Template.xlsx" />
-            <ExportExcelButton module="Incidents" rows={filteredRows} columns={exportColumns} />
             <ExcelImportButton label="Import Excel" fileName={imported} onFile={setImported} onImport={importRows} />
             <Button onClick={() => { setForm({ severity: 'Medium' }); setModalOpen(true) }}><Plus size={15} />New incident</Button>
           </div>
@@ -144,7 +103,7 @@ export default function IncidentsPage({ rows, setRows }) {
           { key: 'CLOSED', label: 'Closed', count: rows.filter(row => row.status === 'CLOSED').length }
         ]}
         active={tab}
-        onChange={value => { setTab(value); setFilters(scopedStandardFilters(user, rows)) }}
+        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
       />
       <StandardFilters
         filters={filters}

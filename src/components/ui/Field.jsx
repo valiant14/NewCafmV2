@@ -1,48 +1,6 @@
 import { useId } from 'react'
-import Combobox from './Combobox'
-import { cn } from '../../lib/cn'
 
 export default function Field({ label, value = '', required, locked, type = 'text', options, suggestions, onChange, placeholder }) {
   const listId=useId()
-  const controlClass = cn(
-    'w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none transition',
-    'placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]',
-    'read-only:bg-[var(--app-soft-bg)] read-only:text-[var(--app-muted)] disabled:bg-[var(--app-soft-bg)] disabled:text-[var(--app-muted)]',
-    type === 'textarea' ? 'min-h-[86px] py-3 leading-relaxed' : 'h-11'
-  )
-
-  return (
-    <label className="group grid min-w-0 gap-2">
-      <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">
-        {label}
-        {required && <b className="text-[var(--app-required)]">*</b>}
-      </span>
-      {options ? (
-        <select className={controlClass} value={value} onChange={onChange} disabled={locked}>
-          {options.map(o => <option key={o}>{o}</option>)}
-        </select>
-      ) : type === 'textarea' ? (
-        <textarea className={controlClass} value={value} onChange={onChange} readOnly={locked} rows="3" placeholder={placeholder} />
-      ) : suggestions?.length ? (
-        <Combobox
-          inputId={listId}
-          className={controlClass}
-          value={value}
-          suggestions={suggestions}
-          onChange={onChange}
-          placeholder={placeholder}
-          disabled={locked}
-        />
-      ) : (
-        <input
-          className={controlClass}
-          type={type}
-          value={value}
-          onChange={onChange}
-          readOnly={locked}
-          placeholder={placeholder}
-        />
-      )}
-    </label>
-  )
+  return <label className="wo-field"><span>{label}{required && <b>*</b>}</span>{options ? <select value={value} onChange={onChange} disabled={locked}>{options.map(o=><option key={o}>{o}</option>)}</select> : type === 'textarea' ? <textarea value={value} onChange={onChange} readOnly={locked} rows="3"/> : <><input type={type} value={value} onChange={onChange} readOnly={locked} list={suggestions?.length?listId:undefined} placeholder={placeholder}/>{suggestions?.length ? <datalist id={listId}>{suggestions.map(item=><option value={item.value??item} key={item.value??item}>{item.label||item.value||item}</option>)}</datalist> : null}</>}</label>
 }

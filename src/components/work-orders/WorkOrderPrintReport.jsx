@@ -48,8 +48,6 @@ function DataRows({ title, columns, rows, emptyText }) {
 }
 
 export default function WorkOrderPrintReport({
-  sourceRequest,
-  systemValue,
   number,
   description,
   workType,
@@ -136,17 +134,10 @@ export default function WorkOrderPrintReport({
         title="Work Order Information"
         rows={[
           [['Site', siteValue], ['Status', status], ['Work Type', workType], ['Priority', priority]],
-          [['Department', department], ['Sub Department', subDepartment], ['Assigned Department', assignedDepartment], ['System', systemValue]],
+          [['Department', department], ['Sub Department', subDepartment], ['Assigned Department', assignedDepartment], ['Location', locationValue]],
           [['Target Start', targetStart], ['Target Finish', targetFinish], ['Actual Start', actualStart], ['Actual Finish', actualFinish]]
         ]}
       />
-
-      {sourceRequest && (
-        <FieldTable
-          title="Originating Job Request"
-          rows={[[['Job Request (SR)', sourceRequest.sr], ['Reported By', sourceRequest.reportedBy], ['Requested Priority', sourceRequest.priority], ['Request Type', sourceRequest.requestType]]]}
-        />
-      )}
 
       <FieldTable
         title="Asset and PM Context"

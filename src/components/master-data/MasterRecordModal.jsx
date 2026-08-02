@@ -1,19 +1,17 @@
-import { AlertTriangle, Check } from 'lucide-react'
-import Button from '../ui/Button'
-import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
+import { Check, X } from 'lucide-react'
 
 function MasterRecordField({ field, value, onChange }) {
   const inputId = `master-${field.key}`
 
   return (
-    <label className="grid gap-2" htmlFor={inputId}>
-      <span className="text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">
+    <label className={field.full ? 'span-2' : undefined} htmlFor={inputId}>
+      <span>
         {field.label}
-        {field.required && <b className="ml-1 text-[var(--app-required)]">*</b>}
+        {field.required && <b>*</b>}
       </span>
 
       {field.options ? (
-        <select className="h-10 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]" id={inputId} value={value ?? ''} onChange={event => onChange(field.key, event.target.value)}>
+        <select id={inputId} value={value ?? ''} onChange={event => onChange(field.key, event.target.value)}>
           {field.options.map(option => (
             <option key={option} value={option}>
               {option}
@@ -22,22 +20,19 @@ function MasterRecordField({ field, value, onChange }) {
         </select>
       ) : (
         <input
-          className="h-10 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
           id={inputId}
           type={field.type || 'text'}
           min={field.min}
           value={value ?? ''}
           onChange={event => onChange(field.key, event.target.value)}
           placeholder={field.placeholder}
-          readOnly={field.locked}
-          disabled={field.locked}
         />
       )}
     </label>
   )
 }
 
-export default function MasterRecordModal({ title, note, fields, form, setForm, onClose, onSave, submitLabel = 'Create record', error = '' }) {
+export default function MasterRecordModal({ title, note, fields, form, setForm, onClose, onSave, submitLabel = 'Create record' }) {
   const requiredFields = fields.filter(field => field.required)
   const valid = requiredFields.every(field => String(form[field.key] ?? '').trim())
 
@@ -46,36 +41,37 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
   }
 
   return (
-    <ModalOverlay>
-      <ModalPanel className="max-w-4xl rounded-2xl" labelledBy="master-record-title">
-        <ModalHeader eyebrow="MASTER DATA" title={title} titleId="master-record-title" description={note} onClose={onClose} />
-
-        {error && (
-          <div className="mx-6 mt-5 flex items-center gap-2 rounded-2xl border border-[var(--app-badge-orange-text)]/25 bg-[var(--app-badge-orange-bg)] p-3 text-sm text-[var(--app-badge-orange-text)]">
-            <AlertTriangle size={16} />
-            <span>{error}</span>
+    <div className="wo-overlay master-modal-overlay">
+      <section className="master-record-modal" aria-modal="true" role="dialog" aria-labelledby="master-record-title">
+        <header>
+          <div>
+            <span className="record-kicker">MASTER DATA</span>
+            <h2 id="master-record-title">{title}</h2>
+            <p>{note}</p>
           </div>
-        )}
 
-        <div className="grid gap-5 overflow-auto px-6 py-5 md:grid-cols-2">
+          <button type="button" onClick={onClose} aria-label="Close">
+            <X size={19} />
+          </button>
+        </header>
+
+        <div className="master-modal-body">
           {fields.map(field => (
             <MasterRecordField key={field.key} field={field} value={form[field.key]} onChange={updateField} />
           ))}
         </div>
 
-        <ModalFooter className="justify-between">
-          <span className="text-xs text-[var(--app-muted)]">{error ? 'Resolve the issue above' : valid ? 'Ready to create' : 'Complete the required fields'}</span>
-          <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>
+        <div className="master-modal-footer">
+          <span>{valid ? 'Ready to create' : 'Complete the required fields'}</span>
+          <button type="button" className="outline" onClick={onClose}>
             Cancel
-          </Button>
-          <Button type="button" disabled={!valid} onClick={onSave}>
+          </button>
+          <button type="button" className="primary" disabled={!valid} onClick={onSave}>
             <Check size={15} />
             {submitLabel}
-          </Button>
-          </div>
-        </ModalFooter>
-      </ModalPanel>
-    </ModalOverlay>
+          </button>
+        </div>
+      </section>
+    </div>
   )
 }

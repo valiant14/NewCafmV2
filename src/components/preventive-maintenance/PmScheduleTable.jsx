@@ -1,7 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import Badge from '../ui/Badge'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
-import { pmDueLabel, pmDueTone } from '../../lib/pmSchedule'
 
 const columns = [
   { key: 'pmNumber', label: 'PM plan' },
@@ -29,7 +28,7 @@ export default function PmScheduleTable({ rows, currentPage, pageSize, pageCount
           <div><strong className="block text-[var(--app-ink)]">{plan.jobPlan}</strong><span className="text-[var(--app-muted)]">Duration from job plan</span></div>
           <div><strong className="block text-[var(--app-ink)]">{plan.frequency} {plan.freqUnit}</strong><span className="text-[var(--app-muted)]">NEXTDATE {plan.startDate} · Lead {plan.leadTime}d</span></div>
           <div><strong className="block text-[var(--app-ink)]">{plan.personGroup || plan.department || 'Not assigned'}</strong><span className="text-[var(--app-muted)]">{plan.department} {plan.subDepartment}</span></div>
-          <div><Badge tone={statusTone(plan.pmStatus)}>{plan.pmStatus} · {statusDescription('preventiveMaintenance', plan.pmStatus)}</Badge><span className="mt-1 block"><Badge tone={pmDueTone(plan)}>{pmDueLabel(plan)}</Badge></span><span className="mt-1 block text-[var(--app-muted)]">{plan.workType} · {plan.woStatus} · Counter {plan.pmCounter}</span></div>
+          <div><Badge tone={statusTone(plan.pmStatus)}>{plan.pmStatus} · {statusDescription('preventiveMaintenance', plan.pmStatus)}</Badge><span className="mt-1 block text-[var(--app-muted)]">{plan.workType} · {plan.woStatus} · Counter {plan.pmCounter}</span></div>
           <ChevronRight className="text-[var(--app-muted)]" />
         </button>
       ))}

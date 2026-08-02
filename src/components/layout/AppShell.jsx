@@ -9,7 +9,6 @@ import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalF
 export default function AppShell({
   active,
   navigation,
-  projectName = '',
   counters = {},
   overdueCount = 0,
   notifications = [],
@@ -48,19 +47,12 @@ export default function AppShell({
   return (
     <div className="app-shell min-h-screen bg-[var(--app-bg)] text-[var(--app-ink)] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
       <aside className={`sidebar fixed inset-y-0 left-0 z-40 flex w-[248px] -translate-x-full flex-col bg-[var(--app-sidebar-bg)] px-4 py-6 text-[var(--app-sidebar-text)] transition lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${mobileOpen ? 'open translate-x-0 shadow-2xl' : ''}`}>
-        <div className="brand mb-4 flex items-center gap-3 px-2">
+        <div className="brand mb-8 flex items-center gap-3 px-2">
           <img src={sederLogo} alt="Seder" className="h-12 w-auto max-w-[150px] object-contain" />
           <button className="mobile-close ml-auto text-white lg:hidden" onClick={onMobileClose} aria-label="Close menu">
             <X />
           </button>
         </div>
-
-        {projectName && (
-          <div className="project-name mb-6 border-y border-[color-mix(in_srgb,var(--app-sidebar-muted)_25%,transparent)] px-2 py-3">
-            <span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-sidebar-muted)]">Project</span>
-            <strong className="mt-1 block truncate text-sm text-[var(--app-sidebar-text)]" title={projectName}>{projectName}</strong>
-          </div>
-        )}
 
         <nav className="grid gap-1 overflow-y-auto pr-1">
           {sections.map(([section, items], index) => {

@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import toolSeed from '../data/tools.json'
-import { workOrders } from '../data/cafmData'
 import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
 import Badge from '../components/ui/Badge'
@@ -44,8 +42,8 @@ const toolUsageMap = {
   ]
 }
 
-const findWorkOrder = reference => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
-const toolUsage = tool => (toolUsageMap[tool.toolNumber] || []).map((usage, index) => {
+const toolUsage = (tool, workOrders = []) => (toolUsageMap[tool.toolNumber] || []).map((usage, index) => {
+  const findWorkOrder = reference => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
   const order = findWorkOrder(usage.workOrder)
   return {
     reference: usage.workOrder,
@@ -59,8 +57,7 @@ const toolUsage = tool => (toolUsageMap[tool.toolNumber] || []).map((usage, inde
   }
 })
 
-export default function ToolsPage() {
-  const [rows, setRows] = useState(toolSeed)
+export default function ToolsPage({ rows = [], setRows, workOrders = [], onUpdateTool }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -87,21 +84,22 @@ export default function ToolsPage() {
   }
 
   const updateTool = (toolNumber, patch) => {
-    setRows(current => current.map(row => row.toolNumber === toolNumber ? { ...row, ...patch } : row))
+    if (onUpdateTool) onUpdateTool(toolNumber, patch)
+    else setRows?.(current => current.map(row => row.toolNumber === toolNumber ? { ...row, ...patch } : row))
     setSelected(current => current?.toolNumber === toolNumber ? { ...current, ...patch } : current)
   }
 
   const save = () => {
     if (!form.toolNumber || !form.description) return
     const row = { ...form, quantity: Number(form.quantity) }
-    setRows(current => [...current, row])
+    setRows?.(current => [...current, row])
     setAdding(false)
     setForm(empty)
     open(row)
   }
 
   if (selected) {
-    return <ToolDetailPage tool={selected} usageRows={toolUsage(selected)} onBack={close} onUpdate={updateTool} />
+    return <ToolDetailPage tool={selected} usageRows={toolUsage(selected, workOrders)} onBack={close} onUpdate={updateTool} />
   }
 
   return (

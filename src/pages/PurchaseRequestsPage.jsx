@@ -1,59 +1,23 @@
 import { useState } from 'react'
-import { CheckCircle2, Plus, ShoppingCart, XCircle } from 'lucide-react'
+import { CheckCircle2, ShoppingCart, XCircle } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
-import ExportExcelButton from '../components/ui/ExportExcelButton'
-import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { statusDescription, statusTone } from '../lib/statusMatrix'
-import { nowLocalDate } from '../lib/datetime'
-import materialsSeed from '../data/materials.json'
-import departments from '../data/departments.json'
-import { stores } from '../lib/inventory'
 
-const todayStamp = () => nowLocalDate()
+const todayStamp = () => new Date().toISOString().slice(0, 10)
 const purchaseRequisitionStatuses = ['WAPPR', 'APPR', 'CLOSE', 'CAN']
-
-const emptyRequest = { type: 'Material', item: '', quantity: 1, source: '', site: '1031', department: '', workOrder: '' }
-
-const requestFields = [
-  { key: 'type', label: 'Type', options: ['Material', 'Tool', 'Equipment'] },
-  { key: 'item', label: 'Item', required: true, options: ['', ...materialsSeed.map(material => material.description)] },
-  { key: 'quantity', label: 'Quantity', required: true, type: 'number', min: 1 },
-  { key: 'source', label: 'Store', options: ['', ...stores.map(store => store.code)] },
-  { key: 'site', label: 'Site', required: true, placeholder: '1031' },
-  { key: 'department', label: 'Department', options: ['', ...departments.map(department => department.name)] },
-  { key: 'workOrder', label: 'Work Order (optional)', placeholder: 'Leave blank for a store restock' }
-]
-
-const exportColumns = [
-  { key: 'purchaseRequest', label: 'PR Number' },
-  { key: 'type', label: 'Type' },
-  { key: 'item', label: 'Item' },
-  { key: 'quantity', label: 'Quantity' },
-  { key: 'source', label: 'Store' },
-  { key: 'site', label: 'Site' },
-  { key: 'department', label: 'Department' },
-  { key: 'workOrder', label: 'Work Order' },
-  { key: 'status', label: 'Status' },
-  { key: 'createdAt', label: 'Created' },
-  { key: 'purchaseOrder', label: 'Purchase Order' }
-]
 
 export default function PurchaseRequestsPage({
   rows = [],
   onApproveRequest,
-  onUpdateRequest,
-  onCreateRequest
+  onUpdateRequest
 }) {
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState(emptyRequest)
-  const [formError, setFormError] = useState('')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [requestStatus, setRequestStatus] = useState('All')
 
@@ -98,12 +62,6 @@ export default function PurchaseRequestsPage({
         eyebrow="PROCUREMENT"
         title="Purchase Requisitions"
         description="Requests for unavailable materials or tools before a Purchase Order is created."
-        actions={(
-          <div className="flex items-center gap-2">
-            <ExportExcelButton module="Purchase Requisitions" rows={visibleRows} columns={exportColumns} />
-            <Button onClick={() => { setForm(emptyRequest); setFormError(''); setModalOpen(true) }}><Plus size={17} />New purchase request</Button>
-          </div>
-        )}
       />
       <IndexTabs
         active={requestStatus}
@@ -152,25 +110,6 @@ export default function PurchaseRequestsPage({
           />
         )}
       </section>
-      {modalOpen && (
-        <MasterRecordModal
-          title="New purchase request"
-          note="Raise a request directly. Leave the work order blank when restocking a store."
-          fields={requestFields}
-          form={form}
-          setForm={setForm}
-          error={formError}
-          submitLabel="Create request"
-          onClose={() => { setModalOpen(false); setFormError('') }}
-          onSave={() => {
-            if (!form.item || !Number(form.quantity)) return setFormError('Choose an item and a quantity above zero.')
-            onCreateRequest?.({ ...form, quantity: Number(form.quantity) })
-            setModalOpen(false)
-            setForm(emptyRequest)
-            setFormError('')
-          }}
-        />
-      )}
     </section>
   )
 }

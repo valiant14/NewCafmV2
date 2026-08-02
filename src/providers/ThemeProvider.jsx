@@ -160,11 +160,6 @@ export const themes = {
       '--app-badge-purple-bg': '#ECECF6',
       '--app-badge-purple-text': '#50547A',
 
-      // Chart series - validated for colour-vision deficiency and >=3:1 contrast
-      // against this theme's panel surface. Do not substitute by eye.
-      '--app-chart-water': '#2A78D6',
-      '--app-chart-energy': '#EB6834',
-
       // Status
       '--success': '#2E7D55',
       '--success-soft': '#E5F5EC',
@@ -263,11 +258,6 @@ export const themes = {
       // Secondary badge
       '--app-badge-purple-bg': '#303149',
       '--app-badge-purple-text': '#C9CAE5',
-
-      // Chart series - the same two hues re-stepped for the dark surface, validated
-      // as a set. Not an automatic lightening of the light-theme values.
-      '--app-chart-water': '#3987E5',
-      '--app-chart-energy': '#D95926',
 
       // Status
       '--success': '#6FC394',

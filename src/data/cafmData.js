@@ -1,7 +1,4 @@
 import workbookData from './workbooks.json'
-import { effectiveTargetTime, isOnHold } from '../lib/holdPeriods.js'
-import assetSeeds, { assetOverrides } from './assetSeeds.js'
-import { subDepartmentName } from '../lib/departments.js'
 
 export const rowsToObjects = (rows = []) => {
   const headers = (rows[0] || []).map((header, index) => String(header || `Column ${index + 1}`).trim())
@@ -10,19 +7,7 @@ export const rowsToObjects = (rows = []) => {
   )
 }
 
-// The client's asset sheet is incomplete - its PM sheet references six assets that are not
-// on it, and one row is missing a location. Both gaps are filled from assetSeeds so every
-// consumer of `assets` sees one complete register.
-export const assets = [
-  ...rowsToObjects(workbookData.assets.assets).map(row => ({
-    ...row,
-    // The sheet stores the sub department as a code; everything else in the app matches
-    // on the name, so it is resolved once here rather than at each read site.
-    'sub department': subDepartmentName(row['sub department']),
-    ...(assetOverrides[row.assetnum] || {})
-  })),
-  ...assetSeeds
-]
+export const assets = rowsToObjects(workbookData.assets.assets)
 export const workOrders = rowsToObjects(workbookData['Work Order Tracking'].Sheet1)
 export const pmRecords = rowsToObjects(workbookData.PM['PREVENTIVE MAINTENANCE'])
 export const jobTasks = rowsToObjects(workbookData['JOB PLAN-TASKS']['JOB PLAN-TASKS'])
@@ -43,11 +28,6 @@ export const toDateTimeInput = value => {
   return date && !Number.isNaN(date.getTime()) ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
 }
 export const slaBreached = order => {
-  // A work order held for material has its clock stopped, and time already spent on hold
-  // is added back onto the target before lateness is judged.
-  if (isOnHold(order)) return false
   const finish = excelToDate(order['TARGET FINISH '])
-  if (!finish) return false
-  const due = effectiveTargetTime(finish.getTime(), order)
-  return Boolean(due < Date.now() && !['COMP', 'CLOSE', 'CAN'].includes(order.STATUS))
+  return Boolean(finish && finish < new Date() && !['COMP', 'CLOSE', 'CAN'].includes(order.STATUS))
 }

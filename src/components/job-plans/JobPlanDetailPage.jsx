@@ -137,25 +137,9 @@ export default function JobPlanDetailPage({ plan, tasks = [], workOrders = [], o
         description={plan.DESCRIPTION}
         summary={[['Tasks', tasks.length], ['Duration', `${totalMinutes} min`], ['Linked Work Orders', workOrders.length]]}
         sections={[
-          { title: 'Job Plan Information', rows: [[['Job Plan', plan.JPNUM], ['Description', plan.DESCRIPTION], ['Status', status], ['Estimated Duration', `${totalMinutes} minutes`]]] }
+          { title: 'Job Plan Information', rows: [[['Job Plan', plan.JPNUM], ['Description', plan.DESCRIPTION], ['Status', status], ['Estimated Duration', `${totalMinutes} minutes`]]] },
+          { title: 'Task Summary', rows: tasks.slice(0, 12).map(task => ([['Sequence', task['JOB TASK SEQUENCE']], ['Task ID', task.JOBTASKID], ['Description', task['JOB TASK DESCRIPTION']], ['Duration', `${minutesFromExcelHours(task['TASK DURATION IN HOUR'])} min`]])) }
         ]}
-        tables={[{
-          title: 'Task Summary',
-          columns: [
-            { key: 'sequence', label: 'Seq.' },
-            { key: 'taskId', label: 'Task ID' },
-            { key: 'description', label: 'Task Description' },
-            { key: 'duration', label: 'Duration' }
-          ],
-          rows: tasks.map(task => ({
-            key: task.JOBTASKID,
-            sequence: task['JOB TASK SEQUENCE'],
-            taskId: task.JOBTASKID,
-            description: task['JOB TASK DESCRIPTION'],
-            duration: `${minutesFromExcelHours(task['TASK DURATION IN HOUR'])} min`
-          })),
-          emptyText: 'No task lines configured for this job plan.'
-        }]}
       />
     </section>
   )

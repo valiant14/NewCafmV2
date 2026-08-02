@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import laborSeed from '../data/labor.json'
-import { workOrders } from '../data/cafmData'
 import AddLaborModal from '../components/labor/AddLaborModal'
 import LaborDetailPage from '../components/labor/LaborDetailPage'
 import Badge from '../components/ui/Badge'
@@ -39,7 +37,7 @@ const workOrderNumber = order => String(order.WORKORDER || order['WORK ORDER'] |
 const workOrderTitle = order => order['DESCRIPITION '] || order.DESCRIPTION || order.description || 'Work order'
 const workOrderDepartment = order => String(order['DEPARTMENT '] || order.department || '')
 const workOrderSubDepartment = order => String(order['SUB DEPARTMENT  NAME'] || order.subDepartment || '')
-const laborPastWork = labor => workOrders
+const laborPastWork = (labor, workOrders = []) => workOrders
   .filter(order => {
     const assignedNumbers = laborWorkMap[labor.personId] || []
     const number = workOrderNumber(order)
@@ -58,8 +56,7 @@ const laborPastWork = labor => workOrders
     targetFinish: order['TARGET FINISH '] || order['TARGET START '] || '-'
   }))
 
-export default function LaborPage() {
-  const [rows, setRows] = useState(laborSeed)
+export default function LaborPage({ rows = [], setRows, workOrders = [], onUpdateLabor }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -86,20 +83,21 @@ export default function LaborPage() {
   }
 
   const updateLabor = (personId, patch) => {
-    setRows(current => current.map(row => row.personId === personId ? { ...row, ...patch } : row))
+    if (onUpdateLabor) onUpdateLabor(personId, patch)
+    else setRows?.(current => current.map(row => row.personId === personId ? { ...row, ...patch } : row))
     setSelected(current => current?.personId === personId ? { ...current, ...patch } : current)
   }
 
   const save = () => {
     if (!form.personId || !form.name || !form.craftCode) return
-    setRows(current => [...current, form])
+    setRows?.(current => [...current, form])
     setAdding(false)
     setForm(empty)
     open(form)
   }
 
   if (selected) {
-    return <LaborDetailPage labor={selected} pastWork={laborPastWork(selected)} onBack={close} onUpdate={updateLabor} />
+    return <LaborDetailPage labor={selected} pastWork={laborPastWork(selected, workOrders)} onBack={close} onUpdate={updateLabor} />
   }
 
   return (
