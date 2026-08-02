@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { tools as toolSeed, toolUsageMap, workOrders } from '../data/workspaceData'
+import { tools as toolSeed, toolUsageMap, workOrders as defaultWorkOrders } from '../data/workspaceData'
 import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
 import Badge from '../components/ui/Badge'
@@ -24,9 +24,10 @@ const empty = {
   inspectionDue: ''
 }
 const templateHeaders = Object.keys(empty)
-const findWorkOrder = reference => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
-const toolUsage = tool => (toolUsageMap[tool.toolNumber] || []).map((usage, index) => {
-  const order = findWorkOrder(usage.workOrder)
+const findWorkOrder = (reference, workOrders) => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
+const toolUsage = (tool, workOrders) => (toolUsageMap[tool.toolNumber] || []).map((usage, index) => {
+  const order = findWorkOrder(usage.workOrder, workOrders)
+  if (!order) return null
   return {
     reference: usage.workOrder,
     description: order?.['DESCRIPITION '] || order?.DESCRIPTION || `${tool.description} usage`,
@@ -37,9 +38,9 @@ const toolUsage = tool => (toolUsageMap[tool.toolNumber] || []).map((usage, inde
     department: order?.['DEPARTMENT '] || tool.category,
     source: index === 0 ? 'Actual tool use' : 'Planned / allocated'
   }
-})
+}).filter(Boolean)
 
-export default function ToolsPage() {
+export default function ToolsPage({ workOrders = defaultWorkOrders }) {
   const [rows, setRows] = useState(toolSeed)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
@@ -81,7 +82,7 @@ export default function ToolsPage() {
   }
 
   if (selected) {
-    return <ToolDetailPage tool={selected} usageRows={toolUsage(selected)} onBack={close} onUpdate={updateTool} />
+    return <ToolDetailPage tool={selected} usageRows={toolUsage(selected, workOrders)} onBack={close} onUpdate={updateTool} />
   }
 
   return (

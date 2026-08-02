@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { materials as materialSeed, materialUsageMap, workOrders } from '../data/workspaceData'
+import { materials as materialSeed, materialUsageMap, workOrders as defaultWorkOrders } from '../data/workspaceData'
 import AddMaterialModal from '../components/materials/AddMaterialModal'
 import MaterialDetailPage from '../components/materials/MaterialDetailPage'
 import Badge from '../components/ui/Badge'
@@ -53,9 +53,10 @@ const exportColumns = [
   { key: 'availability', label: 'Availability' },
   { key: 'status', label: 'Material Status' }
 ]
-const findWorkOrder = reference => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
-const materialUsage = material => (materialUsageMap[material.itemNumber] || []).map((usage, index) => {
-  const order = findWorkOrder(usage.workOrder)
+const findWorkOrder = (reference, workOrders) => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
+const materialUsage = (material, workOrders) => (materialUsageMap[material.itemNumber] || []).map((usage, index) => {
+  const order = findWorkOrder(usage.workOrder, workOrders)
+  if (!order) return null
   return {
     reference: usage.workOrder,
     description: order?.['DESCRIPITION '] || order?.DESCRIPTION || `${material.description} usage`,
@@ -67,9 +68,9 @@ const materialUsage = material => (materialUsageMap[material.itemNumber] || []).
     department: order?.['DEPARTMENT '] || material.category,
     source: index === 0 ? 'Actual consumption' : 'Planned / reserved'
   }
-})
+}).filter(Boolean)
 
-export default function MaterialsPage() {
+export default function MaterialsPage({ workOrders = defaultWorkOrders }) {
   const [rows, setRows] = useState(materialSeed)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
@@ -117,7 +118,7 @@ export default function MaterialsPage() {
   }
 
   if (selected) {
-    return <MaterialDetailPage material={selected} usageRows={materialUsage(selected)} onBack={close} onUpdate={updateMaterial} />
+    return <MaterialDetailPage material={selected} usageRows={materialUsage(selected, workOrders)} onBack={close} onUpdate={updateMaterial} />
   }
 
   return (

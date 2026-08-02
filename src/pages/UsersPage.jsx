@@ -13,6 +13,7 @@ import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { scopeRowsForUser } from '../lib/accessControl'
 
 const emptyUser = {
   userId: '',
@@ -45,18 +46,18 @@ const baseFields = [
 const templateHeaders = Object.keys(emptyUser)
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
 
-export default function UsersPage({ roleRows = rolePermissionRows }) {
-  const [rows, setRows] = useState(userSeed)
+export default function UsersPage({ rows = userSeed, setRows, roleRows = rolePermissionRows, scopeUser }) {
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(emptyUser)
   const routeId = decodeURIComponent(window.location.pathname.split('/users/')[1] || '')
-  const [selected, setSelected] = useState(rows.find(row => row.userId === routeId || row.username === routeId) || null)
   const fields = baseFields.map(field => field.key === 'role' ? { ...field, options: roleRows.map(row => row.role) } : field)
 
-  const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
+  const scopedRows = scopeRowsForUser(rows, scopeUser, ['site'])
+  const [selected, setSelected] = useState(scopedRows.find(row => row.userId === routeId || row.username === routeId) || null)
+  const tabRows = tab === 'All' ? scopedRows : scopedRows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
     site: ['site'],
     department: ['department'],
@@ -74,13 +75,13 @@ export default function UsersPage({ roleRows = rolePermissionRows }) {
   }
 
   const updateUser = (userId, patch) => {
-    setRows(current => current.map(row => row.userId === userId ? { ...row, ...patch } : row))
+    setRows?.(current => current.map(row => row.userId === userId ? { ...row, ...patch } : row))
     setSelected(current => current?.userId === userId ? { ...current, ...patch } : current)
   }
 
   const save = () => {
     if (!form.userId || !form.username || !form.password || !form.name || !form.role) return
-    setRows(current => [{ ...form }, ...current])
+    setRows?.(current => [{ ...form }, ...current])
     setModalOpen(false)
     setForm(emptyUser)
     open(form)
@@ -119,19 +120,19 @@ export default function UsersPage({ roleRows = rolePermissionRows }) {
         active={tab}
         onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
         tabs={[
-          { key: 'All', label: 'All Users', count: rows.length },
-          { key: 'Active', label: 'Active', count: rows.filter(row => row.status === 'Active').length },
-          { key: 'Inactive', label: 'Inactive', count: rows.filter(row => row.status === 'Inactive').length },
-          { key: 'Locked', label: 'Locked', count: rows.filter(row => row.status === 'Locked').length }
+          { key: 'All', label: 'All Users', count: scopedRows.length },
+          { key: 'Active', label: 'Active', count: scopedRows.filter(row => row.status === 'Active').length },
+          { key: 'Inactive', label: 'Inactive', count: scopedRows.filter(row => row.status === 'Inactive').length },
+          { key: 'Locked', label: 'Locked', count: scopedRows.filter(row => row.status === 'Locked').length }
         ]}
       />
 
       <StandardFilters
         filters={filters}
         setFilters={setFilters}
-        siteOptions={optionsFromRows(rows, ['site'])}
-        departmentOptions={optionsFromRows(rows, ['department'])}
-        statusOptions={optionsFromRows(rows, ['status'])}
+        siteOptions={optionsFromRows(scopedRows, ['site'])}
+        departmentOptions={optionsFromRows(scopedRows, ['department'])}
+        statusOptions={optionsFromRows(scopedRows, ['status'])}
       />
 
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]">

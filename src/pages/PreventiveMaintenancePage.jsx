@@ -18,6 +18,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { parseLocal, toLocalDateInput } from '../lib/datetime'
 import { countPmDueState, pmDueState } from '../lib/pmSchedule'
 import { filterRows } from '../lib/tableSearch'
+import { scopeRowsForUser } from '../lib/accessControl'
 
 const emptyPlan = {
   pmNumber: '',
@@ -94,10 +95,11 @@ const addFrequency = plan => {
   return toLocalDateInput(date)
 }
 
-export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], workOrders = [], onGenerate, onOpenWorkOrder }) {
+export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], workOrders = [], scopeUser, onGenerate, onOpenWorkOrder }) {
   const { user } = useAuth()
   const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
   const [plans, setPlans] = useState(() => pmSeed.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') })))
+  const scopedPlans = scopeRowsForUser(plans, scopeUser || user, ['site'])
   const [mode, setMode] = useState('list')
   const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
   const [form, setForm] = useState(emptyPlan)
@@ -120,13 +122,13 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
     ).values()
   ], [jobTasks])
 
-  const selected = plans.find(plan => plan.pmNumber === selectedId)
+  const selected = scopedPlans.find(plan => plan.pmNumber === selectedId)
   const matchesTab = plan => {
     if (pmTab === 'All') return true
     if (pmTab === 'OVERDUE' || pmTab === 'DUE_SOON') return pmDueState(plan) === pmTab
     return plan.pmStatus === pmTab
   }
-  const tabRows = plans.filter(matchesTab)
+  const tabRows = scopedPlans.filter(matchesTab)
   const searched = filterRows(tabRows, search, searchKeys)
   const visible = applyStandardFilters(searched, filters, {
     site: ['site'],
@@ -202,21 +204,21 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         active={pmTab}
         onChange={value => { setPmTab(value); setFilters(scopedStandardFilters(user, plans, ['site'])); setPage(1) }}
         tabs={[
-          { key: 'All', label: 'All PM Schedules', count: plans.length },
-          { key: 'OVERDUE', label: 'Overdue', count: countPmDueState(plans, 'OVERDUE') },
-          { key: 'DUE_SOON', label: 'Due Soon', count: countPmDueState(plans, 'DUE_SOON') },
-          { key: 'ACTIVE', label: 'Active', count: plans.filter(plan => plan.pmStatus === 'ACTIVE').length },
-          { key: 'INACTIVE', label: 'Inactive', count: plans.filter(plan => plan.pmStatus === 'INACTIVE').length },
-          { key: 'DRAFT', label: 'Draft', count: plans.filter(plan => plan.pmStatus === 'DRAFT').length }
+          { key: 'All', label: 'All PM Schedules', count: scopedPlans.length },
+          { key: 'OVERDUE', label: 'Overdue', count: countPmDueState(scopedPlans, 'OVERDUE') },
+          { key: 'DUE_SOON', label: 'Due Soon', count: countPmDueState(scopedPlans, 'DUE_SOON') },
+          { key: 'ACTIVE', label: 'Active', count: scopedPlans.filter(plan => plan.pmStatus === 'ACTIVE').length },
+          { key: 'INACTIVE', label: 'Inactive', count: scopedPlans.filter(plan => plan.pmStatus === 'INACTIVE').length },
+          { key: 'DRAFT', label: 'Draft', count: scopedPlans.filter(plan => plan.pmStatus === 'DRAFT').length }
         ]}
       />
 
       <StandardFilters
         filters={filters}
         setFilters={value => { setFilters(value); setPage(1) }}
-        siteOptions={optionsFromRows(plans, ['site'])}
-        departmentOptions={optionsFromRows(plans, ['department', 'personGroup'])}
-        statusOptions={optionsFromRows(plans, ['pmStatus', 'woStatus'])}
+        siteOptions={optionsFromRows(scopedPlans, ['site'])}
+        departmentOptions={optionsFromRows(scopedPlans, ['department', 'personGroup'])}
+        statusOptions={optionsFromRows(scopedPlans, ['pmStatus', 'woStatus'])}
       />
 
       <TableSearch

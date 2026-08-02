@@ -29,6 +29,7 @@ export function optionsFromRows(rows = [], keys = []) {
 export function siteCodeFromUser(user) {
   const site = String(user?.site || '').trim()
   if (!site || /^all sites$/i.test(site)) return ''
+  if (/[,;|]+/.test(site)) return ''
   return site.split('/').pop().trim()
 }
 

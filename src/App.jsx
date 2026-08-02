@@ -33,7 +33,7 @@ import WorkOrderMetersTab from './components/work-orders/WorkOrderMetersTab'
 import WorkOrderHeader, { workOrderOutlineButtonClass, workOrderPrimaryButtonClass } from './components/work-orders/WorkOrderHeader'
 import WorkOrderTabs from './components/work-orders/WorkOrderTabs'
 import { navigationItems, pathForPage, routeToPage } from './config/navigation'
-import { assets, departments, excelDate, failureClassOptions, failureCodes, incidentSeed, jobPlans as jobPlanSeed, jobTasks, labor as laborMaster, locations, materials as materialMaster, pmRecords, rolePermissionRows, serviceRequestSeed, slaBreached, statusMatrix, toDateTimeInput, tools as toolMaster, uniqueCodeOptions, workOrders, workOrderSeeds } from './data/workspaceData'
+import { assets, departments, excelDate, failureClassOptions, failureCodes, incidentSeed, jobPlans as jobPlanSeed, jobTasks, labor as laborMaster, locations, materials as materialMaster, pmRecords, rolePermissionRows, serviceRequestSeed, slaBreached, statusMatrix, toDateTimeInput, tools as toolMaster, uniqueCodeOptions, users as userSeed, workOrders, workOrderSeeds } from './data/workspaceData'
 import { useAuth } from './providers/AuthProvider'
 import { nowLocalDate, nowLocalDateTime } from './lib/datetime'
 import { printWithoutBrowserTitle } from './lib/print'
@@ -42,7 +42,7 @@ import { storeLabel, storesHolding, totalAvailable } from './lib/inventory'
 import { readProjectName, writeProjectName } from './lib/projectSettings'
 import { canTransitionWorkOrder, statusDescription, statusOptions, workOrderTransitions } from './lib/statusMatrix'
 import { HOLD_MATERIAL, effectiveTargetTime, endHold, holdSince, isOnHold, startHold } from './lib/holdPeriods'
-import { canViewPage, filterNavigationForUser, firstAllowedPage } from './lib/accessControl'
+import { canViewPage, filterNavigationForUser, firstAllowedPage, scopeRowsForUser } from './lib/accessControl'
 
 
 const buildWorkOrderNotifications = rows => {
@@ -468,14 +468,31 @@ export default function App() {
   const [purchaseOrders,setPurchaseOrders]=useState([])
   const [reservations,setReservations]=useState([])
   const [rolePermissionRecords,setRolePermissionRecords]=useState(rolePermissionRows)
+  const [userRecords,setUserRecords]=useState(userSeed)
   const [projectName,setProjectName]=useState(readProjectName)
   const changeProjectName=name=>setProjectName(writeProjectName(name))
-  const workOrderNotifications = buildWorkOrderNotifications(allWorkOrders)
   const effectiveUser = useMemo(() => {
     if (!user) return null
+    const account = userRecords.find(row => row.userId === user.userId || row.username === user.username) || user
     const role = rolePermissionRecords.find(row => row.role === user.role)
-    return role ? { ...user, permissions: role.permissions || {}, roleStatus: role.status } : user
-  }, [user, rolePermissionRecords])
+    return role ? {
+      ...user,
+      ...account,
+      permissions: role.permissions || {},
+      roleStatus: role.status,
+      siteScope: account.site || role.site,
+      departmentScope: account.department || role.department
+    } : { ...user, ...account, siteScope: account.site, departmentScope: account.department }
+  }, [user, userRecords, rolePermissionRecords])
+  const scopedAssets = useMemo(() => scopeRowsForUser(assets, effectiveUser, ['site']), [effectiveUser])
+  const scopedWorkOrders = useMemo(() => scopeRowsForUser(allWorkOrders, effectiveUser, ['SITE']), [allWorkOrders, effectiveUser])
+  const scopedServiceRequests = useMemo(() => scopeRowsForUser(serviceRequests, effectiveUser, ['site']), [serviceRequests, effectiveUser])
+  const scopedIncidents = useMemo(() => scopeRowsForUser(incidents, effectiveUser, ['site']), [incidents, effectiveUser])
+  const scopedLocations = useMemo(() => scopeRowsForUser(locations, effectiveUser, ['site']), [effectiveUser])
+  const scopedPurchaseRequests = useMemo(() => scopeRowsForUser(purchaseRequests, effectiveUser, ['site']), [purchaseRequests, effectiveUser])
+  const scopedPurchaseOrders = useMemo(() => scopeRowsForUser(purchaseOrders, effectiveUser, ['site']), [purchaseOrders, effectiveUser])
+  const scopedReservations = useMemo(() => scopeRowsForUser(reservations, effectiveUser, ['site']), [reservations, effectiveUser])
+  const workOrderNotifications = buildWorkOrderNotifications(scopedWorkOrders)
   const allowedNavigation = useMemo(() => filterNavigationForUser(navigationItems, effectiveUser), [effectiveUser])
   const fallbackPage = firstAllowedPage(navigationItems, effectiveUser)
   const canNavigate = name => canViewPage(effectiveUser, name)
@@ -645,13 +662,13 @@ export default function App() {
     return [...rows,{'WORKORDER':pm.workOrder,'DESCRIPITION ':pm.description,'LOCATION ':inheritedLocation,'LOCATION PRIORTY':3,'ASSET':pm.asset,'ASSET DESCRIPTION':assetRecord?.description?.trim() || '','STATUS':pm.woStatus||'WSCH','WORK TYPE ':'PM','STATUS DESCRIPITION':maximoWorkOrderStatusDescriptions[pm.woStatus||'WSCH']||'Waiting for Schedule','DEPARTMENT ':pm.department,'SUB DEPARTMENT  NAME':pm.subDepartment,'ASSIGNED DEPARTMENT':pm.department,'PRIORTY':3,'SITE':inheritedSite,'TARGET START ':pm.startDate,'TARGET FINISH ':pm.startDate,'REPORTED DATE ':nowLocalDateTime(),'PM NUMBER':pm.pmNumber,'PM CYCLE':pm.cycle,'JOB PLAN':pm.jobPlan,'JOB PLAN TASKS':tasks,'ESTIMATED DURATION':tasks.reduce((sum,task)=>sum+Number(task['TASK DURATION IN HOUR']||0),0)*24,'ROUTE':pm.route,'LEAD TIME (DAYS)':pm.leadTime,'FREQUENCY':pm.frequency,'FREQUNIT':pm.freqUnit,'PMCOUNTER':pm.pmCounter,'STORELOC':pm.storeLocation,'SUPERVISOR':pm.supervisor,'LEAD':pm.lead,'PERSONGROUP':pm.personGroup,'PM STATUS':pm.pmStatus}]
   })
   const pages = {
-    'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={serviceRequests} setRequests={setServiceRequests} assets={assets} workOrders={allWorkOrders} failureOptions={failureClassOptions}/>,
-    'Incidents': <IncidentsPage rows={incidents} setRows={setIncidents}/>,
-    'Work Orders': <WorkOrdersPage rows={allWorkOrders} assets={assets} onCreate={createWorkOrder} onImportRows={setAllWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
-    'Assets': <AssetsPage initialAssets={assets} workOrders={allWorkOrders} />,
-    'Preventive Maintenance': <PreventiveMaintenancePage assets={assets} jobTasks={jobTasks} workOrders={allWorkOrders} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
-    'Meters': <MetersPage assets={assets} workOrders={allWorkOrders} />,
-    'Locations': <LocationsPage initialLocations={locations}/>,
+    'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} setRequests={setServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} failureOptions={failureClassOptions}/>,
+    'Incidents': <IncidentsPage rows={scopedIncidents} setRows={setIncidents}/>,
+    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} onCreate={createWorkOrder} onImportRows={setAllWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
+    'Assets': <AssetsPage initialAssets={scopedAssets} workOrders={scopedWorkOrders} />,
+    'Preventive Maintenance': <PreventiveMaintenancePage assets={scopedAssets} jobTasks={jobTasks} workOrders={scopedWorkOrders} scopeUser={effectiveUser} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
+    'Meters': <MetersPage assets={scopedAssets} workOrders={scopedWorkOrders} />,
+    'Locations': <LocationsPage initialLocations={scopedLocations}/>,
     'Job Plans': selectedJobPlan ? <JobPlanDetailPage plan={selectedJobPlan} tasks={jobTaskRecords.filter(task=>task.JPNUM===selectedJobPlan.JPNUM)} workOrders={allWorkOrders.filter(order=>getWorkOrderJobPlan(order)===selectedJobPlan.JPNUM)} onBack={()=>{setSelectedJobPlan(null);window.history.pushState({},'','/job-plans')}} onUpdate={updateJobPlan}/> : <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobPlanSummaryRows} onCreate={createJobPlan} search={search} setSearch={setSearch} action="New job plan" modalTitle="Add job plan" modalNote="Create a job plan task line with sequence, instructions, and estimated duration." modalFields={[
       { key: 'JPNUM', label: 'Job Plan', required: true, placeholder: 'JP415004' },
       { key: 'DESCRIPTION', label: 'Plan Description', required: true, full: true },
@@ -674,14 +691,14 @@ export default function App() {
     ]} rowKey="FAILURE CLASS ID" onRowClick={row=>{setSelectedFailureClass(row);window.history.pushState({},'',`/failure-library/${encodeURIComponent(row['FAILURE CLASS ID'])}`)}} columns={[
       {key:'FAILURE CLASS ID',label:'Class',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Class description'},{key:'problemCount',label:'Problems'},{key:'causeCount',label:'Causes'},{key:'remedyCount',label:'Remedies'}
     ]}/>,
-    'Labor': <LaborPage/>,
-    'Materials': <MaterialsPage/>,
-    'Stores': <StoresPage/>,
-    'Purchase Requisitions': <PurchaseRequestsPage rows={purchaseRequests} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
-    'Purchase Orders': <PurchaseOrdersPage rows={purchaseOrders} onUpdateOrder={updatePurchaseOrder} onUpdateRequest={updatePurchaseRequest}/>,
-    'Reservations': <ReservationsPage rows={reservations} onUpdate={updateReservation}/>,
-    'Tools & Equipment': <ToolsPage/>,
-    'Users': <UsersPage roleRows={rolePermissionRecords}/>,
+    'Labor': <LaborPage workOrders={scopedWorkOrders}/>,
+    'Materials': <MaterialsPage workOrders={scopedWorkOrders}/>,
+    'Stores': <StoresPage scopeUser={effectiveUser}/>,
+    'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
+    'Purchase Orders': <PurchaseOrdersPage rows={scopedPurchaseOrders} onUpdateOrder={updatePurchaseOrder} onUpdateRequest={updatePurchaseRequest}/>,
+    'Reservations': <ReservationsPage rows={scopedReservations} onUpdate={updateReservation}/>,
+    'Tools & Equipment': <ToolsPage workOrders={scopedWorkOrders}/>,
+    'Users': <UsersPage rows={userRecords} setRows={setUserRecords} roleRows={rolePermissionRecords} scopeUser={effectiveUser}/>,
     'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={setRolePermissionRecords}/>,
     'Settings': <SettingsPage projectName={projectName} onProjectNameChange={changeProjectName}/>
   }
@@ -693,7 +710,7 @@ export default function App() {
       active={activePage}
       navigation={allowedNavigation}
       projectName={projectName}
-      counters={{ workOrders: allWorkOrders.length }}
+      counters={{ workOrders: scopedWorkOrders.length }}
       overdueCount={workOrderNotifications.filter(item => item.type === 'overdue').length}
       notifications={workOrderNotifications}
       statusRuleCount={statusMatrix.length}
@@ -703,7 +720,7 @@ export default function App() {
       onNavigate={navigate}
       onOpenWorkOrders={() => navigate('Work Orders')}
     >
-      {activePage === 'Overview' ? <OverviewPage onNavigate={navigate} onOpenWorkOrderTab={openWorkOrderTab} projectName={projectName} incidents={incidents} workOrders={allWorkOrders} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} reservations={reservations} /> : pages[activePage]}
+      {activePage === 'Overview' ? <OverviewPage onNavigate={navigate} onOpenWorkOrderTab={openWorkOrderTab} projectName={projectName} assets={scopedAssets} incidents={scopedIncidents} workOrders={scopedWorkOrders} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} reservations={scopedReservations} /> : pages[activePage]}
     </AppShell>
   )
 }

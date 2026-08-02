@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { labor as laborSeed, laborWorkMap, workOrders } from '../data/workspaceData'
+import { labor as laborSeed, laborWorkMap, workOrders as defaultWorkOrders } from '../data/workspaceData'
 import AddLaborModal from '../components/labor/AddLaborModal'
 import LaborDetailPage from '../components/labor/LaborDetailPage'
 import Badge from '../components/ui/Badge'
@@ -29,7 +29,7 @@ const workOrderNumber = order => String(order.WORKORDER || order['WORK ORDER'] |
 const workOrderTitle = order => order['DESCRIPITION '] || order.DESCRIPTION || order.description || 'Work order'
 const workOrderDepartment = order => String(order['DEPARTMENT '] || order.department || '')
 const workOrderSubDepartment = order => String(order['SUB DEPARTMENT  NAME'] || order.subDepartment || '')
-const laborPastWork = labor => workOrders
+const laborPastWork = (labor, workOrders) => workOrders
   .filter(order => {
     const assignedNumbers = laborWorkMap[labor.personId] || []
     const number = workOrderNumber(order)
@@ -48,7 +48,7 @@ const laborPastWork = labor => workOrders
     targetFinish: order['TARGET FINISH '] || order['TARGET START '] || '-'
   }))
 
-export default function LaborPage() {
+export default function LaborPage({ workOrders = defaultWorkOrders }) {
   const [rows, setRows] = useState(laborSeed)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
@@ -89,7 +89,7 @@ export default function LaborPage() {
   }
 
   if (selected) {
-    return <LaborDetailPage labor={selected} pastWork={laborPastWork(selected)} onBack={close} onUpdate={updateLabor} />
+    return <LaborDetailPage labor={selected} pastWork={laborPastWork(selected, workOrders)} onBack={close} onUpdate={updateLabor} />
   }
 
   return (

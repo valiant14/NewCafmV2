@@ -147,6 +147,7 @@ export default function OverviewPage({
   onNavigate,
   onOpenWorkOrderTab,
   projectName = '',
+  assets: liveAssets = assets,
   incidents = [],
   workOrders: liveWorkOrders = workOrders,
   purchaseRequests = [],
@@ -154,7 +155,8 @@ export default function OverviewPage({
   reservations = []
 }) {
   const [imported, setImported] = useState('')
-  const operating = assets.filter(asset => asset.status === 'OPERATING').length
+  const assetRows = liveAssets
+  const operating = assetRows.filter(asset => asset.status === 'OPERATING').length
   const now = Date.now()
   const workOrderRows = liveWorkOrders
   const openOrders = workOrderRows.filter(order => !isClosed(order))
@@ -222,7 +224,7 @@ export default function OverviewPage({
   const scheduledPmOrders = workOrderRows.filter(order => String(order['WORK TYPE '] || '').trim() === 'PM' && targetTime(order))
   const pmMissed = scheduledPmOrders.filter(missedTarget).length
   const healthComponents = [
-    { label: 'Asset availability', weight: 40, value: percentage(operating, assets.length), note: `${operating} of ${assets.length} assets operating` },
+    { label: 'Asset availability', weight: 40, value: percentage(operating, assetRows.length), note: `${operating} of ${assetRows.length} assets operating` },
     { label: 'SLA compliance', weight: 35, value: workOrderRows.length ? slaCompliance : null, note: workOrderRows.length ? `${overdueOrders.length} of ${workOrderRows.length} work orders past target` : 'No work orders logged yet' },
     { label: 'PM compliance', weight: 25, value: percentage(scheduledPmOrders.length - pmMissed, scheduledPmOrders.length), note: scheduledPmOrders.length ? `${pmMissed} of ${scheduledPmOrders.length} PM work orders missed target` : 'No scheduled PM work orders yet' }
   ]
@@ -234,7 +236,7 @@ export default function OverviewPage({
 
   // Meters are a pure function of assets and work orders, so the dashboard derives them
   // rather than duplicating the Meters page's state.
-  const meters = seedMeters(assets, workOrderRows)
+  const meters = seedMeters(assetRows, workOrderRows)
   const utilityTrend = type => {
     const typeMeters = meters.filter(meter => meter.meterType === type)
     if (!typeMeters.length) return []
@@ -293,7 +295,7 @@ export default function OverviewPage({
         <section className="print-grid-4 mb-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Metric label="Incidents" value={openIncidents.length} detail={`${incidents.length} logged, ${incidents.length - openIncidents.length} resolved`} icon={AlertOctagon} tone="orange" onClick={() => onNavigate('Incidents')} />
           <Metric label="Permits to work" value={permitOrders.length} detail={permitsMissingDocs ? `${permitsMissingDocs} awaiting documentation` : `${permitFiles} permit document${permitFiles === 1 ? '' : 's'} on file`} icon={FileCheck2} tone="purple" onClick={() => onNavigate('Work Orders')} />
-          <Metric label="Assets online" value={`${operating}/${assets.length}`} detail={`${percentage(operating, assets.length) ?? 0}% operational`} icon={Boxes} tone="green" onClick={() => onNavigate('Assets')} />
+          <Metric label="Assets online" value={`${operating}/${assetRows.length}`} detail={`${percentage(operating, assetRows.length) ?? 0}% operational`} icon={Boxes} tone="green" onClick={() => onNavigate('Assets')} />
           <Metric label="PM programs" value={pmRecords.length} detail="Recurring schedules" icon={CalendarClock} tone="blue" onClick={() => onNavigate('Preventive Maintenance')} />
         </section>
 

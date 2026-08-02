@@ -5,6 +5,7 @@ import DataTable from '../ui/DataTable'
 import EmptyState from '../ui/EmptyState'
 import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
+import Field from '../ui/Field'
 
 const userStatuses = ['Active', 'Inactive', 'Locked']
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
@@ -13,6 +14,7 @@ const maskPassword = password => password ? '•'.repeat(Math.min(12, Math.max(6
 export default function UserDetailPage({ user, role, labor, onBack, onUpdate }) {
   const [tab, setTab] = useState('User Details')
   const changeStatus = event => onUpdate?.(user.userId, { status: event.target.value })
+  const updateField = key => event => onUpdate?.(user.userId, { [key]: event.target.value })
   const permissionRows = Object.entries(role?.permissions || {}).map(([action, modules]) => ({
     action,
     modules: modules.join(', ') || '-',
@@ -87,6 +89,16 @@ export default function UserDetailPage({ user, role, labor, onBack, onUpdate }) 
                 ['Last Login', user.lastLogin]
               ]}
             />
+            <section className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+              <header className="mb-4 border-b border-[var(--app-line)] pb-4">
+                <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">ACCESS SCOPE</span>
+                <h2 className="text-base font-extrabold text-[var(--app-ink)]">User Site Access</h2>
+              </header>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="Site Scope" value={user.site || ''} onChange={updateField('site')} placeholder="All Sites or 1031, 1032" />
+                <Field label="Department Scope" value={user.department || ''} onChange={updateField('department')} placeholder="All Departments or HVAC" />
+              </div>
+            </section>
           </main>
         )}
 

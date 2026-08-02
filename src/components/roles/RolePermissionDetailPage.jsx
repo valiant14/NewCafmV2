@@ -4,12 +4,14 @@ import Badge from '../ui/Badge'
 import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { permissionActions, permissionModules } from '../../data/workspaceData'
+import Field from '../ui/Field'
 
 const matrixClass = 'overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]'
 const checkClass = active => `mx-auto grid h-6 w-6 place-items-center rounded-lg border text-[10px] font-extrabold ${active ? 'border-[var(--app-primary)] bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'border-[var(--app-line)] text-[var(--app-muted)]'}`
 
 export default function RolePermissionDetailPage({ role, onBack, onUpdate }) {
   const [tab, setTab] = useState('Scope Rules')
+  const updateField = key => event => onUpdate?.(role.role, { [key]: event.target.value })
   const togglePermission = (action, module) => {
     const currentModules = role.permissions?.[action] || []
     const nextModules = currentModules.includes(module)
@@ -77,6 +79,16 @@ export default function RolePermissionDetailPage({ role, onBack, onUpdate }) {
                 ['Status', role.status]
               ]}
             />
+            <section className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+              <header className="mb-4 border-b border-[var(--app-line)] pb-4">
+                <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">SCOPE DEFAULTS</span>
+                <h2 className="text-base font-extrabold text-[var(--app-ink)]">Role Site Access</h2>
+              </header>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="Site Scope" value={role.site || ''} onChange={updateField('site')} placeholder="All Sites or 1031, 1032" />
+                <Field label="Department Scope" value={role.department || ''} onChange={updateField('department')} placeholder="All Departments or HVAC" />
+              </div>
+            </section>
           </main>
         )}
 
