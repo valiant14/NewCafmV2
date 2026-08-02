@@ -58,7 +58,7 @@ const exportColumns = excelDate => {
 
 const workOrderTemplateHeaders = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTION', 'STATUS', 'WORK TYPE ', 'PRIORTY', 'SITE', 'DEPARTMENT ', 'SUB DEPARTMENT  NAME', 'LOCATION ', 'ASSET', 'TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'FAILURE CODE', 'PROBLEM CODE']
 
-export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, EditorComponent, excelDate }) {
+export default function WorkOrdersPage({ rows, assets, siteRecords = [], departmentRecords = [], onCreate, onImportRows, EditorComponent, excelDate }) {
   const { user } = useAuth()
   const [selected, setSelected] = useState(() => {
     const id = decodeURIComponent(window.location.pathname.split('/work-orders/')[1] || '')
@@ -83,7 +83,7 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
   const typedRows = rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)
   const scoped = applyStandardFilters(typedRows, filters, {
     site: ['SITE'],
-    department: ['DEPARTMENT ', 'ASSIGNED DEPARTMENT'],
+    department: ['DEPARTMENT ', 'ASSIGNED DEPARTMENT', 'SUB DEPARTMENT  NAME'],
     status: ['STATUS'],
     date: ['TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'REPORTED DATE ']
   })
@@ -158,7 +158,7 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
           filters={filters}
           setFilters={value => { setFilters(value); setPage(1) }}
           siteOptions={optionsFromRows(rows, ['SITE'])}
-          departmentOptions={optionsFromRows(rows, ['DEPARTMENT ', 'ASSIGNED DEPARTMENT'])}
+          departmentOptions={optionsFromRows(rows, ['DEPARTMENT ', 'ASSIGNED DEPARTMENT', 'SUB DEPARTMENT  NAME'])}
           statusOptions={optionsFromRows(rows, ['STATUS'])}
         />
         <TableSearch
@@ -219,6 +219,6 @@ export default function WorkOrdersPage({ rows, assets, onCreate, onImportRows, E
   )
 
   if (selected?.WORKORDER) return <EditorComponent page order={selected} onClose={closeOrder} />
-  if (creating) return <>{listView}<CreateWorkOrderModal rows={rows} assets={assets} onCancel={closeCreate} onCreate={create} /></>
+  if (creating) return <>{listView}<CreateWorkOrderModal rows={rows} assets={assets} siteRecords={siteRecords} departmentRecords={departmentRecords} onCancel={closeCreate} onCreate={create} /></>
   return listView
 }

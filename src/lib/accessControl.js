@@ -1,3 +1,5 @@
+import { normalizeDepartmentName } from './departments'
+
 const pagePermissionAliases = {
   Overview: ['Overview', 'Reports'],
   'Job Requests': ['Job Requests'],
@@ -44,7 +46,7 @@ export const scopeValuesFromText = value => {
   const text = String(value || '').trim()
   if (!text || /^all departments$/i.test(text) || /^all$/i.test(text)) return []
   if (text.split(/[,;|]+/).some(part => /^all departments$/i.test(part.trim()))) return []
-  return text.split(/[,;|]+/).map(part => part.trim().toLowerCase()).filter(Boolean)
+  return text.split(/[,;|]+/).map(part => normalizeDepartmentName(part)).filter(Boolean)
 }
 
 export const canViewPage = (user, pageName) => {
@@ -77,14 +79,14 @@ export const canViewSite = (user, site) => {
 export const canViewDepartment = (user, department) => {
   const scope = scopeValuesFromText(user?.departmentScope || user?.department)
   if (!scope.length) return true
-  const rowDepartment = String(department || '').trim().toLowerCase()
+  const rowDepartment = normalizeDepartmentName(department)
   return !rowDepartment || scope.includes(rowDepartment)
 }
 
 export const canViewAnyDepartment = (user, row, departmentKeys = []) => {
   const scope = scopeValuesFromText(user?.departmentScope || user?.department)
   if (!scope.length || !departmentKeys.length) return true
-  const values = valuesFromKeys(row, departmentKeys).map(value => value.toLowerCase())
+  const values = valuesFromKeys(row, departmentKeys).map(normalizeDepartmentName)
   if (!values.length) return true
   return values.some(value => scope.includes(value))
 }
@@ -100,3 +102,17 @@ export const filterNavigationForUser = (navigationItems, user) =>
 
 export const firstAllowedPage = (navigationItems, user) =>
   filterNavigationForUser(navigationItems, user)[0]?.name || ''
+
+export const accessContextForUser = user => ({
+  userId: user?.userId || '',
+  username: user?.username || '',
+  role: user?.role || '',
+  view: user?.permissions?.view || [],
+  create: user?.permissions?.create || [],
+  edit: user?.permissions?.edit || [],
+  approve: user?.permissions?.approve || [],
+  close: user?.permissions?.close || [],
+  import: user?.permissions?.import || [],
+  siteCodes: siteCodesForUser(user),
+  departments: scopeValuesFromText(user?.departmentScope || user?.department)
+})

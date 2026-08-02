@@ -5,8 +5,8 @@ import Button from '../ui/Button'
 import { printWithoutBrowserTitle } from '../../lib/print'
 import { Field, Section } from '../ui/FormControls'
 import { ModalFooter, ModalHeader, ModalPanel } from '../ui/ModalFrame'
-import { departments } from '../../data/workspaceData'
 import GenericPrintReport from '../ui/GenericPrintReport'
+import { sameDepartment } from '../../lib/departments'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 
 const tabs = [
@@ -15,7 +15,7 @@ const tabs = [
   ['Attachments', Paperclip]
 ]
 
-export default function ServiceRequestDetail({ request, assets, workOrders, failureOptions, onBack, onSubmit, onApprove, onOpenWorkOrder, modal = false }) {
+export default function ServiceRequestDetail({ request, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, onBack, onSubmit, onApprove, onOpenWorkOrder, modal = false }) {
   const [form, setForm] = useState(request)
   const [submitError, setSubmitError] = useState('')
   const [activeTab, setActiveTab] = useState('Request Details')
@@ -38,13 +38,19 @@ export default function ServiceRequestDetail({ request, assets, workOrders, fail
   ].filter(Boolean)
 
   const update = key => event => setForm({ ...form, [key]: event.target.value })
-  const sites = [...new Set([...assets.map(asset => String(asset.site)), ...workOrders.map(order => String(order.SITE))].filter(Boolean))].sort()
+  const sites = siteRecords.length
+    ? siteRecords.filter(site => site.status !== 'Inactive').map(site => ({ value: site.code, label: site.name }))
+    : [...new Set([...assets.map(asset => String(asset.site)), ...workOrders.map(order => String(order.SITE))].filter(Boolean))].sort()
   const siteAssets = assets.filter(asset => !form.site || String(asset.site) === String(form.site))
   const assetOptions = siteAssets.map(asset => ({ value: asset.assetnum, label: asset.description?.trim() }))
   const locations = [...new Set([...siteAssets.map(asset => asset.location), ...workOrders.filter(order => !form.site || String(order.SITE) === String(form.site)).map(order => order['LOCATION '])].filter(Boolean))].sort()
-  const departmentOptions = departments.map(department => ({ value: department.name, label: department.code }))
-  const selectedDepartment = departments.find(department => department.name === form.department)
-  const subDepartmentOptions = (selectedDepartment?.subDepartments || departments.flatMap(department => department.subDepartments)).map(sub => ({ value: sub.name, label: sub.code }))
+  const departmentOptions = [...new Map(departmentRecords
+    .filter(department => department.status !== 'Inactive' && department.department)
+    .map(department => [department.department, { value: department.department, label: '' }])
+  ).values()]
+  const subDepartmentOptions = departmentRecords
+    .filter(department => department.status !== 'Inactive' && sameDepartment(department.department, form.department))
+    .map(department => ({ value: department.description, label: department.subDepartmentCode }))
 
   const updateSite = event => setForm({ ...form, site: event.target.value, location: '', asset: '' })
   const updateAsset = event => {

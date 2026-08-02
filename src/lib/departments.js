@@ -3,10 +3,20 @@ import crafts from '../data/crafts.json'
 
 export const allSystems = departments.flatMap(department => department.systems || [])
 
+export const normalizeDepartmentName = value => {
+  const text = String(value || '').trim().toLowerCase()
+  if (!text) return ''
+  const compact = text.replace(/[^a-z0-9]+/g, '')
+  if (compact === 'mechanics' || compact === 'mechanical') return 'mechanical'
+  return compact
+}
+
+export const sameDepartment = (left, right) => normalizeDepartmentName(left) === normalizeDepartmentName(right)
+
 const matchDepartment = name => {
-  const key = String(name || '').trim().toLowerCase()
+  const key = normalizeDepartmentName(name)
   if (!key) return null
-  return departments.find(department => department.name.toLowerCase() === key || department.code.toLowerCase() === key) || null
+  return departments.find(department => normalizeDepartmentName(department.name) === key || normalizeDepartmentName(department.code) === key) || null
 }
 
 // Systems are categorised by department per the O&M contract. A blank or unrecognised

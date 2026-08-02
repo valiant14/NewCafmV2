@@ -3,6 +3,8 @@ import Badge from '../components/ui/Badge'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
+import ExportExcelButton from '../components/ui/ExportExcelButton'
+import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import RolePermissionDetailPage from '../components/roles/RolePermissionDetailPage'
@@ -11,10 +13,21 @@ import { permissionActions, rolePermissionRows } from '../data/workspaceData'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 const headers = ['role', 'user', 'site', 'department', 'scope', 'status', ...permissionActions]
+const permissionText = value => Array.isArray(value) ? value.join(', ') : String(value || '')
+const parsePermissionText = value => permissionText(value).split(/[,;|]+/).map(item => item.trim()).filter(Boolean)
+const roleFromImport = row => ({
+  ...row,
+  permissions: Object.fromEntries(permissionActions.map(action => [action, parsePermissionText(row[action] || row.permissions?.[action])]))
+})
+const exportColumns = [
+  ...['role', 'user', 'site', 'department', 'scope', 'status'].map(header => ({ key: header, label: header })),
+  ...permissionActions.map(action => ({ key: action, label: action, exportValue: (_, row) => permissionText(row.permissions?.[action]) }))
+]
 
 export default function RolesPermissionsPage({ rows = rolePermissionRows, setRows, siteOptions = [], departmentOptions = [] }) {
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
+  const [imported, setImported] = useState('')
   const routeId = decodeURIComponent(window.location.pathname.split('/roles-permissions/')[1] || '')
   const [selectedRole, setSelectedRole] = useState(rows.find(row => row.role === routeId) || null)
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
@@ -48,10 +61,12 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={headers} fileName="Roles_Permissions_Template.xlsx" />
-            <ExcelImportButton label="Import Excel" onImport={importedRows => setRows?.(importedRows.map(row => ({ ...row, permissions: row.permissions || {} })))} />
+            <ExportExcelButton module="Roles Permissions" rows={visibleRows} columns={exportColumns} />
+            <ExcelImportButton label="Import Excel" fileName={imported} onFile={setImported} onImport={importedRows => setRows?.(importedRows.map(roleFromImport))} />
           </div>
         )}
       />
+      <ImportNotice fileName={imported} subject="roles and permissions" onClear={() => setImported('')} />
 
       <IndexTabs
         active={tab}

@@ -53,7 +53,7 @@ const exportColumns = [
   { key: 'convertedWorkOrder', label: 'Converted Work Order' }
 ]
 
-export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, failureOptions }) {
+export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions }) {
   const { user } = useAuth()
   const requestFromPath = () => {
     const id = decodeURIComponent((window.location.pathname.split('/job-requests/')[1] || window.location.pathname.split('/service-requests/')[1] || ''))
@@ -64,7 +64,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(() => scopedStandardFilters(user, requests))
   const tabRows = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? request.status === 'WAPPR' : request.status === 'RESOLVED')
-  const visible = applyStandardFilters(tabRows, filters, { date: ['reportedDate'] })
+  const visible = applyStandardFilters(tabRows, filters, { department: ['department', 'assignedDepartment', 'subDepartment'], date: ['reportedDate'] })
 
   useEffect(() => {
     const pop = () => setSelected(requestFromPath())
@@ -119,7 +119,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
         filters={filters}
         setFilters={setFilters}
         siteOptions={optionsFromRows(requests, ['site'])}
-        departmentOptions={optionsFromRows(requests, ['department', 'assignedDepartment'])}
+        departmentOptions={optionsFromRows(requests, ['department', 'assignedDepartment', 'subDepartment'])}
         statusOptions={optionsFromRows(requests, ['status'])}
       />
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
@@ -143,7 +143,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     </>
   )
 
-  const detailProps = { assets, workOrders, failureOptions, onBack: close, onSubmit: submit, onApprove: approve, onOpenWorkOrder }
+  const detailProps = { assets, workOrders, siteRecords, departmentRecords, failureOptions, onBack: close, onSubmit: submit, onApprove: approve, onOpenWorkOrder }
   if (selected?.status === 'NEW') return <>{listView}<ModalOverlay><ServiceRequestDetail modal request={selected} {...detailProps} /></ModalOverlay></>
   if (selected) return <ServiceRequestDetail request={selected} {...detailProps} />
   return listView

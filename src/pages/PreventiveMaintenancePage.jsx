@@ -99,7 +99,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   const { user } = useAuth()
   const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
   const [plans, setPlans] = useState(() => pmSeed.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') })))
-  const scopedPlans = scopeRowsForUser(plans, scopeUser || user, ['site'])
+  const scopedPlans = scopeRowsForUser(plans, scopeUser || user, ['site'], ['department', 'subDepartment', 'personGroup'])
   const [mode, setMode] = useState('list')
   const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
   const [form, setForm] = useState(emptyPlan)

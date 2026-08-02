@@ -3,22 +3,28 @@ import { AlertTriangle, Check, Plus, X } from 'lucide-react'
 import Button from '../ui/Button'
 import { Field } from '../ui/FormControls'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
-import { departments } from '../../data/workspaceData'
-import { subDepartmentsForDepartment } from '../../lib/departments'
+import { sameDepartment } from '../../lib/departments'
 
 const workTypes = ['CM', 'PM', 'Incident']
 const priorities = ['1 - Emergency', '2 - High', '3 - Medium', '4 - Low']
-const departmentOptions = departments.map(item => ({ value: item.name, label: item.code }))
 
-export default function CreateWorkOrderModal({ rows, assets, onCancel, onCreate }) {
+export default function CreateWorkOrderModal({ rows, assets, siteRecords = [], departmentRecords = [], onCancel, onCreate }) {
   const [form, setForm] = useState({ type: 'CM', description: '', priority: priorities[2], site: '', location: '', asset: '', department: '', subDepartment: '' })
   const [error, setError] = useState('')
   const update = key => event => setForm({ ...form, [key]: event.target.value })
-  const sites = [...new Set([...assets.map(asset => String(asset.site)), ...rows.map(order => String(order.SITE))].filter(Boolean))].sort()
+  const sites = siteRecords.length
+    ? siteRecords.filter(site => site.status !== 'Inactive').map(site => ({ value: site.code, label: site.name }))
+    : [...new Set([...assets.map(asset => String(asset.site)), ...rows.map(order => String(order.SITE))].filter(Boolean))].sort()
   const siteAssets = assets.filter(asset => !form.site || String(asset.site) === form.site)
   const assetOptions = siteAssets.map(asset => ({ value: asset.assetnum, label: asset.description?.trim() }))
   const locations = [...new Set([...siteAssets.map(asset => asset.location), ...rows.filter(order => !form.site || String(order.SITE) === form.site).map(order => order['LOCATION '])].filter(Boolean))].sort()
-  const subDepartmentOptions = subDepartmentsForDepartment(form.department).map(item => ({ value: item.name, label: item.code }))
+  const departmentOptions = [...new Map(departmentRecords
+    .filter(department => department.status !== 'Inactive' && department.department)
+    .map(department => [department.department, { value: department.department, label: '' }])
+  ).values()]
+  const subDepartmentOptions = departmentRecords
+    .filter(department => department.status !== 'Inactive' && sameDepartment(department.department, form.department))
+    .map(department => ({ value: department.description, label: department.subDepartmentCode }))
   const changeSite = event => setForm({ ...form, site: event.target.value, location: '', asset: '' })
   const changeAsset = event => {
     const value = event.target.value

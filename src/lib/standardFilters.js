@@ -1,3 +1,5 @@
+import { normalizeDepartmentName } from './departments'
+
 export const emptyStandardFilters = {
   site: '',
   department: '',
@@ -33,6 +35,11 @@ export function siteCodeFromUser(user) {
   return site.split('/').pop().trim()
 }
 
+const valuesFromKeys = (row, keys = []) => keys
+  .map(key => row?.[key])
+  .filter(value => value !== undefined && value !== null && String(value).trim() !== '')
+  .map(value => String(value).trim())
+
 // Pre-selects the signed-in user's site, but only when that site is actually present
 // in the rows. Labor, materials and tools carry no site at all, so an unguarded default
 // would match nothing and blank the whole list.
@@ -44,7 +51,7 @@ export function scopedStandardFilters(user, rows = [], siteKeys = ['site', 'SITE
 
 export function applyStandardFilters(rows = [], filters = emptyStandardFilters, keys = {}) {
   const siteKeys = keys.site || ['site', 'SITE']
-  const departmentKeys = keys.department || ['department', 'DEPARTMENT', 'DEPARTMENT ', 'assignedDepartment', 'Assigned Department']
+  const departmentKeys = keys.department || ['department', 'DEPARTMENT', 'DEPARTMENT ', 'assignedDepartment', 'Assigned Department', 'subDepartment', 'SUB DEPARTMENT  NAME']
   const statusKeys = keys.status || ['status', 'STATUS', 'availability', 'pmStatus']
   const dateKeys = keys.date || ['reportedDate', 'REPORTED DATE', 'REPORTED DATE ', 'TARGET START ', 'startDate', 'inspectionDue']
   const fromTime = filters.from ? dateTime(filters.from) : null
@@ -52,13 +59,13 @@ export function applyStandardFilters(rows = [], filters = emptyStandardFilters, 
 
   return rows.filter(row => {
     const site = valueFromKeys(row, siteKeys)
-    const department = valueFromKeys(row, departmentKeys)
+    const departments = valuesFromKeys(row, departmentKeys)
     const status = valueFromKeys(row, statusKeys)
     const dateValue = valueFromKeys(row, dateKeys)
     const rowTime = dateTime(dateValue)
 
     if (filters.site && site !== filters.site) return false
-    if (filters.department && department !== filters.department) return false
+    if (filters.department && !departments.some(department => normalizeDepartmentName(department) === normalizeDepartmentName(filters.department))) return false
     if (filters.status && status !== filters.status) return false
     if (fromTime && rowTime && rowTime < fromTime) return false
     if (toTime && rowTime && rowTime > toTime) return false
