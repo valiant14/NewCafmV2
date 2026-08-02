@@ -1,6 +1,5 @@
 import { createContext, useContext, useMemo, useState } from 'react'
-import userAccounts from '../data/users.json'
-import { rolePermissionRows } from '../data/roles'
+import { rolePermissionRows, users as userAccounts } from '../data/workspaceData'
 
 const AuthContext = createContext(null)
 const storageKey = 'seder-cafm-auth-user'

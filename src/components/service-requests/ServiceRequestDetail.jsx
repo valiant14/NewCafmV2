@@ -5,7 +5,7 @@ import Button from '../ui/Button'
 import { printWithoutBrowserTitle } from '../../lib/print'
 import { Field, Section } from '../ui/FormControls'
 import { ModalFooter, ModalHeader, ModalPanel } from '../ui/ModalFrame'
-import departments from '../../data/departments.json'
+import { departments } from '../../data/workspaceData'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 

@@ -6,7 +6,7 @@ import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
 import ExportExcelButton from '../components/ui/ExportExcelButton'
 import PageHeader from '../components/ui/PageHeader'
-import materialsSeed from '../data/materials.json'
+import { materials as materialsSeed } from '../data/workspaceData'
 import { storeLocation, storeStockRows, storeSummary } from '../lib/inventory'
 
 const summaryColumns = [

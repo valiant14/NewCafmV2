@@ -1,6 +1,4 @@
-import storerooms from '../data/storerooms.json'
-import inventorySeed from '../data/inventory.json'
-import locations from '../data/locations.json'
+import { inventory as inventorySeed, locationsMaster as locations, storerooms } from '../data/workspaceData'
 
 const clean = value => String(value ?? '').trim().toUpperCase()
 

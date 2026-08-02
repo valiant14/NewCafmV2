@@ -1,5 +1,5 @@
 import MasterRecordModal from '../master-data/MasterRecordModal'
-import departments from '../../data/departments.json'
+import { departments } from '../../data/workspaceData'
 import { craftByCode, craftsForDepartment, subDepartmentsForDepartment } from '../../lib/departments'
 
 const departmentOptions = ['', ...departments.map(department => department.name)]

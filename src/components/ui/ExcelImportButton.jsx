@@ -77,7 +77,7 @@ export default function ExcelImportButton({ fileName, onFile, onImport, label = 
       setResult({
         type: 'success',
         title: 'Excel import completed',
-        message: `${rows.length} row${rows.length === 1 ? '' : 's'} imported from ${file.name} and applied as mock data.`,
+        message: `${rows.length} row${rows.length === 1 ? '' : 's'} imported from ${file.name} and applied as workspace data.`,
         fileName: file.name,
         rows: rows.length
       })

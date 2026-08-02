@@ -11,7 +11,7 @@ import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import MeterDetailPage from '../components/meters/MeterDetailPage'
 import PageHeader from '../components/ui/PageHeader'
-import { seedMeters } from '../data/meters'
+import { seedMeters } from '../data/workspaceData'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
 import { useAuth } from '../providers/AuthProvider'
@@ -94,7 +94,7 @@ export default function MetersPage({ assets = [], workOrders = [] }) {
         reading: Math.max(0, reading - ((index + 1) * 85)),
         unit: meter.unit,
         readingDate: toLocalDateInput(date),
-        source: 'Historical mock',
+        source: 'Historical reading',
         status: 'Posted'
       }
     })

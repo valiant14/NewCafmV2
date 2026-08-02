@@ -7,7 +7,7 @@ import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import RolePermissionDetailPage from '../components/roles/RolePermissionDetailPage'
 import StandardFilters from '../components/ui/StandardFilters'
-import { permissionActions, rolePermissionRows } from '../data/roles'
+import { permissionActions, rolePermissionRows } from '../data/workspaceData'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 const headers = ['role', 'user', 'site', 'department', 'scope', 'status', ...permissionActions]

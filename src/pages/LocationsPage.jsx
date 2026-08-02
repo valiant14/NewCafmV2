@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { ChevronRight, MapPin, Plus } from 'lucide-react'
-import locationSeed from '../data/locations.json'
-import { assets, workOrders } from '../data/cafmData'
+import { assets, locationsMaster as locationSeed, workOrders } from '../data/workspaceData'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
