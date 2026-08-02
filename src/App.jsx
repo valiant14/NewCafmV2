@@ -173,6 +173,12 @@ const apiMappers = {
     apiKey: 'item_code',
     toApi: row => ({ item_code: toText(row.itemNumber), description: toText(row.description), category: row.category || '', unit_of_measure: row.unit || 'EA', status: statusText(row.status, row.availability || 'Active') })
   },
+  stores: {
+    endpoint: '/storerooms',
+    key: 'code',
+    apiKey: 'store_code',
+    toApi: row => ({ store_code: toText(row.code), store_name: toText(row.name), site_code: row.site || '1031', status: statusText(row.status) })
+  },
   tools: {
     endpoint: '/tools-equipment',
     key: 'toolNumber',
@@ -720,6 +726,7 @@ export default function App() {
   const saveLocations = useMemo(() => backendSetter(setLocationRecords, apiMappers.locations), [])
   const saveLabor = useMemo(() => backendSetter(setLaborRecords, apiMappers.labor), [])
   const saveMaterials = useMemo(() => backendSetter(setMaterialRecords, apiMappers.materials), [])
+  const saveStores = useMemo(() => backendSetter(setStoreRecords, apiMappers.stores), [])
   const saveTools = useMemo(() => backendSetter(setToolRecords, apiMappers.tools), [])
   const saveMeters = useMemo(() => backendSetter(setMeterRecords, apiMappers.meters), [])
   const saveWorkOrders = useMemo(() => backendSetter(setAllWorkOrders, apiMappers.workOrders), [])
@@ -941,7 +948,7 @@ export default function App() {
     ]}/>,
     'Labor': <LaborPage rows={laborRecords} setRows={saveLabor} workOrders={scopedWorkOrders} departmentRecords={departmentRecords}/>,
     'Materials': <MaterialsPage rows={materialRecords} setRows={saveMaterials} stockRows={stockRecords} storeRows={storeRecords} workOrders={scopedWorkOrders}/>,
-    'Stores': <StoresPage materials={materialRecords} stockRows={stockRecords} storeRows={storeRecords} locationRows={locationRecords} scopeUser={effectiveUser}/>,
+    'Stores': <StoresPage materials={materialRecords} stockRows={stockRecords} storeRows={storeRecords} setStoreRows={saveStores} locationRows={locationRecords} scopeUser={effectiveUser}/>,
     'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} materials={materialRecords} storeRows={storeRecords} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
     'Purchase Orders': <PurchaseOrdersPage rows={scopedPurchaseOrders} onUpdateOrder={updatePurchaseOrder} onUpdateRequest={updatePurchaseRequest}/>,
     'Reservations': <ReservationsPage rows={scopedReservations} onUpdate={updateReservation}/>,
