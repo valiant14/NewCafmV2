@@ -1,14 +1,20 @@
 import { useState } from 'react'
-import { ChevronRight, Package, Warehouse } from 'lucide-react'
+import { ChevronRight, Package, Plus, Warehouse } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
+import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ExportExcelButton from '../components/ui/ExportExcelButton'
+import ImportNotice from '../components/ui/ImportNotice'
+import IndexTabs from '../components/ui/IndexTabs'
+import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
-import { materials as materialsSeed } from '../data/workspaceData'
+import StandardFilters from '../components/ui/StandardFilters'
 import { storeLocation, storeStockRows, storeSummary } from '../lib/inventory'
 import { scopeRowsForUser } from '../lib/accessControl'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { useAuth } from '../providers/AuthProvider'
 
 const summaryColumns = [
@@ -33,10 +39,48 @@ const stockColumns = [
   { key: 'reorderLevel', label: 'Reorder Level' }
 ]
 
-export default function StoresPage({ materials = materialsSeed, scopeUser }) {
+const emptyStore = {
+  code: '',
+  name: '',
+  site: '1031',
+  status: 'Active'
+}
+const storeFields = [
+  { key: 'code', label: 'Store Code', required: true, placeholder: 'DIWAN-MAIN' },
+  { key: 'name', label: 'Store Name', required: true, placeholder: 'Diwan Main Store' },
+  { key: 'site', label: 'Site', required: true, placeholder: '1031' },
+  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
+]
+const templateHeaders = Object.keys(emptyStore)
+
+const normalizeImportRows = rows => rows.map(row => ({
+  ...emptyStore,
+  code: String(row.code || row.Code || row['Store Code'] || row.store_code || '').trim(),
+  name: row.name || row.Name || row['Store Name'] || row.store_name || '',
+  site: row.site || row.Site || row['Site Code'] || row.site_code || '1031',
+  status: row.status || row.Status || 'Active'
+})).filter(row => row.code && row.name)
+
+export default function StoresPage({ materials = [], stockRows = [], storeRows = [], setStoreRows, locationRows = [], scopeUser }) {
   const { user } = useAuth()
+  const [tab, setTab] = useState('All')
+  const [filters, setFilters] = useState(emptyStandardFilters)
+  const [imported, setImported] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [form, setForm] = useState(emptyStore)
+  const [error, setError] = useState('')
   const routeId = decodeURIComponent(window.location.pathname.split('/stores/')[1] || '')
-  const summary = scopeRowsForUser(storeSummary(materials), scopeUser || user, ['site'])
+  const summary = scopeRowsForUser(storeSummary(materials, stockRows, storeRows, locationRows), scopeUser || user, ['site'])
+  const tabRows = tab === 'All'
+    ? summary
+    : tab === 'Below Reorder'
+      ? summary.filter(store => Number(store.belowReorder || 0) > 0)
+      : summary.filter(store => store.status === tab)
+  const visibleRows = applyStandardFilters(tabRows, filters, {
+    site: ['site'],
+    department: ['department'],
+    status: ['status']
+  })
   const [selected, setSelected] = useState(summary.find(store => store.code === routeId) || null)
 
   const open = store => {
@@ -47,10 +91,30 @@ export default function StoresPage({ materials = materialsSeed, scopeUser }) {
     setSelected(null)
     window.history.pushState({}, '', '/stores')
   }
+  const openNew = () => {
+    setForm(emptyStore)
+    setError('')
+    setModalOpen(true)
+  }
+  const save = () => {
+    const code = String(form.code || '').trim()
+    if (!code || !form.name) return setError('Complete store code and store name.')
+    if (storeRows.some(store => store.code === code)) return setError('Store code already exists.')
+    setStoreRows?.(current => [{ ...form, code }, ...current])
+    setModalOpen(false)
+    setForm(emptyStore)
+  }
+  const importRows = async rows => {
+    const normalized = normalizeImportRows(rows)
+    await setStoreRows?.(current => [
+      ...normalized,
+      ...current.filter(store => !normalized.some(row => row.code === store.code))
+    ])
+  }
 
   if (selected) {
-    const rows = storeStockRows(selected.code, materials)
-    const location = storeLocation(selected.code)
+    const rows = storeStockRows(selected.code, materials, stockRows)
+    const location = storeLocation(selected.code, storeRows, locationRows)
     return (
       <>
         <PageHeader
@@ -92,11 +156,36 @@ export default function StoresPage({ materials = materialsSeed, scopeUser }) {
         eyebrow="SUPPLY CHAIN"
         title="Stores"
         description="Approved store locations and the materials held in each."
-        actions={<ExportExcelButton module="Stores" rows={summary} columns={summaryColumns} />}
+        actions={(
+          <div className="flex items-center gap-2">
+            <ExcelTemplateButton headers={templateHeaders} fileName="Stores_Template.xlsx" />
+            <ExportExcelButton module="Stores" rows={visibleRows} columns={summaryColumns} />
+            <ExcelImportButton fileName={imported} onFile={setImported} onImport={importRows} />
+            <Button onClick={openNew}><Plus size={17} />Add store</Button>
+          </div>
+        )}
+      />
+      <ImportNotice fileName={imported} subject="stores" onClear={() => setImported('')} />
+      <IndexTabs
+        active={tab}
+        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
+        tabs={[
+          { key: 'All', label: 'All Stores', count: summary.length },
+          { key: 'Active', label: 'Active', count: summary.filter(store => store.status === 'Active').length },
+          { key: 'Inactive', label: 'Inactive', count: summary.filter(store => store.status === 'Inactive').length },
+          { key: 'Below Reorder', label: 'Below Reorder', count: summary.filter(store => Number(store.belowReorder || 0) > 0).length }
+        ]}
+      />
+      <StandardFilters
+        filters={filters}
+        setFilters={setFilters}
+        siteOptions={optionsFromRows(summary, ['site'])}
+        departmentOptions={optionsFromRows(summary, ['department'])}
+        statusOptions={optionsFromRows(summary, ['status'])}
       />
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
         <DataTable
-          rows={summary}
+          rows={visibleRows}
           rowKey="code"
           onRowClick={open}
           pagination
@@ -116,6 +205,19 @@ export default function StoresPage({ materials = materialsSeed, scopeUser }) {
           ]}
         />
       </section>
+      {modalOpen && (
+        <MasterRecordModal
+          title="Add store"
+          note="Create an approved storeroom for material stock and purchase requests."
+          fields={storeFields}
+          form={form}
+          setForm={setForm}
+          error={error}
+          submitLabel="Create store"
+          onClose={() => setModalOpen(false)}
+          onSave={save}
+        />
+      )}
     </>
   )
 }

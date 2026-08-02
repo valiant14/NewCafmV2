@@ -72,12 +72,13 @@ export default function ExcelImportButton({ fileName, onFile, onImport, label = 
         rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false })
       }
       if (!rows.length) throw new Error('No data rows were found in the file.')
+      if (!onImport) throw new Error('This import button is not connected to a save handler yet.')
       onFile?.(file.name, rows)
-      onImport?.(rows, file)
+      await onImport(rows, file)
       setResult({
         type: 'success',
         title: 'Excel import completed',
-        message: `${rows.length} row${rows.length === 1 ? '' : 's'} imported from ${file.name} and applied as workspace data.`,
+        message: `${rows.length} row${rows.length === 1 ? '' : 's'} imported from ${file.name}.`,
         fileName: file.name,
         rows: rows.length
       })

@@ -24,12 +24,12 @@ function stockState(material) {
   return { available, coverage, needsPurchase }
 }
 
-export default function MaterialDetailPage({ material, usageRows = [], onBack, onUpdate }) {
+export default function MaterialDetailPage({ material, stockRows = [], storeRows = [], usageRows = [], onBack, onUpdate }) {
   const [tab, setTab] = useState('Material Details')
   const stock = stockState(material)
-  const storeStock = stockForItem(material.itemNumber).map(row => ({
+  const storeStock = stockForItem(material.itemNumber, stockRows).map(row => ({
     ...row,
-    storeName: storeLabel(row.storeroom),
+    storeName: storeLabel(row.storeroom, storeRows),
     available: Math.max(0, Number(row.balance || 0) - Number(row.reserved || 0))
   }))
   const tone = materialStatusTone[material.availability] || 'green'

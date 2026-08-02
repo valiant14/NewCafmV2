@@ -7,12 +7,15 @@ import { useAuth } from '../providers/AuthProvider'
 const inputClass = 'h-11 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-field-bg)] px-3 text-sm text-[var(--app-ink)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-[var(--app-primary)]'
 
 export default function LoginPage() {
-  const { login, authError, demoCredentials } = useAuth()
-  const [form, setForm] = useState({ username: demoCredentials.username, password: demoCredentials.password })
+  const { login, authError } = useAuth()
+  const [form, setForm] = useState({ username: '', password: '' })
+  const [submitting, setSubmitting] = useState(false)
 
-  const submit = event => {
+  const submit = async event => {
     event.preventDefault()
-    login(form)
+    setSubmitting(true)
+    await login(form)
+    setSubmitting(false)
   }
 
   return (
@@ -27,11 +30,11 @@ export default function LoginPage() {
         <div className="grid gap-4">
           <label className="grid gap-1.5">
             <span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">Username</span>
-            <input className={inputClass} value={form.username} onChange={event => setForm({ ...form, username: event.target.value })} autoComplete="username" placeholder="demo" />
+            <input className={inputClass} value={form.username} onChange={event => setForm({ ...form, username: event.target.value })} autoComplete="username" placeholder="Username" />
           </label>
           <label className="grid gap-1.5">
             <span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">Password</span>
-            <input className={inputClass} value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} autoComplete="current-password" type="password" placeholder="1234" />
+            <input className={inputClass} value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} autoComplete="current-password" type="password" placeholder="Password" />
           </label>
         </div>
 
@@ -41,14 +44,10 @@ export default function LoginPage() {
           </div>
         )}
 
-        <Button type="submit" className="mt-5 w-full">
+        <Button type="submit" className="mt-5 w-full" disabled={submitting}>
           <LogIn size={16} />
-          Login
+          {submitting ? 'Signing in...' : 'Login'}
         </Button>
-
-        <p className="mt-5 text-center text-xs text-[var(--app-muted)]">
-          Demo: <b>demo</b> / <b>1234</b>
-        </p>
       </form>
     </main>
   )

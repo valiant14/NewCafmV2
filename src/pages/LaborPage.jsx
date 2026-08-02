@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { labor as laborSeed, laborWorkMap, workOrders as defaultWorkOrders } from '../data/workspaceData'
+import { laborWorkMap } from '../config/runtimeDefaults'
 import AddLaborModal from '../components/labor/AddLaborModal'
 import LaborDetailPage from '../components/labor/LaborDetailPage'
 import Badge from '../components/ui/Badge'
@@ -48,8 +48,7 @@ const laborPastWork = (labor, workOrders) => workOrders
     targetFinish: order['TARGET FINISH '] || order['TARGET START '] || '-'
   }))
 
-export default function LaborPage({ workOrders = defaultWorkOrders }) {
-  const [rows, setRows] = useState(laborSeed)
+export default function LaborPage({ rows = [], setRows, workOrders = [], departmentRecords = [] }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -76,13 +75,13 @@ export default function LaborPage({ workOrders = defaultWorkOrders }) {
   }
 
   const updateLabor = (personId, patch) => {
-    setRows(current => current.map(row => row.personId === personId ? { ...row, ...patch } : row))
+    setRows?.(current => current.map(row => row.personId === personId ? { ...row, ...patch } : row))
     setSelected(current => current?.personId === personId ? { ...current, ...patch } : current)
   }
 
   const save = () => {
     if (!form.personId || !form.name || !form.craftCode) return
-    setRows(current => [...current, form])
+    setRows?.(current => [...current, form])
     setAdding(false)
     setForm(empty)
     open(form)
@@ -146,7 +145,7 @@ export default function LaborPage({ workOrders = defaultWorkOrders }) {
         />
       </section>
 
-      {adding && <AddLaborModal form={form} setForm={setForm} onClose={() => setAdding(false)} onSave={save} />}
+      {adding && <AddLaborModal form={form} setForm={setForm} departmentRecords={departmentRecords} onClose={() => setAdding(false)} onSave={save} />}
     </>
   )
 }

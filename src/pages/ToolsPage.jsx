@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { tools as toolSeed, toolUsageMap, workOrders as defaultWorkOrders } from '../data/workspaceData'
+import { toolUsageMap } from '../config/runtimeDefaults'
 import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
 import Badge from '../components/ui/Badge'
@@ -40,8 +40,7 @@ const toolUsage = (tool, workOrders) => (toolUsageMap[tool.toolNumber] || []).ma
   }
 }).filter(Boolean)
 
-export default function ToolsPage({ workOrders = defaultWorkOrders }) {
-  const [rows, setRows] = useState(toolSeed)
+export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -68,14 +67,14 @@ export default function ToolsPage({ workOrders = defaultWorkOrders }) {
   }
 
   const updateTool = (toolNumber, patch) => {
-    setRows(current => current.map(row => row.toolNumber === toolNumber ? { ...row, ...patch } : row))
+    setRows?.(current => current.map(row => row.toolNumber === toolNumber ? { ...row, ...patch } : row))
     setSelected(current => current?.toolNumber === toolNumber ? { ...current, ...patch } : current)
   }
 
   const save = () => {
     if (!form.toolNumber || !form.description) return
     const row = { ...form, quantity: Number(form.quantity) }
-    setRows(current => [...current, row])
+    setRows?.(current => [...current, row])
     setAdding(false)
     setForm(empty)
     open(row)

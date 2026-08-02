@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { labor as laborRows, rolePermissionRows, users as userSeed } from '../data/workspaceData'
 import UserDetailPage from '../components/users/UserDetailPage'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -36,7 +35,7 @@ const baseFields = [
   { key: 'name', label: 'Name', required: true },
   { key: 'email', label: 'Email' },
   { key: 'role', label: 'Role', required: true },
-  { key: 'laborId', label: 'Linked Labor', options: ['', ...laborRows.map(row => row.personId)] },
+  { key: 'laborId', label: 'Linked Labor' },
   { key: 'site', label: 'Site Scope' },
   { key: 'department', label: 'Department Scope' },
   { key: 'status', label: 'Status', options: ['Active', 'Inactive', 'Locked'] },
@@ -46,7 +45,7 @@ const baseFields = [
 const templateHeaders = Object.keys(emptyUser)
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
 
-export default function UsersPage({ rows = userSeed, setRows, roleRows = rolePermissionRows, scopeUser, siteOptions = [], departmentOptions = [] }) {
+export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows = [], scopeUser, siteOptions = [], departmentOptions = [] }) {
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [imported, setImported] = useState('')
@@ -55,6 +54,7 @@ export default function UsersPage({ rows = userSeed, setRows, roleRows = rolePer
   const routeId = decodeURIComponent(window.location.pathname.split('/users/')[1] || '')
   const fields = baseFields.map(field => {
     if (field.key === 'role') return { ...field, options: roleRows.map(row => row.role) }
+    if (field.key === 'laborId') return { ...field, options: ['', ...laborRows.map(row => row.personId).filter(Boolean)] }
     if (field.key === 'site') return { ...field, suggestions: siteOptions, placeholder: 'All Sites or Riyadh / 1031, Jeddah / 1032' }
     if (field.key === 'department') return { ...field, suggestions: departmentOptions, placeholder: 'All Departments or HVAC, Civil' }
     return field

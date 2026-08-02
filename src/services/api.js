@@ -1,0 +1,373 @@
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api'
+const tokenKey = 'seder-cafm-auth-token'
+
+export const getAuthToken = () => localStorage.getItem(tokenKey) || ''
+export const setAuthToken = token => token ? localStorage.setItem(tokenKey, token) : localStorage.removeItem(tokenKey)
+
+const request = async (path, options = {}) => {
+  const token = getAuthToken()
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {})
+    }
+  })
+  const body = await response.json().catch(() => null)
+  if (!response.ok) {
+    const error = new Error(body?.message || `API request failed: ${response.status}`)
+    error.status = response.status
+    throw error
+  }
+  return body
+}
+
+export const api = {
+  login: credentials => request('/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
+  get: path => request(path),
+  post: (path, payload) => request(path, { method: 'POST', body: JSON.stringify(payload) }),
+  put: (path, payload) => request(path, { method: 'PUT', body: JSON.stringify(payload) }),
+  delete: path => request(path, { method: 'DELETE' })
+}
+
+const safeGet = path => api.get(path).catch(error => {
+  if (error.status === 403 || error.status === 404) return []
+  throw error
+})
+
+const dateValue = value => value || ''
+const numberValue = value => value === null || value === undefined ? '' : Number(value)
+
+const mapSite = row => ({
+  code: row.site_code,
+  name: row.site_name,
+  region: row.region || '',
+  city: row.city || '',
+  status: row.status || 'Active'
+})
+
+const mapDepartment = row => ({
+  subDepartmentCode: row.sub_department_code,
+  department: row.department_name,
+  description: row.description,
+  status: row.status || 'Active'
+})
+
+const mapUser = (row, roles = []) => ({
+  userId: row.user_id,
+  username: row.username,
+  password: '',
+  name: row.display_name,
+  email: row.email || '',
+  role: roles.find(role => role.roleId === row.role_id)?.role || '',
+  roleId: row.role_id,
+  laborId: row.labor_id || '',
+  site: row.site_scope || 'All Sites',
+  department: row.department_scope || 'All Departments',
+  status: row.status || 'Active',
+  lastLogin: row.last_login_at || ''
+})
+
+const mapRole = row => ({
+  roleId: row.role_id,
+  role: row.role_name,
+  roleCode: row.role_code,
+  user: '',
+  site: 'All Sites',
+  department: 'All Departments',
+  scope: row.scope_description || '',
+  status: row.status || 'Active',
+  permissions: row.permissions || {}
+})
+
+const mapAsset = row => ({
+  assetnum: row.asset_num,
+  description: row.description || '',
+  location: row.location_code || '',
+  parent: row.parent_asset_num || '',
+  department: row.department_name || '',
+  'sub department': row.sub_department_code || '',
+  prioity: row.priority || '',
+  site: row.site_code,
+  status: row.status || '',
+  modelnum: row.model_num || '',
+  serialnum: row.serial_num || '',
+  installdate: row.install_date || '',
+  quantity: row.quantity || 1
+})
+
+const mapLocation = row => ({
+  location: row.location_code,
+  description: row.description || '',
+  type: row.location_type || '',
+  status: row.status || '',
+  priority: row.priority || '',
+  site: row.site_code,
+  department: row.department_name || '',
+  building: row.building || '',
+  buildingCategory: row.building_category || ''
+})
+
+const mapLabor = row => ({
+  personId: row.labor_id,
+  name: row.display_name,
+  craftCode: row.craft_code || '',
+  craft: row.craft_name || '',
+  department: row.department_name || '',
+  subDepartment: row.sub_department_code || '',
+  site: row.site_code || '',
+  availability: row.availability || '',
+  status: row.status || 'Active'
+})
+
+const mapMaterial = row => ({
+  itemNumber: row.item_code,
+  description: row.description,
+  category: row.category || '',
+  unit: row.unit_of_measure || '',
+  status: row.status || 'Active'
+})
+
+const mapStoreroom = row => ({
+  code: row.store_code,
+  name: row.store_name,
+  site: row.site_code || '',
+  status: row.status || 'Active'
+})
+
+const mapInventoryStock = row => ({
+  storeroom: row.store_code,
+  itemNumber: row.item_code,
+  balance: numberValue(row.balance),
+  reserved: numberValue(row.reserved_quantity),
+  reorderLevel: numberValue(row.reorder_point)
+})
+
+const mapTool = row => ({
+  toolNumber: row.tool_code,
+  description: row.description,
+  category: row.category || '',
+  status: row.status || 'Available'
+})
+
+const mapWorkOrder = row => ({
+  WORKORDER: row.work_order_num,
+  'DESCRIPITION ': row.description,
+  'LONG DESCRIPTION': row.long_description || '',
+  'LOCATION ': row.location_code || '',
+  ASSET: row.asset_num || '',
+  STATUS: row.status,
+  'WORK TYPE ': row.work_type,
+  PRIORTY: row.priority || '',
+  SITE: row.site_code,
+  'DEPARTMENT ': row.department_name || '',
+  'SUB DEPARTMENT  NAME': row.sub_department_code || '',
+  'ASSIGNED DEPARTMENT': row.assigned_department_name || '',
+  'TARGET START ': dateValue(row.target_start_at),
+  'TARGET FINISH ': dateValue(row.target_finish_at),
+  'ACTUAL START ': dateValue(row.actual_start_at),
+  'ACTUAL FINISH ': dateValue(row.actual_finish_at),
+  'REPORTED DATE ': dateValue(row.reported_at),
+  'SOURCE SR': row.source_sr_num || '',
+  'FAILURE CODE': row.failure_code || '',
+  'PROBLEM CODE': row.problem_code || '',
+  'CAUSE CODE': row.cause_code || '',
+  'REMEDY CODE': row.remedy_code || ''
+})
+
+const mapServiceRequest = row => ({
+  sr: row.sr_num,
+  description: row.description,
+  longDescription: row.long_description || '',
+  site: row.site_code,
+  location: row.location_code || '',
+  asset: row.asset_num || '',
+  department: row.department_name || '',
+  subDepartment: row.sub_department_code || '',
+  assignedDepartment: row.assigned_department_name || '',
+  reportedBy: row.reported_by || '',
+  reportedDate: row.reported_at || '',
+  priority: row.priority || '',
+  requestType: row.request_type || '',
+  failureCode: row.failure_code || '',
+  status: row.status,
+  convertedWorkOrder: row.converted_work_order_num || ''
+})
+
+const mapPurchaseRequest = row => ({
+  purchaseRequest: row.pr_num,
+  workOrder: row.work_order_num || '',
+  type: row.request_type,
+  item: row.item_description || row.item_code,
+  itemCode: row.item_code || '',
+  quantity: numberValue(row.requested_quantity),
+  plannedQuantity: numberValue(row.planned_quantity),
+  availableQuantity: numberValue(row.available_quantity),
+  source: row.store_code || '',
+  site: row.site_code,
+  department: row.department_name || '',
+  status: row.status,
+  purchaseOrder: row.po_num || '',
+  createdAt: row.created_at || '',
+  approvedAt: row.approved_at || '',
+  closedAt: row.closed_at || '',
+  cancelledAt: row.cancelled_at || ''
+})
+
+const mapPurchaseOrder = row => ({
+  purchaseOrder: row.po_num,
+  purchaseRequest: row.pr_num,
+  workOrder: row.work_order_num || '',
+  type: row.request_type,
+  item: row.item_description || row.item_code,
+  itemCode: row.item_code || '',
+  quantity: numberValue(row.ordered_quantity),
+  source: row.store_code || '',
+  site: row.site_code,
+  department: row.department_name || '',
+  status: row.status,
+  createdAt: row.created_at || '',
+  approvedAt: row.approved_at || '',
+  receivedAt: row.received_at || '',
+  closedAt: row.closed_at || '',
+  cancelledAt: row.cancelled_at || ''
+})
+
+const mapReservation = row => ({
+  reservation: row.reservation_num,
+  workOrder: row.work_order_num,
+  purchaseRequest: row.pr_num || '',
+  purchaseOrder: row.po_num || '',
+  item: row.item_description || row.item_code,
+  itemCode: row.item_code || '',
+  quantity: numberValue(row.reserved_quantity),
+  arrangedQuantity: numberValue(row.arranged_quantity),
+  releasedQuantity: numberValue(row.released_quantity),
+  deliveredQuantity: numberValue(row.delivered_quantity),
+  source: row.store_code || '',
+  site: row.site_code,
+  department: row.department_name || '',
+  status: row.status,
+  createdAt: row.created_at || ''
+})
+
+const mapPm = row => ({
+  pmNumber: row.pm_num,
+  description: row.description,
+  asset: row.asset_num || '',
+  route: row.route_code || '',
+  location: row.location_code || '',
+  site: row.site_code,
+  jobPlan: row.job_plan_num,
+  startDate: row.next_date || '',
+  leadTime: row.lead_time_days || 0,
+  frequency: row.frequency || 1,
+  freqUnit: row.frequency_unit || 'MONTHS',
+  pmCounter: row.pm_counter || 0,
+  workType: row.work_type || 'PM',
+  woStatus: row.wo_status || 'WSCH',
+  storeLocation: row.store_code || '',
+  supervisor: row.supervisor || '',
+  lead: row.lead_person || '',
+  personGroup: row.person_group || '',
+  department: row.department_name || '',
+  subDepartment: row.sub_department_code || '',
+  pmStatus: row.pm_status || 'ACTIVE',
+  lastGeneratedCycle: row.last_generated_cycle || ''
+})
+
+const mapIncident = row => ({
+  incidentNumber: row.incident_num,
+  description: row.description,
+  site: row.site_code,
+  location: row.location_code || '',
+  asset: row.asset_num || '',
+  department: row.department_name || '',
+  status: row.status,
+  reportedDate: row.reported_at || ''
+})
+
+const mapMeter = row => ({
+  meterReadingId: row.meter_reading_id,
+  meterId: row.meter_id || row.meter_reading_id,
+  asset: row.asset_num || '',
+  workOrder: row.work_order_num || '',
+  site: row.site_code,
+  department: row.department_name || '',
+  reading: row.reading_value,
+  unit: row.reading_unit || '',
+  readingDate: row.reading_at || ''
+})
+
+export async function loadWorkspace() {
+  const [
+    sites,
+    departments,
+    rolesRaw,
+    usersRaw,
+    assets,
+    locations,
+    labor,
+    materials,
+    storerooms,
+    inventoryStock,
+    tools,
+    workOrders,
+    serviceRequests,
+    purchaseRequests,
+    purchaseOrders,
+    reservations,
+    pmSchedules,
+    jobPlans,
+    incidents,
+    meters
+  ] = await Promise.all([
+    safeGet('/sites'),
+    safeGet('/departments'),
+    safeGet('/roles'),
+    safeGet('/users'),
+    safeGet('/assets'),
+    safeGet('/locations'),
+    safeGet('/labor'),
+    safeGet('/materials'),
+    safeGet('/storerooms'),
+    safeGet('/inventory-stock'),
+    safeGet('/tools-equipment'),
+    safeGet('/work-orders'),
+    safeGet('/service-requests'),
+    safeGet('/purchase-requisitions'),
+    safeGet('/purchase-orders'),
+    safeGet('/reservations'),
+    safeGet('/preventive-maintenance'),
+    safeGet('/job-plans'),
+    safeGet('/incidents'),
+    safeGet('/meter-readings')
+  ])
+
+  const roles = rolesRaw.map(mapRole)
+  return {
+    sites: sites.map(mapSite),
+    departments: departments.map(mapDepartment),
+    roles,
+    users: usersRaw.map(row => mapUser(row, roles)),
+    assets: assets.map(mapAsset),
+    locations: locations.map(mapLocation),
+    labor: labor.map(mapLabor),
+    materials: materials.map(mapMaterial),
+    storerooms: storerooms.map(mapStoreroom),
+    inventoryStock: inventoryStock.map(mapInventoryStock),
+    tools: tools.map(mapTool),
+    workOrders: workOrders.map(mapWorkOrder),
+    serviceRequests: serviceRequests.map(mapServiceRequest),
+    purchaseRequests: purchaseRequests.map(mapPurchaseRequest),
+    purchaseOrders: purchaseOrders.map(mapPurchaseOrder),
+    reservations: reservations.map(mapReservation),
+    pmSchedules: pmSchedules.map(mapPm),
+    jobPlans: jobPlans.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status })),
+    jobTasks: [],
+    incidents: incidents.map(mapIncident),
+    meters: meters.map(mapMeter),
+    failureCodes: []
+  }
+}

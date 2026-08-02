@@ -11,7 +11,6 @@ import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import TableSearch from '../components/ui/TableSearch'
-import { pmSchedules as pmSeed } from '../data/workspaceData'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 import { useAuth } from '../providers/AuthProvider'
@@ -95,10 +94,10 @@ const addFrequency = plan => {
   return toLocalDateInput(date)
 }
 
-export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], workOrders = [], departmentRecords = [], scopeUser, onGenerate, onOpenWorkOrder }) {
+export default function PreventiveMaintenancePage({ rows = [], setRows, assets = [], jobTasks = [], workOrders = [], departmentRecords = [], scopeUser, onGenerate, onOpenWorkOrder }) {
   const { user } = useAuth()
   const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
-  const [plans, setPlans] = useState(() => pmSeed.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') })))
+  const plans = rows.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') }))
   const scopedPlans = scopeRowsForUser(plans, scopeUser || user, ['site'], ['department', 'subDepartment', 'personGroup'])
   const [mode, setMode] = useState('list')
   const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
@@ -153,7 +152,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
   const valid = Boolean(form.pmNumber && form.description && (form.asset || form.location) && form.jobPlan && form.startDate && form.frequency && form.freqUnit)
   const save = () => {
     if (!valid) return
-    setPlans(rows => [...rows, form])
+    setRows?.(rows => [...rows, form])
     setForm(emptyPlan)
     setMode('list')
   }
@@ -166,13 +165,13 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
     window.history.pushState({}, '', '/preventive-maintenance')
   }
   const updatePlan = (pmNumber, patch) => {
-    setPlans(rows => rows.map(plan => plan.pmNumber === pmNumber ? { ...plan, ...patch } : plan))
+    setRows?.(rows => rows.map(plan => plan.pmNumber === pmNumber ? { ...plan, ...patch } : plan))
   }
   const generate = () => {
     const cutoff = new Date('2026-08-31')
     const due = plans.filter(plan => plan.pmStatus === 'ACTIVE' && new Date(plan.startDate) <= cutoff && plan.lastGeneratedCycle !== cycleKey(plan))
     const made = due.map((plan, index) => ({ ...plan, workOrder: `PMWO-${20260801 + index}`, cycle: cycleKey(plan), nextDue: addFrequency(plan) }))
-    setPlans(rows => rows.map(plan => {
+    setRows?.(rows => rows.map(plan => {
       const generated = made.find(item => item.pmNumber === plan.pmNumber)
       return generated ? { ...plan, startDate: generated.nextDue, lastGeneratedCycle: generated.cycle, pmCounter: Number(plan.pmCounter) + 1 } : plan
     }))
@@ -190,7 +189,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
         eyebrow="PREVENTIVE MAINTENANCE"
         title="PM Schedule"
         description="Maximo-aligned PM masters and automatic work-order generation."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" /><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows); if (imported.length) setPlans(imported) }} /><Button variant="outline" onClick={generate}><Sparkles size={16} />Generate WOs</Button><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" /><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows); if (imported.length) setRows?.(imported) }} /><Button variant="outline" onClick={generate}><Sparkles size={16} />Generate WOs</Button><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
       />
 
       {generation && (

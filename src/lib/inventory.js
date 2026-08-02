@@ -1,39 +1,37 @@
-import { inventory as inventorySeed, locationsMaster as locations, storerooms } from '../data/workspaceData'
-
 const clean = value => String(value ?? '').trim().toUpperCase()
 
-export const stores = storerooms
+export const stores = []
 
-export const storeByCode = code => storerooms.find(store => clean(store.code) === clean(code)) || null
+export const storeByCode = (code, storeRows = []) => storeRows.find(store => clean(store.code) === clean(code)) || null
 
-export const storeLocation = code => {
-  const store = storeByCode(code)
+export const storeLocation = (code, storeRows = [], locations = []) => {
+  const store = storeByCode(code, storeRows)
   if (!store) return null
   return locations.find(location => location.location === store.location) || null
 }
 
-export const storeLabel = code => storeByCode(code)?.name || code || ''
+export const storeLabel = (code, storeRows = []) => storeByCode(code, storeRows)?.name || code || ''
 
 // Stock is held per store, so an item can sit in several with different quantities.
-export const stockForItem = (itemNumber, rows = inventorySeed) =>
+export const stockForItem = (itemNumber, rows = []) =>
   rows.filter(row => clean(row.itemNumber) === clean(itemNumber))
 
-export const stockForStore = (storeCode, rows = inventorySeed) =>
+export const stockForStore = (storeCode, rows = []) =>
   rows.filter(row => clean(row.storeroom) === clean(storeCode))
 
 const sum = (rows, key) => rows.reduce((total, row) => total + (Number(row[key]) || 0), 0)
 
-export const totalBalance = (itemNumber, rows = inventorySeed) => sum(stockForItem(itemNumber, rows), 'balance')
-export const totalReserved = (itemNumber, rows = inventorySeed) => sum(stockForItem(itemNumber, rows), 'reserved')
+export const totalBalance = (itemNumber, rows = []) => sum(stockForItem(itemNumber, rows), 'balance')
+export const totalReserved = (itemNumber, rows = []) => sum(stockForItem(itemNumber, rows), 'reserved')
 
-export const totalAvailable = (itemNumber, rows = inventorySeed) =>
+export const totalAvailable = (itemNumber, rows = []) =>
   Math.max(0, totalBalance(itemNumber, rows) - totalReserved(itemNumber, rows))
 
-export const storesHolding = (itemNumber, rows = inventorySeed) =>
+export const storesHolding = (itemNumber, rows = []) =>
   stockForItem(itemNumber, rows).filter(row => Number(row.balance) > 0).map(row => row.storeroom)
 
 // A material is only "Available" when what is free across all stores clears its reorder level.
-export const availabilityFor = (item, rows = inventorySeed) => {
+export const availabilityFor = (item, rows = []) => {
   const available = totalAvailable(item?.itemNumber, rows)
   return available > 0 && available > Number(item?.reorderLevel || 0) ? 'Available' : 'Purchase Required'
 }
@@ -53,11 +51,11 @@ export const materialStatusTone = status => ({
 export const materialStatusFor = (itemNumber, materials = []) =>
   materials.find(item => clean(item.itemNumber) === clean(itemNumber))?.status || ''
 
-export const storeSummary = (materials = [], rows = inventorySeed) => storerooms.map(store => {
+export const storeSummary = (materials = [], rows = [], storeRows = [], locations = []) => storeRows.map(store => {
   const stock = stockForStore(store.code, rows)
   return {
     ...store,
-    locationDescription: storeLocation(store.code)?.description || '',
+    locationDescription: storeLocation(store.code, storeRows, locations)?.description || '',
     itemCount: stock.length,
     totalQuantity: sum(stock, 'balance'),
     totalReserved: sum(stock, 'reserved'),
@@ -68,7 +66,7 @@ export const storeSummary = (materials = [], rows = inventorySeed) => storerooms
   }
 })
 
-export const storeStockRows = (storeCode, materials = [], rows = inventorySeed) =>
+export const storeStockRows = (storeCode, materials = [], rows = []) =>
   stockForStore(storeCode, rows).map(row => {
     const material = materials.find(item => clean(item.itemNumber) === clean(row.itemNumber)) || {}
     return {

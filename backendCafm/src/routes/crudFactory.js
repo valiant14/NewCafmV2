@@ -59,9 +59,10 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     const pool = await getPool()
     const request = bindParams(pool.request(), Object.fromEntries(updateColumns.map(column => [column, payload[column]])))
     request.input('id', req.params.id)
+    const timestampUpdate = columns.includes('updated_at') ? ', updated_at = sysutcdatetime()' : ''
     const result = await request.query(`
       update ${table}
-      set ${updateColumns.map(column => `${column} = @${column}`).join(', ')}, updated_at = sysutcdatetime()
+      set ${updateColumns.map(column => `${column} = @${column}`).join(', ')}${timestampUpdate}
       output inserted.*
       where ${key} = @id
     `)

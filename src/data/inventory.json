@@ -1,8 +1,0 @@
-[
-  { "itemNumber": "MAT-0001", "storeroom": "DIWAN-MAIN", "balance": 24, "reserved": 4 },
-  { "itemNumber": "MAT-0002", "storeroom": "DIWAN-MAIN", "balance": 3, "reserved": 2 },
-  { "itemNumber": "MAT-0003", "storeroom": "HVAC-STORE", "balance": 18, "reserved": 5 },
-  { "itemNumber": "MAT-0004", "storeroom": "ELEC-STORE", "balance": 75, "reserved": 12 },
-  { "itemNumber": "MAT-0005", "storeroom": "DIWAN-MAIN", "balance": 0, "reserved": 0 },
-  { "itemNumber": "MAT-0006", "storeroom": "CIVIL-STORE", "balance": 42, "reserved": 8 }
-]

@@ -3,7 +3,6 @@ import Section from '../ui/Section'
 import Badge from '../ui/Badge'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import { materialStatusFor, materialStatusTone } from '../../lib/inventory'
-import { materials as materialsSeed } from '../../data/workspaceData'
 
 const tableClass = 'overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)]'
 const headClass = 'grid grid-cols-[1.2fr_100px_130px_140px_130px_150px_180px] gap-3 bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]'
@@ -16,11 +15,11 @@ const availabilityClass = availability => `w-fit rounded-full px-2.5 py-1 text-[
 const requestedQuantity = resource => Number(resource.quantity || 0)
 const hasFulfillment = resource => Boolean(resource.reservation)
 const hasProcurement = resource => Boolean(resource.purchaseRequest || resource.purchaseOrder)
-const materialStatusForResource = (resource, stock) => {
+const materialStatusForResource = (resource, stock, materials) => {
   if (resource.reservation) return resource.type === 'Material' ? 'Allocated' : ''
   if (resource.purchaseOrder) return 'On PO'
   if (resource.purchaseRequest) return 'On PR'
-  return materialStatusFor(stock.itemNumber, materialsSeed)
+  return materialStatusFor(stock.itemNumber, materials)
 }
 const requestStatusFor = resource => {
   if (resource.reservation) {
@@ -66,6 +65,7 @@ export default function WorkOrderMaterialRequestsTab({
   primaryButtonClass,
   outlineButtonClass,
   setTab,
+  materials = [],
   workOrderContext = {},
   onCreatePurchaseRequest,
   onCreateReservation,
@@ -140,7 +140,7 @@ export default function WorkOrderMaterialRequestsTab({
               const stock = getAvailability(resource)
               const action = actionStateFor(resource, stock)
               const requestStatus = requestStatusFor(resource)
-              const materialStatus = materialStatusForResource(resource, stock)
+              const materialStatus = materialStatusForResource(resource, stock, materials)
               return (
                 <div className={rowClass} key={index}>
                   <div className="flex min-w-0 items-center gap-3">

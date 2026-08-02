@@ -12,6 +12,7 @@ import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { pick, upsertImportRows } from '../services/importRows'
 
 const emptyDepartment = {
   subDepartmentCode: '',
@@ -75,15 +76,29 @@ export default function DepartmentsSettingsPage({ rows = [], setRows }) {
     setModalOpen(false)
   }
 
-  const importRows = importedRows => {
-    setRows?.(importedRows.map(row => ({
+  const normalizeImportRows = importedRows => importedRows.map(row => ({
       ...emptyDepartment,
       ...row,
-      subDepartmentCode: String(row.subDepartmentCode || row['Sub Department Code'] || row.code || '').trim(),
-      department: row.department || row.Department || '',
-      description: row.description || row.Description || row.name || '',
-      status: row.status || row.Status || 'Active'
-    })).filter(row => row.subDepartmentCode && row.department && row.description))
+      subDepartmentCode: String(pick(row, ['subDepartmentCode', 'Sub Department Code', 'code'])).trim(),
+      department: pick(row, ['department', 'Department']),
+      description: pick(row, ['description', 'Description', 'name']),
+      status: pick(row, ['status', 'Status'], 'Active')
+    })).filter(row => row.subDepartmentCode && row.department && row.description)
+
+  const importRows = async importedRows => {
+    const normalized = normalizeImportRows(importedRows)
+    await upsertImportRows({
+      rows: normalized,
+      endpoint: '/departments',
+      key: 'sub_department_code',
+      mapRow: row => ({
+        sub_department_code: row.subDepartmentCode,
+        department_name: row.department,
+        description: row.description,
+        status: row.status || 'Active'
+      })
+    })
+    setRows?.(normalized)
   }
 
   return (
