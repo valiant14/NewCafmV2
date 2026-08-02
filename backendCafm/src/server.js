@@ -10,4 +10,5 @@ app.locals.broadcastWorkspaceChange = broadcastWorkspaceChange
 
 server.listen(env.port, () => {
   console.log(`backendCafm API running on http://localhost:${env.port}`)
+  console.log('Socket.IO realtime enabled at /socket.io')
 })

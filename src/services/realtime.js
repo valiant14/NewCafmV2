@@ -10,6 +10,7 @@ export const subscribeWorkspaceChanges = onChange => {
 
   const socket = io(SOCKET_URL, {
     auth: { token },
+    path: '/socket.io',
     transports: ['websocket', 'polling']
   })
 

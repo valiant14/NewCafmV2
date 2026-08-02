@@ -8,7 +8,7 @@ import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 
-router.get('/health', (req, res) => res.json({ ok: true, service: 'backendCafm' }))
+router.get('/health', (req, res) => res.json({ ok: true, service: 'backendCafm', realtime: Boolean(req.app.locals.io) }))
 router.use('/auth', authRouter)
 router.use(requireAuth)
 
