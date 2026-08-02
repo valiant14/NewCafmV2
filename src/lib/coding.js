@@ -1,4 +1,4 @@
-import structure from '../data/codingStructure.json'
+import { codingStructure as structure } from '../data/workspaceData'
 
 // Patterns live in codingStructure.json as strings and are compiled here, so swapping in
 // the approved structure for a project is a data edit rather than a code change.

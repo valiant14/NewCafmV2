@@ -3,7 +3,7 @@ import { AlertTriangle, Check, Plus, X } from 'lucide-react'
 import Button from '../ui/Button'
 import { Field } from '../ui/FormControls'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
-import departments from '../../data/departments.json'
+import { departments } from '../../data/workspaceData'
 import { subDepartmentsForDepartment } from '../../lib/departments'
 
 const workTypes = ['CM', 'PM', 'Incident']

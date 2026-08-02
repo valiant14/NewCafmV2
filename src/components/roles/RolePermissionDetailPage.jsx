@@ -3,7 +3,7 @@ import { Building2, ShieldCheck, UserCog, Users } from 'lucide-react'
 import Badge from '../ui/Badge'
 import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
-import { permissionActions, permissionModules } from '../../data/roles'
+import { permissionActions, permissionModules } from '../../data/workspaceData'
 
 const matrixClass = 'overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]'
 const checkClass = active => `mx-auto grid h-6 w-6 place-items-center rounded-lg border text-[10px] font-extrabold ${active ? 'border-[var(--app-primary)] bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'border-[var(--app-line)] text-[var(--app-muted)]'}`

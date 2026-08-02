@@ -240,7 +240,7 @@ export default function WorkOrderPrintReport({
       </section>
 
       <footer className="wo-print-footer">
-        <span>Generated from Seder CAFM mock data</span>
+        <span>Generated from Seder CAFM workspace data</span>
         <span>Page 1</span>
       </footer>
     </article>

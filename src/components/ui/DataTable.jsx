@@ -10,7 +10,7 @@ export default function DataTable({
   onRowClick,
   rowKey,
   rowClassName,
-  sourceLabel = 'Source: Excel mock data',
+  sourceLabel = 'Source: Workspace data',
   showFooter = true,
   pagination = false,
   pageSizeOptions = [10, 25, 50]

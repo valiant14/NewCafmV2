@@ -12,8 +12,7 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { statusDescription, statusTone } from '../lib/statusMatrix'
 import { nowLocalDate } from '../lib/datetime'
-import materialsSeed from '../data/materials.json'
-import departments from '../data/departments.json'
+import { departments, materials as materialsSeed } from '../data/workspaceData'
 import { stores } from '../lib/inventory'
 
 const todayStamp = () => nowLocalDate()
