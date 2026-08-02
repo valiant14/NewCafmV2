@@ -69,6 +69,14 @@ router.use('/tools-equipment', crudRouter({
   columns: ['tool_code', 'description', 'category', 'status', 'created_at', 'updated_at']
 }))
 
+router.use('/failure-library', crudRouter({
+  moduleName: 'Failure Library',
+  table: 'dbo.failure_library',
+  key: 'failure_library_id',
+  columns: ['failure_library_id', 'failure_class_id', 'description', 'problem_code', 'problem_description', 'cause_code', 'cause_description', 'remedy_code', 'remedy_description', 'created_at', 'updated_at'],
+  defaultOrder: 'failure_class_id, problem_code, cause_code, remedy_code'
+}))
+
 router.use('/storerooms', crudRouter({
   moduleName: 'Stores',
   table: 'dbo.storerooms',

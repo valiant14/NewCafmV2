@@ -183,6 +183,22 @@ create table dbo.tools_equipment (
 );
 go
 
+create table dbo.failure_library (
+  failure_library_id bigint identity(1,1) not null primary key,
+  failure_class_id nvarchar(80) not null,
+  description nvarchar(500) not null,
+  problem_code nvarchar(80) null,
+  problem_description nvarchar(500) null,
+  cause_code nvarchar(80) null,
+  cause_description nvarchar(500) null,
+  remedy_code nvarchar(80) null,
+  remedy_description nvarchar(500) null,
+  created_at datetime2 not null constraint df_failure_library_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_failure_library_updated default sysutcdatetime(),
+  constraint uq_failure_library_codes unique (failure_class_id, problem_code, cause_code, remedy_code)
+);
+go
+
 create table dbo.storerooms (
   store_code nvarchar(80) not null primary key,
   store_name nvarchar(180) not null,

@@ -151,6 +151,18 @@ const mapTool = row => ({
   status: row.status || 'Available'
 })
 
+const mapFailureCode = row => ({
+  failureLibraryId: row.failure_library_id,
+  'FAILURE CLASS ID': row.failure_class_id,
+  DESCRIPTION: row.description || '',
+  'PROBLEM CODE': row.problem_code || '',
+  'PC - DESCRIPTION': row.problem_description || '',
+  'CAUSE CODE': row.cause_code || '',
+  'CC - DESCRIPTION': row.cause_description || '',
+  'REMEDY CODE': row.remedy_code || '',
+  'RC - DESCRIPTION': row.remedy_description || ''
+})
+
 const mapWorkOrder = row => ({
   WORKORDER: row.work_order_num,
   'DESCRIPITION ': row.description,
@@ -313,6 +325,7 @@ export async function loadWorkspace() {
     storerooms,
     inventoryStock,
     tools,
+    failureLibrary,
     workOrders,
     serviceRequests,
     purchaseRequests,
@@ -334,6 +347,7 @@ export async function loadWorkspace() {
     safeGet('/storerooms'),
     safeGet('/inventory-stock'),
     safeGet('/tools-equipment'),
+    safeGet('/failure-library'),
     safeGet('/work-orders'),
     safeGet('/service-requests'),
     safeGet('/purchase-requisitions'),
@@ -358,6 +372,7 @@ export async function loadWorkspace() {
     storerooms: storerooms.map(mapStoreroom),
     inventoryStock: inventoryStock.map(mapInventoryStock),
     tools: tools.map(mapTool),
+    failureCodes: failureLibrary.map(mapFailureCode),
     workOrders: workOrders.map(mapWorkOrder),
     serviceRequests: serviceRequests.map(mapServiceRequest),
     purchaseRequests: purchaseRequests.map(mapPurchaseRequest),
@@ -367,7 +382,6 @@ export async function loadWorkspace() {
     jobPlans: jobPlans.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status })),
     jobTasks: [],
     incidents: incidents.map(mapIncident),
-    meters: meters.map(mapMeter),
-    failureCodes: []
+    meters: meters.map(mapMeter)
   }
 }
