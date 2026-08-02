@@ -1,158 +1,141 @@
-import { BadgeCheck, Boxes, Building2, CalendarClock, ClipboardList, Factory, MapPin, Printer, ShieldCheck, Tag } from 'lucide-react'
+import { useState } from 'react'
+import { BadgeCheck, Boxes, CalendarClock, ClipboardList, Factory, Tag } from 'lucide-react'
+import Badge from '../ui/Badge'
+import DataTable from '../ui/DataTable'
+import { DetailHeader, DetailTabs, InfoCard, TimelineCard } from '../ui/DetailScaffold'
+import GenericPrintReport from '../ui/GenericPrintReport'
+import { systemLabel } from '../../lib/departments'
+import { statusDescription, statusOptions, statusTone as matrixStatusTone } from '../../lib/statusMatrix'
 
-function DetailItem({ label, value }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value || '-'}</strong>
-    </div>
-  )
-}
-
-function MetricCard({ icon: Icon, label, value, note }) {
-  return (
-    <article className="resource-metric-card">
-      <Icon size={17} />
-      <div>
-        <span>{label}</span>
-        <strong>{value || '-'}</strong>
-        <small>{note}</small>
-      </div>
-    </article>
-  )
-}
-
-export default function AssetDetailPage({ asset, workOrders = [], onBack }) {
+export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpdate }) {
+  const [activeTab, setActiveTab] = useState('Asset Details')
+  const [status, setStatus] = useState(asset.status || 'OPERATING')
   const assetWorkOrders = workOrders.filter(order => String(order.ASSET || '').trim() === String(asset.assetnum || '').trim())
   const openOrders = assetWorkOrders.filter(order => !['COMP', 'CLOSE', 'CAN'].includes(String(order.STATUS || '').toUpperCase()))
-  const statusTone = asset.status === 'OPERATING' ? 'green' : asset.status === 'BROKEN' ? 'orange' : 'neutral'
+  const statusTone = matrixStatusTone(status)
+  const changeStatus = value => {
+    setStatus(value)
+    onUpdate?.(asset.assetnum, { status: value })
+  }
 
   return (
-    <section className="master-detail-page resource-detail-page asset-detail-page">
-      <header className="record-page-header resource-detail-header">
-        <div className="record-header-copy">
-          <div className="record-header-nav">
-            <button className="back-link" onClick={onBack}>← Back to assets</button>
-            <span className="record-kicker">ASSET MASTER</span>
-          </div>
-          <div className="wo-title-line">
-            <h1>{asset.assetnum}</h1>
-            <span className={`badge ${statusTone}`}><i />{asset.status || 'UNKNOWN'}</span>
-          </div>
-          <p>{asset.description}</p>
-        </div>
+    <section className="printable-record">
+      <div className="print-report-screen space-y-5">
+        <DetailHeader
+          eyebrow="ASSET MASTER"
+          id={asset.assetnum}
+          title={asset.description}
+          status={`${status} · ${statusDescription('asset', status)}`}
+          statusTone={statusTone}
+          onBack={onBack}
+          backLabel="Back to assets"
+          printLabel="Print asset"
+          actions={(
+            <select
+              className="h-10 min-w-[190px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+              value={status}
+              onChange={event => changeStatus(event.target.value)}
+              aria-label="Change asset status"
+            >
+              {statusOptions('asset').map(option => <option value={option} key={option}>{option} · {statusDescription('asset', option)}</option>)}
+            </select>
+          )}
+          stats={[
+            { label: 'Site / Location', value: asset.site || '-', note: asset.location || 'Location not set' },
+            { label: 'Department', value: asset.department || 'Not configured', note: asset['sub department'] || 'No sub department' },
+            { label: 'System', value: asset.system || 'Not assigned', note: systemLabel(asset.system) || 'No system code' },
+            { label: 'Open Work Orders', value: openOrders.length, note: `${assetWorkOrders.length} total linked` },
+            { label: 'Priority', value: asset.prioity || '-', note: 'Asset criticality' }
+          ]}
+        />
 
-        <div className="record-header-actions">
-          <button className="outline" onClick={() => window.print()}><Printer size={15} />Print asset</button>
-        </div>
-      </header>
+        <DetailTabs tabs={['Asset Details', 'Work Orders']} active={activeTab} onChange={setActiveTab} />
 
-      <section className="resource-profile-strip">
-        <div className="resource-icon asset"><Boxes size={25} /></div>
-        <div>
-          <span>Maintainable Asset</span>
-          <strong>{asset.description}</strong>
-          <p>{asset.location || 'No location'} · Site {asset.site || '-'}</p>
-        </div>
-        <div className="resource-profile-status">
-          <span>Department</span>
-          <strong>{asset.department || 'Not configured'}</strong>
-        </div>
-        <div className="resource-profile-status">
-          <span>Open Work Orders</span>
-          <strong>{openOrders.length}</strong>
-        </div>
-      </section>
+        {activeTab === 'Asset Details' && <main className="grid gap-5 lg:grid-cols-2">
+          <InfoCard
+            icon={Boxes}
+            kicker="IDENTITY"
+            title="Asset Information"
+            items={[
+              ['Asset Number', asset.assetnum],
+              ['Description', asset.description],
+              ['Short Name', asset['asset short name']],
+              ['Parent Asset', asset.parent]
+            ]}
+          />
 
-      <nav className="record-tabs">
-        <button className="active">Asset Details</button>
-      </nav>
+          <InfoCard
+            icon={Factory}
+            kicker="TECHNICAL"
+            title="Model & Serial"
+            items={[
+              ['Model Number', asset.modelnum],
+              ['Serial Number', asset.serialnum],
+              ['Install Date', asset.installdate],
+              ['Quantity', asset.quantity]
+            ]}
+          />
 
-      <main className="resource-detail-content">
-        <section className="resource-focus-card">
-          <div className="resource-focus-head">
-            <div>
-              <span>ASSET READINESS</span>
-              <h2>{asset.status === 'OPERATING' ? 'Asset operating and available' : 'Asset requires attention'}</h2>
-              <p>{assetWorkOrders.length ? `${assetWorkOrders.length} work orders are linked to this asset record.` : 'No work orders are currently linked to this asset in the mock data.'}</p>
-            </div>
-            {asset.status === 'OPERATING' ? <BadgeCheck size={30} /> : <ShieldCheck size={30} />}
-          </div>
+          <TimelineCard
+            icon={CalendarClock}
+            kicker="MAINTENANCE CONTEXT"
+            title="Asset Usage"
+            rows={[
+              { icon: BadgeCheck, text: 'Available for Job Requests and Work Orders.', value: asset.assetnum },
+              { icon: ClipboardList, text: 'Open maintenance activity linked to this asset.', value: `${openOrders.length} open` },
+              { icon: Tag, text: 'Operational status from asset master.', value: status }
+            ]}
+          />
 
-          <div className={`resource-readiness-bar ${asset.status === 'OPERATING' ? '' : 'warning'}`}>
-            <span style={{ width: asset.status === 'OPERATING' ? '92%' : '45%' }} />
-          </div>
+        </main>}
 
-          <div className="resource-metric-grid">
-            <MetricCard icon={MapPin} label="Site" value={asset.site} note={asset.location || 'Location not set'} />
-            <MetricCard icon={ClipboardList} label="Work Orders" value={assetWorkOrders.length} note={`${openOrders.length} currently open`} />
-            <MetricCard icon={Tag} label="Priority" value={asset.prioity} note="Asset criticality from workbook" />
-          </div>
-        </section>
+        {activeTab === 'Work Orders' && <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+            <header className="flex items-center justify-between gap-3 border-b border-[var(--app-line)] px-5 py-4">
+              <div>
+                <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">LINKED WORK</p>
+                <h2 className="text-base font-extrabold text-[var(--app-ink)]">Work Orders</h2>
+              </div>
+              <Badge tone={openOrders.length ? 'orange' : 'green'}>{openOrders.length} open</Badge>
+            </header>
+            <DataTable
+              rows={assetWorkOrders}
+              rowKey="WORKORDER"
+              pageSize={5}
+              showFooter={false}
+              columns={[
+                { key: 'WORKORDER', label: 'WO Number', render: value => <strong className="mono">{value}</strong> },
+                { key: 'DESCRIPITION ', label: 'Description' },
+                { key: 'STATUS', label: 'Status', render: value => <Badge tone={['COMP', 'CLOSE'].includes(value) ? 'green' : 'orange'}>{value || '-'}</Badge> },
+                { key: 'WORK TYPE ', label: 'Type' }
+              ]}
+            />
+          </section>}
+      </div>
 
-        <section className="resource-detail-card">
-          <header>
-            <Boxes size={18} />
-            <div>
-              <span>IDENTITY</span>
-              <h2>Asset Information</h2>
-            </div>
-          </header>
-          <div className="resource-detail-list">
-            <DetailItem label="Asset Number" value={asset.assetnum} />
-            <DetailItem label="Description" value={asset.description} />
-            <DetailItem label="Short Name" value={asset['asset short name']} />
-            <DetailItem label="Parent Asset" value={asset.parent} />
-          </div>
-        </section>
-
-        <section className="resource-detail-card">
-          <header>
-            <Building2 size={18} />
-            <div>
-              <span>LOCATION</span>
-              <h2>Site Context</h2>
-            </div>
-          </header>
-          <div className="resource-detail-list">
-            <DetailItem label="Site" value={asset.site} />
-            <DetailItem label="Location" value={asset.location} />
-            <DetailItem label="Department" value={asset.department} />
-            <DetailItem label="Sub Department" value={asset['sub department']} />
-          </div>
-        </section>
-
-        <section className="resource-detail-card">
-          <header>
-            <Factory size={18} />
-            <div>
-              <span>MANUFACTURER</span>
-              <h2>Model & Serial</h2>
-            </div>
-          </header>
-          <div className="resource-detail-list">
-            <DetailItem label="Model Number" value={asset.modelnum} />
-            <DetailItem label="Serial Number" value={asset.serialnum} />
-            <DetailItem label="Install Date" value={asset.installdate} />
-            <DetailItem label="Quantity" value={asset.quantity} />
-          </div>
-        </section>
-
-        <section className="resource-detail-card resource-wide-card">
-          <header>
-            <CalendarClock size={18} />
-            <div>
-              <span>MAINTENANCE CONTEXT</span>
-              <h2>Work Order Relationship</h2>
-            </div>
-          </header>
-          <div className="resource-timeline">
-            <div><BadgeCheck size={15} /><span>Used in Service Request and Work Order asset selection.</span><strong>{asset.assetnum}</strong></div>
-            <div><BadgeCheck size={15} /><span>Open maintenance activity linked to this asset.</span><strong>{openOrders.length} open</strong></div>
-            <div><BadgeCheck size={15} /><span>Asset status controls operational visibility.</span><strong>{asset.status}</strong></div>
-          </div>
-        </section>
-      </main>
+      <GenericPrintReport
+        reportTitle="Asset Report"
+        reportSubtitle="Asset master report"
+        number={asset.assetnum}
+        status={status || 'UNKNOWN'}
+        description={asset.description}
+        summary={[['Site', asset.site], ['Location', asset.location], ['Department', asset.department]]}
+        sections={[
+          { title: 'Asset Information', rows: [[['Asset Number', asset.assetnum], ['Description', asset.description], ['Short Name', asset['asset short name']], ['Parent Asset', asset.parent]]] },
+          { title: 'Site Context', rows: [[['Site', asset.site], ['Location', asset.location], ['Department', asset.department], ['Sub Department', asset['sub department']]], [['System', systemLabel(asset.system)]]] },
+          { title: 'Model and Serial', rows: [[['Model Number', asset.modelnum], ['Serial Number', asset.serialnum], ['Install Date', asset.installdate], ['Quantity', asset.quantity]]] }
+        ]}
+        tables={[{
+          title: 'Linked Work Orders',
+          columns: [
+            { key: 'WORKORDER', label: 'WO Number' },
+            { key: 'DESCRIPITION ', label: 'Description' },
+            { key: 'STATUS', label: 'Status' },
+            { key: 'WORK TYPE ', label: 'Type' }
+          ],
+          rows: assetWorkOrders,
+          emptyText: 'No work orders linked to this asset.'
+        }]}
+      />
     </section>
   )
 }

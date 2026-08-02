@@ -1,0 +1,14 @@
+[
+  { "code": "HVAC-TECH", "name": "HVAC Technician", "department": "Mechanics", "subDepartment": "HVAC" },
+  { "code": "HVAC-SR", "name": "Senior HVAC Technician", "department": "Mechanics", "subDepartment": "HVAC" },
+  { "code": "PLMB-TECH", "name": "Plumbing Technician", "department": "Mechanics", "subDepartment": "Plumbing" },
+  { "code": "MECH-TECH", "name": "Mechanical Technician", "department": "Mechanics", "subDepartment": "Mechanical Systems" },
+  { "code": "ELEC-TECH", "name": "Electrical Technician", "department": "Electrical", "subDepartment": "Power Distribution" },
+  { "code": "ELV-TECH", "name": "Low Voltage Technician", "department": "Electrical", "subDepartment": "Low Voltage" },
+  { "code": "CIVIL-TECH", "name": "Civil Technician", "department": "Civil", "subDepartment": "Building Fabric" },
+  { "code": "PAINT-TECH", "name": "Painter", "department": "Civil", "subDepartment": "Painting" },
+  { "code": "CARP-TECH", "name": "Carpenter", "department": "Civil", "subDepartment": "Carpentry" },
+  { "code": "IRRIG-TECH", "name": "Irrigation Technician", "department": "Landscape", "subDepartment": "Irrigation" },
+  { "code": "LAND-OP", "name": "Landscape Operative", "department": "Landscape", "subDepartment": "Softscape" },
+  { "code": "CLEAN-OP", "name": "Cleaning Operative", "department": "Cleaning", "subDepartment": "Internal Cleaning" }
+]

@@ -1,14 +1,21 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import materialSeed from '../data/materials.json'
+import { workOrders } from '../data/cafmData'
 import AddMaterialModal from '../components/materials/AddMaterialModal'
 import MaterialDetailPage from '../components/materials/MaterialDetailPage'
 import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
+import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import StandardFilters from '../components/ui/StandardFilters'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { availabilityFor, materialStatusTone, storeLabel, storesHolding, totalAvailable, totalBalance, totalReserved } from '../lib/inventory'
 
 const empty = {
   itemNumber: '',
@@ -19,8 +26,71 @@ const empty = {
   balance: 0,
   reserved: 0,
   reorderLevel: 0,
-  availability: 'Available'
+  availability: 'Available',
+  status: 'Available'
 }
+const templateHeaders = Object.keys(empty)
+
+// Balances now live per store, so the register shows the roll-up across all of them.
+const withStock = row => ({
+  ...row,
+  balance: totalBalance(row.itemNumber) || Number(row.balance) || 0,
+  reserved: totalReserved(row.itemNumber) || Number(row.reserved) || 0,
+  available: totalAvailable(row.itemNumber),
+  stores: storesHolding(row.itemNumber).map(storeLabel).join(', ') || row.storeroom || '',
+  availability: availabilityFor(row)
+})
+
+const exportColumns = [
+  { key: 'itemNumber', label: 'Item Number' },
+  { key: 'description', label: 'Description' },
+  { key: 'category', label: 'Category' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'stores', label: 'Stores' },
+  { key: 'balance', label: 'Total Balance' },
+  { key: 'reserved', label: 'Total Reserved' },
+  { key: 'available', label: 'Available' },
+  { key: 'reorderLevel', label: 'Reorder Level' },
+  { key: 'availability', label: 'Availability' },
+  { key: 'status', label: 'Material Status' }
+]
+const materialUsageMap = {
+  'MAT-0001': [
+    { workOrder: 'PM-ALS-HV-00001-2026-01', quantity: 4, type: 'PM', status: 'COMP' },
+    { workOrder: 'PM-MS-MEC-FCU-001-2026-01', quantity: 2, type: 'PM', status: 'CLOSE' }
+  ],
+  'MAT-0002': [
+    { workOrder: '56545132', quantity: 1, type: 'CM', status: 'INPRG' }
+  ],
+  'MAT-0003': [
+    { workOrder: 'PM-MS-MEC-SAU-001-2026-01', quantity: 3, type: 'PM', status: 'COMP' }
+  ],
+  'MAT-0004': [
+    { workOrder: '56545132', quantity: 6, type: 'CM', status: 'APPR' }
+  ],
+  'MAT-0005': [
+    { workOrder: 'PM-MS-MEC-FDA-001-2026-01', quantity: 8, type: 'PM', status: 'WAPPR' }
+  ],
+  'MAT-0006': [
+    { workOrder: 'PMKG-L00-19-2026-01', quantity: 5, type: 'PM', status: 'CLOSE' }
+  ]
+}
+
+const findWorkOrder = reference => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
+const materialUsage = material => (materialUsageMap[material.itemNumber] || []).map((usage, index) => {
+  const order = findWorkOrder(usage.workOrder)
+  return {
+    reference: usage.workOrder,
+    description: order?.['DESCRIPITION '] || order?.DESCRIPTION || `${material.description} usage`,
+    workType: usage.type,
+    quantity: usage.quantity,
+    unit: material.unit,
+    status: order?.STATUS || usage.status,
+    site: order?.SITE || '1031',
+    department: order?.['DEPARTMENT '] || material.category,
+    source: index === 0 ? 'Actual consumption' : 'Planned / reserved'
+  }
+})
 
 export default function MaterialsPage() {
   const [rows, setRows] = useState(materialSeed)
@@ -28,9 +98,17 @@ export default function MaterialsPage() {
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
+  const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/materials/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.itemNumber === routeId) || null)
-  const visibleRows = tab === 'All' ? rows : rows.filter(row => row.availability === tab)
+  const stockedRows = rows.map(withStock)
+  const tabRows = tab === 'All' ? stockedRows : stockedRows.filter(row => row.availability === tab)
+  const visibleRows = applyStandardFilters(tabRows, filters, {
+    site: ['site', 'storeroom'],
+    department: ['department', 'category'],
+    status: ['availability'],
+    date: ['updatedDate']
+  })
 
   const open = row => {
     setSelected(row)
@@ -40,6 +118,11 @@ export default function MaterialsPage() {
   const close = () => {
     setSelected(null)
     window.history.pushState({}, '', '/materials')
+  }
+
+  const updateMaterial = (itemNumber, patch) => {
+    setRows(current => current.map(row => row.itemNumber === itemNumber ? { ...row, ...patch } : row))
+    setSelected(current => current?.itemNumber === itemNumber ? { ...current, ...patch } : current)
   }
 
   const save = () => {
@@ -57,7 +140,7 @@ export default function MaterialsPage() {
   }
 
   if (selected) {
-    return <MaterialDetailPage material={selected} onBack={close} />
+    return <MaterialDetailPage material={selected} usageRows={materialUsage(selected)} onBack={close} onUpdate={updateMaterial} />
   }
 
   return (
@@ -67,9 +150,11 @@ export default function MaterialsPage() {
         title="Materials"
         description="Maintain spare parts, consumables, balances, reservations, and reorder levels."
         actions={(
-          <div className="heading-actions">
-            <ExcelImportButton fileName={imported} onFile={setImported} />
-            <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add material</button>
+          <div className="flex items-center gap-2">
+            <ExcelTemplateButton headers={templateHeaders} fileName="Materials_Template.xlsx" />
+            <ExportExcelButton module="Materials" rows={visibleRows} columns={exportColumns} />
+            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(rows)} />
+            <Button onClick={() => setAdding(true)}><Plus size={17} />Add material</Button>
           </div>
         )}
       />
@@ -78,15 +163,22 @@ export default function MaterialsPage() {
 
       <IndexTabs
         active={tab}
-        onChange={setTab}
+        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
         tabs={[
-          { key: 'All', label: 'All Materials', count: rows.length },
-          { key: 'Available', label: 'Available', count: rows.filter(row => row.availability === 'Available').length },
-          { key: 'Purchase Required', label: 'Purchase Required', count: rows.filter(row => row.availability === 'Purchase Required').length }
+          { key: 'All', label: 'All Materials', count: stockedRows.length },
+          { key: 'Available', label: 'Available', count: stockedRows.filter(row => row.availability === 'Available').length },
+          { key: 'Purchase Required', label: 'Purchase Required', count: stockedRows.filter(row => row.availability === 'Purchase Required').length }
         ]}
       />
+      <StandardFilters
+        filters={filters}
+        setFilters={setFilters}
+        siteOptions={optionsFromRows(rows, ['site', 'storeroom'])}
+        departmentOptions={optionsFromRows(rows, ['department', 'category'])}
+        statusOptions={optionsFromRows(rows, ['availability'])}
+      />
 
-      <section className="panel register">
+      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
         <DataTable
           rows={visibleRows}
           rowKey="itemNumber"
@@ -97,11 +189,13 @@ export default function MaterialsPage() {
             { key: 'description', label: 'Description' },
             { key: 'category', label: 'Category' },
             { key: 'unit', label: 'Unit' },
-            { key: 'storeroom', label: 'Storeroom' },
+            { key: 'stores', label: 'Stores' },
             { key: 'balance', label: 'Balance' },
             { key: 'reserved', label: 'Reserved' },
+            { key: 'available', label: 'Available', render: (value, row) => <Badge tone={value > row.reorderLevel ? 'green' : 'orange'}>{value}</Badge> },
             { key: 'reorderLevel', label: 'Reorder level' },
-            { key: 'availability', label: 'Availability', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> }
+            { key: 'availability', label: 'Availability', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> },
+            { key: 'status', label: 'Material Status', render: value => value ? <Badge tone={materialStatusTone(value)}>{value}</Badge> : '—' }
           ]}
         />
       </section>

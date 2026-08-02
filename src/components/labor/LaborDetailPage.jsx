@@ -1,4 +1,11 @@
-import { Activity, BadgeCheck, BriefcaseBusiness, CalendarDays, Clock3, Printer, ShieldCheck, UserRound, Wrench } from 'lucide-react'
+import { useState } from 'react'
+import { Activity, BriefcaseBusiness, Clock3, ShieldCheck, UserRound, Wrench } from 'lucide-react'
+import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
+import Badge from '../ui/Badge'
+import DataTable from '../ui/DataTable'
+import EmptyState from '../ui/EmptyState'
+import GenericPrintReport from '../ui/GenericPrintReport'
+import { statusTone } from '../../lib/statusMatrix'
 
 const workloadByStatus = {
   Available: { openWork: 1, weekHours: 14, utilization: 42, nextAssignment: 'Ready for dispatch' },
@@ -12,152 +19,134 @@ const toneByStatus = {
   'On Leave': 'orange'
 }
 
-function initials(name) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(part => part[0])
-    .join('')
-    .toUpperCase()
-}
+const laborStatuses = ['Available', 'Assigned', 'On Leave']
 
-function DetailItem({ label, value }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value || '-'}</strong>
-    </div>
-  )
-}
-
-function MetricCard({ icon: Icon, label, value, note }) {
-  return (
-    <article className="labor-metric-card">
-      <Icon size={17} />
-      <div>
-        <span>{label}</span>
-        <strong>{value}</strong>
-        <small>{note}</small>
-      </div>
-    </article>
-  )
-}
-
-export default function LaborDetailPage({ labor, onBack }) {
+export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate }) {
+  const [tab, setTab] = useState('Labor Details')
   const workload = workloadByStatus[labor.availability] || workloadByStatus.Available
-  const statusTone = toneByStatus[labor.availability] || 'green'
+  const availabilityTone = toneByStatus[labor.availability] || 'green'
+  const changeStatus = event => onUpdate?.(labor.personId, { availability: event.target.value })
 
   return (
-    <section className="master-detail-page labor-detail-page">
-      <header className="record-page-header labor-detail-header">
-        <div className="record-header-copy">
-          <div className="record-header-nav">
-            <button className="back-link" onClick={onBack}>← Back to labor</button>
-            <span className="record-kicker">LABOR RESOURCE</span>
-          </div>
-          <div className="wo-title-line">
-            <h1>{labor.personId}</h1>
-            <span className={`badge ${statusTone}`}><i />{labor.availability}</span>
-          </div>
-          <p>{labor.name} · {labor.craft}</p>
-        </div>
+    <section className="printable-record">
+      <div className="print-report-screen space-y-5">
+        <DetailHeader
+          eyebrow="LABOR RESOURCE"
+          id={labor.personId}
+          title={`${labor.name} · ${labor.craft}`}
+          status={labor.availability}
+          statusTone={availabilityTone}
+          onBack={onBack}
+          backLabel="Back to labor"
+          stats={[
+            { label: 'Craft Code', value: labor.craftCode },
+            { label: 'Department', value: labor.department },
+            { label: 'Shift', value: labor.shift },
+            { label: 'Next Action', value: workload.nextAssignment }
+          ]}
+          actions={(
+            <select
+              value={labor.availability}
+              onChange={changeStatus}
+              className="h-10 min-w-[150px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+              aria-label="Change labor availability"
+            >
+              {laborStatuses.map(status => <option key={status} value={status}>{status}</option>)}
+            </select>
+          )}
+        />
 
-        <div className="record-header-actions">
-          <button className="outline" onClick={() => window.print()}><Printer size={15} />Print record</button>
-        </div>
-      </header>
+        <DetailTabs tabs={['Labor Details', 'Past Work']} active={tab} onChange={setTab} />
 
-      <section className="labor-profile-strip">
-        <div className="labor-avatar">{initials(labor.name)}</div>
-        <div>
-          <span>Technician Profile</span>
-          <strong>{labor.name}</strong>
-          <p>{labor.craftCode} · {labor.department} / {labor.subDepartment}</p>
-        </div>
-        <div className="labor-profile-status">
-          <span>Shift</span>
-          <strong>{labor.shift}</strong>
-        </div>
-        <div className="labor-profile-status">
-          <span>Next action</span>
-          <strong>{workload.nextAssignment}</strong>
-        </div>
-      </section>
+        {tab === 'Labor Details' && <main className="space-y-4">
+          <section className="grid gap-3 md:grid-cols-4">
+            {[
+              { icon: BriefcaseBusiness, label: 'Open Work', value: workload.openWork, note: 'Current queue' },
+              { icon: Clock3, label: 'Week Hours', value: `${workload.weekHours}h`, note: 'Planned capacity' },
+              { icon: Activity, label: 'Utilization', value: `${workload.utilization}%`, note: 'Schedule load' },
+              { icon: ShieldCheck, label: 'Availability', value: labor.availability, note: workload.nextAssignment }
+            ].map(metric => {
+              const Icon = metric.icon
+              return (
+                <div key={metric.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{metric.label}</span>
+                    <Icon size={16} className="text-[var(--app-primary)]" />
+                  </div>
+                  <strong className="mt-2 block text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{metric.value}</strong>
+                  <small className="text-[11px] font-semibold text-[var(--app-muted)]">{metric.note}</small>
+                </div>
+              )
+            })}
+          </section>
 
-      <nav className="record-tabs">
-        <button className="active">Labor Details</button>
-      </nav>
+          <section className="grid gap-4 lg:grid-cols-2">
+            <InfoCard
+              icon={UserRound}
+              kicker="IDENTITY"
+              title="Labor Information"
+              items={[
+                ['Name', labor.name],
+                ['Person ID', labor.personId],
+                ['Shift', labor.shift],
+                ['Availability', labor.availability]
+              ]}
+            />
 
-      <main className="labor-detail-content">
-        <section className="labor-focus-card">
-          <div className="labor-focus-head">
-            <div>
-              <span>RESOURCE READINESS</span>
-              <h2>{labor.availability === 'Available' ? 'Ready for assignment' : labor.availability}</h2>
-              <p>{labor.craft} assigned to {labor.department} with {labor.shift.toLowerCase()} shift coverage.</p>
-            </div>
-            <ShieldCheck size={30} />
-          </div>
+            <InfoCard
+              icon={Wrench}
+              kicker="QUALIFICATION"
+              title="Craft & Responsibility"
+              items={[
+                ['Craft Code', labor.craftCode],
+                ['Craft', labor.craft],
+                ['Department', labor.department],
+                ['Sub Department', labor.subDepartment]
+              ]}
+            />
+          </section>
+        </main>}
 
-          <div className="labor-readiness-bar">
-            <span style={{ width: `${workload.utilization}%` }} />
-          </div>
-
-          <div className="labor-metric-grid">
-            <MetricCard icon={BriefcaseBusiness} label="Open Work" value={workload.openWork} note="Current assigned workload" />
-            <MetricCard icon={Clock3} label="Week Hours" value={`${workload.weekHours}h`} note="Planned labor capacity" />
-            <MetricCard icon={Activity} label="Utilization" value={`${workload.utilization}%`} note="Mock schedule load" />
-          </div>
-        </section>
-
-        <section className="labor-detail-card">
-          <header>
-            <UserRound size={18} />
-            <div>
-              <span>IDENTITY</span>
-              <h2>Labor Information</h2>
-            </div>
-          </header>
-          <div className="labor-detail-list">
-            <DetailItem label="Name" value={labor.name} />
-            <DetailItem label="Person ID" value={labor.personId} />
-            <DetailItem label="Shift" value={labor.shift} />
-            <DetailItem label="Availability" value={labor.availability} />
-          </div>
-        </section>
-
-        <section className="labor-detail-card">
-          <header>
-            <Wrench size={18} />
-            <div>
-              <span>QUALIFICATION</span>
-              <h2>Craft & Responsibility</h2>
-            </div>
-          </header>
-          <div className="labor-detail-list">
-            <DetailItem label="Craft Code" value={labor.craftCode} />
-            <DetailItem label="Craft" value={labor.craft} />
-            <DetailItem label="Department" value={labor.department} />
-            <DetailItem label="Sub Department" value={labor.subDepartment} />
-          </div>
-        </section>
-
-        <section className="labor-detail-card labor-wide-card">
-          <header>
-            <CalendarDays size={18} />
-            <div>
-              <span>WORK CONTEXT</span>
-              <h2>Recent Planning Use</h2>
-            </div>
-          </header>
-          <div className="labor-timeline">
-            <div><BadgeCheck size={15} /><span>Craft can be selected in Work Order planning and actual labor.</span><strong>{labor.craftCode}</strong></div>
-            <div><BadgeCheck size={15} /><span>Supervisor can dispatch this resource by department and work group.</span><strong>{labor.department}</strong></div>
-            <div><BadgeCheck size={15} /><span>Availability is visible before assignment to avoid overbooking.</span><strong>{labor.availability}</strong></div>
-          </div>
-        </section>
-      </main>
+        {tab === 'Past Work' && (
+          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+            {pastWork.length ? (
+              <DataTable
+                rows={pastWork}
+                rowKey="reference"
+                pagination
+                columns={[
+                  { key: 'reference', label: 'Work Order', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
+                  { key: 'description', label: 'Description' },
+                  { key: 'workType', label: 'Type' },
+                  { key: 'department', label: 'Department' },
+                  { key: 'site', label: 'Site' },
+                  { key: 'targetFinish', label: 'Target / Finish' },
+                  { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value}</Badge> }
+                ]}
+              />
+            ) : (
+              <EmptyState
+                icon={BriefcaseBusiness}
+                title="No past work found"
+                description="Completed or attended Work Orders will appear here once this labor resource is assigned or recorded in actuals."
+              />
+            )}
+          </section>
+        )}
+      </div>
+      <GenericPrintReport
+        reportTitle="Labor Report"
+        reportSubtitle="Labor resource report"
+        number={labor.personId}
+        status={labor.availability}
+        description={`${labor.name} - ${labor.craft}`}
+        summary={[['Department', labor.department], ['Craft Code', labor.craftCode], ['Shift', labor.shift]]}
+        sections={[
+          { title: 'Labor Information', rows: [[['Name', labor.name], ['Person ID', labor.personId], ['Shift', labor.shift], ['Availability', labor.availability]]] },
+          { title: 'Craft and Responsibility', rows: [[['Craft Code', labor.craftCode], ['Craft', labor.craft], ['Department', labor.department], ['Sub Department', labor.subDepartment]]] },
+          { title: 'Workload Context', rows: [[['Open Work', workload.openWork], ['Week Hours', `${workload.weekHours}h`], ['Utilization', `${workload.utilization}%`], ['Next Action', workload.nextAssignment]]] }
+        ]}
+      />
     </section>
   )
 }

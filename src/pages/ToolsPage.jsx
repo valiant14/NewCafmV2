@@ -1,14 +1,19 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import toolSeed from '../data/tools.json'
+import { workOrders } from '../data/cafmData'
 import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
 import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
+import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import StandardFilters from '../components/ui/StandardFilters'
+import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
 const empty = {
   toolNumber: '',
@@ -19,6 +24,40 @@ const empty = {
   status: 'Available',
   inspectionDue: ''
 }
+const templateHeaders = Object.keys(empty)
+const toolUsageMap = {
+  'TOOL-0001': [
+    { workOrder: '56545132', quantity: 1, type: 'CM', status: 'INPRG' },
+    { workOrder: 'PM-ALS-HV-00001-2026-01', quantity: 1, type: 'PM', status: 'COMP' }
+  ],
+  'TOOL-0002': [
+    { workOrder: 'PM-MS-MEC-FCU-001-2026-01', quantity: 1, type: 'PM', status: 'CLOSE' }
+  ],
+  'TOOL-0003': [
+    { workOrder: 'PM-MS-MEC-SAU-001-2026-01', quantity: 1, type: 'PM', status: 'APPR' }
+  ],
+  'TOOL-0004': [
+    { workOrder: 'PM-MS-MEC-FDA-001-2026-01', quantity: 1, type: 'PM', status: 'WAPPR' }
+  ],
+  'TOOL-0005': [
+    { workOrder: 'PMKG-L00-19-2026-01', quantity: 2, type: 'PM', status: 'COMP' }
+  ]
+}
+
+const findWorkOrder = reference => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
+const toolUsage = tool => (toolUsageMap[tool.toolNumber] || []).map((usage, index) => {
+  const order = findWorkOrder(usage.workOrder)
+  return {
+    reference: usage.workOrder,
+    description: order?.['DESCRIPITION '] || order?.DESCRIPTION || `${tool.description} usage`,
+    workType: usage.type,
+    quantity: usage.quantity,
+    status: order?.STATUS || usage.status,
+    site: order?.SITE || '1031',
+    department: order?.['DEPARTMENT '] || tool.category,
+    source: index === 0 ? 'Actual tool use' : 'Planned / allocated'
+  }
+})
 
 export default function ToolsPage() {
   const [rows, setRows] = useState(toolSeed)
@@ -26,9 +65,16 @@ export default function ToolsPage() {
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
+  const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/tools/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.toolNumber === routeId) || null)
-  const visibleRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
+  const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
+  const visibleRows = applyStandardFilters(tabRows, filters, {
+    site: ['site', 'location'],
+    department: ['department', 'category'],
+    status: ['status'],
+    date: ['inspectionDue']
+  })
 
   const open = row => {
     setSelected(row)
@@ -38,6 +84,11 @@ export default function ToolsPage() {
   const close = () => {
     setSelected(null)
     window.history.pushState({}, '', '/tools')
+  }
+
+  const updateTool = (toolNumber, patch) => {
+    setRows(current => current.map(row => row.toolNumber === toolNumber ? { ...row, ...patch } : row))
+    setSelected(current => current?.toolNumber === toolNumber ? { ...current, ...patch } : current)
   }
 
   const save = () => {
@@ -50,7 +101,7 @@ export default function ToolsPage() {
   }
 
   if (selected) {
-    return <ToolDetailPage tool={selected} onBack={close} />
+    return <ToolDetailPage tool={selected} usageRows={toolUsage(selected)} onBack={close} onUpdate={updateTool} />
   }
 
   return (
@@ -60,9 +111,10 @@ export default function ToolsPage() {
         title="Tools & Equipment"
         description="Maintain tools, equipment locations, quantities, status, and inspections."
         actions={(
-          <div className="heading-actions">
-            <ExcelImportButton fileName={imported} onFile={setImported} />
-            <button className="primary" onClick={() => setAdding(true)}><Plus size={17} />Add tool or equipment</button>
+          <div className="flex items-center gap-2">
+            <ExcelTemplateButton headers={templateHeaders} fileName="Tools_Equipment_Template.xlsx" />
+            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(rows)} />
+            <Button onClick={() => setAdding(true)}><Plus size={17} />Add tool or equipment</Button>
           </div>
         )}
       />
@@ -71,7 +123,7 @@ export default function ToolsPage() {
 
       <IndexTabs
         active={tab}
-        onChange={setTab}
+        onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
         tabs={[
           { key: 'All', label: 'All Tools', count: rows.length },
           { key: 'Available', label: 'Available', count: rows.filter(row => row.status === 'Available').length },
@@ -79,8 +131,15 @@ export default function ToolsPage() {
           { key: 'Maintenance', label: 'Maintenance', count: rows.filter(row => row.status === 'Maintenance').length }
         ]}
       />
+      <StandardFilters
+        filters={filters}
+        setFilters={setFilters}
+        siteOptions={optionsFromRows(rows, ['site', 'location'])}
+        departmentOptions={optionsFromRows(rows, ['department', 'category'])}
+        statusOptions={optionsFromRows(rows, ['status'])}
+      />
 
-      <section className="panel register">
+      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
         <DataTable
           rows={visibleRows}
           rowKey="toolNumber"

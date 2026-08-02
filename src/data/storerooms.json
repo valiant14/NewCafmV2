@@ -1,0 +1,30 @@
+[
+  {
+    "code": "DIWAN-MAIN",
+    "name": "Diwan Main Store",
+    "location": "RC-1031-RD-001-00-090",
+    "site": "1031",
+    "department": "Facilities"
+  },
+  {
+    "code": "HVAC-STORE",
+    "name": "HVAC Store",
+    "location": "RC-1031-RD-001-00-091",
+    "site": "1031",
+    "department": "Mechanics"
+  },
+  {
+    "code": "ELEC-STORE",
+    "name": "Electrical Store",
+    "location": "RC-1031-RD-001-00-092",
+    "site": "1031",
+    "department": "Electrical"
+  },
+  {
+    "code": "CIVIL-STORE",
+    "name": "Civil Store",
+    "location": "RC-1031-RD-001-00-093",
+    "site": "1031",
+    "department": "Civil"
+  }
+]

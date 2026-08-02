@@ -1,133 +1,167 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Building2, CalendarClock, Check, ChevronRight, MapPin, Plus, Printer, Upload, UserRound, X } from 'lucide-react'
+import { ChevronRight, Plus } from 'lucide-react'
+import ServiceRequestDetail from '../components/service-requests/ServiceRequestDetail'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
-import { Field, Section } from '../components/ui/FormControls'
+import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
+import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
+import IndexTabs from '../components/ui/IndexTabs'
+import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
-import departments from '../data/departments.json'
+import StandardFilters from '../components/ui/StandardFilters'
+import { nowLocalDateTime } from '../lib/datetime'
+import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
+import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
+import { useAuth } from '../providers/AuthProvider'
 
 export const initialRequests = [{
-  sr: 'SR-2026-0041', description: 'Water leak reported above meeting room', longDescription: 'Active water staining and intermittent dripping from ceiling tile.',
-  site: '1031', location: 'RC-1031-RD-001-00-054', asset: '', department: 'Civil', reportedBy: 'Maha Alotaibi',
-  reportedDate: '2026-07-12T10:15', priority: 'High', requestType: 'Service', failureCode: '', status: 'WAPPR', attachments: 1
+  sr: 'SR-2026-0041',
+  description: 'Water leak reported above meeting room',
+  longDescription: 'Active water staining and intermittent dripping from ceiling tile.',
+  site: '1031',
+  location: 'RC-1031-RD-001-00-054',
+  asset: '',
+  department: 'Civil',
+  reportedBy: 'Maha Alotaibi',
+  reportedDate: '2026-07-12T10:15',
+  priority: 'High',
+  requestType: 'Service',
+  failureCode: '',
+  status: 'WAPPR',
+  attachments: 1
 }]
 
-const blankRequest = () => ({ sr: 'AUTO', description: '', longDescription: '', site: '', location: '', asset: '', department: '', reportedBy: '', reportedDate: new Date().toISOString().slice(0, 16), priority: 'Medium', requestType: 'Service', failureCode: '', status: 'NEW' })
+const blankRequest = () => ({
+  sr: 'AUTO',
+  description: '',
+  longDescription: '',
+  site: '',
+  location: '',
+  asset: '',
+  department: '',
+  reportedBy: '',
+  reportedDate: nowLocalDateTime(),
+  priority: 'Medium',
+  requestType: 'Service',
+  failureCode: '',
+  status: 'NEW'
+})
+const templateHeaders = Object.keys(blankRequest()).filter(key => key !== 'sr')
 
-function Badge({ children, tone = 'neutral' }) { return <span className={`badge ${tone}`}><i />{children}</span> }
-
-function ServiceRequestDetail({ request, assets, workOrders, failureOptions, onBack, onSubmit, onApprove, onOpenWorkOrder, modal = false }) {
-  const [form, setForm] = useState(request)
-  const [submitError, setSubmitError] = useState('')
-  const [activeTab, setActiveTab] = useState('Request Details')
-  const isNew = form.status === 'NEW'
-  const canSubmit = Boolean(form.description?.trim() && form.site && form.location && form.reportedBy?.trim())
-  const canConvert = Boolean(form.asset?.trim() && form.department?.trim() && form.subDepartment?.trim() && (form.assignedDepartment || form.department)?.trim() && form.failureCode?.trim())
-  const missingConversionFields = [!form.asset?.trim()&&'Asset',!form.department?.trim()&&'Department',!form.subDepartment?.trim()&&'Sub Department',!(form.assignedDepartment||form.department)?.trim()&&'Assigned Department',!form.failureCode?.trim()&&'Failure Code'].filter(Boolean)
-  const update = key => event => setForm({ ...form, [key]: event.target.value })
-  const sites = [...new Set([...assets.map(asset => String(asset.site)), ...workOrders.map(order => String(order.SITE))].filter(Boolean))].sort()
-  const siteAssets = assets.filter(asset => !form.site || String(asset.site) === String(form.site))
-  const assetOptions = siteAssets.map(asset => ({ value: asset.assetnum, label: asset.description?.trim() }))
-  const locations = [...new Set([...siteAssets.map(asset => asset.location), ...workOrders.filter(order => !form.site || String(order.SITE) === String(form.site)).map(order => order['LOCATION '])].filter(Boolean))].sort()
-  const departmentOptions = departments.map(department => ({ value: department.name, label: department.code }))
-  const selectedDepartment = departments.find(department => department.name === form.department)
-  const subDepartmentOptions = (selectedDepartment?.subDepartments || departments.flatMap(department => department.subDepartments)).map(sub => ({ value: sub.name, label: sub.code }))
-  const updateSite = event => setForm({ ...form, site: event.target.value, location: '', asset: '' })
-  const updateAsset = event => { const value = event.target.value; const match = assets.find(asset => asset.assetnum === value); setForm({ ...form, asset: value, location: match?.location || form.location, site: match?.site ? String(match.site) : form.site }) }
-  const updateDepartment = event => setForm({ ...form, department: event.target.value, subDepartment: '', assignedDepartment: form.assignedDepartment || event.target.value })
-  const handlePrimary = () => {
-    if (isNew && !canSubmit) return setSubmitError('Complete Description, Site, Location, and Reported By before submitting.')
-    if (!isNew && !canConvert) { setActiveTab(form.asset?.trim() ? 'Department Review' : 'Request Details'); return setSubmitError('Complete Asset, Department, Sub Department, Assigned Department, and Failure Code before converting to CM.') }
-    setSubmitError('')
-    if (isNew) onSubmit(form)
-    else { const converted=onApprove(form); setForm(converted) }
-  }
-  return <div className={`service-request-view ${modal ? 'service-request-modal' : ''}`}>
-    <header className="record-page-header">
-      <div className="record-header-copy">
-        <div className="record-header-nav">
-          {!isNew && <button className="back-link" onClick={onBack}>← All Service Requests</button>}
-          {!isNew && <span className="record-kicker">SERVICE REQUEST · {form.requestType?.toUpperCase()}</span>}
-        </div>
-        <div className="wo-title-line">
-          <h1>{form.sr === 'AUTO' ? 'New service request' : form.sr}</h1>
-          <Badge tone={form.status==='CONVERTED'?'green':'orange'}>{form.status}</Badge>
-        </div>
-        <p>{isNew ? 'Tell us what happened and where. The maintenance team will configure the technical details.' : form.description}</p>
-      </div>
-      {isNew ? (
-        <button className="modal-close-x" onClick={onBack} aria-label="Close new service request"><X size={20}/></button>
-      ) : (
-        <div className="record-header-actions">
-          <button className="outline"><Printer size={15} /> Print</button>
-          {form.status==='CONVERTED'&&form.convertedWorkOrder?<button className="primary wo-link-action" onClick={()=>onOpenWorkOrder(form.convertedWorkOrder)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15}/></button>:<button className="primary approve-action" onClick={handlePrimary} disabled={!canConvert}><Check size={15}/>Approve & convert to CM</button>}
-        </div>
-      )}
-    </header>
-    {!isNew && <div className="sr-flow"><span className="done">Request created</span><i /><span className={form.status === 'WAPPR' ? 'current' : 'done'}>Department review</span><i /><span className={form.status === 'CONVERTED' ? 'done' : ''}>CM work order</span></div>}
-    {!isNew&&<section className="record-summary"><div><span className="summary-icon orange"><AlertTriangle size={16}/></span><p>Priority<strong>{form.priority}</strong></p></div><div><span className="summary-icon green"><MapPin size={16}/></span><p>Site & location<strong>{form.site} · {form.location}</strong></p></div><div><span className="summary-icon blue"><UserRound size={16}/></span><p>Reported by<strong>{form.reportedBy}</strong></p></div><div><span className="summary-icon purple"><Building2 size={16}/></span><p>Department<strong>{form.department||'Pending review'}</strong></p></div><div><span className="summary-icon green"><CalendarClock size={16}/></span><p>Reported<strong>{form.reportedDate?.replace('T',' · ')}</strong></p></div></section>}
-    {!isNew && <nav className="record-tabs">{['Request Details','Attachments','Department Review'].map(tab=><button key={tab} className={activeTab===tab?'active':''} onClick={()=>setActiveTab(tab)}>{tab}</button>)}</nav>}
-    {!isNew&&form.status!=='CONVERTED'&&!canConvert&&<div className="conversion-warning"><AlertTriangle size={18}/><div><strong>Complete required information before CM conversion</strong><span>Missing: {missingConversionFields.join(', ')}</span></div><button onClick={()=>setActiveTab(form.asset?.trim()?'Department Review':'Request Details')}>Complete fields <ChevronRight size={14}/></button></div>}
-    <main className="service-request-content">
-      {submitError && <div className="form-error"><AlertTriangle size={17} /><span>{submitError}</span><button onClick={() => setSubmitError('')}><X size={14} /></button></div>}
-      {isNew && <Section title="Request Information" note="Provide the issue, location, and contact information."><div className="field-grid sr-form-grid">
-        <Field label="Priority" value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} />
-        <Field label="Description" value={form.description} required onChange={update('description')} />
-        <Field label="Site" value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" />
-        <Field label="Location" value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
-        <Field label="Asset" value={form.asset} onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" />
-        <Field label="Long Description" value={form.longDescription} type="textarea" onChange={update('longDescription')} />
-        <Field label="Reported By" value={form.reportedBy} required onChange={update('reportedBy')} />
-      </div></Section>}
-      {!isNew && activeTab==='Request Details' && <div className="request-overview-layout">
-        <section className="request-story-card"><div className="story-label">Reported issue</div><h2>{form.description}</h2><p>{form.longDescription||'No additional description was provided.'}</p><div className="story-footer"><span><UserRound size={14}/><b>Reported by</b>{form.reportedBy}</span><span><CalendarClock size={14}/><b>Reported</b>{form.reportedDate?.replace('T',' at ')}</span></div></section>
-        <aside className="request-facts-card"><h3>Request information</h3><dl><div><dt>Priority</dt><dd><Badge tone="orange">{form.priority}</Badge></dd></div><div><dt>Site</dt><dd>{form.site}</dd></div><div><dt>Location</dt><dd>{form.location}</dd></div><div><dt>Request type</dt><dd>Service</dd></div></dl></aside>
-        <section className={`asset-link-card ${form.asset?'linked':'required'}`}><div className="asset-link-copy"><span className="summary-icon green"><Building2 size={16}/></span><div><strong>{form.asset?'Linked asset':'Link an asset'}</strong><p>{form.asset?'This request is ready for technical classification.':'An asset must be linked before this request can be converted to CM.'}</p></div></div><div className="asset-link-field"><Field label="Asset" value={form.asset} required onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" /></div></section>
-      </div>}
-      {(isNew || activeTab==='Attachments') && <Section title="Attachments" note="Add photos or documents that help explain the request"><div className="upload-zone"><Upload size={25} /><strong>Upload attachments</strong><span>Photos, PDFs and supporting documents · multiple files supported</span><input type="file" multiple /></div></Section>}
-      {!isNew && activeTab==='Department Review' && <div className="review-configuration-layout">
-        <section className="review-card routing-card"><header><span className="review-card-icon green"><Building2 size={18}/></span><div><span>Step 01</span><h3>Work routing</h3><p>Choose the teams responsible for reviewing and executing the work.</p></div><em className={form.department&&form.assignedDepartment?'complete':'pending'}>{form.department&&form.assignedDepartment?'Complete':'Required'}</em></header><div className="review-fields"><Field label="Department" value={form.department} required onChange={updateDepartment} suggestions={departmentOptions} placeholder="Search or select a department" /><Field label="Assigned Department" value={form.assignedDepartment || form.department} required onChange={update('assignedDepartment')} suggestions={departmentOptions} placeholder="Search or select an assigned department" /></div></section>
-        <section className="review-card classification-card"><header><span className="review-card-icon orange"><AlertTriangle size={18}/></span><div><span>Step 02</span><h3>Technical classification</h3><p>Classify the maintenance discipline and reported failure.</p></div><em className={form.subDepartment&&form.failureCode?'complete':'pending'}>{form.subDepartment&&form.failureCode?'Complete':'Required'}</em></header><div className="review-fields"><Field label="Sub Department" value={form.subDepartment || ''} required onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Search or select a sub department" /><Field label="Failure Code" value={form.failureCode} required onChange={update('failureCode')} suggestions={failureOptions} placeholder="Search code or description" /></div></section>
-      </div>}
-    </main>
-    {isNew && <footer className="record-page-actions"><button className="outline" onClick={onBack}>Cancel</button><button className="primary sr-submit" onClick={handlePrimary}><Check size={15} />Submit request</button></footer>}
-  </div>
-}
+const exportColumns = [
+  { key: 'sr', label: 'SR Number' },
+  { key: 'description', label: 'Description' },
+  { key: 'longDescription', label: 'Long Description' },
+  { key: 'site', label: 'Site' },
+  { key: 'location', label: 'Location' },
+  { key: 'asset', label: 'Asset' },
+  { key: 'department', label: 'Department' },
+  { key: 'subDepartment', label: 'Sub Department' },
+  { key: 'assignedDepartment', label: 'Assigned Department' },
+  { key: 'reportedBy', label: 'Reported By' },
+  { key: 'reportedDate', label: 'Reported Date' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'requestType', label: 'Request Type' },
+  { key: 'failureCode', label: 'Failure Code' },
+  { key: 'status', label: 'Status' },
+  { key: 'convertedWorkOrder', label: 'Converted Work Order' }
+]
 
 export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, failureOptions }) {
-  const requestFromPath = () => { const id = decodeURIComponent(window.location.pathname.split('/service-requests/')[1] || ''); return id === 'new' ? blankRequest() : requests.find(request => request.sr === id) || null }
+  const { user } = useAuth()
+  const requestFromPath = () => {
+    const id = decodeURIComponent((window.location.pathname.split('/job-requests/')[1] || window.location.pathname.split('/service-requests/')[1] || ''))
+    return id === 'new' ? blankRequest() : requests.find(request => request.sr === id) || null
+  }
   const [selected, setSelected] = useState(requestFromPath)
   const [imported, setImported] = useState('')
-  useEffect(() => { const pop = () => setSelected(requestFromPath()); window.addEventListener('popstate', pop); return () => window.removeEventListener('popstate', pop) }, [requests])
-  const open = request => { setSelected(request); window.history.pushState({}, '', `/service-requests/${request.sr === 'AUTO' ? 'new' : request.sr}`) }
-  const close = () => { setSelected(null); window.history.pushState({}, '', '/service-requests') }
-  const submit = request => { const submitted = { ...request, sr: `SR-2026-${String(requests.length + 42).padStart(4, '0')}`, status: 'WAPPR', requestType: 'Service' }; setRequests(list => [...list, submitted]); setSelected(submitted); window.history.replaceState({}, '', `/service-requests/${submitted.sr}`) }
-  const approve = request => { const createdWorkOrder=onConvert(request); const updated = { ...request, status: 'CONVERTED', convertedWorkOrder: createdWorkOrder.WORKORDER }; setRequests(list => list.map(item => item.sr === updated.sr ? updated : item)); setSelected(updated); window.history.replaceState({}, '', `/service-requests/${updated.sr}`); return updated }
-  const listView = <>
-    <PageHeader eyebrow="REQUEST INTAKE" title="Service Requests" description="Submit, review, approve, and convert requests into Corrective Maintenance work orders." actions={<div className="heading-actions"><ExcelImportButton fileName={imported} onFile={setImported} /><button className="primary" onClick={() => open(blankRequest())}><Plus size={17} />New service request</button></div>} />
-    <ImportNotice fileName={imported} subject="service request" onClear={()=>setImported('')} />
-    <div className="sub-tabs"><button className="active">All Service Requests <b>{requests.length}</b></button><button>Awaiting Review <b>{requests.filter(request => request.status === 'WAPPR').length}</b></button><button>Converted <b>{requests.filter(request => request.status === 'CONVERTED').length}</b></button></div>
-    <section className="panel register">
-      <DataTable
-        rows={requests}
-        rowKey="sr"
-        onRowClick={open}
-        pagination
-        columns={[
-          { key: 'sr', label: 'SR number', render: value => <strong className="mono">{value}</strong> },
-          { key: 'description', label: 'Description' },
-          { key: 'site', label: 'Site / Location', render: (value, request) => <>{value}<small className="cell-sub">{request.location}</small></> },
-          { key: 'department', label: 'Department', render: value => value || 'Pending review' },
-          { key: 'reportedBy', label: 'Reported by' },
-          { key: 'priority', label: 'Priority', render: value => <Badge tone={value === 'High' ? 'orange' : 'neutral'}>{value}</Badge> },
-          { key: 'status', label: 'Status', render: value => <Badge tone={value === 'CONVERTED' ? 'green' : 'orange'}>{value}</Badge> },
-          { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
+  const [tab, setTab] = useState('All')
+  const [filters, setFilters] = useState(() => scopedStandardFilters(user, requests))
+  const tabRows = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? request.status === 'WAPPR' : request.status === 'RESOLVED')
+  const visible = applyStandardFilters(tabRows, filters, { date: ['reportedDate'] })
+
+  useEffect(() => {
+    const pop = () => setSelected(requestFromPath())
+    window.addEventListener('popstate', pop)
+    return () => window.removeEventListener('popstate', pop)
+  }, [requests])
+
+  const open = request => {
+    setSelected(request)
+    window.history.pushState({}, '', `/job-requests/${request.sr === 'AUTO' ? 'new' : request.sr}`)
+  }
+  const close = () => {
+    setSelected(null)
+    window.history.pushState({}, '', '/job-requests')
+  }
+  const submit = request => {
+    // blankRequest() stamps when the form is constructed - which is route-evaluation
+    // time - so the reported time is taken again at the moment of submission.
+    const submitted = { ...request, reportedDate: nowLocalDateTime(), sr: `SR-2026-${String(requests.length + 42).padStart(4, '0')}`, status: 'WAPPR', requestType: 'Service' }
+    setRequests(list => [...list, submitted])
+    setSelected(submitted)
+    window.history.replaceState({}, '', `/job-requests/${submitted.sr}`)
+  }
+  const approve = request => {
+    const createdWorkOrder = onConvert(request)
+    const updated = { ...request, status: 'RESOLVED', convertedWorkOrder: createdWorkOrder.WORKORDER }
+    setRequests(list => list.map(item => item.sr === updated.sr ? updated : item))
+    setSelected(updated)
+    window.history.replaceState({}, '', `/job-requests/${updated.sr}`)
+    return updated
+  }
+
+  const listView = (
+    <>
+      <PageHeader
+        eyebrow="REQUEST INTAKE"
+        title="Job Requests"
+        description="Submit, review, approve, and convert job requests into Corrective Maintenance work orders."
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={templateHeaders} fileName="Job_Requests_Template.xlsx" /><ExportExcelButton module="Job Requests" rows={visible} columns={exportColumns} /><ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRequests(rows.map((row, index) => ({ ...blankRequest(), ...row, status: normalizeStatus('serviceRequest', row.status, 'NEW'), sr: row.sr || `SR-IMPORT-${String(index + 1).padStart(4, '0')}` })))} /><Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button></div>}
+      />
+      <ImportNotice fileName={imported} subject="job request" onClear={() => setImported('')} />
+      <IndexTabs
+        active={tab}
+        onChange={value => { setTab(value); setFilters(scopedStandardFilters(user, requests)) }}
+        tabs={[
+          { key: 'All', label: 'All Job Requests', count: requests.length },
+          { key: 'Awaiting Review', label: 'Awaiting Review', count: requests.filter(request => request.status === 'WAPPR').length },
+          { key: 'Converted', label: 'Resolved / Converted', count: requests.filter(request => request.status === 'RESOLVED').length }
         ]}
       />
-    </section>
-  </>
-  if (selected?.status === 'NEW') return <>{listView}<div className="wo-overlay sr-create-overlay"><ServiceRequestDetail modal request={selected} assets={assets} workOrders={workOrders} failureOptions={failureOptions} onBack={close} onSubmit={submit} onApprove={approve} /></div></>
-  if (selected) return <ServiceRequestDetail request={selected} assets={assets} workOrders={workOrders} failureOptions={failureOptions} onBack={close} onSubmit={submit} onApprove={approve} onOpenWorkOrder={onOpenWorkOrder} />
+      <StandardFilters
+        filters={filters}
+        setFilters={setFilters}
+        siteOptions={optionsFromRows(requests, ['site'])}
+        departmentOptions={optionsFromRows(requests, ['department', 'assignedDepartment'])}
+        statusOptions={optionsFromRows(requests, ['status'])}
+      />
+      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+        <DataTable
+          rows={visible}
+          rowKey="sr"
+          onRowClick={open}
+          pagination
+          columns={[
+            { key: 'sr', label: 'SR number', render: value => <strong className="mono">{value}</strong> },
+            { key: 'description', label: 'Description' },
+            { key: 'site', label: 'Site / Location', render: (value, request) => <>{value}<small className="mt-1 block text-[9px] text-[var(--app-muted)]">{request.location}</small></> },
+            { key: 'department', label: 'Department', render: value => value || 'Pending review' },
+            { key: 'reportedBy', label: 'Reported by' },
+            { key: 'priority', label: 'Priority', render: value => <Badge tone={value === 'High' ? 'orange' : 'neutral'}>{value}</Badge> },
+            { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} · {statusDescription('serviceRequest', value)}</Badge> },
+            { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
+          ]}
+        />
+      </section>
+    </>
+  )
+
+  const detailProps = { assets, workOrders, failureOptions, onBack: close, onSubmit: submit, onApprove: approve, onOpenWorkOrder }
+  if (selected?.status === 'NEW') return <>{listView}<ModalOverlay><ServiceRequestDetail modal request={selected} {...detailProps} /></ModalOverlay></>
+  if (selected) return <ServiceRequestDetail request={selected} {...detailProps} />
   return listView
 }
