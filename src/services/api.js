@@ -103,10 +103,13 @@ const mapLocation = row => ({
   type: row.location_type || '',
   status: row.status || '',
   priority: row.priority || '',
+  'priority  description': row.priority_description || '',
   site: row.site_code,
   department: row.department_name || '',
   building: row.building || '',
-  buildingCategory: row.building_category || ''
+  buildingCategory: row.building_category || '',
+  builiding: row.building || '',
+  'builiding category': row.building_category || ''
 })
 
 const mapLabor = row => ({
@@ -163,7 +166,26 @@ const mapFailureCode = row => ({
   'RC - DESCRIPTION': row.remedy_description || ''
 })
 
-const mapWorkOrder = row => ({
+const mapResourceRequest = row => ({
+  resourceRequestId: row.resource_request_id,
+  workOrder: row.work_order_num,
+  type: row.resource_type,
+  itemCode: row.item_code || '',
+  item: row.item_description || row.item_code || '',
+  quantity: numberValue(row.requested_quantity),
+  requestedQuantity: numberValue(row.requested_quantity),
+  availableQuantity: numberValue(row.available_quantity),
+  source: row.store_code || '',
+  site: row.site_code || '',
+  department: row.department_name || '',
+  sourceType: row.source_type || '',
+  availabilityStatus: row.availability_status || '',
+  requestStatus: row.request_status || '',
+  transactionRef: row.transaction_ref || '',
+  supplyChainStatus: row.supply_chain_status || ''
+})
+
+const mapWorkOrder = (row, resourceRequests = []) => ({
   WORKORDER: row.work_order_num,
   'DESCRIPITION ': row.description,
   'LONG DESCRIPTION': row.long_description || '',
@@ -185,7 +207,8 @@ const mapWorkOrder = row => ({
   'FAILURE CODE': row.failure_code || '',
   'PROBLEM CODE': row.problem_code || '',
   'CAUSE CODE': row.cause_code || '',
-  'REMEDY CODE': row.remedy_code || ''
+  'REMEDY CODE': row.remedy_code || '',
+  'PLANNED RESOURCES': resourceRequests.filter(resource => String(resource.workOrder) === String(row.work_order_num))
 })
 
 const mapServiceRequest = row => ({
@@ -312,6 +335,16 @@ const mapMeter = row => ({
   readingDate: row.reading_at || ''
 })
 
+const mapJobTask = row => ({
+  JOBTASKID: row.job_plan_task_id,
+  JPNUM: row.job_plan_num,
+  'JOB TASK SEQUENCE': row.task_sequence,
+  'JOB TASK DESCRIPTION': row.task_description || '',
+  'TASK DURATION IN HOUR': row.duration_hours || 0,
+  DESCRIPTION: row.task_description || '',
+  status: 'ACTIVE'
+})
+
 export async function loadWorkspace() {
   const [
     sites,
@@ -327,12 +360,14 @@ export async function loadWorkspace() {
     tools,
     failureLibrary,
     workOrders,
+    workOrderResources,
     serviceRequests,
     purchaseRequests,
     purchaseOrders,
     reservations,
     pmSchedules,
     jobPlans,
+    jobPlanTasks,
     incidents,
     meters
   ] = await Promise.all([
@@ -349,17 +384,20 @@ export async function loadWorkspace() {
     safeGet('/tools-equipment'),
     safeGet('/failure-library'),
     safeGet('/work-orders'),
+    safeGet('/work-order-resource-requests'),
     safeGet('/service-requests'),
     safeGet('/purchase-requisitions'),
     safeGet('/purchase-orders'),
     safeGet('/reservations'),
     safeGet('/preventive-maintenance'),
     safeGet('/job-plans'),
+    safeGet('/job-plan-tasks'),
     safeGet('/incidents'),
     safeGet('/meter-readings')
   ])
 
   const roles = rolesRaw.map(mapRole)
+  const mappedWorkOrderResources = workOrderResources.map(mapResourceRequest)
   return {
     sites: sites.map(mapSite),
     departments: departments.map(mapDepartment),
@@ -373,14 +411,14 @@ export async function loadWorkspace() {
     inventoryStock: inventoryStock.map(mapInventoryStock),
     tools: tools.map(mapTool),
     failureCodes: failureLibrary.map(mapFailureCode),
-    workOrders: workOrders.map(mapWorkOrder),
+    workOrders: workOrders.map(row => mapWorkOrder(row, mappedWorkOrderResources)),
     serviceRequests: serviceRequests.map(mapServiceRequest),
     purchaseRequests: purchaseRequests.map(mapPurchaseRequest),
     purchaseOrders: purchaseOrders.map(mapPurchaseOrder),
     reservations: reservations.map(mapReservation),
     pmSchedules: pmSchedules.map(mapPm),
     jobPlans: jobPlans.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status })),
-    jobTasks: [],
+    jobTasks: jobPlanTasks.map(mapJobTask),
     incidents: incidents.map(mapIncident),
     meters: meters.map(mapMeter)
   }

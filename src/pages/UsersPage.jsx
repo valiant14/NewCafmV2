@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import UserDetailPage from '../components/users/UserDetailPage'
 import Badge from '../components/ui/Badge'
@@ -62,6 +62,11 @@ export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows
 
   const scopedRows = scopeRowsForUser(rows, scopeUser, ['site'], ['department'])
   const [selected, setSelected] = useState(scopedRows.find(row => row.userId === routeId || row.username === routeId) || null)
+  useEffect(() => {
+    if (!routeId) return
+    const latest = scopedRows.find(row => row.userId === routeId || row.username === routeId)
+    if (latest) setSelected(latest)
+  }, [scopedRows, routeId])
   const tabRows = tab === 'All' ? scopedRows : scopedRows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
     site: ['site'],

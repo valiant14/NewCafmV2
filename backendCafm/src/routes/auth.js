@@ -6,6 +6,7 @@ import { env } from '../config/env.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 
 const router = Router()
+const isActive = value => String(value || '').trim().toLowerCase() === 'active'
 
 router.post('/login', asyncHandler(async (req, res) => {
   const { username, password } = req.body || {}
@@ -17,11 +18,13 @@ router.post('/login', asyncHandler(async (req, res) => {
     .query(`
       select u.user_id, u.username, u.password_hash, u.display_name, u.email, u.status, r.role_id, r.role_code, r.role_name
       from dbo.users u
-      join dbo.roles r on r.role_id = u.role_id
-      where u.username = @username
+      left join dbo.roles r on r.role_id = u.role_id
+      where lower(ltrim(rtrim(u.username))) = lower(ltrim(rtrim(@username)))
     `)
   const account = result.recordset[0]
-  if (!account || account.status !== 'Active') return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' })
+  if (!account) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' })
+  if (!isActive(account.status)) return res.status(401).json({ error: 'Unauthorized', message: 'User account is inactive' })
+  if (!account.role_id) return res.status(401).json({ error: 'Unauthorized', message: 'User account has no role' })
 
   const ok = await bcrypt.compare(password, account.password_hash)
   if (!ok) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' })
@@ -45,6 +48,8 @@ router.post('/login', asyncHandler(async (req, res) => {
   const departmentRows = await pool.request()
     .input('userId', account.user_id)
     .query('select department_name, sub_department_code from dbo.user_department_access where user_id = @userId')
+  const siteCodes = siteRows.recordset.map(row => row.site_code)
+  const departments = [...new Set(departmentRows.recordset.flatMap(row => [row.department_name, row.sub_department_code]).filter(Boolean))]
 
   const tokenPayload = {
     userId: account.user_id,
@@ -54,8 +59,12 @@ router.post('/login', asyncHandler(async (req, res) => {
     role: account.role_name,
     roleCode: account.role_code,
     permissions,
-    siteCodes: siteRows.recordset.map(row => row.site_code),
-    departments: [...new Set(departmentRows.recordset.flatMap(row => [row.department_name, row.sub_department_code]).filter(Boolean))]
+    siteCodes,
+    departments,
+    site: siteCodes.length ? siteCodes.join(', ') : 'All Sites',
+    siteScope: siteCodes.length ? siteCodes.join(', ') : 'All Sites',
+    department: departments.length ? departments.join(', ') : 'All Departments',
+    departmentScope: departments.length ? departments.join(', ') : 'All Departments'
   }
 
   const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: env.jwtExpiresIn })

@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { toolUsageMap } from '../config/runtimeDefaults'
 import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
 import Badge from '../components/ui/Badge'
@@ -24,21 +23,23 @@ const empty = {
   inspectionDue: ''
 }
 const templateHeaders = Object.keys(empty)
-const findWorkOrder = (reference, workOrders) => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
-const toolUsage = (tool, workOrders) => (toolUsageMap[tool.toolNumber] || []).map((usage, index) => {
-  const order = findWorkOrder(usage.workOrder, workOrders)
-  if (!order) return null
-  return {
-    reference: usage.workOrder,
-    description: order?.['DESCRIPITION '] || order?.DESCRIPTION || `${tool.description} usage`,
-    workType: usage.type,
-    quantity: usage.quantity,
-    status: order?.STATUS || usage.status,
-    site: order?.SITE || '1031',
-    department: order?.['DEPARTMENT '] || tool.category,
-    source: index === 0 ? 'Actual tool use' : 'Planned / allocated'
-  }
-}).filter(Boolean)
+const toolUsage = (tool, workOrders) => workOrders.flatMap(order => {
+  const resources = Array.isArray(order['PLANNED RESOURCES']) ? order['PLANNED RESOURCES'] : []
+  return resources
+    .filter(resource => ['Tool', 'Equipment'].includes(resource.type))
+    .filter(resource => String(resource.itemCode || resource.item || '').trim() === String(tool.toolNumber || tool.description || '').trim() || String(resource.item || '').trim() === String(tool.description || '').trim())
+    .map((resource, index) => ({
+      reference: `${order.WORKORDER}-${resource.transactionRef || resource.item || index}`,
+      workOrder: order.WORKORDER,
+      description: order?.['DESCRIPITION '] || order?.DESCRIPTION || `${tool.description} usage`,
+      workType: String(order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim(),
+      quantity: resource.quantity || resource.requestedQuantity || 0,
+      status: order?.STATUS || resource.requestStatus || '',
+      site: order?.SITE || '',
+      department: order?.['DEPARTMENT '] || '',
+      source: resource.transactionRef || resource.supplyChainStatus || resource.requestStatus || 'Planned resource'
+    }))
+})
 
 export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
   const [adding, setAdding] = useState(false)
@@ -48,6 +49,11 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
   const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/tools/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.toolNumber === routeId) || null)
+  useEffect(() => {
+    if (!routeId) return
+    const latest = rows.find(row => row.toolNumber === routeId)
+    if (latest) setSelected(latest)
+  }, [rows, routeId])
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
     site: ['site', 'location'],

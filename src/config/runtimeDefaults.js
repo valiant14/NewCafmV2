@@ -10,17 +10,14 @@ export const excelDate = value => {
     : new Intl.DateTimeFormat('en', { day: '2-digit', month: 'short', year: 'numeric' }).format(date)
 }
 export const excelToDate = value => value ? new Date(value) : null
-export const failureClassOptions = []
 export const failureCodes = []
 export const incidentSeed = []
 export const jobPlans = []
 export const jobTasks = []
 export const labor = []
-export const laborWorkMap = {}
 export const locations = []
 export const locationsMaster = []
 export const materials = []
-export const materialUsageMap = {}
 export const permissionActions = ['view', 'create', 'edit', 'approve', 'close', 'import']
 export const permissionModules = [
   'Overview',
@@ -58,8 +55,6 @@ export const toDateTimeInput = value => {
   return date && !Number.isNaN(date.getTime()) ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
 }
 export const tools = []
-export const toolUsageMap = {}
-export const uniqueCodeOptions = () => []
 export const users = []
 export const workOrderSeeds = []
 export const workOrders = []

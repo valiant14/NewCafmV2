@@ -149,6 +149,13 @@ router.use('/job-plans', crudRouter({
   columns: ['job_plan_num', 'description', 'status', 'created_at', 'updated_at']
 }))
 
+router.use('/job-plan-tasks', crudRouter({
+  moduleName: 'Job Plans',
+  table: 'dbo.job_plan_tasks',
+  key: 'job_plan_task_id',
+  columns: ['job_plan_task_id', 'job_plan_num', 'task_sequence', 'task_description', 'duration_hours']
+}))
+
 router.use('/incidents', crudRouter({
   moduleName: 'Incidents',
   table: 'dbo.incidents',

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ChevronRight, Plus } from 'lucide-react'
 import IncidentDetailPage from '../components/incidents/IncidentDetailPage'
 import Badge from '../components/ui/Badge'
@@ -40,6 +40,11 @@ export default function IncidentsPage({ rows, setRows }) {
   const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows))
   const routeId = decodeURIComponent(window.location.pathname.split('/incidents/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.incidentNumber === routeId) || null)
+  useEffect(() => {
+    if (!routeId) return
+    const latest = rows.find(row => row.incidentNumber === routeId)
+    if (latest) setSelected(latest)
+  }, [rows, routeId])
 
   const tabRows = useMemo(() => {
     if (tab !== 'All') return rows.filter(row => row.status === tab)

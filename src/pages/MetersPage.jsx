@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Gauge, Plus } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -55,6 +55,11 @@ export default function MetersPage({ rows = [], setRows, assets = [], workOrders
   const [form, setForm] = useState(blankMeter)
   const routeId = decodeURIComponent(window.location.pathname.split('/meters/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.meterId === routeId) || null)
+  useEffect(() => {
+    if (!routeId) return
+    const latest = rows.find(row => row.meterId === routeId)
+    if (latest) setSelected(latest)
+  }, [rows, routeId])
 
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, { date: ['readingDate'] })

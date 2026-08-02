@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronRight, MapPin, Plus } from 'lucide-react'
-import { assets, locationsMaster as locationSeed, workOrders } from '../config/runtimeDefaults'
+import { locationsMaster as locationSeed } from '../config/runtimeDefaults'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
@@ -75,7 +75,7 @@ const normalizeLocationRow = row => ({
   department: row.department || ''
 })
 
-export default function LocationsPage({ rows: controlledRows, setRows: setControlledRows, initialLocations = [] }) {
+export default function LocationsPage({ rows: controlledRows, setRows: setControlledRows, initialLocations = [], assets = [], workOrders = [] }) {
   const { user } = useAuth()
   const seededLocations = (initialLocations?.length ? initialLocations : locationSeed).map(normalizeLocationRow)
   const [imported, setImported] = useState('')
@@ -86,7 +86,12 @@ export default function LocationsPage({ rows: controlledRows, setRows: setContro
   const locations = controlledRows || localLocations
   const setLocations = setControlledRows || setLocalLocations
   const routeId = decodeURIComponent(window.location.pathname.split('/locations/')[1] || '')
-  const [selected, setSelected] = useState(seededLocations.find(row => row.location === routeId) || null)
+  const [selected, setSelected] = useState(locations.find(row => row.location === routeId) || null)
+  useEffect(() => {
+    if (!routeId) return
+    const latest = locations.find(row => row.location === routeId)
+    if (latest) setSelected(latest)
+  }, [locations, routeId])
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(() => scopedStandardFilters(user, seededLocations, ['site']))
   const tabLocations = tab === 'All' ? locations : locations.filter(location => location.status === tab)

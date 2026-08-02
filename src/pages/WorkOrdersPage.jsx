@@ -60,9 +60,9 @@ const workOrderTemplateHeaders = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTIO
 
 export default function WorkOrdersPage({ rows, assets, siteRecords = [], departmentRecords = [], onCreate, onImportRows, EditorComponent, excelDate }) {
   const { user } = useAuth()
+  const routeId = decodeURIComponent(window.location.pathname.split('/work-orders/')[1] || '')
   const [selected, setSelected] = useState(() => {
-    const id = decodeURIComponent(window.location.pathname.split('/work-orders/')[1] || '')
-    return rows.find(order => String(order.WORKORDER) === id) || null
+    return rows.find(order => String(order.WORKORDER) === routeId) || null
   })
   const [typeFilter, setTypeFilter] = useState('All')
   const [creating, setCreating] = useState(() => window.location.pathname === '/work-orders/new')
@@ -74,10 +74,15 @@ export default function WorkOrdersPage({ rows, assets, siteRecords = [], departm
   const [search, setSearch] = useState('')
 
   useEffect(() => {
+    if (routeId) {
+      const routed = rows.find(order => String(order.WORKORDER) === routeId)
+      if (routed && routed !== selected) setSelected(routed)
+      return
+    }
     if (!selected?.WORKORDER) return
     const latest = rows.find(order => String(order.WORKORDER) === String(selected.WORKORDER))
     if (latest && latest !== selected) setSelected(latest)
-  }, [rows, selected])
+  }, [rows, routeId, selected])
 
   const orderType = order => (order['WORK TYPE'] || order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const typedRows = rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)

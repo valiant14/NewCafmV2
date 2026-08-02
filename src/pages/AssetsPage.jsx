@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import AddAssetModal from '../components/assets/AddAssetModal'
 import AssetDetailPage from '../components/assets/AssetDetailPage'
@@ -67,6 +67,11 @@ export default function AssetsPage({ rows: controlledRows, setRows: setControlle
   const [filters, setFilters] = useState(() => scopedStandardFilters(user, rows))
   const routeId = decodeURIComponent(window.location.pathname.split('/assets/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.assetnum === routeId) || null)
+  useEffect(() => {
+    if (!routeId) return
+    const latest = rows.find(row => row.assetnum === routeId)
+    if (latest) setSelected(latest)
+  }, [rows, routeId])
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, { date: ['installdate'] })
 

@@ -10,7 +10,8 @@
     "db:schema": "node src/db/runSqlFile.js sql/001_schema.sql --ignore-existing",
     "db:seed-core": "node src/db/runSqlFile.js sql/002_seed_core.sql",
     "db:setup": "npm run db:schema && npm run db:seed-core && npm run db:create-admin",
-    "db:create-admin": "node src/db/createAdminUser.js"
+    "db:create-admin": "node src/db/createAdminUser.js",
+    "db:check-users": "node src/db/checkUsers.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
