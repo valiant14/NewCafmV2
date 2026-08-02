@@ -20,6 +20,7 @@
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "socket.io-client": "^4.8.3",
     "vite": "latest",
     "xlsx": "^0.18.5"
   },

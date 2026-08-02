@@ -5,6 +5,12 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { bindParams } from '../utils/sqlParams.js'
 
 const router = Router()
+const emitChange = (req, payload) => req.app.locals.broadcastWorkspaceChange?.({
+  actor: req.user?.userId || req.user?.username || '',
+  moduleName: 'Stores',
+  table: 'dbo.inventory_stock',
+  ...payload
+})
 
 router.get('/', requirePermission('Stores', 'view'), asyncHandler(async (req, res) => {
   const pool = await getPool()
@@ -42,6 +48,7 @@ router.put('/:storeCode/:itemCode', requirePermission('Stores', 'edit'), asyncHa
     where store_code = @storeCode and item_code = @itemCode
   `)
   if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Stock record not found' })
+  emitChange(req, { action: 'edit', id: `${req.params.storeCode}/${req.params.itemCode}` })
   res.json(result.recordset[0])
 }))
 
@@ -62,6 +69,7 @@ router.post('/', requirePermission('Stores', 'create'), asyncHandler(async (req,
     output inserted.*
     values (@store_code, @item_code, @balance, @reserved_quantity, @reorder_point)
   `)
+  emitChange(req, { action: 'create', id: `${payload.store_code}/${payload.item_code}` })
   res.status(201).json(result.recordset[0])
 }))
 

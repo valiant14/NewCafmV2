@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import ServiceRequestsPage from './pages/ServiceRequestsPage'
+import { useCallback } from 'react'
 import WorkOrdersPage from './pages/WorkOrdersPage'
 import LaborPage from './pages/LaborPage'
 import MaterialsPage from './pages/MaterialsPage'
@@ -47,6 +48,7 @@ import { HOLD_MATERIAL, effectiveTargetTime, endHold, holdSince, isOnHold, start
 import { describeOutstanding, markReturned, outstandingReturns } from './lib/resourceReturns'
 import { canViewPage, filterNavigationForUser, firstAllowedPage, scopeRowsForUser } from './lib/accessControl'
 import { api, loadWorkspace } from './services/api'
+import { subscribeWorkspaceChanges } from './services/realtime'
 
 
 const buildWorkOrderNotifications = rows => {
@@ -772,47 +774,61 @@ export default function App() {
   const [failureCodeRecords,setFailureCodeRecords]=useState(failureCodes)
   const [workspaceLoading,setWorkspaceLoading]=useState(false)
   const [workspaceError,setWorkspaceError]=useState('')
+  const [realtimeChange,setRealtimeChange]=useState(null)
   const [projectName,setProjectName]=useState(readProjectName)
   const changeProjectName=name=>setProjectName(writeProjectName(name))
-  useEffect(() => {
+  const applyWorkspaceData = useCallback(data => {
+    setAssetRecords(data.assets)
+    setLocationRecords(data.locations)
+    setLaborRecords(data.labor)
+    setMaterialRecords(data.materials)
+    setStockRecords(data.inventoryStock)
+    setStoreRecords(data.storerooms)
+    setToolRecords(data.tools)
+    setAllWorkOrders(data.workOrders)
+    setServiceRequests(data.serviceRequests)
+    setIncidents(data.incidents)
+    setJobTaskRecords(data.jobTasks)
+    setJobPlanRecords(data.jobPlans)
+    setPmScheduleRecords(data.pmSchedules)
+    setPurchaseRequests(data.purchaseRequests)
+    setPurchaseOrders(data.purchaseOrders)
+    setReservations(data.reservations)
+    setMeterRecords(data.meters)
+    setRolePermissionRecords(data.roles)
+    setUserRecords(data.users)
+    setSiteRecords(data.sites)
+    setDepartmentRecords(data.departments)
+    setFailureCodeRecords(data.failureCodes)
+  }, [])
+  const refreshWorkspace = useCallback(async ({ silent = false } = {}) => {
     if (!isAuthenticated) return
-    let cancelled = false
-    setWorkspaceLoading(true)
+    if (!silent) setWorkspaceLoading(true)
     setWorkspaceError('')
-    loadWorkspace()
-      .then(data => {
-        if (cancelled) return
-        setAssetRecords(data.assets)
-        setLocationRecords(data.locations)
-        setLaborRecords(data.labor)
-        setMaterialRecords(data.materials)
-        setStockRecords(data.inventoryStock)
-        setStoreRecords(data.storerooms)
-        setToolRecords(data.tools)
-        setAllWorkOrders(data.workOrders)
-        setServiceRequests(data.serviceRequests)
-        setIncidents(data.incidents)
-        setJobTaskRecords(data.jobTasks)
-        setJobPlanRecords(data.jobPlans)
-        setPmScheduleRecords(data.pmSchedules)
-        setPurchaseRequests(data.purchaseRequests)
-        setPurchaseOrders(data.purchaseOrders)
-        setReservations(data.reservations)
-        setMeterRecords(data.meters)
-        setRolePermissionRecords(data.roles)
-        setUserRecords(data.users)
-        setSiteRecords(data.sites)
-        setDepartmentRecords(data.departments)
-        setFailureCodeRecords(data.failureCodes)
-      })
-      .catch(error => {
-        if (!cancelled) setWorkspaceError(error.message || 'Unable to load backend data.')
-      })
-      .finally(() => {
-        if (!cancelled) setWorkspaceLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [isAuthenticated])
+    try {
+      applyWorkspaceData(await loadWorkspace())
+    } catch (error) {
+      setWorkspaceError(error.message || 'Unable to load backend data.')
+    } finally {
+      if (!silent) setWorkspaceLoading(false)
+    }
+  }, [applyWorkspaceData, isAuthenticated])
+  useEffect(() => {
+    refreshWorkspace()
+  }, [refreshWorkspace])
+  useEffect(() => {
+    if (!isAuthenticated) return undefined
+    let timer
+    const unsubscribe = subscribeWorkspaceChanges(change => {
+      setRealtimeChange(change)
+      clearTimeout(timer)
+      timer = setTimeout(() => refreshWorkspace({ silent: true }), 250)
+    })
+    return () => {
+      clearTimeout(timer)
+      unsubscribe()
+    }
+  }, [isAuthenticated, refreshWorkspace])
   const effectiveUser = useMemo(() => {
     if (!user) return null
     const account = userRecords.find(row => row.userId === user.userId || row.username === user.username) || user

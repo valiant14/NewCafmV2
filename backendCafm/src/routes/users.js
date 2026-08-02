@@ -5,6 +5,12 @@ import { requirePermission } from '../middleware/auth.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 
 const router = Router()
+const emitChange = (req, payload) => req.app.locals.broadcastWorkspaceChange?.({
+  actor: req.user?.userId || req.user?.username || '',
+  moduleName: 'Users',
+  table: 'dbo.users',
+  ...payload
+})
 const parseList = value => String(value || '').split(',').map(item => item.trim()).filter(Boolean)
 const siteCode = value => String(value || '').includes('/') ? String(value).split('/').pop().trim() : String(value || '').trim()
 
@@ -69,8 +75,9 @@ router.post('/', requirePermission('Users', 'create'), asyncHandler(async (req, 
       insert into dbo.users(user_id, username, password_hash, display_name, email, role_id, labor_id, status)
       output inserted.*
       values(@user_id, @username, @password_hash, @display_name, @email, @role_id, @labor_id, @status)
-    `)
+  `)
   await syncScopes(pool, req.body.user_id, req.body.site, req.body.department)
+  emitChange(req, { action: 'create', id: result.recordset[0]?.user_id })
   res.status(201).json(result.recordset[0])
 }))
 
@@ -99,6 +106,7 @@ router.put('/:id', requirePermission('Users', 'edit'), asyncHandler(async (req, 
   if (req.body.site !== undefined || req.body.department !== undefined) {
     await syncScopes(pool, req.params.id, req.body.site, req.body.department)
   }
+  emitChange(req, { action: 'edit', id: result.recordset[0]?.user_id })
   res.json(result.recordset[0])
 }))
 

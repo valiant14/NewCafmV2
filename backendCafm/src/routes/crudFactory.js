@@ -13,6 +13,13 @@ const assertKnownColumn = (columns, key) => {
   }
 }
 
+const emitChange = (req, payload) => {
+  req.app.locals.broadcastWorkspaceChange?.({
+    actor: req.user?.userId || req.user?.username || '',
+    ...payload
+  })
+}
+
 export function crudRouter({ table, key, columns, defaultOrder = key, moduleName, scope }) {
   const router = Router()
   const editable = columns.filter(column => column !== key)
@@ -48,6 +55,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
       output inserted.*
       values (${insertColumns.map(column => `@${column}`).join(', ')})
     `)
+    emitChange(req, { moduleName, table, action: 'create', key, id: result.recordset[0]?.[key] })
     res.status(201).json(result.recordset[0])
   }))
 
@@ -67,6 +75,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
       where ${key} = @id
     `)
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
+    emitChange(req, { moduleName, table, action: 'edit', key, id: result.recordset[0]?.[key] })
     res.json(result.recordset[0])
   }))
 
@@ -76,6 +85,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
       .input('id', req.params.id)
       .query(`delete from ${table} output deleted.* where ${key} = @id`)
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
+    emitChange(req, { moduleName, table, action: 'delete', key, id: result.recordset[0]?.[key] })
     res.json({ deleted: result.recordset[0] })
   }))
 
