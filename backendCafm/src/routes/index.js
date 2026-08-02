@@ -8,7 +8,7 @@ import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 
-router.get('/health', (req, res) => res.json({ ok: true, service: 'backendCafm' }))
+router.get('/health', (req, res) => res.json({ ok: true, service: 'backendCafm', realtime: Boolean(req.app.locals.io) }))
 router.use('/auth', authRouter)
 router.use(requireAuth)
 
@@ -147,6 +147,13 @@ router.use('/job-plans', crudRouter({
   table: 'dbo.job_plans',
   key: 'job_plan_num',
   columns: ['job_plan_num', 'description', 'status', 'created_at', 'updated_at']
+}))
+
+router.use('/job-plan-tasks', crudRouter({
+  moduleName: 'Job Plans',
+  table: 'dbo.job_plan_tasks',
+  key: 'job_plan_task_id',
+  columns: ['job_plan_task_id', 'job_plan_num', 'task_sequence', 'task_description', 'duration_hours']
 }))
 
 router.use('/incidents', crudRouter({

@@ -133,7 +133,8 @@ export default function WorkOrderActualTab({
   actualReady = false,
   closeWork,
   returnResource,
-  outstanding = []
+  outstanding = [],
+  currentUser
 }) {
   if (!actualsEditable) {
     return (
@@ -252,7 +253,7 @@ export default function WorkOrderActualTab({
       <Section compact title="Automatic Closeout" note="System populated when the work order is closed">
         <div className={closeoutGridClass}>
           <div className={closeoutCardClass}><span>Completion Date</span><strong>{actualFinish ? new Date(actualFinish).toLocaleString() : 'Pending'}</strong></div>
-          <div className={closeoutCardClass}><span>Closed By</span><strong>{workClosed ? 'Ahmed Faisal' : 'Pending'}</strong></div>
+          <div className={closeoutCardClass}><span>Closed By</span><strong>{workClosed ? (currentUser?.name || currentUser?.username || 'Current user') : 'Pending'}</strong></div>
           <div className={closeoutCardClass}><span>Close Status</span><strong>{workClosed ? 'CLOSE' : 'Pending'}</strong></div>
           <div className={closeoutCardClass}><span>Asset History Update</span><strong>{workClosed ? 'Updated automatically' : 'Pending close'}</strong></div>
         </div>

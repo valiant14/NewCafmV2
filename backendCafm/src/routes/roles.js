@@ -4,6 +4,12 @@ import { requirePermission } from '../middleware/auth.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 
 const router = Router()
+const emitChange = (req, payload) => req.app.locals.broadcastWorkspaceChange?.({
+  actor: req.user?.userId || req.user?.username || '',
+  moduleName: 'Roles & Permissions',
+  table: 'dbo.roles',
+  ...payload
+})
 const codeFromName = value => String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'ROLE'
 const permissionList = value => Array.isArray(value) ? value : String(value || '').split(/[,;|]+/).map(item => item.trim()).filter(Boolean)
 
@@ -77,8 +83,9 @@ router.post('/', requirePermission('Roles & Permissions', 'create'), asyncHandle
           status = @status, updated_at = sysutcdatetime()
         output inserted.*
         where role_id = @id
-      `)
+    `)
     await syncPermissions(pool, req.params.id, req.body.permissions)
+    emitChange(req, { action: 'edit', id: result.recordset[0]?.role_id })
     return res.json(result.recordset[0])
   }
   const result = await pool.request()
@@ -90,8 +97,9 @@ router.post('/', requirePermission('Roles & Permissions', 'create'), asyncHandle
       insert into dbo.roles(role_code, role_name, scope_description, status)
       output inserted.*
       values(@role_code, @role_name, @scope_description, @status)
-    `)
+  `)
   await syncPermissions(pool, result.recordset[0].role_id, req.body.permissions)
+  emitChange(req, { action: 'create', id: result.recordset[0]?.role_id })
   res.status(201).json(result.recordset[0])
 }))
 
@@ -112,6 +120,7 @@ router.put('/:id', requirePermission('Roles & Permissions', 'edit'), asyncHandle
     `)
   if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
   if (req.body.permissions) await syncPermissions(pool, req.params.id, req.body.permissions)
+  emitChange(req, { action: 'edit', id: result.recordset[0]?.role_id })
   res.json(result.recordset[0])
 }))
 

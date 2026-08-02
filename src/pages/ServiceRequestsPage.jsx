@@ -68,6 +68,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
 
   useEffect(() => {
     const pop = () => setSelected(requestFromPath())
+    pop()
     window.addEventListener('popstate', pop)
     return () => window.removeEventListener('popstate', pop)
   }, [requests])

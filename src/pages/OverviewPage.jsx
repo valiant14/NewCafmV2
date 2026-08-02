@@ -141,6 +141,7 @@ const reportedTime = order => {
 export default function OverviewPage({
   onNavigate,
   onOpenWorkOrderTab,
+  currentUser,
   projectName = '',
   assets: liveAssets = [],
   incidents = [],
@@ -252,6 +253,9 @@ export default function OverviewPage({
   const meterCount = type => meters.filter(meter => meter.meterType === type).length
 
   const printDashboard = () => printWithoutBrowserTitle()
+  const currentHour = today.getHours()
+  const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening'
+  const displayName = currentUser?.name || currentUser?.username || 'there'
 
   return (
     <section className="dashboard-print">
@@ -267,7 +271,7 @@ export default function OverviewPage({
         <section className="print-hide mb-7 flex flex-col gap-5 rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-6 shadow-[0_14px_36px_rgba(32,55,45,.08)] lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Badge tone="green">Live workspace</Badge>
-            <h1 className="mt-3 text-4xl font-extrabold tracking-[-.05em] text-[var(--app-ink)]">Good morning, Ahmed.</h1>
+            <h1 className="mt-3 text-4xl font-extrabold tracking-[-.05em] text-[var(--app-ink)]">{greeting}, {displayName}.</h1>
             <p className="mt-2 text-sm text-[var(--app-muted)]">Here is what needs attention across {projectName || 'your facilities'} today.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

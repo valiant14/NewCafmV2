@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { laborWorkMap } from '../config/runtimeDefaults'
 import AddLaborModal from '../components/labor/AddLaborModal'
 import LaborDetailPage from '../components/labor/LaborDetailPage'
 import Badge from '../components/ui/Badge'
@@ -31,10 +30,7 @@ const workOrderDepartment = order => String(order['DEPARTMENT '] || order.depart
 const workOrderSubDepartment = order => String(order['SUB DEPARTMENT  NAME'] || order.subDepartment || '')
 const laborPastWork = (labor, workOrders) => workOrders
   .filter(order => {
-    const assignedNumbers = laborWorkMap[labor.personId] || []
-    const number = workOrderNumber(order)
-    return assignedNumbers.includes(number)
-      || workOrderDepartment(order) === labor.department
+    return workOrderDepartment(order) === labor.department
       || workOrderSubDepartment(order) === labor.subDepartment
   })
   .slice(0, 8)
@@ -56,6 +52,11 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], departm
   const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/labor/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.personId === routeId) || null)
+  useEffect(() => {
+    if (!routeId) return
+    const latest = rows.find(row => row.personId === routeId)
+    if (latest) setSelected(latest)
+  }, [rows, routeId])
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.availability === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
     site: ['site'],

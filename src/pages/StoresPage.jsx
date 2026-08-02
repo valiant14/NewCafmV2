@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronRight, Package, Plus, Warehouse } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -82,6 +82,11 @@ export default function StoresPage({ materials = [], stockRows = [], storeRows =
     status: ['status']
   })
   const [selected, setSelected] = useState(summary.find(store => store.code === routeId) || null)
+  useEffect(() => {
+    if (!routeId) return
+    const latest = summary.find(store => store.code === routeId)
+    if (latest) setSelected(latest)
+  }, [summary, routeId])
 
   const open = store => {
     setSelected(store)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Badge from '../components/ui/Badge'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
@@ -30,6 +30,11 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
   const [imported, setImported] = useState('')
   const routeId = decodeURIComponent(window.location.pathname.split('/roles-permissions/')[1] || '')
   const [selectedRole, setSelectedRole] = useState(rows.find(row => row.role === routeId) || null)
+  useEffect(() => {
+    if (!routeId) return
+    const latest = rows.find(row => row.role === routeId)
+    if (latest) setSelectedRole(latest)
+  }, [rows, routeId])
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, { site: ['site'], department: ['department'], status: ['status'] })
 

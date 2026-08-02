@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { materialUsageMap } from '../config/runtimeDefaults'
 import AddMaterialModal from '../components/materials/AddMaterialModal'
 import MaterialDetailPage from '../components/materials/MaterialDetailPage'
 import Badge from '../components/ui/Badge'
@@ -53,22 +52,24 @@ const exportColumns = [
   { key: 'availability', label: 'Availability' },
   { key: 'status', label: 'Material Status' }
 ]
-const findWorkOrder = (reference, workOrders) => workOrders.find(order => String(order.WORKORDER || order['WORK ORDER']) === String(reference))
-const materialUsage = (material, workOrders) => (materialUsageMap[material.itemNumber] || []).map((usage, index) => {
-  const order = findWorkOrder(usage.workOrder, workOrders)
-  if (!order) return null
-  return {
-    reference: usage.workOrder,
-    description: order?.['DESCRIPITION '] || order?.DESCRIPTION || `${material.description} usage`,
-    workType: usage.type,
-    quantity: usage.quantity,
-    unit: material.unit,
-    status: order?.STATUS || usage.status,
-    site: order?.SITE || '1031',
-    department: order?.['DEPARTMENT '] || material.category,
-    source: index === 0 ? 'Actual consumption' : 'Planned / reserved'
-  }
-}).filter(Boolean)
+const materialUsage = (material, workOrders) => workOrders.flatMap(order => {
+  const resources = Array.isArray(order['PLANNED RESOURCES']) ? order['PLANNED RESOURCES'] : []
+  return resources
+    .filter(resource => resource.type === 'Material')
+    .filter(resource => String(resource.itemCode || resource.item || '').trim() === String(material.itemNumber || material.description || '').trim() || String(resource.item || '').trim() === String(material.description || '').trim())
+    .map((resource, index) => ({
+      reference: `${order.WORKORDER}-${resource.transactionRef || resource.item || index}`,
+      workOrder: order.WORKORDER,
+      description: order?.['DESCRIPITION '] || order?.DESCRIPTION || `${material.description} usage`,
+      workType: String(order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim(),
+      quantity: resource.quantity || resource.requestedQuantity || 0,
+      unit: material.unit,
+      status: order?.STATUS || resource.requestStatus || '',
+      site: order?.SITE || '',
+      department: order?.['DEPARTMENT '] || '',
+      source: resource.transactionRef || resource.supplyChainStatus || resource.requestStatus || 'Planned resource'
+    }))
+})
 
 export default function MaterialsPage({ rows = [], setRows, stockRows = [], storeRows = [], workOrders = [] }) {
   const [adding, setAdding] = useState(false)
@@ -78,6 +79,11 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
   const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/materials/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.itemNumber === routeId) || null)
+  useEffect(() => {
+    if (!routeId) return
+    const latest = rows.find(row => row.itemNumber === routeId)
+    if (latest) setSelected(latest)
+  }, [rows, routeId])
   const stockedRows = rows.map(row => withStock(row, stockRows, storeRows))
   const tabRows = tab === 'All' ? stockedRows : stockedRows.filter(row => row.availability === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
