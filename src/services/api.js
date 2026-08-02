@@ -63,8 +63,8 @@ const mapUser = (row, roles = []) => ({
   role: roles.find(role => role.roleId === row.role_id)?.role || '',
   roleId: row.role_id,
   laborId: row.labor_id || '',
-  site: 'All Sites',
-  department: 'All Departments',
+  site: row.site_scope || 'All Sites',
+  department: row.department_scope || 'All Departments',
   status: row.status || 'Active',
   lastLogin: row.last_login_at || ''
 })
@@ -278,7 +278,7 @@ const mapPm = row => ({
 })
 
 const mapIncident = row => ({
-  incident: row.incident_num,
+  incidentNumber: row.incident_num,
   description: row.description,
   site: row.site_code,
   location: row.location_code || '',
@@ -289,6 +289,7 @@ const mapIncident = row => ({
 })
 
 const mapMeter = row => ({
+  meterReadingId: row.meter_reading_id,
   meterId: row.meter_id || row.meter_reading_id,
   asset: row.asset_num || '',
   workOrder: row.work_order_num || '',
@@ -363,7 +364,7 @@ export async function loadWorkspace() {
     purchaseOrders: purchaseOrders.map(mapPurchaseOrder),
     reservations: reservations.map(mapReservation),
     pmSchedules: pmSchedules.map(mapPm),
-    jobPlans: jobPlans.map(row => ({ number: row.job_plan_num, description: row.description, status: row.status })),
+    jobPlans: jobPlans.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status })),
     jobTasks: [],
     incidents: incidents.map(mapIncident),
     meters: meters.map(mapMeter),

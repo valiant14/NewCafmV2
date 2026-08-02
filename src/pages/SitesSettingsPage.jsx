@@ -12,6 +12,7 @@ import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { pick, upsertImportRows } from '../services/importRows'
 
 const emptySite = {
   code: '',
@@ -80,16 +81,31 @@ export default function SitesSettingsPage({ rows = [], setRows }) {
     setModalOpen(false)
   }
 
-  const importRows = importedRows => {
-    setRows?.(importedRows.map(row => ({
+  const normalizeImportRows = importedRows => importedRows.map(row => ({
       ...emptySite,
       ...row,
-      code: String(row.code || row['Site Code'] || '').trim(),
-      name: row.name || row['Site Name'] || '',
-      region: row.region || row.Region || '',
-      city: row.city || row.City || '',
-      status: row.status || row.Status || 'Active'
-    })).filter(row => row.code && row.name))
+      code: String(pick(row, ['code', 'Site Code'])).trim(),
+      name: pick(row, ['name', 'Site Name']),
+      region: pick(row, ['region', 'Region']),
+      city: pick(row, ['city', 'City']),
+      status: pick(row, ['status', 'Status'], 'Active')
+    })).filter(row => row.code && row.name)
+
+  const importRows = async importedRows => {
+    const normalized = normalizeImportRows(importedRows)
+    await upsertImportRows({
+      rows: normalized,
+      endpoint: '/sites',
+      key: 'site_code',
+      mapRow: row => ({
+        site_code: row.code,
+        site_name: row.name,
+        region: row.region,
+        city: row.city,
+        status: row.status || 'Active'
+      })
+    })
+    setRows?.(normalized)
   }
 
   return (

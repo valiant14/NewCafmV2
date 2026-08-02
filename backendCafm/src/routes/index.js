@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import authRouter from './auth.js'
+import rolesRouter from './roles.js'
+import usersRouter from './users.js'
 import { crudRouter } from './crudFactory.js'
 import inventoryStockRouter from './inventoryStock.js'
 import { requireAuth } from '../middleware/auth.js'
@@ -25,19 +27,9 @@ router.use('/departments', crudRouter({
   columns: ['sub_department_code', 'department_name', 'description', 'status', 'created_at', 'updated_at']
 }))
 
-router.use('/users', crudRouter({
-  moduleName: 'Users',
-  table: 'dbo.users',
-  key: 'user_id',
-  columns: ['user_id', 'username', 'password_hash', 'display_name', 'email', 'role_id', 'labor_id', 'status', 'last_login_at', 'created_at', 'updated_at']
-}))
+router.use('/users', usersRouter)
 
-router.use('/roles', crudRouter({
-  moduleName: 'Roles & Permissions',
-  table: 'dbo.roles',
-  key: 'role_id',
-  columns: ['role_id', 'role_code', 'role_name', 'scope_description', 'status', 'created_at', 'updated_at']
-}))
+router.use('/roles', rolesRouter)
 
 router.use('/assets', crudRouter({
   moduleName: 'Assets',

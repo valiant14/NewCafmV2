@@ -3,8 +3,6 @@ import { Activity, AlertOctagon, AlertTriangle, Boxes, CalendarClock, CalendarRa
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
-import ExcelImportButton from '../components/ui/ExcelImportButton'
-import ImportNotice from '../components/ui/ImportNotice'
 import LineChart from '../components/ui/LineChart'
 import { excelDate, excelToDate } from '../config/runtimeDefaults'
 import { pmDueLabel, pmDueTone } from '../lib/pmSchedule'
@@ -154,7 +152,6 @@ export default function OverviewPage({
   purchaseOrders = [],
   reservations = []
 }) {
-  const [imported, setImported] = useState('')
   const assetRows = liveAssets
   const operating = assetRows.filter(asset => asset.status === 'OPERATING').length
   const now = Date.now()
@@ -274,13 +271,10 @@ export default function OverviewPage({
             <p className="mt-2 text-sm text-[var(--app-muted)]">Here is what needs attention across {projectName || 'your facilities'} today.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <ExcelImportButton fileName={imported} onFile={setImported} label="Import Excel data" />
             <Button variant="outline" onClick={printDashboard}><Printer size={16} /> Export dashboard</Button>
             <Button onClick={() => onNavigate('Work Orders')}><Plus size={17} /> New work order</Button>
           </div>
         </section>
-
-        <ImportNotice fileName={imported} subject="workspace" onClear={() => setImported('')} />
 
         <section className="print-grid-4 mb-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Metric label={`Logged in ${monthLabel}`} value={loggedThisMonth} detail="Work orders raised this month" icon={CalendarRange} tone="blue" onClick={() => onNavigate('Work Orders')} />

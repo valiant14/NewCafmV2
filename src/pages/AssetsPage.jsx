@@ -54,9 +54,11 @@ const exportColumns = [
   { key: 'quantity', label: 'Quantity' }
 ]
 
-export default function AssetsPage({ initialAssets = [], workOrders = [] }) {
+export default function AssetsPage({ rows: controlledRows, setRows: setControlledRows, initialAssets = [], workOrders = [] }) {
   const { user } = useAuth()
-  const [rows, setRows] = useState(initialAssets)
+  const [localRows, setLocalRows] = useState(initialAssets)
+  const rows = controlledRows || localRows
+  const setRows = setControlledRows || setLocalRows
   const [adding, setAdding] = useState(false)
   const [codeError, setCodeError] = useState('')
   const [form, setForm] = useState(empty)

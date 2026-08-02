@@ -75,14 +75,16 @@ const normalizeLocationRow = row => ({
   department: row.department || ''
 })
 
-export default function LocationsPage({ initialLocations = [] }) {
+export default function LocationsPage({ rows: controlledRows, setRows: setControlledRows, initialLocations = [] }) {
   const { user } = useAuth()
   const seededLocations = (initialLocations?.length ? initialLocations : locationSeed).map(normalizeLocationRow)
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [codeError, setCodeError] = useState('')
   const [form, setForm] = useState(emptyLocation)
-  const [locations, setLocations] = useState(seededLocations)
+  const [localLocations, setLocalLocations] = useState(seededLocations)
+  const locations = controlledRows || localLocations
+  const setLocations = setControlledRows || setLocalLocations
   const routeId = decodeURIComponent(window.location.pathname.split('/locations/')[1] || '')
   const [selected, setSelected] = useState(seededLocations.find(row => row.location === routeId) || null)
   const [tab, setTab] = useState('All')
