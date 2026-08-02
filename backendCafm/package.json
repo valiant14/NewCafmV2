@@ -7,7 +7,9 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "db:check": "node src/db/checkConnection.js",
+    "db:schema": "node src/db/runSqlFile.js sql/001_schema.sql --ignore-existing",
     "db:seed-core": "node src/db/runSqlFile.js sql/002_seed_core.sql",
+    "db:setup": "npm run db:schema && npm run db:seed-core && npm run db:create-admin",
     "db:create-admin": "node src/db/createAdminUser.js"
   },
   "dependencies": {

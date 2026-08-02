@@ -6,7 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "backend:dev": "npm --prefix backendCafm run dev",
+    "backend:start": "npm --prefix backendCafm run start",
+    "db:check": "npm --prefix backendCafm run db:check",
+    "db:schema": "npm --prefix backendCafm run db:schema",
+    "db:seed-core": "npm --prefix backendCafm run db:seed-core",
+    "db:create-admin": "npm --prefix backendCafm run db:create-admin",
+    "db:setup": "npm --prefix backendCafm run db:setup"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

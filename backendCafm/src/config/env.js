@@ -16,6 +16,8 @@ export const env = {
     database: process.env.MSSQL_DATABASE || 'CafmV3',
     user: process.env.MSSQL_USER || 'sa',
     password: process.env.MSSQL_PASSWORD || '',
+    connectionTimeout: Number(process.env.MSSQL_CONNECTION_TIMEOUT || 10000),
+    requestTimeout: Number(process.env.MSSQL_REQUEST_TIMEOUT || 15000),
     options: {
       encrypt: bool(process.env.MSSQL_ENCRYPT),
       trustServerCertificate: bool(process.env.MSSQL_TRUST_SERVER_CERTIFICATE ?? 'true')
