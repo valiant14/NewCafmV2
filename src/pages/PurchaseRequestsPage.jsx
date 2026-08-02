@@ -12,7 +12,7 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { statusDescription, statusTone } from '../lib/statusMatrix'
 import { nowLocalDate } from '../lib/datetime'
-import { departments, materials as materialsSeed } from '../data/workspaceData'
+import { materials as materialsSeed } from '../data/workspaceData'
 import { stores } from '../lib/inventory'
 
 const todayStamp = () => nowLocalDate()
@@ -20,13 +20,13 @@ const purchaseRequisitionStatuses = ['WAPPR', 'APPR', 'CLOSE', 'CAN']
 
 const emptyRequest = { type: 'Material', item: '', quantity: 1, source: '', site: '1031', department: '', workOrder: '' }
 
-const requestFields = [
+const buildRequestFields = ({ siteRecords = [], departmentRecords = [] }) => [
   { key: 'type', label: 'Type', options: ['Material', 'Tool', 'Equipment'] },
   { key: 'item', label: 'Item', required: true, options: ['', ...materialsSeed.map(material => material.description)] },
   { key: 'quantity', label: 'Quantity', required: true, type: 'number', min: 1 },
   { key: 'source', label: 'Store', options: ['', ...stores.map(store => store.code)] },
-  { key: 'site', label: 'Site', required: true, placeholder: '1031' },
-  { key: 'department', label: 'Department', options: ['', ...departments.map(department => department.name)] },
+  { key: 'site', label: 'Site', required: true, suggestions: siteRecords.filter(site => site.status !== 'Inactive').map(site => ({ value: site.code, label: site.name })), placeholder: '1031' },
+  { key: 'department', label: 'Department', suggestions: [...new Map(departmentRecords.filter(department => department.status !== 'Inactive' && department.department).map(department => [department.department, department.department])).values()], placeholder: 'Search department' },
   { key: 'workOrder', label: 'Work Order (optional)', placeholder: 'Leave blank for a store restock' }
 ]
 
@@ -46,6 +46,8 @@ const exportColumns = [
 
 export default function PurchaseRequestsPage({
   rows = [],
+  siteRecords = [],
+  departmentRecords = [],
   onApproveRequest,
   onUpdateRequest,
   onCreateRequest
@@ -55,6 +57,7 @@ export default function PurchaseRequestsPage({
   const [formError, setFormError] = useState('')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [requestStatus, setRequestStatus] = useState('All')
+  const requestFields = buildRequestFields({ siteRecords, departmentRecords })
 
   const requestRows = requestStatus === 'All' ? rows : rows.filter(row => row.status === requestStatus)
 

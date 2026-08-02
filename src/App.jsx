@@ -699,7 +699,7 @@ export default function App() {
     'Incidents': <IncidentsPage rows={scopedIncidents} setRows={setIncidents}/>,
     'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={setAllWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
     'Assets': <AssetsPage initialAssets={scopedAssets} workOrders={scopedWorkOrders} />,
-    'Preventive Maintenance': <PreventiveMaintenancePage assets={scopedAssets} jobTasks={jobTasks} workOrders={scopedWorkOrders} scopeUser={effectiveUser} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
+    'Preventive Maintenance': <PreventiveMaintenancePage assets={scopedAssets} jobTasks={jobTasks} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} scopeUser={effectiveUser} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Meters': <MetersPage assets={scopedAssets} workOrders={scopedWorkOrders} />,
     'Locations': <LocationsPage initialLocations={scopedLocations}/>,
     'Job Plans': selectedJobPlan ? <JobPlanDetailPage plan={selectedJobPlan} tasks={jobTaskRecords.filter(task=>task.JPNUM===selectedJobPlan.JPNUM)} workOrders={allWorkOrders.filter(order=>getWorkOrderJobPlan(order)===selectedJobPlan.JPNUM)} onBack={()=>{setSelectedJobPlan(null);window.history.pushState({},'','/job-plans')}} onUpdate={updateJobPlan}/> : <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobPlanSummaryRows} onCreate={createJobPlan} search={search} setSearch={setSearch} action="New job plan" modalTitle="Add job plan" modalNote="Create a job plan task line with sequence, instructions, and estimated duration." modalFields={[
@@ -727,7 +727,7 @@ export default function App() {
     'Labor': <LaborPage workOrders={scopedWorkOrders}/>,
     'Materials': <MaterialsPage workOrders={scopedWorkOrders}/>,
     'Stores': <StoresPage scopeUser={effectiveUser}/>,
-    'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
+    'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
     'Purchase Orders': <PurchaseOrdersPage rows={scopedPurchaseOrders} onUpdateOrder={updatePurchaseOrder} onUpdateRequest={updatePurchaseRequest}/>,
     'Reservations': <ReservationsPage rows={scopedReservations} onUpdate={updateReservation}/>,
     'Tools & Equipment': <ToolsPage workOrders={scopedWorkOrders}/>,

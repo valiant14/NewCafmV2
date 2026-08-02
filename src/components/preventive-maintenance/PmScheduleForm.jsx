@@ -2,9 +2,16 @@ import { Check } from 'lucide-react'
 import Button from '../ui/Button'
 import { Field } from '../ui/FormControls'
 import { ModalFooter, ModalHeader, ModalPanel } from '../ui/ModalFrame'
+import { sameDepartment } from '../../lib/departments'
 
 export default function PmScheduleForm({ form, setForm, assets, jobPlans, departments, onCancel, onSave, modal = false }) {
-  const selectedDepartment = departments.find(department => department.name === form.department)
+  const departmentOptions = [...new Map(departments
+    .filter(department => department.status !== 'Inactive' && department.department)
+    .map(department => [department.department, department.department])
+  ).values()]
+  const subDepartmentOptions = departments
+    .filter(department => department.status !== 'Inactive' && sameDepartment(department.department, form.department))
+    .map(department => ({ value: department.description, label: department.subDepartmentCode }))
   const valid = Boolean(form.pmNumber && form.description && (form.asset || form.location) && form.jobPlan && form.startDate && form.frequency && form.freqUnit)
   const set = (key, value) => setForm(current => ({ ...current, [key]: value }))
   const chooseAsset = event => {
@@ -55,8 +62,8 @@ export default function PmScheduleForm({ form, setForm, assets, jobPlans, depart
           <Field label="LEAD" value={form.lead} onChange={event => set('lead', event.target.value)} />
           <Field label="PERSONGROUP" value={form.personGroup} onChange={event => set('personGroup', event.target.value)} placeholder="C1-HVAC" />
           <Field label="PM Status" value={form.pmStatus} options={['ACTIVE', 'INACTIVE', 'DRAFT']} onChange={event => set('pmStatus', event.target.value)} />
-          <Field label="department" value={form.department} onChange={event => setForm(current => ({ ...current, department: event.target.value, subDepartment: '' }))} options={['', ...departments.map(department => department.name)]} />
-          <Field label="sub department" value={form.subDepartment} onChange={event => set('subDepartment', event.target.value)} options={['', ...(selectedDepartment?.subDepartments || []).map(sub => sub.name)]} />
+          <Field label="department" value={form.department} onChange={event => setForm(current => ({ ...current, department: event.target.value, subDepartment: '' }))} suggestions={departmentOptions} placeholder="Search department" />
+          <Field label="sub department" value={form.subDepartment} onChange={event => set('subDepartment', event.target.value)} suggestions={subDepartmentOptions} placeholder={form.department ? 'Search sub department' : 'Select department first'} />
         </div>
       </div>
 

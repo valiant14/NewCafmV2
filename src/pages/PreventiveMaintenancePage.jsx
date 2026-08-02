@@ -11,7 +11,7 @@ import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import TableSearch from '../components/ui/TableSearch'
-import { departments, pmSchedules as pmSeed } from '../data/workspaceData'
+import { pmSchedules as pmSeed } from '../data/workspaceData'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 import { useAuth } from '../providers/AuthProvider'
@@ -95,7 +95,7 @@ const addFrequency = plan => {
   return toLocalDateInput(date)
 }
 
-export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], workOrders = [], scopeUser, onGenerate, onOpenWorkOrder }) {
+export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], workOrders = [], departmentRecords = [], scopeUser, onGenerate, onOpenWorkOrder }) {
   const { user } = useAuth()
   const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
   const [plans, setPlans] = useState(() => pmSeed.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') })))
@@ -243,7 +243,7 @@ export default function PreventiveMaintenancePage({ assets = [], jobTasks = [], 
       />
       {mode === 'new' && (
         <ModalOverlay>
-          <PmScheduleForm modal form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departments} onCancel={() => setMode('list')} onSave={save} />
+          <PmScheduleForm modal form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departmentRecords} onCancel={() => setMode('list')} onSave={save} />
         </ModalOverlay>
       )}
     </section>
