@@ -76,14 +76,20 @@ export default function WorkOrderMaterialRequestsTab({
     const action = actionStateFor(resource, stock)
     if (action.disabled || action.kind === 'none') return
     const nextStatus = action.kind === 'purchase' ? 'WAPPR' : 'ENTERED'
+    // Buy the gap, not the whole line. Stock already on the shelf is issued to the job, so
+    // requesting the full planned quantity would over-order by whatever is in the store.
+    const planned = requestedQuantity(resource)
+    const onHand = Math.max(0, Number(stock.availableQuantity || 0))
+    const shortfall = Math.max(0, planned - onHand)
     const transaction = action.kind === 'purchase'
       ? onCreatePurchaseRequest?.({
         workOrder: workOrderContext.number,
         type: resource.type,
         item: resource.item,
-        quantity: resource.quantity || 0,
+        quantity: shortfall,
+        plannedQuantity: planned,
+        availableQuantity: onHand,
         source: stock.source,
-        availableQuantity: stock.availableQuantity,
         site: workOrderContext.site,
         department: workOrderContext.department
       })
@@ -165,7 +171,7 @@ export default function WorkOrderMaterialRequestsTab({
             {materialBlocked ? <AlertTriangle size={18} /> : <Check size={18} />}
             <div className="grid gap-1">
               <strong className="text-sm">{materialBlocked ? 'Material shortage blocks scheduling' : 'Resources ready for execution'}</strong>
-              <span className="text-xs">{materialBlocked ? 'One or more planned material items require purchase. Scheduling stays blocked until the request is created or stock is available — use “Put on Hold (Material)” in the header to pause the SLA clock while you wait.' : 'Planned materials, tools, and equipment are available for reservation or allocation.'}</span>
+              <span className="text-xs">{materialBlocked ? 'One or more planned material items require purchase. Only the shortfall is ordered - stock already on the shelf is issued to this job. Scheduling stays blocked until the request is created or stock arrives; a Facility Manager can pause the SLA clock by putting the work order on material hold.' : 'Planned materials, tools, and equipment are available for reservation or allocation.'}</span>
             </div>
           </div>
         </>

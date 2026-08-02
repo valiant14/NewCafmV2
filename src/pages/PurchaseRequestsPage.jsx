@@ -133,7 +133,13 @@ export default function PurchaseRequestsPage({
               { key: 'purchaseRequest', label: 'PR Number', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
               { key: 'workOrder', label: 'Work Order' },
               { key: 'item', label: 'Item / Description' },
-              { key: 'quantity', label: 'Quantity' },
+              // The figure is the shortfall, so show the arithmetic behind it - an approver
+              // seeing "1" against a job that plans 2 needs to know why.
+              { key: 'quantity', label: 'Quantity', render: (value, row) => (
+                Number(row.plannedQuantity) > Number(value)
+                  ? <span><strong>{value}</strong><small className="mt-1 block text-[9px] text-[var(--app-muted)]">{row.plannedQuantity} planned · {row.availableQuantity} in stock</small></span>
+                  : value
+              ) },
               { key: 'source', label: 'Requested From' },
               { key: 'purchaseOrder', label: 'Linked PO', render: value => value || 'Not created' },
               { key: 'site', label: 'Site' },
