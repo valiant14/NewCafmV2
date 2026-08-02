@@ -28,7 +28,8 @@ export default function WorkOrderHeader({
   onResume,
   onMaterialHoldStatus = false,
   canMaterialHold = false,
-  canManageHold = false
+  canManageHold = false,
+  workClosed = false
 }) {
   const saveLabel = autoSaveState === 'Saving' ? 'Saving...' : autoSaveState === 'Saved' ? 'Saved' : 'Save'
 
@@ -58,6 +59,9 @@ export default function WorkOrderHeader({
             </button>
           ))}
           <button className={outlineButtonClass} onClick={printWorkOrder}><Printer size={15} />Print</button>
+          {/* CLOSE is terminal - there is nothing further to save, so the button goes
+              rather than sitting there inviting a pointless click. */}
+          {!workClosed && (
           <button className={primaryButtonClass} disabled={autoSaveState === 'Saving'} onClick={onSave}>
             {autoSaveState === 'Saving'
               ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/60 border-t-white" />
@@ -66,6 +70,7 @@ export default function WorkOrderHeader({
                 : <Save size={15} />}
             {saveLabel}
           </button>
+          )}
         </div>
       </div>
     </header>
