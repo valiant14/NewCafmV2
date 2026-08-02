@@ -1,4 +1,4 @@
-import { PackageCheck, ShieldCheck, Wrench } from 'lucide-react'
+import { Check, Lock, PackageCheck, Play, ShieldCheck, Wrench } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Field from '../ui/Field'
 import Section from '../ui/Section'
@@ -70,7 +70,10 @@ export default function WorkOrderActualTab({
   actualTools,
   setActualTools,
   updateActualRow,
-  workClosed
+  workClosed,
+  failureReady = false,
+  actualReady = false,
+  closeWork
 }) {
   if (!actualsEditable) {
     return (
@@ -88,8 +91,30 @@ export default function WorkOrderActualTab({
     )
   }
 
+  // The preparation stages advance on their own; these three are the points where a person
+  // has to decide something, so they stay explicit. Exactly one is offered at a time.
+  const step =
+    status === 'SCHED' ? { label: 'Start work', icon: Play, run: () => setWorkStarted(true), ready: preparationReady, blocked: 'Complete planning before starting work' }
+    : status === 'INPRG' ? { label: 'Resolve / complete work', icon: Check, run: completeWork, ready: failureReady, blocked: 'Complete failure classification first' }
+    : status === 'COMP' ? { label: 'Close work order', icon: Lock, run: closeWork, ready: actualReady, blocked: 'Complete the Actual tab before closeout' }
+    : null
+
   return (
     <>
+      {step && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
+          <div className="grid gap-1">
+            <strong className="text-sm text-[var(--app-ink)]">{step.ready ? `Ready to ${step.label.toLowerCase()}` : 'Not ready yet'}</strong>
+            <span className="text-xs text-[var(--app-muted)]">
+              {step.ready ? 'Earlier stages were approved and scheduled automatically.' : step.blocked}
+            </span>
+          </div>
+          <button className={primaryButtonClass} onClick={step.run} disabled={!step.ready} title={step.ready ? '' : step.blocked}>
+            <step.icon size={15} />{step.label}
+          </button>
+        </div>
+      )}
+
       <div className={timingClass(slaBreachedNow)}>
         <div className={timingGridClass}>
           <span className={timingCellClass}>Target Start<strong className="text-xs normal-case tracking-normal text-[var(--app-ink)]">{formatDateTime(targetStart, 'Not defined')}</strong></span>

@@ -141,6 +141,10 @@ function WorkOrderWorkflowNotice({ status, missing = [], nextStep }) {
 }
 
 function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder }) {
+  const { user } = useAuth()
+  // Pausing the SLA clock is an administrative decision, so the hold controls belong to
+  // the Facility Manager rather than to whoever is executing the job.
+  const canManageHold = user?.role === 'Facility Manager'
   const workType=(order['WORK TYPE'] || order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const isPM = workType === 'PM'
   const isCM = workType === 'CM'
@@ -322,23 +326,35 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     :[]
   const workflowMissing=missingFor(status).length?missingFor(status):['HOLD',HOLD_MATERIAL].includes(status)?holdMissing:[]
   const allowedStatuses=workOrderTransitions(status,heldFrom)
-  const statusChoices=statusOptions('workOrder').map(value=>{
-    const reachable=value===status||allowedStatuses.includes(value)
-    const blockedBy=reachable&&value!==status?missingFor(value):[]
-    return{value,label:statusDescription('workOrder',value),disabled:!reachable||blockedBy.length>0,
-      reason:!reachable?'Not available from the current status':blockedBy.length?`Complete: ${blockedBy.join(', ')}`:''}
-  })
   const workflowNextStep={
-    WAPPR: overviewReady?'Select APPR when approval is granted':'Complete Work Order overview fields',
-    APPR: 'Select WSCH when ready for scheduling',
-    WSCH: preparationReady?'Select SCHED when scheduled':'Complete overview and plan requirements',
-    SCHED: preparationReady?'Select INPRG when work starts':'Complete planning before starting work',
+    WAPPR: overviewReady?'Approving automatically':'Complete Work Order overview fields',
+    APPR: preparationReady?'Scheduling automatically':'Complete planning to move into the schedule',
+    WSCH: preparationReady?'Scheduling automatically':'Complete overview and plan requirements',
+    SCHED: preparationReady?'Start work from the Actual tab':'Complete planning before starting work',
     HOLD: 'Resolve material or permit hold before continuing',
     [HOLD_MATERIAL]: 'SLA is paused. Resume once the material is available',
-    INPRG: failureReady?'Select COMP when execution is completed':'Complete failure classification before completion',
-    COMP: actualReady?'Select CLOSE after Actual tab is complete':'Complete Actual tab before closeout',
+    INPRG: failureReady?'Resolve / complete from the Actual tab':'Complete failure classification before completion',
+    COMP: actualReady?'Close the work order from the Actual tab':'Complete Actual tab before closeout',
     CLOSE: 'Workflow complete'
   }[status] || 'Review the work order'
+
+  // The status select is gone, so the preparation stages advance on their own the moment
+  // their entry conditions are met. Only the stages that represent a human act - starting
+  // work, completing it, closing it - still wait for a button, and holds are never left
+  // automatically because the operator decides when material has actually arrived.
+  const autoAdvanceTo=
+    status==='WAPPR'&&!missingFor('APPR').length?'APPR'
+    :status==='APPR'&&!missingFor('WSCH').length?'WSCH'
+    :status==='WSCH'&&!missingFor('SCHED').length?'SCHED'
+    :''
+  useEffect(()=>{
+    if(!autoAdvanceTo) return
+    // Deferred a tick so a keystroke that completes the last required field is committed
+    // before the status moves underneath the field being typed in.
+    const timer=setTimeout(()=>changeStatus(autoAdvanceTo),0)
+    return ()=>clearTimeout(timer)
+  },[autoAdvanceTo])
+  const closeWork=()=>changeStatus('CLOSE')
   const actualsEditable = true
   const number = order.WORKORDER || 'AUTO'
   const rawTargetFinishTime=targetFinish?new Date(targetFinish).getTime():null
@@ -424,13 +440,13 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   }
   useEffect(()=>{if(!saveReady.current){saveReady.current=true;return}setAutoSaveState('Unsaved changes')},[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterReading,waterConsumption,energyConsumption,meterReadingDate,selectedStatus,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
-    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} onSave={saveChanges} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} printWorkOrder={printWorkOrder} onStatusChange={changeStatus} statusOptions={statusChoices} onMaterialHold={putOnMaterialHold} onResume={resumeFromMaterialHold} onMaterialHoldStatus={status===HOLD_MATERIAL} canMaterialHold={allowedStatuses.includes(HOLD_MATERIAL)} />
+    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} onSave={saveChanges} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} printWorkOrder={printWorkOrder} onMaterialHold={putOnMaterialHold} onResume={resumeFromMaterialHold} onMaterialHoldStatus={status===HOLD_MATERIAL} canMaterialHold={allowedStatuses.includes(HOLD_MATERIAL)} canManageHold={canManageHold} />
     <WorkOrderTabs tabs={workOrderTabs} active={tab} onChange={setTab} showFailureDot={!isPM} />
     <WorkOrderWorkflowNotice status={status} missing={workflowMissing} nextStep={workflowNextStep} />
     <div className={workOrderBodyClass}>
       {tab==='Overview' && <WorkOrderOverviewTab projectName={projectName} sourceRequest={sourceRequest} number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} systemValue={systemValue} setSystemValue={setSystemValue} systemOptions={systemOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={toDateTimeInput(order['REPORTED DATE ']||order['REPORTED DATE']||order['REPORT DATE'])||nowLocalDateTime()} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
       {tab==='Plan' && <WorkOrderPlanTab isPM={isPM} tasksLocked={tasksFromJobPlan} jobPlanNumber={jobPlanNumber} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialMaster} toolMaster={toolMaster} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} updatePlannedResourceField={updatePlannedResourceField} />}
-      {tab==='Actual' && <WorkOrderActualTab actualsEditable={actualsEditable} status={status} preparationReady={preparationReady} planReady={planReady} setTab={setTab} setWorkStarted={value=>{setWorkStarted(value);if(value)setSelectedStatus('INPRG')}} completeWork={completeWork} outlineButtonClass={workOrderOutlineButtonClass} primaryButtonClass={workOrderPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} setActualFinish={setActualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} laborCraft={laborCraft} setLaborCraft={setLaborCraft} actualHours={actualHours} setActualHours={setActualHours} actualStart={actualStart} setActualStart={setActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} />}
+      {tab==='Actual' && <WorkOrderActualTab actualsEditable={actualsEditable} status={status} preparationReady={preparationReady} planReady={planReady} setTab={setTab} setWorkStarted={value=>{setWorkStarted(value);if(value)setSelectedStatus('INPRG')}} completeWork={completeWork} outlineButtonClass={workOrderOutlineButtonClass} primaryButtonClass={workOrderPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} setActualFinish={setActualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} laborCraft={laborCraft} setLaborCraft={setLaborCraft} actualHours={actualHours} setActualHours={setActualHours} actualStart={actualStart} setActualStart={setActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} failureReady={failureReady} actualReady={actualReady} closeWork={closeWork} />}
       {tab==='Failure' && <WorkOrderFailureTab isCM={isCM} causeApplicable={causeApplicable} remedyApplicable={remedyApplicable} failureClass={failureClass} changeFailure={changeFailure} failureClassOptions={failureClassOptions} problemCode={problemCode} setProblemCode={setProblemCode} setCauseCode={setCauseCode} setRemedyCode={setRemedyCode} problemOptions={problemOptions} causeCode={causeCode} causeOptions={causeOptions} remedyCode={remedyCode} remedyOptions={remedyOptions} failureDescription={failureDescription} problemDescription={problemDescription} causeDescription={causeDescription} remedyDescription={remedyDescription} failureCount={failureCodes.length} />}
       {tab==='Material Requests' && <WorkOrderMaterialRequestsTab resourceRequests={resourceRequests} plannedResources={plannedResources} setPlannedResources={setPlannedResources} updatePlanRow={updatePlanRow} getAvailability={resourceAvailability} materialBlocked={materialBlocked} primaryButtonClass={workOrderPrimaryButtonClass} outlineButtonClass={workOrderOutlineButtonClass} setTab={setTab} workOrderContext={{ number, site: siteValue, department: department || assignedDepartment, assignedDepartment }} onCreatePurchaseRequest={onCreatePurchaseRequest} onCreateReservation={onCreateReservation} />}
       {tab==='PTW & Files' && <WorkOrderDocumentsTab ptwRequired={ptwRequired} setPtwRequired={setPtwRequired} ptwFiles={ptwFiles} setPtwFiles={setPtwFiles} generalFiles={generalFiles} setGeneralFiles={setGeneralFiles} addFiles={addFiles} downloadFile={downloadFile} />}

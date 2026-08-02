@@ -10,7 +10,6 @@ const descriptionClass = 'mt-1 text-[length:var(--app-page-description-font-size
 const actionsClass = 'flex flex-wrap items-center justify-end gap-2'
 const primaryButtonClass = 'inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-transparent bg-[var(--app-primary)] px-4 text-xs font-bold text-white shadow-[0_8px_20px_rgba(49,90,71,.18)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50'
 const outlineButtonClass = 'inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-4 text-xs font-bold text-[var(--app-muted)] transition hover:bg-[var(--app-soft-bg-hover)] disabled:cursor-not-allowed disabled:opacity-50'
-const statusSelectClass = 'h-10 min-w-[190px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]'
 
 export { primaryButtonClass as workOrderPrimaryButtonClass, outlineButtonClass as workOrderOutlineButtonClass }
 
@@ -25,12 +24,11 @@ export default function WorkOrderHeader({
   onSave,
   close,
   printWorkOrder,
-  onStatusChange,
-  statusOptions = [],
   onMaterialHold,
   onResume,
   onMaterialHoldStatus = false,
-  canMaterialHold = false
+  canMaterialHold = false,
+  canManageHold = false
 }) {
   const saveLabel = autoSaveState === 'Saving' ? 'Saving...' : autoSaveState === 'Saved' ? 'Saved' : 'Save'
 
@@ -48,7 +46,9 @@ export default function WorkOrderHeader({
         </div>
 
         <div className={`${actionsClass} self-center`}>
-          {onMaterialHoldStatus ? (
+          {/* Holding a job pauses its SLA, so it is a supervisor's call rather than a
+              technician's - only a Facility Manager sees these. */}
+          {canManageHold && (onMaterialHoldStatus ? (
             <button className={outlineButtonClass} onClick={onResume} title="Resume work and restart the SLA clock">
               <Play size={15} />Resume
             </button>
@@ -56,7 +56,7 @@ export default function WorkOrderHeader({
             <button className={outlineButtonClass} onClick={onMaterialHold} title="Pause the SLA clock while waiting for material">
               <PackageX size={15} />Put on Hold (Material)
             </button>
-          )}
+          ))}
           <button className={outlineButtonClass} onClick={printWorkOrder}><Printer size={15} />Print</button>
           <button className={primaryButtonClass} disabled={autoSaveState === 'Saving'} onClick={onSave}>
             {autoSaveState === 'Saving'
@@ -66,19 +66,6 @@ export default function WorkOrderHeader({
                 : <Save size={15} />}
             {saveLabel}
           </button>
-          <select
-            className={statusSelectClass}
-            value={status}
-            onChange={event => onStatusChange?.(event.target.value)}
-            title={statusDescription || status}
-            aria-label="Change work order status"
-          >
-            {statusOptions.map(option => (
-              <option value={option.value} key={option.value} disabled={option.disabled} title={option.reason}>
-                {option.value} · {option.label}{option.disabled && option.reason ? ` — ${option.reason}` : ''}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
     </header>
