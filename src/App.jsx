@@ -180,6 +180,9 @@ const comparableResourcePayload = row => ({
   availability_status: row.availability_status || '',
   request_status: row.request_status || '',
   transaction_ref: row.transaction_ref || '',
+  purchase_request_num: row.purchase_request_num || '',
+  purchase_order_num: row.purchase_order_num || '',
+  reservation_num: row.reservation_num || '',
   supply_chain_status: row.supply_chain_status || ''
 })
 const sameResourcePayload = (existing, payload) => rowFingerprint(comparableResourcePayload(existing)) === rowFingerprint(comparableResourcePayload(payload))
@@ -198,6 +201,9 @@ const workOrderResourcePayload = (order, resource) => ({
   availability_status: resource.availabilityStatus || resource.availability || '',
   request_status: resource.requestStatus || '',
   transaction_ref: resource.transactionRef || resource.purchaseRequest || resource.purchaseOrder || resource.reservation || '',
+  purchase_request_num: resource.purchaseRequest || '',
+  purchase_order_num: resource.purchaseOrder || '',
+  reservation_num: resource.reservation || '',
   supply_chain_status: resource.supplyChainStatus || ''
 })
 const plannedLaborPayload = (order, labor, index) => ({
@@ -249,6 +255,53 @@ const persistWorkOrderPlannedLabor = async order => {
     }
   }
 }
+const workOrderTaskPayload = (order, task, index) => ({
+  ...(task.workOrderTaskId ? { work_order_task_id: task.workOrderTaskId } : {}),
+  work_order_num: toText(order.WORKORDER),
+  task_sequence: toNumberOrNull(task.sequence) || (index + 1) * 10,
+  task_description: toText(task.description || task['JOB TASK DESCRIPTION'] || task.DESCRIPTION),
+  duration_minutes: toNumberOrNull(task.duration || task['TASK DURATION IN HOUR']) || 0,
+  site_code: order.SITE || '1031',
+  department_name: order['DEPARTMENT '] || ''
+})
+const comparableWorkOrderTaskPayload = row => ({
+  work_order_num: toText(row.work_order_num),
+  task_sequence: toNumberOrNull(row.task_sequence) || 0,
+  task_description: toText(row.task_description),
+  duration_minutes: toNumberOrNull(row.duration_minutes) || 0,
+  site_code: row.site_code || '1031',
+  department_name: row.department_name || ''
+})
+const sameWorkOrderTaskPayload = (existing, payload) => rowFingerprint(comparableWorkOrderTaskPayload(existing)) === rowFingerprint(comparableWorkOrderTaskPayload(payload))
+const persistWorkOrderTasks = async order => {
+  const tasks = Array.isArray(order['JOB PLAN TASKS']) ? order['JOB PLAN TASKS'] : []
+  const workOrderNum = toText(order.WORKORDER)
+  if (!workOrderNum) return
+  const existing = (await safeApiList('/work-order-tasks'))
+    .filter(row => String(row.work_order_num) === workOrderNum)
+  const matched = new Set()
+  for (const [index, task] of tasks.entries()) {
+    const payload = workOrderTaskPayload(order, task, index)
+    if (!payload.task_description && !payload.duration_minutes) continue
+    const match = task.workOrderTaskId
+      ? existing.find(row => String(row.work_order_task_id) === String(task.workOrderTaskId))
+      : existing.find(row => Number(row.task_sequence) === Number(payload.task_sequence))
+    if (match) {
+      matched.add(String(match.work_order_task_id))
+      if (!sameWorkOrderTaskPayload(match, payload)) {
+        await api.put(`/work-order-tasks/${encodeURIComponent(match.work_order_task_id)}`, payload)
+      }
+    } else {
+      const saved = await api.post('/work-order-tasks', payload)
+      if (saved?.work_order_task_id) matched.add(String(saved.work_order_task_id))
+    }
+  }
+  for (const row of existing) {
+    if (!matched.has(String(row.work_order_task_id))) {
+      await api.delete(`/work-order-tasks/${encodeURIComponent(row.work_order_task_id)}`)
+    }
+  }
+}
 const persistWorkOrderResources = async order => {
   const resources = Array.isArray(order['PLANNED RESOURCES']) ? order['PLANNED RESOURCES'] : []
   const workOrderNum = toText(order.WORKORDER)
@@ -281,6 +334,7 @@ const persistWorkOrderResources = async order => {
 const persistWorkOrderChildren = async order => {
   await persistWorkOrderResources(order)
   await persistWorkOrderPlannedLabor(order)
+  await persistWorkOrderTasks(order)
 }
 const apiMappers = {
   sites: {
@@ -466,7 +520,7 @@ function WorkOrderWorkflowNotice({ status, missing = [], nextStep }) {
   )
 }
 
-function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, siteRecords = [], departmentRecords = [], assetRecords = [], workOrderRows = [], laborRecords = [], materialRecords = [], stockRecords = [], storeRecords = [], toolRecords = [], jobTaskRecords = [], failureCodeRecords = [], onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder }) {
+function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, siteRecords = [], departmentRecords = [], assetRecords = [], workOrderRows = [], laborRecords = [], materialRecords = [], stockRecords = [], storeRecords = [], toolRecords = [], jobTaskRecords = [], failureCodeRecords = [], reservationRecords = [], onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder }) {
   const { user } = useAuth()
   // Pausing the SLA clock is an administrative decision, so the hold controls belong to
   // the Facility Manager rather than to whoever is executing the job.
@@ -594,8 +648,9 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const updateActualRow=(setter,index,value)=>setter(rows=>rows.map((row,rowIndex)=>
     rowIndex===index?{...row,actualQuantity:value,returned:false,returnedQuantity:0,returnedAt:0}:row))
   const clearResourceSupplyChain = row => ({ ...row, requestStatus: '', transactionRef: '', purchaseRequest: '', purchaseOrder: '', reservation: '', supplyChainStatus: '' })
-  const updatePlannedResource=(index,value)=>setPlannedResources(rows=>rows.map((row,rowIndex)=>rowIndex===index?{...clearResourceSupplyChain(row),item:value}:row))
-  const updatePlannedResourceField=(index,key,value)=>setPlannedResources(rows=>rows.map((row,rowIndex)=>rowIndex===index?{...clearResourceSupplyChain(row),[key]:value}:row))
+  const resourceLocked=row=>Boolean(row.transactionRef||row.purchaseRequest||row.purchaseOrder||row.reservation)
+  const updatePlannedResource=(index,value)=>setPlannedResources(rows=>rows.map((row,rowIndex)=>rowIndex===index&&!resourceLocked(row)?{...clearResourceSupplyChain(row),item:value}:row))
+  const updatePlannedResourceField=(index,key,value)=>setPlannedResources(rows=>rows.map((row,rowIndex)=>rowIndex===index&&!resourceLocked(row)?{...clearResourceSupplyChain(row),[key]:value}:row))
   const findPlannedInventory = resource => resource.type === 'Material'
     ? materialRecords.find(item => item.description === resource.item || item.itemNumber === resource.item || item.item === resource.item)
     : toolRecords.find(item => item.description === resource.item || item.toolNumber === resource.item || item.tool === resource.item)
@@ -609,6 +664,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
       return {
         availability: requestedQuantity > 0 && availableQuantity >= requestedQuantity ? 'Available' : 'Purchase Required',
         source: holding.length ? holding.map(code => storeLabel(code, storeRecords)).join(', ') : 'No store holds this item',
+        storeCode: holding[0] || '',
         availableQuantity,
         itemNumber: inventory.itemNumber
       }
@@ -618,6 +674,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     return {
       availability: requestedQuantity > 0 && availableQuantity >= requestedQuantity ? 'Available' : 'Purchase Required',
       source: inventory.location || 'Tool Crib',
+      storeCode: '',
       availableQuantity,
       itemNumber: inventory.toolNumber,
       inventoryStatus: inventory.status
@@ -856,7 +913,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
       {tab==='Plan' && <WorkOrderPlanTab isPM={isPM} tasksLocked={tasksFromJobPlan} jobPlanNumber={jobPlanNumber} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialRecords} toolMaster={toolRecords} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} updatePlannedResourceField={updatePlannedResourceField} />}
       {tab==='Actual' && <WorkOrderActualTab actualsEditable={actualsEditable} status={status} preparationReady={preparationReady} planReady={planReady} setTab={setTab} setWorkStarted={value=>{setWorkStarted(value);if(value)setSelectedStatus('INPRG')}} completeWork={completeWork} outlineButtonClass={workOrderOutlineButtonClass} primaryButtonClass={workOrderPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} setActualFinish={setActualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} laborCraft={laborCraft} setLaborCraft={setLaborCraft} actualHours={actualHours} setActualHours={setActualHours} actualStart={actualStart} setActualStart={setActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} failureReady={failureReady} actualReady={actualReady} closeWork={closeWork} returnResource={returnResource} outstanding={outstandingReturnRows} currentUser={user} />}
       {tab==='Failure' && <WorkOrderFailureTab isCM={isCM} causeApplicable={causeApplicable} remedyApplicable={remedyApplicable} failureClass={failureClass} changeFailure={changeFailure} failureClassOptions={failureClassOptions} problemCode={problemCode} setProblemCode={setProblemCode} setCauseCode={setCauseCode} setRemedyCode={setRemedyCode} problemOptions={problemOptions} causeCode={causeCode} causeOptions={causeOptions} remedyCode={remedyCode} remedyOptions={remedyOptions} failureDescription={failureDescription} problemDescription={problemDescription} causeDescription={causeDescription} remedyDescription={remedyDescription} failureCount={failureCodeRecords.length} />}
-      {tab==='Material Requests' && <WorkOrderMaterialRequestsTab resourceRequests={resourceRequests} plannedResources={plannedResources} setPlannedResources={setPlannedResources} updatePlanRow={updatePlanRow} getAvailability={resourceAvailability} materialBlocked={materialBlocked} primaryButtonClass={workOrderPrimaryButtonClass} outlineButtonClass={workOrderOutlineButtonClass} setTab={setTab} materials={materialRecords} workOrderContext={{ number, site: siteValue, department: department || assignedDepartment, assignedDepartment }} onCreatePurchaseRequest={onCreatePurchaseRequest} onCreateReservation={onCreateReservation} onUpdateWorkOrder={onUpdateWorkOrder} />}
+      {tab==='Material Requests' && <WorkOrderMaterialRequestsTab resourceRequests={resourceRequests} plannedResources={plannedResources} setPlannedResources={setPlannedResources} updatePlanRow={updatePlanRow} getAvailability={resourceAvailability} materialBlocked={materialBlocked} primaryButtonClass={workOrderPrimaryButtonClass} outlineButtonClass={workOrderOutlineButtonClass} setTab={setTab} materials={materialRecords} reservations={reservationRecords} workOrderContext={{ number, site: siteValue, department: department || assignedDepartment, assignedDepartment }} onCreatePurchaseRequest={onCreatePurchaseRequest} onCreateReservation={onCreateReservation} onUpdateWorkOrder={onUpdateWorkOrder} />}
       {tab==='PTW & Files' && <WorkOrderDocumentsTab ptwRequired={ptwRequired} setPtwRequired={setPtwRequired} ptwFiles={ptwFiles} setPtwFiles={setPtwFiles} generalFiles={generalFiles} setGeneralFiles={setGeneralFiles} addFiles={addFiles} downloadFile={downloadFile} />}
       {tab==='Meters' && <WorkOrderMetersTab meterReading={meterReading} setMeterReading={setMeterReading} waterConsumption={waterConsumption} setWaterConsumption={setWaterConsumption} energyConsumption={energyConsumption} setEnergyConsumption={setEnergyConsumption} meterReadingDate={meterReadingDate} setMeterReadingDate={setMeterReadingDate} />}
     </div>
@@ -1100,7 +1157,13 @@ export default function App() {
   const openWorkOrderTab=(number,tab)=>{setWorkOrderDeepLink({number:String(number),tab});openConvertedWorkOrder(number)}
   const deepLinkTabFor=order=>String(order?.WORKORDER)===workOrderDeepLink?.number?workOrderDeepLink.tab:undefined
   const todayStamp=()=>nowLocalDate()
-  const resourceMatches = (resource, record) => String(resource.item || '').trim() === String(record.item || '').trim()
+  const materialCodeFor=value=>materialRecords.find(item=>cleanText(item.itemNumber)===cleanText(value)||cleanText(item.description)===cleanText(value))?.itemNumber||cleanText(value)
+  const storeCodeFor=value=>storeRecords.find(store=>cleanText(store.code)===cleanText(value)||cleanText(store.name)===cleanText(value))?.code||cleanText(value)
+  const resourceMatches = (resource, record, index) => {
+    if (record.resourceRequestId) return String(resource.resourceRequestId || '') === String(record.resourceRequestId)
+    if (record.resourceIndex !== undefined) return Number(index) === Number(record.resourceIndex)
+    return String(resource.item || '').trim() === String(record.item || '').trim()
+  }
   const linkWorkOrderResourceTransaction = (record, patch) => {
     if (!record?.workOrder || !record.item) return
     saveWorkOrders(rows => rows.map(order => {
@@ -1109,7 +1172,7 @@ export default function App() {
       if (!resources.length) return order
       return {
         ...order,
-        'PLANNED RESOURCES': resources.map(resource => resourceMatches(resource, record) ? { ...resource, ...patch } : resource)
+        'PLANNED RESOURCES': resources.map((resource,index) => resourceMatches(resource, record, index) ? { ...resource, ...patch } : resource)
       }
     }))
   }
@@ -1151,11 +1214,14 @@ export default function App() {
     if(form['JOB TASK DESCRIPTION']) setJobTaskRecords(rows=>[...rows,{...form,JPNUM:jpnum,JOBTASKID:form.JOBTASKID||`${jpnum}-${form['JOB TASK SEQUENCE']||rows.filter(row=>row.JPNUM===jpnum).length+1}`}])
   }
   const createReservation=record=>{
-    const existing=reservations.find(row=>row.workOrder===record.workOrder&&row.item===record.item&&(record.purchaseOrder?row.purchaseOrder===record.purchaseOrder:!['CANCELLED'].includes(row.status)))
+    const existing=record.resourceRequestId
+      ? reservations.find(row=>String(row.resourceRequestId||'')===String(record.resourceRequestId)&&!['CANCELLED'].includes(row.status))
+      : null
     if(existing) return existing
     const prefix=record.type==='Material'?'RSV':'ALC'
-    const created={reservation:`${prefix}-2026-${String(reservations.length+1).padStart(4,'0')}`,status:'ENTERED',statusDescription:statusDescription('inventoryUsage','ENTERED'),createdAt:todayStamp(),arrangedQuantity:0,releasedQuantity:0,deliveredQuantity:0,...record}
-    saveReservations(rows=>rows.some(row=>row.workOrder===created.workOrder&&row.item===created.item&&row.status===created.status)?rows:[created,...rows])
+    const itemCode=materialCodeFor(record.itemCode||record.item)
+    const created={reservation:`${prefix}-2026-${String(reservations.length+1).padStart(4,'0')}`,status:'ENTERED',statusDescription:statusDescription('inventoryUsage','ENTERED'),createdAt:todayStamp(),arrangedQuantity:0,releasedQuantity:0,deliveredQuantity:0,...record,itemCode}
+    saveReservations(rows=>rows.some(row=>row.reservation===created.reservation)?rows:[created,...rows])
     linkWorkOrderResourceTransaction(created, { requestStatus: created.status, transactionRef: created.reservation, reservation: created.reservation, purchaseRequest: created.purchaseRequest, purchaseOrder: created.purchaseOrder, supplyChainStatus: 'Reservation entered' })
     return created
   }
@@ -1185,8 +1251,34 @@ export default function App() {
   const updateReservation=(reference,patch)=>{
     const source=reservations.find(row=>row.reservation===reference)
     const updated=source?{...source,...patch}:null
+    const stockStore=storeCodeFor(updated?.source)
+    const stockItem=materialCodeFor(updated?.itemCode||updated?.item)
+    if(stockStore&&stockItem) {
+      const beforeArranged=Number(source?.arrangedQuantity||0)
+      const beforeDelivered=Number(source?.deliveredQuantity||0)
+      const afterArranged=Number(updated.arrangedQuantity||0)
+      const afterDelivered=Number(updated.deliveredQuantity||0)
+      const reserveDelta=Math.max(0,afterArranged-beforeArranged)
+      const deliverDelta=Math.max(0,afterDelivered-beforeDelivered)
+      if(reserveDelta||deliverDelta) {
+        setStockRecords(rows=>rows.map(row=>{
+          if(String(row.storeroom)!==String(stockStore)||String(row.itemNumber)!==String(stockItem)) return row
+          return {
+            ...row,
+            balance: Math.max(0,Number(row.balance||0)-deliverDelta),
+            reserved: Math.max(0,Number(row.reserved||0)+reserveDelta-deliverDelta)
+          }
+        }))
+        const stockRow=stockRecords.find(row=>String(row.storeroom)===String(stockStore)&&String(row.itemNumber)===String(stockItem))
+        api.put(`/inventory-stock/${encodeURIComponent(stockStore)}/${encodeURIComponent(stockItem)}`, {
+          balance: Math.max(0,Number(stockRow?.balance||0)-deliverDelta),
+          reserved_quantity: Math.max(0,Number(stockRow?.reserved||0)+reserveDelta-deliverDelta),
+          reorder_point: stockRow?.reorderLevel ?? null
+        }).catch(error=>setWorkspaceError(error.message||'Unable to update inventory stock.'))
+      }
+    }
     saveReservations(rows=>rows.map(row=>row.reservation===reference?{...row,...patch}:row))
-    if(updated) linkWorkOrderResourceTransaction(updated, { requestStatus: updated.status, transactionRef: updated.reservation, reservation: updated.reservation, supplyChainStatus: `Reservation ${statusDescription('inventoryUsage', updated.status)}` })
+    if(updated) linkWorkOrderResourceTransaction(updated, { requestStatus: updated.status, transactionRef: updated.reservation, reservation: updated.reservation, purchaseRequest: updated.purchaseRequest, purchaseOrder: updated.purchaseOrder, supplyChainStatus: `Reservation ${statusDescription('inventoryUsage', updated.status)}` })
   }
   const updateWorkOrder=(number,patch)=>saveWorkOrders(rows=>rows.map(order=>String(order.WORKORDER)===String(number)?{...order,...patch}:order))
   const createWorkOrder=form=>{const next=Math.max(...allWorkOrders.map(order=>Number(order.WORKORDER)||0),56545134)+1;const created={'WORKORDER':String(next),'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':toLocationPriority(form.priority),'ASSET':form.asset,'STATUS':'WAPPR','WORK TYPE ':form.type,'STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':form.department||'','SUB DEPARTMENT  NAME':form.subDepartment||'','ASSIGNED DEPARTMENT':form.department||'','ASSET DESCRIPTION':assetDescriptionFromMaster(form.asset, assetRecords),'SYSTEM':assetFromMaster(form.asset, assetRecords)?.system||'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':nowLocalDateTime()};saveWorkOrders(rows=>[...rows,created]);return created}
@@ -1200,7 +1292,7 @@ export default function App() {
   const pages = {
     'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions}/>,
     'Incidents': <IncidentsPage rows={scopedIncidents} setRows={saveIncidents}/>,
-    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
+    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={reservations} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
     'Assets': <AssetsPage rows={scopedAssets} setRows={saveAssets} workOrders={scopedWorkOrders} />,
     'Preventive Maintenance': <PreventiveMaintenancePage rows={pmScheduleRecords} setRows={savePmSchedules} assets={scopedAssets} jobTasks={jobTaskRecords} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} scopeUser={effectiveUser} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Meters': <MetersPage rows={meterRecords} setRows={saveMeters} assets={scopedAssets} workOrders={scopedWorkOrders} />,

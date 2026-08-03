@@ -15,42 +15,55 @@ const availabilityClass = availability => `w-fit rounded-full px-2.5 py-1 text-[
 const requestedQuantity = resource => Number(resource.quantity || 0)
 const hasFulfillment = resource => Boolean(resource.reservation)
 const hasProcurement = resource => Boolean(resource.purchaseRequest || resource.purchaseOrder)
-const materialStatusForResource = (resource, stock, materials) => {
-  if (resource.reservation) return resource.type === 'Material' ? 'Allocated' : ''
-  if (resource.purchaseOrder) return 'On PO'
-  if (resource.purchaseRequest) return 'On PR'
+const liveReservationFor = (resource, reservations = []) =>
+  resource.reservation ? reservations.find(row => String(row.reservation) === String(resource.reservation)) : null
+const resourceWithLiveReservation = (resource, reservations = []) => {
+  const reservation = liveReservationFor(resource, reservations)
+  return reservation ? {
+    ...resource,
+    requestStatus: reservation.status || resource.requestStatus,
+    supplyChainStatus: reservation.statusDescription || statusDescription('inventoryUsage', reservation.status) || resource.supplyChainStatus
+  } : resource
+}
+const materialStatusForResource = (resource, stock, materials, reservations = []) => {
+  const liveResource = resourceWithLiveReservation(resource, reservations)
+  if (liveResource.reservation) return liveResource.type === 'Material' ? 'Allocated' : ''
+  if (liveResource.purchaseOrder) return 'On PO'
+  if (liveResource.purchaseRequest) return 'On PR'
   return materialStatusFor(stock.itemNumber, materials)
 }
-const requestStatusFor = resource => {
-  if (resource.reservation) {
-    const status = ['STAGED', 'COMPLETE', 'CANCELLED'].includes(resource.requestStatus) ? resource.requestStatus : 'ENTERED'
+const requestStatusFor = (resource, reservations = []) => {
+  const liveResource = resourceWithLiveReservation(resource, reservations)
+  if (liveResource.reservation) {
+    const status = ['STAGED', 'COMPLETE', 'CANCELLED'].includes(liveResource.requestStatus) ? liveResource.requestStatus : 'ENTERED'
     return {
       status,
-      label: resource.supplyChainStatus?.startsWith('Reservation') ? resource.supplyChainStatus : statusDescription('inventoryUsage', status),
-      ref: resource.reservation
+      label: liveResource.supplyChainStatus?.startsWith('Reservation') ? liveResource.supplyChainStatus : statusDescription('inventoryUsage', status),
+      ref: liveResource.reservation
     }
   }
-  if (resource.purchaseOrder) return {
-    status: resource.requestStatus || 'WAPPR',
-    label: resource.supplyChainStatus || statusDescription('purchaseOrder', resource.requestStatus || 'WAPPR'),
-    ref: resource.purchaseOrder
+  if (liveResource.purchaseOrder) return {
+    status: liveResource.requestStatus || 'WAPPR',
+    label: liveResource.supplyChainStatus || statusDescription('purchaseOrder', liveResource.requestStatus || 'WAPPR'),
+    ref: liveResource.purchaseOrder
   }
-  if (resource.purchaseRequest) return {
-    status: resource.requestStatus || 'WAPPR',
-    label: resource.supplyChainStatus || statusDescription('purchaseRequisition', resource.requestStatus || 'WAPPR'),
-    ref: resource.purchaseRequest
+  if (liveResource.purchaseRequest) return {
+    status: liveResource.requestStatus || 'WAPPR',
+    label: liveResource.supplyChainStatus || statusDescription('purchaseRequisition', liveResource.requestStatus || 'WAPPR'),
+    ref: liveResource.purchaseRequest
   }
   return null
 }
-const actionStateFor = (resource, stock) => {
+const actionStateFor = (resource, stock, reservations = []) => {
+  const liveResource = resourceWithLiveReservation(resource, reservations)
   const quantity = requestedQuantity(resource)
   if (!quantity) return { kind: 'none', label: 'Set quantity', disabled: true, availability: 'Quantity needed' }
-  if (hasFulfillment(resource)) {
-    const complete = resource.requestStatus === 'COMPLETE'
-    return { kind: 'none', label: complete ? 'Delivered' : resource.type === 'Material' ? 'Reserved' : 'Allocated', disabled: true, availability: complete ? 'Received' : resource.type === 'Material' ? 'Reserved' : 'Allocated' }
+  if (hasFulfillment(liveResource)) {
+    const complete = liveResource.requestStatus === 'COMPLETE'
+    return { kind: 'none', label: complete ? 'Delivered' : liveResource.type === 'Material' ? 'Reserved' : 'Allocated', disabled: true, availability: complete ? 'Received' : liveResource.type === 'Material' ? 'Reserved' : 'Allocated' }
   }
-  if (resource.purchaseOrder && resource.requestStatus === 'CLOSE') return { kind: 'reserve', label: 'Reserve received stock', availability: 'Received', source: `Received via ${resource.purchaseOrder}`, availableQuantity: quantity }
-  if (hasProcurement(resource)) return { kind: 'none', label: resource.purchaseOrder ? 'PO linked' : 'PR created', disabled: true, availability: 'Procurement linked' }
+  if (liveResource.purchaseOrder && liveResource.requestStatus === 'CLOSE') return { kind: 'reserve', label: 'Reserve received stock', availability: 'Received', source: `Received via ${liveResource.purchaseOrder}`, availableQuantity: quantity }
+  if (hasProcurement(liveResource)) return { kind: 'none', label: liveResource.purchaseOrder ? 'PO linked' : 'PR created', disabled: true, availability: 'Procurement linked' }
   if (Number(stock.availableQuantity || 0) >= quantity) return { kind: 'reserve', label: resource.type === 'Material' ? 'Reserve' : 'Allocate', availability: 'Available' }
   return { kind: 'purchase', label: 'Create purchase request', availability: 'Purchase Required' }
 }
@@ -66,6 +79,7 @@ export default function WorkOrderMaterialRequestsTab({
   outlineButtonClass,
   setTab,
   materials = [],
+  reservations = [],
   workOrderContext = {},
   onCreatePurchaseRequest,
   onCreateReservation,
@@ -73,7 +87,7 @@ export default function WorkOrderMaterialRequestsTab({
 }) {
   const actionResource = (index, resource) => {
     const stock = getAvailability(resource)
-    const action = actionStateFor(resource, stock)
+    const action = actionStateFor(resource, stock, reservations)
     if (action.disabled || action.kind === 'none') return
     const nextStatus = action.kind === 'purchase' ? 'WAPPR' : 'ENTERED'
     // Buy the gap, not the whole line. Stock already on the shelf is issued to the job, so
@@ -84,21 +98,27 @@ export default function WorkOrderMaterialRequestsTab({
     const transaction = action.kind === 'purchase'
       ? onCreatePurchaseRequest?.({
         workOrder: workOrderContext.number,
+        resourceRequestId: resource.resourceRequestId,
+        resourceIndex: index,
         type: resource.type,
         item: resource.item,
+        itemCode: resource.itemCode || stock.itemNumber,
         quantity: shortfall,
         plannedQuantity: planned,
         availableQuantity: onHand,
-        source: stock.source,
+        source: stock.storeCode || stock.source,
         site: workOrderContext.site,
         department: workOrderContext.department
       })
       : onCreateReservation?.({
         workOrder: workOrderContext.number,
+        resourceRequestId: resource.resourceRequestId,
+        resourceIndex: index,
         type: resource.type,
         item: resource.item,
+        itemCode: resource.itemCode || stock.itemNumber,
         quantity: resource.quantity || 0,
-        source: action.source || stock.source,
+        source: action.storeCode || stock.storeCode || action.source || stock.source,
         availableQuantity: action.availableQuantity ?? stock.availableQuantity,
         site: workOrderContext.site,
         department: workOrderContext.department,
@@ -138,9 +158,9 @@ export default function WorkOrderMaterialRequestsTab({
             {plannedResources.map((resource, index) => {
               if (!['Material', 'Tool', 'Equipment'].includes(resource.type)) return null
               const stock = getAvailability(resource)
-              const action = actionStateFor(resource, stock)
-              const requestStatus = requestStatusFor(resource)
-              const materialStatus = materialStatusForResource(resource, stock, materials)
+              const action = actionStateFor(resource, stock, reservations)
+              const requestStatus = requestStatusFor(resource, reservations)
+              const materialStatus = materialStatusForResource(resource, stock, materials, reservations)
               return (
                 <div className={rowClass} key={index}>
                   <div className="flex min-w-0 items-center gap-3">

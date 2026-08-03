@@ -98,7 +98,7 @@ router.use('/work-order-resource-requests', crudRouter({
   moduleName: 'Work Orders',
   table: 'dbo.work_order_resource_requests',
   key: 'resource_request_id',
-  columns: ['resource_request_id', 'work_order_num', 'resource_type', 'item_code', 'item_description', 'requested_quantity', 'available_quantity', 'store_code', 'site_code', 'department_name', 'source_type', 'availability_status', 'request_status', 'transaction_ref', 'supply_chain_status', 'created_at', 'updated_at'],
+  columns: ['resource_request_id', 'work_order_num', 'resource_type', 'item_code', 'item_description', 'requested_quantity', 'available_quantity', 'store_code', 'site_code', 'department_name', 'source_type', 'availability_status', 'request_status', 'transaction_ref', 'purchase_request_num', 'purchase_order_num', 'reservation_num', 'supply_chain_status', 'created_at', 'updated_at'],
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
@@ -107,6 +107,14 @@ router.use('/work-order-planned-labor', crudRouter({
   table: 'dbo.work_order_planned_labor',
   key: 'planned_labor_id',
   columns: ['planned_labor_id', 'work_order_num', 'line_order', 'craft_name', 'estimated_hours', 'assigned_crew', 'site_code', 'department_name', 'created_at', 'updated_at'],
+  scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
+}))
+
+router.use('/work-order-tasks', crudRouter({
+  moduleName: 'Work Orders',
+  table: 'dbo.work_order_tasks',
+  key: 'work_order_task_id',
+  columns: ['work_order_task_id', 'work_order_num', 'task_sequence', 'task_description', 'duration_minutes', 'site_code', 'department_name', 'created_at', 'updated_at'],
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 

@@ -32,8 +32,9 @@ export const navigationItems = [
   { section: 'Workspace', name: 'Locations', path: '/locations', icon: MapPin },
   { section: 'Workspace', name: 'Failure Library', path: '/failure-library', icon: ShieldCheck },
   { section: 'Workspace', name: 'Meters', path: '/meters', icon: Gauge },
+    { section: 'Supply Chain', name: 'Stores', path: '/stores', icon: Warehouse },
   { section: 'Supply Chain', name: 'Materials', path: '/materials', icon: PackageCheck },
-  { section: 'Supply Chain', name: 'Stores', path: '/stores', icon: Warehouse },
+
   { section: 'Supply Chain', name: 'Tools & Equipment', path: '/tools', icon: Wrench },
   { section: 'Supply Chain', name: 'Reservations', path: '/reservations', icon: ClipboardList },
   { section: 'Supply Chain', name: 'Purchase Requisitions', path: '/purchase-requisitions', icon: ShoppingCart },
