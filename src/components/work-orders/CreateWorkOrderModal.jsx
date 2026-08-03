@@ -4,6 +4,8 @@ import Button from '../ui/Button'
 import { Field } from '../ui/FormControls'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
 import { sameDepartment } from '../../lib/departments'
+import { deriveDepartmentOptions, deriveSiteOptions } from '../../lib/referenceFallbacks'
+import { useAuth } from '../../providers/AuthProvider'
 
 const workTypes = ['CM', 'PM', 'Incident']
 const priorities = ['1 - Emergency', '2 - High', '3 - Medium', '4 - Low']
@@ -11,10 +13,9 @@ const priorities = ['1 - Emergency', '2 - High', '3 - Medium', '4 - Low']
 export default function CreateWorkOrderModal({ rows, assets, locationRows = [], siteRecords = [], departmentRecords = [], onCancel, onCreate }) {
   const [form, setForm] = useState({ type: 'CM', description: '', priority: priorities[2], site: '', location: '', asset: '', department: '', subDepartment: '' })
   const [error, setError] = useState('')
+  const { user } = useAuth()
   const update = key => event => setForm({ ...form, [key]: event.target.value })
-  const sites = siteRecords.length
-    ? siteRecords.filter(site => site.status !== 'Inactive').map(site => ({ value: site.code, label: site.name }))
-    : [...new Set([...assets.map(asset => String(asset.site)), ...rows.map(order => String(order.SITE))].filter(Boolean))].sort()
+  const sites = deriveSiteOptions({ siteRecords, user, locations: locationRows, assets, orders: rows })
   const siteAssets = assets.filter(asset => !form.site || String(asset.site) === form.site)
   const assetOptions = siteAssets.map(asset => ({ value: asset.assetnum, label: asset.description?.trim() }))
   const siteLocations = locationRows.filter(location => !form.site || String(location.site) === form.site)
@@ -23,10 +24,7 @@ export default function CreateWorkOrderModal({ rows, assets, locationRows = [], 
     ...siteAssets.map(asset => asset.location),
     ...rows.filter(order => !form.site || String(order.SITE) === form.site).map(order => order['LOCATION '])
   ].filter(Boolean))].sort()
-  const departmentOptions = [...new Map(departmentRecords
-    .filter(department => department.status !== 'Inactive' && department.department)
-    .map(department => [department.department, { value: department.department, label: '' }])
-  ).values()]
+  const departmentOptions = deriveDepartmentOptions({ departmentRecords, user, assets, orders: rows, locations: locationRows })
   const subDepartmentOptions = departmentRecords
     .filter(department => department.status !== 'Inactive' && sameDepartment(department.department, form.department))
     .map(department => ({ value: department.subDepartmentCode, label: department.description }))
