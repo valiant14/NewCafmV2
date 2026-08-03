@@ -89,8 +89,98 @@ const normalizeStoreCode = async (pool, payload) => {
   }
 }
 
+const normalizeSiteCode = async (pool, payload) => {
+  const value = payload.site_code
+  if (value === undefined) return payload
+  const text = String(value || '').trim()
+  const result = await pool.request()
+    .input('value', text)
+    .query(`
+      select top 1 site_code
+      from dbo.sites
+      where site_code = @value
+        or site_name = @value
+        or concat(site_name, ' / ', site_code) = @value
+      order by
+        case
+          when site_code = @value then 0
+          when site_name = @value then 1
+          else 2
+        end,
+        site_code
+    `)
+  if (result.recordset[0]?.site_code) return { ...payload, site_code: result.recordset[0].site_code }
+  if (!text) {
+    const fallback = await pool.request().query(`
+      select top 1 site_code
+      from dbo.sites
+      where status is null or status <> 'Inactive'
+      order by site_code
+    `)
+    return { ...payload, site_code: fallback.recordset[0]?.site_code || text }
+  }
+  return payload
+}
+
+const normalizeLocationCode = async (pool, payload) => {
+  const value = payload.location_code
+  if (value === undefined) return payload
+  const text = String(value || '').trim()
+  if (!text) return { ...payload, location_code: null }
+  const result = await pool.request()
+    .input('value', text)
+    .query(`
+      select top 1 location_code
+      from dbo.locations
+      where location_code = @value
+        or description = @value
+        or concat(location_code, ' - ', description) = @value
+      order by
+        case
+          when location_code = @value then 0
+          when description = @value then 1
+          else 2
+        end,
+        location_code
+    `)
+  return { ...payload, location_code: result.recordset[0]?.location_code || null }
+}
+
+const normalizeAssetNum = async (pool, payload) => {
+  const value = payload.asset_num
+  if (value === undefined) return payload
+  const text = String(value || '').trim()
+  if (!text) return { ...payload, asset_num: null }
+  const result = await pool.request()
+    .input('value', text)
+    .query(`
+      select top 1 asset_num
+      from dbo.assets
+      where asset_num = @value
+        or description = @value
+        or concat(asset_num, ' - ', description) = @value
+      order by
+        case
+          when asset_num = @value then 0
+          when description = @value then 1
+          else 2
+        end,
+        asset_num
+    `)
+  return { ...payload, asset_num: result.recordset[0]?.asset_num || null }
+}
+
 const normalizeForeignKeys = async (pool, payload, { table }) => {
   let normalized = payload
+  if (table !== 'dbo.sites' && Object.hasOwn(normalized, 'site_code')) {
+    normalized = await normalizeSiteCode(pool, normalized)
+  }
+  if (table !== 'dbo.locations' && Object.hasOwn(normalized, 'location_code')) {
+    normalized = await normalizeLocationCode(pool, normalized)
+  }
+  if (table !== 'dbo.assets' && Object.hasOwn(normalized, 'asset_num')) {
+    normalized = await normalizeAssetNum(pool, normalized)
+  }
   if (table !== 'dbo.departments' && Object.hasOwn(normalized, 'sub_department_code')) {
     normalized = await normalizeSubDepartmentCode(pool, normalized)
   }
@@ -98,6 +188,25 @@ const normalizeForeignKeys = async (pool, payload, { table }) => {
     normalized = await normalizeStoreCode(pool, normalized)
   }
   return normalized
+}
+
+const nextServiceRequestNumber = async pool => {
+  const result = await pool.request().query(`
+    select isnull(max(try_convert(int, substring(sr_num, 9, 20))), 41) + 1 as next_number
+    from dbo.service_requests
+    where sr_num like 'SR-2026-[0-9][0-9][0-9][0-9]'
+  `)
+  return `SR-2026-${String(result.recordset[0]?.next_number || 42).padStart(4, '0')}`
+}
+
+const normalizeGeneratedKeys = async (pool, payload, { table, key }) => {
+  if (table === 'dbo.service_requests' && key === 'sr_num') {
+    const value = String(payload.sr_num || '').trim()
+    if (!value || value.toUpperCase() === 'AUTO') {
+      return { ...payload, sr_num: await nextServiceRequestNumber(pool) }
+    }
+  }
+  return payload
 }
 
 const emitChange = (req, payload) => {
@@ -135,6 +244,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     let payload = normalizePayload(req.body || {})
     Object.keys(payload).forEach(column => assertKnownColumn(columns, column))
     const pool = await getPool()
+    payload = await normalizeGeneratedKeys(pool, payload, { table, key })
     payload = await normalizeForeignKeys(pool, payload, { table })
     const insertColumns = columns.filter(column => payload[column] !== undefined)
     const request = bindParams(pool.request(), Object.fromEntries(insertColumns.map(column => [column, payload[column]])))

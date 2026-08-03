@@ -92,7 +92,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   const submit = async request => {
     // blankRequest() stamps when the form is constructed - which is route-evaluation
     // time - so the reported time is taken again at the moment of submission.
-    const submitted = { ...request, reportedDate: nowLocalDateTime(), sr: nextRequestNumber(), status: 'WAPPR', requestType: 'Service' }
+    const submitted = { ...request, __isNew: true, reportedDate: nowLocalDateTime(), sr: nextRequestNumber(), status: 'WAPPR', requestType: 'Service' }
     if (!access.create) return request
     await setRequests(list => [...list, submitted])
     setSelected(null)

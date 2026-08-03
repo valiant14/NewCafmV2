@@ -53,6 +53,38 @@ const readRole = async (pool, roleId) => {
   return rowsToRoles(result.recordset)[0] || null
 }
 
+const saveRole = async (pool, roleId, body = {}) => {
+  const result = await pool.request()
+    .input('id', roleId)
+    .input('role_code', body.role_code || codeFromName(body.role_name))
+    .input('role_name', body.role_name)
+    .input('scope_description', body.scope_description || '')
+    .input('status', body.status || 'Active')
+    .query(`
+      update dbo.roles
+      set role_code = @role_code, role_name = @role_name, scope_description = @scope_description,
+        status = @status, updated_at = sysutcdatetime()
+      output inserted.*
+      where role_id = @id
+    `)
+  if (!result.recordset[0]) return null
+  await syncPermissions(pool, roleId, body.permissions)
+  return readRole(pool, roleId)
+}
+
+const findRoleByNameOrCode = async (pool, value) => {
+  const text = String(value || '').trim()
+  const result = await pool.request()
+    .input('value', text)
+    .query(`
+      select top 1 role_id
+      from dbo.roles
+      where role_name = @value or role_code = @value
+      order by role_id
+    `)
+  return result.recordset[0]?.role_id || null
+}
+
 const syncPermissions = async (pool, roleId, permissions = {}) => {
   const pairs = []
   const seen = new Set()
@@ -134,22 +166,9 @@ router.post('/', requirePermission('Roles & Permissions', 'create'), asyncHandle
     .query('select role_id from dbo.roles where role_name = @role_name')
   if (existing.recordset[0]) {
     req.params.id = existing.recordset[0].role_id
-    const result = await pool.request()
-      .input('id', req.params.id)
-      .input('role_code', req.body.role_code || codeFromName(req.body.role_name))
-      .input('role_name', req.body.role_name)
-      .input('scope_description', req.body.scope_description || '')
-      .input('status', req.body.status || 'Active')
-      .query(`
-        update dbo.roles
-        set role_code = @role_code, role_name = @role_name, scope_description = @scope_description,
-          status = @status, updated_at = sysutcdatetime()
-        output inserted.*
-        where role_id = @id
-    `)
-    await syncPermissions(pool, req.params.id, req.body.permissions)
-    emitChange(req, { action: 'edit', id: result.recordset[0]?.role_id })
-    return res.json(await readRole(pool, req.params.id))
+    const saved = await saveRole(pool, req.params.id, req.body)
+    emitChange(req, { action: 'edit', id: saved?.role_id })
+    return res.json(saved)
   }
   const result = await pool.request()
     .input('role_code', req.body.role_code || codeFromName(req.body.role_name))
@@ -166,25 +185,21 @@ router.post('/', requirePermission('Roles & Permissions', 'create'), asyncHandle
   res.status(201).json(await readRole(pool, result.recordset[0].role_id))
 }))
 
+router.put('/by-name/:roleName', requirePermission('Roles & Permissions', 'edit'), asyncHandler(async (req, res) => {
+  const pool = await getPool()
+  const roleId = await findRoleByNameOrCode(pool, req.params.roleName)
+  if (!roleId) return res.status(404).json({ error: 'NotFound', message: 'Role not found' })
+  const saved = await saveRole(pool, roleId, req.body)
+  emitChange(req, { action: 'edit', id: saved?.role_id })
+  res.json(saved)
+}))
+
 router.put('/:id', requirePermission('Roles & Permissions', 'edit'), asyncHandler(async (req, res) => {
   const pool = await getPool()
-  const result = await pool.request()
-    .input('id', req.params.id)
-    .input('role_code', req.body.role_code || codeFromName(req.body.role_name))
-    .input('role_name', req.body.role_name)
-    .input('scope_description', req.body.scope_description || '')
-    .input('status', req.body.status || 'Active')
-    .query(`
-      update dbo.roles
-      set role_code = @role_code, role_name = @role_name, scope_description = @scope_description,
-        status = @status, updated_at = sysutcdatetime()
-      output inserted.*
-      where role_id = @id
-    `)
-  if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
-  if (req.body.permissions) await syncPermissions(pool, req.params.id, req.body.permissions)
-  emitChange(req, { action: 'edit', id: result.recordset[0]?.role_id })
-  res.json(await readRole(pool, req.params.id))
+  const saved = await saveRole(pool, req.params.id, req.body)
+  if (!saved) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
+  emitChange(req, { action: 'edit', id: saved?.role_id })
+  res.json(saved)
 }))
 
 export default router

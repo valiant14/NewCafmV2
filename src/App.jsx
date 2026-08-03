@@ -160,23 +160,34 @@ const changedRows = (before = [], after = [], key) => {
 }
 const upsertBackendRow = async ({ endpoint, key, payload }) => {
   const cleanPayload = Object.fromEntries(Object.entries(payload || {}).filter(([, value]) => value !== undefined && value !== null))
-  const id = toText(cleanPayload?.[key])
-  if (id) {
+  const saveEndpoint = cleanPayload.__endpoint || endpoint
+  const saveKey = cleanPayload.__apiKey || key
+  const fallbackEndpoint = cleanPayload.__fallbackEndpoint || endpoint
+  const forcePost = Boolean(cleanPayload.__forcePost)
+  delete cleanPayload.__endpoint
+  delete cleanPayload.__apiKey
+  delete cleanPayload.__fallbackEndpoint
+  delete cleanPayload.__forcePost
+  const id = toText(cleanPayload?.[saveKey])
+  if (id && !forcePost) {
     try {
-      return await api.put(`${endpoint}/${encodeURIComponent(id)}`, cleanPayload)
+      return await api.put(`${saveEndpoint}/${encodeURIComponent(id)}`, cleanPayload)
     } catch (error) {
       if (error.status !== 404) throw error
     }
   }
-  return api.post(endpoint, cleanPayload)
+  return api.post(fallbackEndpoint, cleanPayload)
 }
 const persistRowsToBackend = async ({ before = [], after = [], key, endpoint, apiKey, toApi }) => {
   const rows = changedRows(before, after, key)
+  const savedRows = []
   for (const row of rows) {
     const payload = toApi(row)
     const saved = await upsertBackendRow({ endpoint, key: apiKey, payload })
     await apiMappersByEndpoint[endpoint]?.afterRow?.(row, saved)
+    savedRows.push(saved)
   }
+  return savedRows
 }
 const backendSetter = (setState, config) => update => {
   let resolvePersistence
@@ -506,7 +517,12 @@ const apiMappers = {
     endpoint: '/service-requests',
     key: 'sr',
     apiKey: 'sr_num',
-    toApi: row => ({ sr_num: toText(row.sr), description: toText(row.description), long_description: row.longDescription || '', site_code: row.site || '1031', location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', sub_department_code: row.subDepartment || '', assigned_department_name: row.assignedDepartment || '', reported_by: row.reportedBy || '', reported_at: toDateOrNull(row.reportedDate) || new Date(), priority: row.priority || '', request_type: row.requestType || 'Service', failure_code: row.failureCode || '', status: statusText(row.status, 'NEW'), converted_work_order_num: row.convertedWorkOrder || null })
+    toApi: row => ({ ...(row.__isNew ? { __forcePost: true } : {}), sr_num: row.__isNew ? 'AUTO' : toText(row.sr), description: toText(row.description), long_description: row.longDescription || '', site_code: row.site || '1031', location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', sub_department_code: row.subDepartment || '', assigned_department_name: row.assignedDepartment || '', reported_by: row.reportedBy || '', reported_at: toDateOrNull(row.reportedDate) || new Date(), priority: row.priority || '', request_type: row.requestType || 'Service', failure_code: row.failureCode || '', status: statusText(row.status, 'NEW'), converted_work_order_num: row.convertedWorkOrder || null }),
+    afterRow: (row, saved) => {
+      if (!row.__isNew || !saved?.sr_num) return
+      row.__isNew = false
+      row.sr = saved.sr_num
+    }
   },
   incidents: {
     endpoint: '/incidents',
@@ -560,7 +576,14 @@ const apiMappers = {
     endpoint: '/roles',
     key: 'roleId',
     apiKey: 'role_id',
-    toApi: row => ({ ...(row.roleId ? { role_id: row.roleId } : {}), role_code: row.roleCode, role_name: toText(row.role), scope_description: row.scope || '', status: statusText(row.status), permissions: uniquePermissions(row.permissions) })
+    toApi: row => ({
+      ...(row.roleId ? { role_id: row.roleId } : { __endpoint: '/roles/by-name', __apiKey: 'role_name', __fallbackEndpoint: '/roles' }),
+      role_code: row.roleCode,
+      role_name: toText(row.role),
+      scope_description: row.scope || '',
+      status: statusText(row.status),
+      permissions: uniquePermissions(row.permissions)
+    })
   }
 }
 const apiMappersByEndpoint = Object.fromEntries(Object.values(apiMappers).map(config => [config.endpoint, config]))
@@ -1325,8 +1348,7 @@ export default function App() {
     const nextRows = typeof update === 'function' ? update(beforeRows) : update
     const beforeCount = Array.isArray(beforeRows) ? beforeRows.length : 0
     const nextCount = Array.isArray(nextRows) ? nextRows.length : 0
-    const hasUnsavedRole = moduleName === 'Roles & Permissions' && Array.isArray(nextRows) && nextRows.some(row => !row.roleId)
-    const action = nextCount > beforeCount || hasUnsavedRole ? 'create' : nextCount < beforeCount ? 'edit' : 'edit'
+    const action = nextCount > beforeCount ? 'create' : nextCount < beforeCount ? 'edit' : 'edit'
     if (!canDo(moduleName, action)) {
       notify(`No ${action} access for ${moduleName}. Ask an administrator to update your role permissions.`, 'error')
       return Promise.resolve()

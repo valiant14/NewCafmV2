@@ -12,12 +12,34 @@ const checkClass = active => `mx-auto grid h-6 w-6 place-items-center rounded-lg
 export default function RolePermissionDetailPage({ role, siteOptions = [], departmentOptions = [], onBack, onUpdate }) {
   const [tab, setTab] = useState('Scope Rules')
   const updateField = key => event => onUpdate?.(role.role, { [key]: event.target.value })
+  const updatePermissions = permissions => onUpdate?.(role.role, { permissions })
   const togglePermission = (action, module) => {
     const currentModules = [...new Set(role.permissions?.[action] || [])]
     const nextModules = currentModules.includes(module)
       ? currentModules.filter(item => item !== module)
       : [...currentModules, module]
-    onUpdate?.(role.role, { permissions: { ...role.permissions, [action]: nextModules } })
+    updatePermissions({ ...role.permissions, [action]: nextModules })
+  }
+  const toggleAction = action => {
+    const currentModules = [...new Set(role.permissions?.[action] || [])]
+    const allSelected = permissionModules.every(module => currentModules.includes(module))
+    updatePermissions({
+      ...role.permissions,
+      [action]: allSelected ? [] : permissionModules
+    })
+  }
+  const toggleModule = module => {
+    const allSelected = permissionActions.every(action => role.permissions?.[action]?.includes(module))
+    const permissions = Object.fromEntries(permissionActions.map(action => {
+      const currentModules = [...new Set(role.permissions?.[action] || [])]
+      return [
+        action,
+        allSelected
+          ? currentModules.filter(item => item !== module)
+          : [...new Set([...currentModules, module])]
+      ]
+    }))
+    updatePermissions({ ...role.permissions, ...permissions })
   }
 
   const permissionCount = permissionActions.reduce((sum, action) => sum + (role.permissions?.[action]?.length || 0), 0)
@@ -104,13 +126,38 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
                 <thead>
                   <tr className="bg-[var(--app-table-header-bg)] text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-table-heading)]">
                     <th className="border-b border-[var(--app-line)] p-3 text-left">Module</th>
-                    {permissionActions.map(action => <th key={action} className="border-b border-[var(--app-line)] p-3 text-center">{action}</th>)}
+                    {permissionActions.map(action => {
+                      const active = permissionModules.every(module => role.permissions?.[action]?.includes(module))
+                      return (
+                        <th key={action} className="border-b border-[var(--app-line)] p-3 text-center">
+                          <button
+                            type="button"
+                            className="mx-auto flex items-center justify-center gap-2 rounded-xl px-2 py-1 text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-table-heading)] transition hover:bg-white"
+                            onClick={() => toggleAction(action)}
+                            title={`Select all ${action} permissions`}
+                          >
+                            <span>{action}</span>
+                            <span className={checkClass(active)}>{active ? '✓' : '–'}</span>
+                          </button>
+                        </th>
+                      )
+                    })}
                   </tr>
                 </thead>
                 <tbody>
                   {permissionModules.map(module => (
                     <tr key={`${role.role}-${module}`} className="border-b border-[var(--app-line)] last:border-b-0">
-                      <td className="p-3 font-bold text-[var(--app-ink)]">{module}</td>
+                      <td className="p-3">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 rounded-xl px-2 py-1 text-left font-bold text-[var(--app-ink)] transition hover:bg-[var(--app-table-header-bg)]"
+                          onClick={() => toggleModule(module)}
+                          title={`Select all actions for ${module}`}
+                        >
+                          <span>{module}</span>
+                          <span className={checkClass(permissionActions.every(action => role.permissions?.[action]?.includes(module)))}>{permissionActions.every(action => role.permissions?.[action]?.includes(module)) ? '✓' : '–'}</span>
+                        </button>
+                      </td>
                       {permissionActions.map(action => {
                         const active = role.permissions?.[action]?.includes(module)
                         return (

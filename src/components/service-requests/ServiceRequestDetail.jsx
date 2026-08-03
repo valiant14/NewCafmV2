@@ -79,8 +79,12 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
       return setSubmitError('Complete Asset, Department, Sub Department, Assigned Department, and Failure Code before converting to CM.')
     }
     setSubmitError('')
-    if (isNew) await onSubmit(form)
-    else setForm(await onApprove(form))
+    try {
+      if (isNew) await onSubmit(form)
+      else setForm(await onApprove(form))
+    } catch (error) {
+      setSubmitError(error.message || 'Unable to save this Job Request.')
+    }
   }
 
   // ServiceRequestsPage renders this inside its own ModalOverlay, and only ever with
