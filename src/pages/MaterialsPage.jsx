@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import AddMaterialModal from '../components/materials/AddMaterialModal'
 import MaterialDetailPage from '../components/materials/MaterialDetailPage'
@@ -13,7 +13,7 @@ import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
-import { availabilityFor, materialStatusTone, storeLabel, storesHolding, totalAvailable, totalBalance, totalReserved } from '../lib/inventory'
+import { availabilityFor, materialStatusTone, stockForItem, storeLabel, storesHolding, totalAvailable, totalBalance, totalReserved } from '../lib/inventory'
 
 const empty = {
   itemNumber: '',
@@ -30,14 +30,19 @@ const empty = {
 const templateHeaders = Object.keys(empty)
 
 // Balances now live per store, so the register shows the roll-up across all of them.
-const withStock = (row, stockRows, storeRows) => ({
-  ...row,
-  balance: totalBalance(row.itemNumber, stockRows) || Number(row.balance) || 0,
-  reserved: totalReserved(row.itemNumber, stockRows) || Number(row.reserved) || 0,
-  available: totalAvailable(row.itemNumber, stockRows),
-  stores: storesHolding(row.itemNumber, stockRows).map(code => storeLabel(code, storeRows)).join(', ') || row.storeroom || '',
-  availability: availabilityFor(row, stockRows)
-})
+const withStock = (row, stockRows, storeRows) => {
+  const itemStock = stockForItem(row.itemNumber, stockRows)
+  const reorderLevel = Math.max(0, ...itemStock.map(stock => Number(stock.reorderLevel) || 0), Number(row.reorderLevel) || 0)
+  const enriched = { ...row, reorderLevel }
+  return {
+    ...enriched,
+    balance: totalBalance(row.itemNumber, stockRows) || Number(row.balance) || 0,
+    reserved: totalReserved(row.itemNumber, stockRows) || Number(row.reserved) || 0,
+    available: totalAvailable(row.itemNumber, stockRows),
+    stores: storesHolding(row.itemNumber, stockRows).map(code => storeLabel(code, storeRows)).join(', ') || row.storeroom || '',
+    availability: availabilityFor(enriched, stockRows)
+  }
+}
 
 const exportColumns = [
   { key: 'itemNumber', label: 'Item Number' },
@@ -52,6 +57,8 @@ const exportColumns = [
   { key: 'availability', label: 'Availability' },
   { key: 'status', label: 'Material Status' }
 ]
+const sameMaterial = (row, id) => String(row.itemNumber || '').trim().toLowerCase() === String(id || '').trim().toLowerCase()
+
 const materialUsage = (material, workOrders) => workOrders.flatMap(order => {
   const resources = Array.isArray(order['PLANNED RESOURCES']) ? order['PLANNED RESOURCES'] : []
   return resources
@@ -78,13 +85,17 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/materials/')[1] || '')
-  const [selected, setSelected] = useState(rows.find(row => row.itemNumber === routeId) || null)
+  const [selected, setSelected] = useState(rows.find(row => sameMaterial(row, routeId)) || null)
+  const stockedRows = useMemo(() => rows.map(row => withStock(row, stockRows, storeRows)), [rows, stockRows, storeRows])
+  const selectedMaterial = selected ? withStock(rows.find(row => sameMaterial(row, selected.itemNumber)) || selected, stockRows, storeRows) : null
   useEffect(() => {
-    if (!routeId) return
-    const latest = rows.find(row => row.itemNumber === routeId)
+    if (!routeId) {
+      setSelected(null)
+      return
+    }
+    const latest = rows.find(row => sameMaterial(row, routeId))
     if (latest) setSelected(latest)
   }, [rows, routeId])
-  const stockedRows = rows.map(row => withStock(row, stockRows, storeRows))
   const tabRows = tab === 'All' ? stockedRows : stockedRows.filter(row => row.availability === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
     site: ['site', 'storeroom'],
@@ -95,7 +106,7 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
 
   const open = row => {
     setSelected(row)
-    window.history.pushState({}, '', `/materials/${row.itemNumber}`)
+    window.history.pushState({}, '', `/materials/${encodeURIComponent(row.itemNumber)}`)
   }
 
   const close = () => {
@@ -122,8 +133,8 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
     open(row)
   }
 
-  if (selected) {
-    return <MaterialDetailPage material={selected} stockRows={stockRows} storeRows={storeRows} usageRows={materialUsage(selected, workOrders)} onBack={close} onUpdate={updateMaterial} />
+  if (selectedMaterial) {
+    return <MaterialDetailPage material={selectedMaterial} stockRows={stockRows} storeRows={storeRows} usageRows={materialUsage(selectedMaterial, workOrders)} onBack={close} onUpdate={updateMaterial} />
   }
 
   return (
