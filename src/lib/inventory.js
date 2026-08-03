@@ -33,7 +33,9 @@ export const storesHolding = (itemNumber, rows = []) =>
 // A material is only "Available" when what is free across all stores clears its reorder level.
 export const availabilityFor = (item, rows = []) => {
   const available = totalAvailable(item?.itemNumber, rows)
-  return available > 0 && available > Number(item?.reorderLevel || 0) ? 'Available' : 'Purchase Required'
+  const reorderLevel = Number(item?.reorderLevel || 0)
+  if (available <= 0) return 'Purchase Required'
+  return available <= reorderLevel ? 'Low Stock' : 'Available'
 }
 
 // Where an item stands in the supply chain, distinct from whether stock is on the shelf:
@@ -43,6 +45,8 @@ export const MATERIAL_STATUSES = ['Available', 'Allocated', 'On PR', 'On PO']
 
 export const materialStatusTone = status => ({
   Available: 'green',
+  'Low Stock': 'orange',
+  'Purchase Required': 'orange',
   Allocated: 'blue',
   'On PR': 'purple',
   'On PO': 'orange'

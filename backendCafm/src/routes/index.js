@@ -66,7 +66,7 @@ router.use('/tools-equipment', crudRouter({
   moduleName: 'Tools & Equipment',
   table: 'dbo.tools_equipment',
   key: 'tool_code',
-  columns: ['tool_code', 'description', 'category', 'status', 'created_at', 'updated_at']
+  columns: ['tool_code', 'description', 'category', 'location_code', 'quantity', 'status', 'inspection_due', 'created_at', 'updated_at']
 }))
 
 router.use('/failure-library', crudRouter({

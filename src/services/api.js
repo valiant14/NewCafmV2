@@ -153,6 +153,9 @@ const mapTool = row => ({
   toolNumber: row.tool_code,
   description: row.description,
   category: row.category || '',
+  location: row.location_code || '',
+  quantity: numberValue(row.quantity) || 1,
+  inspectionDue: row.inspection_due || '',
   status: row.status || 'Available'
 })
 
