@@ -23,6 +23,7 @@ export const permissionModules = [
   'Overview',
   'Job Requests',
   'Work Orders',
+  'Work Order Planning',
   'Preventive Maintenance',
   'Incidents',
   'Job Plans',

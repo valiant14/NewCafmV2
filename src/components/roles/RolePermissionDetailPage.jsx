@@ -13,7 +13,7 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
   const [tab, setTab] = useState('Scope Rules')
   const updateField = key => event => onUpdate?.(role.role, { [key]: event.target.value })
   const togglePermission = (action, module) => {
-    const currentModules = role.permissions?.[action] || []
+    const currentModules = [...new Set(role.permissions?.[action] || [])]
     const nextModules = currentModules.includes(module)
       ? currentModules.filter(item => item !== module)
       : [...currentModules, module]
@@ -97,7 +97,7 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
             <header className="border-b border-[var(--app-line)] p-4">
               <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">Permission Matrix</p>
               <h3 className="text-lg font-extrabold text-[var(--app-ink)]">Module action access</h3>
-              <p className="mt-1 text-xs text-[var(--app-muted)]">Editing this role only. Return to the role list to select a different permission scope.</p>
+              <p className="mt-1 text-xs text-[var(--app-muted)]">Control route, tab, and action access for this role. For example, Work Order Planning controls the WO Plan tab.</p>
             </header>
             <div className="overflow-auto">
               <table className="w-full min-w-[760px] border-collapse text-sm">

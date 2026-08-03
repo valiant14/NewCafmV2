@@ -11,7 +11,11 @@ const emitChange = (req, payload) => req.app.locals.broadcastWorkspaceChange?.({
   ...payload
 })
 const codeFromName = value => String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'ROLE'
-const permissionList = value => Array.isArray(value) ? value : String(value || '').split(/[,;|]+/).map(item => item.trim()).filter(Boolean)
+const permissionList = value => [
+  ...new Set((Array.isArray(value) ? value : String(value || '').split(/[,;|]+/))
+    .map(item => String(item || '').trim())
+    .filter(Boolean))
+]
 
 const rowsToRoles = rows => {
   const map = new Map()
@@ -45,6 +49,13 @@ const syncPermissions = async (pool, roleId, permissions = {}) => {
         .query(`
           if exists(select 1 from dbo.permission_modules where module_name = @moduleName)
              and exists(select 1 from dbo.permission_actions where action_name = @actionName)
+             and not exists(
+               select 1
+               from dbo.role_permissions
+               where role_id = @roleId
+                 and module_name = @moduleName
+                 and action_name = @actionName
+             )
           insert into dbo.role_permissions(role_id, module_name, action_name, allowed)
           values(@roleId, @moduleName, @actionName, 1)
         `)

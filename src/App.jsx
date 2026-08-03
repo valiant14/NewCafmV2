@@ -126,6 +126,12 @@ const actualResourceMetadata = rows => (Array.isArray(rows) ? rows : []).map(row
   returnedQuantity: Number(row.returnedQuantity || 0),
   returnedAt: Number(row.returnedAt || 0)
 }))
+const uniquePermissions = permissions => Object.fromEntries(
+  Object.entries(permissions || {}).map(([action, modules]) => [
+    action,
+    [...new Set((Array.isArray(modules) ? modules : String(modules || '').split(/[,;|]+/)).map(item => String(item || '').trim()).filter(Boolean))]
+  ])
+)
 const uniqueCodeOptions = (rows = [], codeKey, descriptionKey) => [
   ...new Map(rows
     .filter(row => cleanText(row?.[codeKey]))
@@ -538,7 +544,7 @@ const apiMappers = {
     endpoint: '/roles',
     key: 'roleId',
     apiKey: 'role_id',
-    toApi: row => ({ ...(row.roleId ? { role_id: row.roleId } : {}), role_code: row.roleCode, role_name: toText(row.role), scope_description: row.scope || '', status: statusText(row.status), permissions: row.permissions || {} })
+    toApi: row => ({ ...(row.roleId ? { role_id: row.roleId } : {}), role_code: row.roleCode, role_name: toText(row.role), scope_description: row.scope || '', status: statusText(row.status), permissions: uniquePermissions(row.permissions) })
   }
 }
 const apiMappersByEndpoint = Object.fromEntries(Object.values(apiMappers).map(config => [config.endpoint, config]))
@@ -608,6 +614,8 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   // the Facility Manager rather than to whoever is executing the job.
   const canManageHold = user?.role === 'Facility Manager'
   const canEditWorkOrder = canUseAction(user, 'Work Orders', 'edit')
+  const canViewPlanTab = canUseAction(user, 'Work Order Planning', 'view')
+  const visibleWorkOrderTabs = canViewPlanTab ? workOrderTabs : workOrderTabs.filter(name => name !== 'Plan')
   const workType=(order['WORK TYPE'] || order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const isPM = workType === 'PM'
   const isCM = workType === 'CM'
@@ -627,6 +635,9 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     setHeldFrom(order['HELD FROM']||'')
     setHoldPeriods(Array.isArray(order.holdPeriods)?order.holdPeriods:[])
   },[order.WORKORDER,order.STATUS])
+  useEffect(()=>{
+    if(!canViewPlanTab&&tab==='Plan') setTab('Overview')
+  },[canViewPlanTab,tab])
   const [workCompleted,setWorkCompleted]=useState(['COMP','COMPLETED','CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
   const [workClosed,setWorkClosed]=useState(['CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
   const [workStarted,setWorkStarted]=useState(['INPRG','COMP','COMPLETED','CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase()))
@@ -1120,7 +1131,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   },[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterId,waterMeterId,energyMeterId,meterReading,waterConsumption,energyConsumption,meterReadingDate,selectedStatus,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
     <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} statusOptions={statusSelectOptions} onStatusChange={changeStatus} close={close} printWorkOrder={printWorkOrder} workClosed={workClosed} statusLocked={!canEditWorkOrder} />
-    <WorkOrderTabs tabs={workOrderTabs} active={tab} onChange={setTab} alertTabs={tabAlerts} />
+    <WorkOrderTabs tabs={visibleWorkOrderTabs} active={tab} onChange={setTab} alertTabs={tabAlerts} />
     <WorkOrderWorkflowNotice status={status} missing={workflowMissing} nextStep={workflowNextStep} />
     <div className={workOrderBodyClass}>
       {tab==='Overview' && <WorkOrderOverviewTab projectName={projectName} sourceRequest={sourceRequest} number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} systemValue={systemValue} setSystemValue={setSystemValue} systemOptions={systemOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={toDateTimeInput(order['REPORTED DATE ']||order['REPORTED DATE']||order['REPORT DATE'])||nowLocalDateTime()} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
