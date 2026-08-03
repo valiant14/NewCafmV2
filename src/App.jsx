@@ -1221,6 +1221,21 @@ export default function App() {
     const prefix=record.type==='Material'?'RSV':'ALC'
     const itemCode=materialCodeFor(record.itemCode||record.item)
     const created={reservation:`${prefix}-2026-${String(reservations.length+1).padStart(4,'0')}`,status:'ENTERED',statusDescription:statusDescription('inventoryUsage','ENTERED'),createdAt:todayStamp(),arrangedQuantity:0,releasedQuantity:0,deliveredQuantity:0,...record,itemCode}
+    const stockStore=storeCodeFor(created.source)
+    const stockItem=materialCodeFor(created.itemCode||created.item)
+    const reservedQuantity=Number(created.quantity||0)
+    if(stockStore&&stockItem&&reservedQuantity) {
+      setStockRecords(rows=>rows.map(row=>{
+        if(String(row.storeroom)!==String(stockStore)||String(row.itemNumber)!==String(stockItem)) return row
+        return { ...row, reserved: Number(row.reserved||0)+reservedQuantity }
+      }))
+      const stockRow=stockRecords.find(row=>String(row.storeroom)===String(stockStore)&&String(row.itemNumber)===String(stockItem))
+      if(stockRow) api.put(`/inventory-stock/${encodeURIComponent(stockStore)}/${encodeURIComponent(stockItem)}`, {
+        balance: Number(stockRow.balance||0),
+        reserved_quantity: Number(stockRow.reserved||0)+reservedQuantity,
+        reorder_point: stockRow.reorderLevel ?? null
+      }).catch(error=>setWorkspaceError(error.message||'Unable to update inventory stock.'))
+    }
     saveReservations(rows=>rows.some(row=>row.reservation===created.reservation)?rows:[created,...rows])
     linkWorkOrderResourceTransaction(created, { requestStatus: created.status, transactionRef: created.reservation, reservation: created.reservation, purchaseRequest: created.purchaseRequest, purchaseOrder: created.purchaseOrder, supplyChainStatus: 'Reservation entered' })
     return created
@@ -1254,25 +1269,22 @@ export default function App() {
     const stockStore=storeCodeFor(updated?.source)
     const stockItem=materialCodeFor(updated?.itemCode||updated?.item)
     if(stockStore&&stockItem) {
-      const beforeArranged=Number(source?.arrangedQuantity||0)
-      const beforeDelivered=Number(source?.deliveredQuantity||0)
-      const afterArranged=Number(updated.arrangedQuantity||0)
-      const afterDelivered=Number(updated.deliveredQuantity||0)
-      const reserveDelta=Math.max(0,afterArranged-beforeArranged)
-      const deliverDelta=Math.max(0,afterDelivered-beforeDelivered)
-      if(reserveDelta||deliverDelta) {
+      const beforeReleased=Number(source?.releasedQuantity||0)
+      const afterReleased=Number(updated.releasedQuantity||0)
+      const releaseDelta=Math.max(0,afterReleased-beforeReleased)
+      if(releaseDelta) {
         setStockRecords(rows=>rows.map(row=>{
           if(String(row.storeroom)!==String(stockStore)||String(row.itemNumber)!==String(stockItem)) return row
           return {
             ...row,
-            balance: Math.max(0,Number(row.balance||0)-deliverDelta),
-            reserved: Math.max(0,Number(row.reserved||0)+reserveDelta-deliverDelta)
+            balance: Math.max(0,Number(row.balance||0)-releaseDelta),
+            reserved: Math.max(0,Number(row.reserved||0)-releaseDelta)
           }
         }))
         const stockRow=stockRecords.find(row=>String(row.storeroom)===String(stockStore)&&String(row.itemNumber)===String(stockItem))
         api.put(`/inventory-stock/${encodeURIComponent(stockStore)}/${encodeURIComponent(stockItem)}`, {
-          balance: Math.max(0,Number(stockRow?.balance||0)-deliverDelta),
-          reserved_quantity: Math.max(0,Number(stockRow?.reserved||0)+reserveDelta-deliverDelta),
+          balance: Math.max(0,Number(stockRow?.balance||0)-releaseDelta),
+          reserved_quantity: Math.max(0,Number(stockRow?.reserved||0)-releaseDelta),
           reorder_point: stockRow?.reorderLevel ?? null
         }).catch(error=>setWorkspaceError(error.message||'Unable to update inventory stock.'))
       }
@@ -1324,7 +1336,7 @@ export default function App() {
     'Stores': <StoresPage materials={materialRecords} stockRows={stockRecords} storeRows={storeRecords} setStoreRows={saveStores} locationRows={locationRecords} scopeUser={effectiveUser}/>,
     'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} materials={materialRecords} storeRows={storeRecords} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
     'Purchase Orders': <PurchaseOrdersPage rows={scopedPurchaseOrders} onUpdateOrder={updatePurchaseOrder} onUpdateRequest={updatePurchaseRequest}/>,
-    'Reservations': <ReservationsPage rows={scopedReservations} onUpdate={updateReservation}/>,
+    'Reservations': <ReservationsPage rows={scopedReservations} stockRows={stockRecords} onUpdate={updateReservation}/>,
     'Tools & Equipment': <ToolsPage rows={toolRecords} setRows={saveTools} workOrders={scopedWorkOrders}/>,
     'Users': <UsersPage rows={userRecords} setRows={saveUsers} roleRows={rolePermissionRecords} laborRows={laborRecords} scopeUser={effectiveUser} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
     'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={saveRoles} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
