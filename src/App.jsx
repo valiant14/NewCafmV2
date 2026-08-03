@@ -117,6 +117,13 @@ const fileMetadata = rows => (Array.isArray(rows) ? rows : []).map(file => ({
   type: file.type || 'Document',
   dataUrl: file.dataUrl || ''
 }))
+const actualResourceMetadata = rows => (Array.isArray(rows) ? rows : []).map(row => ({
+  ...row,
+  actualQuantity: row.actualQuantity ?? '',
+  returned: Boolean(row.returned),
+  returnedQuantity: Number(row.returnedQuantity || 0),
+  returnedAt: Number(row.returnedAt || 0)
+}))
 const uniqueCodeOptions = (rows = [], codeKey, descriptionKey) => [
   ...new Map(rows
     .filter(row => cleanText(row?.[codeKey]))
@@ -464,7 +471,7 @@ const apiMappers = {
     endpoint: '/work-orders',
     key: 'WORKORDER',
     apiKey: 'work_order_num',
-    toApi: row => ({ work_order_num: toText(row.WORKORDER), description: toText(row['DESCRIPITION '] || row.DESCRIPTION), long_description: row['LONG DESCRIPTION'] || '', location_code: row['LOCATION '] || '', asset_num: row.ASSET || null, status: statusText(row.STATUS, 'WAPPR'), work_type: row['WORK TYPE '] || row['WORK TYPE'] || 'CM', priority: toNumberOrNull(row.PRIORTY || row.priority), site_code: row.SITE || '1031', department_name: row['DEPARTMENT '] || '', sub_department_code: row['SUB DEPARTMENT  NAME'] || '', assigned_department_name: row['ASSIGNED DEPARTMENT'] || row['DEPARTMENT '] || '', target_start_at: toDateOrNull(row['TARGET START ']), target_finish_at: toDateOrNull(row['TARGET FINISH ']), actual_start_at: toDateOrNull(row['ACTUAL START ']), actual_finish_at: toDateOrNull(row['ACTUAL FINISH ']), reported_at: toDateOrNull(row['REPORTED DATE ']) || new Date(), source_sr_num: row['SOURCE SR'] || null, failure_code: row['FAILURE CODE'] || '', problem_code: row['PROBLEM CODE'] || '', cause_code: row['CAUSE CODE'] || '', remedy_code: row['REMEDY CODE'] || '', ptw_required: Boolean(row['PTW REQUIRED']), ptw_files_json: JSON.stringify(fileMetadata(row['PTW FILES'])), general_files_json: JSON.stringify(fileMetadata(row['GENERAL FILES'])) }),
+    toApi: row => ({ work_order_num: toText(row.WORKORDER), description: toText(row['DESCRIPITION '] || row.DESCRIPTION), long_description: row['LONG DESCRIPTION'] || '', location_code: row['LOCATION '] || '', asset_num: row.ASSET || null, status: statusText(row.STATUS, 'WAPPR'), work_type: row['WORK TYPE '] || row['WORK TYPE'] || 'CM', priority: toNumberOrNull(row.PRIORTY || row.priority), site_code: row.SITE || '1031', department_name: row['DEPARTMENT '] || '', sub_department_code: row['SUB DEPARTMENT  NAME'] || '', assigned_department_name: row['ASSIGNED DEPARTMENT'] || row['DEPARTMENT '] || '', target_start_at: toDateOrNull(row['TARGET START ']), target_finish_at: toDateOrNull(row['TARGET FINISH ']), actual_start_at: toDateOrNull(row['ACTUAL START ']), actual_finish_at: toDateOrNull(row['ACTUAL FINISH ']), reported_at: toDateOrNull(row['REPORTED DATE ']) || new Date(), source_sr_num: row['SOURCE SR'] || null, failure_code: row['FAILURE CODE'] || '', problem_code: row['PROBLEM CODE'] || '', cause_code: row['CAUSE CODE'] || '', remedy_code: row['REMEDY CODE'] || '', ptw_required: Boolean(row['PTW REQUIRED']), ptw_files_json: JSON.stringify(fileMetadata(row['PTW FILES'])), general_files_json: JSON.stringify(fileMetadata(row['GENERAL FILES'])), technician_remarks: row['TECHNICIAN REMARKS'] || '', completion_notes: row['COMPLETION NOTES'] || '', actual_labor: row['ACTUAL LABOR'] || '', actual_hours: toNumberOrNull(row['ACTUAL HOURS']), actual_materials_json: JSON.stringify(actualResourceMetadata(row['ACTUAL MATERIALS'])), actual_tools_json: JSON.stringify(actualResourceMetadata(row['ACTUAL TOOLS'])) }),
     afterRow: persistWorkOrderChildren
   },
   serviceRequests: {

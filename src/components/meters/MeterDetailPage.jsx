@@ -114,6 +114,7 @@ export default function MeterDetailPage({ meter, pastReadings = [], onBack, onUp
                   { key: 'readingDate', label: 'Reading Date' },
                   { key: 'reading', label: 'Reading', render: (value, row) => <strong className="text-[var(--app-ink)]">{value} {row.unit}</strong> },
                   { key: 'source', label: 'Source' },
+                  { key: 'workOrder', label: 'Work Order' },
                   { key: 'status', label: 'Status', render: value => <Badge tone={toneByStatus[value] || 'orange'}>{value}</Badge> }
                 ]}
               />

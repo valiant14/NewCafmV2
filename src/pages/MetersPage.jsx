@@ -14,7 +14,7 @@ import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { useAuth } from '../providers/AuthProvider'
-import { nowLocalDate, toLocalDateInput } from '../lib/datetime'
+import { nowLocalDate } from '../lib/datetime'
 
 const emptyMeter = {
   meterId: '',
@@ -39,9 +39,9 @@ const fields = [
   { key: 'location', label: 'Location', required: true },
   { key: 'site', label: 'Site', required: true },
   { key: 'department', label: 'Department', required: true },
-  { key: 'meterType', label: 'Meter Type', options: ['General', 'Water', 'Energy', 'Runtime'] },
+  { key: 'meterType', label: 'Meter Type', options: ['General', 'Water', 'Energy', 'Distance'] },
   { key: 'reading', label: 'Reading', required: true, type: 'number' },
-  { key: 'unit', label: 'Unit', placeholder: 'kWh / m³ / hours' },
+  { key: 'unit', label: 'Unit', placeholder: 'kWh / m3 / km' },
   { key: 'readingDate', label: 'Reading Date', type: 'date', required: true },
   { key: 'status', label: 'Status', options: ['Active', 'Inactive', 'Needs Review'] }
 ]
@@ -88,27 +88,15 @@ export default function MetersPage({ rows = [], setRows, assets = [], workOrders
 
   const pastReadingsFor = meter => {
     const relatedRows = rows.filter(row => row.meterId === meter.meterId || (row.asset && row.asset === meter.asset))
-    const generated = Array.from({ length: 5 }, (_, index) => {
-      const reading = Number(meter.reading || 0)
-      const date = new Date(`${meter.readingDate || '2026-07-16'}T00:00:00`)
-      date.setDate(date.getDate() - ((index + 1) * 30))
-      return {
-        readingId: `${meter.meterId}-H${index + 1}`,
-        reading: Math.max(0, reading - ((index + 1) * 85)),
-        unit: meter.unit,
-        readingDate: toLocalDateInput(date),
-        source: 'Historical reading',
-        status: 'Posted'
-      }
-    })
     return [...relatedRows.map((row, index) => ({
       readingId: `${row.meterId}-${index}`,
       reading: row.reading,
       unit: row.unit,
       readingDate: row.readingDate,
       source: row.meterId === meter.meterId ? 'Current meter' : 'Same asset',
-      status: row.status
-    })), ...generated].sort((a, b) => String(b.readingDate).localeCompare(String(a.readingDate)))
+      workOrder: row.workOrder || '-',
+      status: row.status || 'Posted'
+    }))].sort((a, b) => String(b.readingDate).localeCompare(String(a.readingDate)))
   }
 
   if (selected) {
@@ -190,3 +178,4 @@ export default function MetersPage({ rows = [], setRows, assets = [], workOrders
     </>
   )
 }
+

@@ -266,6 +266,12 @@ const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTa
   'PTW REQUIRED': Boolean(row.ptw_required),
   'PTW FILES': jsonArrayValue(row.ptw_files_json),
   'GENERAL FILES': jsonArrayValue(row.general_files_json),
+  'TECHNICIAN REMARKS': row.technician_remarks || '',
+  'COMPLETION NOTES': row.completion_notes || '',
+  'ACTUAL LABOR': row.actual_labor || '',
+  'ACTUAL HOURS': row.actual_hours ?? '',
+  'ACTUAL MATERIALS': jsonArrayValue(row.actual_materials_json),
+  'ACTUAL TOOLS': jsonArrayValue(row.actual_tools_json),
   'METER ID': meter?.meterId || '',
   'METER READING': meter?.reading ?? '',
   'METER READING UNIT': meter?.unit || '',
@@ -406,7 +412,8 @@ const mapMeter = row => ({
   reading: row.reading_value,
   unit: row.reading_unit || '',
   meterType: row.reading_unit === 'm3' ? 'Water' : row.reading_unit === 'kWh' ? 'Energy' : 'General',
-  readingDate: row.reading_at || ''
+  readingDate: row.reading_at || '',
+  status: row.status || 'Active'
 })
 
 const mapJobTask = row => ({
