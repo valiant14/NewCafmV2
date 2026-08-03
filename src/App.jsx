@@ -11,7 +11,9 @@ import AssetsPage from './pages/AssetsPage'
 import RegisterPage from './pages/RegisterPage'
 import LocationsPage from './pages/LocationsPage'
 import OverviewPage from './pages/OverviewPage'
-import SettingsPage from './pages/SettingsPage'
+import NotificationsSettingsPage from './pages/NotificationsSettingsPage'
+import ConnectorsSettingsPage from './pages/ConnectorsSettingsPage'
+import PmRulesSettingsPage from './pages/PmRulesSettingsPage'
 import IncidentsPage from './pages/IncidentsPage'
 import RolesPermissionsPage from './pages/RolesPermissionsPage'
 import MetersPage from './pages/MetersPage'
@@ -42,7 +44,7 @@ import { nowLocalDate, nowLocalDateTime } from './lib/datetime'
 import { printWithoutBrowserTitle } from './lib/print'
 import { sameDepartment, systemNamesForDepartment, workGroupsForDepartment } from './lib/departments'
 import { storeLabel, storesHolding, totalAvailable } from './lib/inventory'
-import { readProjectName, writeProjectName } from './lib/projectSettings'
+import { readProjectName } from './lib/projectSettings'
 import { canTransitionWorkOrder, statusDescription, statusOptions, workOrderTransitions } from './lib/statusMatrix'
 import { HOLD_MATERIAL, effectiveTargetTime, endHold, holdSince, isOnHold, startHold } from './lib/holdPeriods'
 import { describeOutstanding, markReturned, outstandingReturns } from './lib/resourceReturns'
@@ -948,8 +950,7 @@ export default function App() {
   const [failureCodeRecords,setFailureCodeRecords]=useState(failureCodes)
   const [workspaceLoading,setWorkspaceLoading]=useState(false)
   const [workspaceError,setWorkspaceError]=useState('')
-  const [projectName,setProjectName]=useState(readProjectName)
-  const changeProjectName=name=>setProjectName(writeProjectName(name))
+  const [projectName]=useState(readProjectName)
   const applyWorkspaceData = useCallback(data => {
     setAssetRecords(data.assets)
     setLocationRecords(data.locations)
@@ -1390,7 +1391,9 @@ export default function App() {
     'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={saveRoles} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
     'Sites': <SitesSettingsPage rows={siteRecords} setRows={saveSites}/>,
     'Departments': <DepartmentsSettingsPage rows={departmentRecords} setRows={saveDepartments}/>,
-    'Settings': <SettingsPage projectName={projectName} onProjectNameChange={changeProjectName}/>
+    'Notifications': <NotificationsSettingsPage/>,
+    'SMTP & SMS': <ConnectorsSettingsPage/>,
+    'PM Schedule Rules': <PmRulesSettingsPage/>
   }
   if (!isAuthenticated) return <LoginPage />
   if (workspaceLoading) {
