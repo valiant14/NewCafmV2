@@ -2,8 +2,9 @@ import { useId } from 'react'
 import Combobox from './Combobox'
 import { cn } from '../../lib/cn'
 
-export default function Field({ label, value = '', required, locked, type = 'text', options, suggestions, onChange, onBlur, onKeyDown, placeholder }) {
+export default function Field({ label, value = '', required, locked, disabled = false, type = 'text', options, suggestions, onChange, onBlur, onKeyDown, placeholder }) {
   const listId=useId()
+  const isDisabled = locked || disabled
   const controlClass = cn(
     'w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none transition',
     'placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]',
@@ -18,11 +19,11 @@ export default function Field({ label, value = '', required, locked, type = 'tex
         {required && <b className="text-[var(--app-required)]">*</b>}
       </span>
       {options ? (
-        <select className={controlClass} value={value} onChange={onChange} onBlur={onBlur} disabled={locked}>
+        <select className={controlClass} value={value} onChange={onChange} onBlur={onBlur} disabled={isDisabled}>
           {options.map(o => <option key={o}>{o}</option>)}
         </select>
       ) : type === 'textarea' ? (
-        <textarea className={controlClass} value={value} onChange={onChange} onBlur={onBlur} onKeyDown={onKeyDown} readOnly={locked} rows="3" placeholder={placeholder} />
+        <textarea className={controlClass} value={value} onChange={onChange} onBlur={onBlur} onKeyDown={onKeyDown} readOnly={isDisabled} rows="3" placeholder={placeholder} />
       ) : suggestions?.length ? (
         <Combobox
           inputId={listId}
@@ -31,7 +32,7 @@ export default function Field({ label, value = '', required, locked, type = 'tex
           suggestions={suggestions}
           onChange={onChange}
           placeholder={placeholder}
-          disabled={locked}
+          disabled={isDisabled}
         />
       ) : (
         <input
@@ -41,7 +42,7 @@ export default function Field({ label, value = '', required, locked, type = 'tex
           onChange={onChange}
           onBlur={onBlur}
           onKeyDown={onKeyDown}
-          readOnly={locked}
+          readOnly={isDisabled}
           placeholder={placeholder}
         />
       )}

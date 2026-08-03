@@ -30,7 +30,7 @@ const cellLabelClass = 'block text-[9px] font-extrabold uppercase tracking-[.1em
 const qtyInputClass = 'mt-1 h-9 w-full rounded-lg border border-[var(--app-field-border)] bg-[var(--app-panel)] px-2 text-sm text-[var(--app-ink)] outline-none focus:border-[var(--app-field-focus)]'
 const returnButtonClass = 'inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--warning)] bg-[var(--app-badge-orange-bg)] px-3 text-xs font-bold text-[var(--app-badge-orange-text)] transition hover:brightness-95'
 
-function ActualResourceSection({ title, note, rows, icon: Icon, update, onReturn, kind, emptyText }) {
+function ActualResourceSection({ title, note, rows, icon: Icon, update, onReturn, kind, emptyText, locked = false }) {
   // One re-render when the newest confirmation expires - no interval left running.
   const [, tick] = useState(0)
   const newestReturn = Math.max(0, ...rows.map(row => row.returnedAt || 0))
@@ -66,7 +66,7 @@ function ActualResourceSection({ title, note, rows, icon: Icon, update, onReturn
                 {isTool ? <span className="hidden md:block" /> : (
                   <label>
                     <span className={cellLabelClass}>Used qty</span>
-                    <input className={`${qtyInputClass} max-w-[140px]`} type="number" min="0" value={row.actualQuantity ?? ''} onChange={event => update(index, event.target.value)} placeholder="0" />
+                    <input className={`${qtyInputClass} max-w-[140px] disabled:cursor-not-allowed disabled:bg-[var(--app-table-header-bg)] disabled:text-[var(--app-muted)]`} type="number" min="0" value={row.actualQuantity ?? ''} onChange={event => update(index, event.target.value)} placeholder="0" disabled={locked} />
                   </label>
                 )}
 
@@ -76,7 +76,7 @@ function ActualResourceSection({ title, note, rows, icon: Icon, update, onReturn
                     ? isRecentlyReturned(row)
                       ? <Badge tone="green"><Check size={12} /> Returned {row.returnedQuantity}</Badge>
                       : <Badge tone="neutral">Returned</Badge>
-                    : due > 0
+                    : due > 0 && !locked
                       ? (
                         <button type="button" className={returnButtonClass} onClick={() => onReturn(index)}
                           title={isTool ? 'Confirm the tool is back in the store' : 'Return the unused quantity to the store'}>
@@ -135,6 +135,7 @@ export default function WorkOrderActualTab({
   outstanding = [],
   currentUser
 }) {
+  const closed = ['CLOSE', 'CLOSED'].includes(String(status || '').toUpperCase())
   if (!actualsEditable) {
     return (
       <div className={lockedClass}>
@@ -168,7 +169,7 @@ export default function WorkOrderActualTab({
 
   return (
     <>
-      {false && step && (
+      {step && status === 'COMP' && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
           <div className="grid gap-1">
             <strong className="text-sm text-[var(--app-ink)]">{step.ready ? `Ready to ${step.label.toLowerCase()}` : 'Not ready yet'}</strong>
@@ -193,17 +194,17 @@ export default function WorkOrderActualTab({
 
       <Section compact title="Execution Notes">
         <div className={twoColumnGridClass}>
-          <Field label="Technician Remarks" value={technicianRemarks} onChange={event => setTechnicianRemarks(event.target.value)} type="textarea" required />
-          <Field label="Completion Notes" value={completionNotes} onChange={event => setCompletionNotes(event.target.value)} type="textarea" required />
+          <Field label="Technician Remarks" value={technicianRemarks} onChange={event => setTechnicianRemarks(event.target.value)} type="textarea" required disabled={closed} />
+          <Field label="Completion Notes" value={completionNotes} onChange={event => setCompletionNotes(event.target.value)} type="textarea" required disabled={closed} />
         </div>
       </Section>
 
       <Section compact title="Actual Labor">
         <div className={laborGridClass}>
-          <Field label="Technicians / Labor" value={actualLabor} onChange={event => setActualLabor(event.target.value)} required />
-          <Field label="Actual Labor Hours" value={actualHours} onChange={event => setActualHours(event.target.value)} type="number" required />
-          <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" />
-          <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" />
+          <Field label="Technicians / Labor" value={actualLabor} onChange={event => setActualLabor(event.target.value)} required disabled={closed} />
+          <Field label="Actual Labor Hours" value={actualHours} onChange={event => setActualHours(event.target.value)} type="number" required disabled={closed} />
+          <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" disabled={closed} />
+          <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" disabled={closed} />
         </div>
       </Section>
 
@@ -216,6 +217,7 @@ export default function WorkOrderActualTab({
         emptyText="Planned materials appear here once work is completed."
         update={(index, value) => updateActualRow(setActualMaterials, index, value)}
         onReturn={index => returnResource?.('material', index)}
+        locked={closed}
       />
       <ActualResourceSection
         title="Actual Tools and Equipment Used"
@@ -226,6 +228,7 @@ export default function WorkOrderActualTab({
         emptyText="Planned tools appear here once work is completed."
         update={(index, value) => updateActualRow(setActualTools, index, value)}
         onReturn={index => returnResource?.('tool', index)}
+        locked={closed}
       />
 
       <Section compact title="Store Returns" note="Unused material and every borrowed tool must be back in the store before the work order closes">

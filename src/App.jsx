@@ -385,24 +385,28 @@ const persistWorkOrderMeters = async order => {
   }
   const payloads = workOrderMeterPayloads(order)
   for (const payload of payloads) {
-    const match = rows
+    const latestMeterRow = rows
       .filter(row => String(row.meter_id) === selectedMeterId)
       .sort((left, right) => String(right.reading_at || '').localeCompare(String(left.reading_at || '')))[0]
+    const existingWorkOrderReading = rows.find(row =>
+      String(row.meter_id) === selectedMeterId &&
+      String(row.work_order_num || '') === workOrderNum
+    )
     if (!payload.meter_id || payload.reading_value === null) {
       continue
     }
     const cleanPayload = {
       meter_id: payload.meter_id,
-      asset_num: match?.asset_num || payload.asset_num,
+      asset_num: latestMeterRow?.asset_num || payload.asset_num,
       work_order_num: payload.work_order_num,
-      site_code: match?.site_code || payload.site_code,
-      department_name: match?.department_name || payload.department_name,
+      site_code: latestMeterRow?.site_code || payload.site_code,
+      department_name: latestMeterRow?.department_name || payload.department_name,
       reading_value: payload.reading_value,
-      reading_unit: match?.reading_unit || payload.reading_unit,
+      reading_unit: latestMeterRow?.reading_unit || payload.reading_unit,
       reading_at: payload.reading_at
     }
-    if (match?.meter_reading_id) {
-      if (!sameMeterPayload(match, cleanPayload)) await api.put(`/meter-readings/${encodeURIComponent(match.meter_reading_id)}`, cleanPayload)
+    if (existingWorkOrderReading?.meter_reading_id) {
+      if (!sameMeterPayload(existingWorkOrderReading, cleanPayload)) await api.put(`/meter-readings/${encodeURIComponent(existingWorkOrderReading.meter_reading_id)}`, cleanPayload)
     } else {
       await api.post('/meter-readings', cleanPayload)
     }
@@ -877,7 +881,6 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     :status==='WSCH'&&!missingFor('SCHED').length?'SCHED'
     :status==='SCHED'&&!missingFor('INPRG').length?'INPRG'
     :status==='INPRG'&&!missingFor('COMP').length?'COMP'
-    :status==='COMP'&&!missingFor('CLOSE').length?'CLOSE'
     :''
   useEffect(()=>{
     if(!autoAdvanceTo) return
@@ -990,20 +993,53 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     setActualFinish(value)
     if(actualStart&&value) setActualHours(hoursBetween(actualStart,value))
   }
+  const issuedQuantityForResource=row=>{
+    const reservation=row.reservation
+      ? reservationRecords.find(item=>String(item.reservation)===String(row.reservation))
+      : null
+    return Number(reservation?.deliveredQuantity||reservation?.releasedQuantity||reservation?.arrangedQuantity||row.deliveredQuantity||row.releasedQuantity||row.arrangedQuantity||row.quantity||0)
+  }
+  const actualResourceKey=row=>`${row.type || ''}|${row.resourceRequestId || row.itemCode || row.item || ''}`
+  const mergeActualRows=(current,nextRows,material=false)=>{
+    const keepActualRow=row=>Number(row.quantity||0)>0||Number(row.actualQuantity||0)>0
+    const dedupeRows=rows=>[...rows.filter(keepActualRow).reduce((map,row)=>{
+      const key=actualResourceKey(row)
+      const existing=map.get(key)
+      if(!existing||Number(row.quantity||0)>Number(existing.quantity||0)) map.set(key,row)
+      return map
+    },new Map()).values()]
+    if(!current.length) return dedupeRows(nextRows)
+    const nextByKey=new Map(nextRows.map(row=>[actualResourceKey(row),row]))
+    const merged=current.map(row=>{
+      const next=nextByKey.get(actualResourceKey(row))
+      if(!next) return row
+      return {
+        ...row,
+        ...next,
+        quantity: Number(next.quantity||0) || Number(row.quantity||0),
+        actualQuantity: material && (!Number(row.actualQuantity)||!Number(row.quantity)) ? next.actualQuantity : row.actualQuantity,
+        returned: row.returned,
+        returnedQuantity: row.returnedQuantity,
+        returnedAt: row.returnedAt
+      }
+    })
+    const seen=new Set(merged.map(actualResourceKey))
+    return dedupeRows([...merged,...nextRows.filter(row=>!seen.has(actualResourceKey(row)))])
+  }
   const plannedActualMaterials=()=>plannedResources
-    .filter(row=>row.type==='Material'&&row.item)
-    .map(row=>({...row,type:'Material',actualQuantity:row.actualQuantity ?? row.quantity ?? ''}))
+    .filter(row=>row.type==='Material'&&row.item&&issuedQuantityForResource(row)>0)
+    .map(row=>({...row,type:'Material',quantity:issuedQuantityForResource(row),actualQuantity:row.actualQuantity ?? issuedQuantityForResource(row) ?? ''}))
   const plannedActualTools=()=>plannedResources
-    .filter(row=>['Tool','Equipment'].includes(row.type)&&row.item)
-    .map(row=>({...row,type:row.type || 'Tool'}))
+    .filter(row=>['Tool','Equipment'].includes(row.type)&&row.item&&issuedQuantityForResource(row)>0)
+    .map(row=>({...row,type:row.type || 'Tool',quantity:issuedQuantityForResource(row)}))
   useEffect(()=>{
     setActualLabor(current=>current||plannedCrewName())
     setLaborCraft(current=>current||plannedCraftCode())
     setActualHours(current=>current||plannedTotalHours())
-    setActualMaterials(current=>current.length?current:plannedActualMaterials())
-    setActualTools(current=>current.length?current:plannedActualTools())
-  },[plannedLabor,plannedResources])
-  const completeWork=()=>{if(!failureReady){setTab('Failure');return}const now=toDateTimeInput(new Date());const startForFinish=actualStart||now;setActualFinish(current=>current||(Number(actualHours)>0?addHoursToDate(startForFinish,actualHours):now));setActualStart(current=>current||now);setActualMaterials(current=>current.length?current:plannedActualMaterials());setActualTools(current=>current.length?current:plannedActualTools());
+    setActualMaterials(current=>mergeActualRows(current,plannedActualMaterials(),true))
+    setActualTools(current=>mergeActualRows(current,plannedActualTools()))
+  },[plannedLabor,plannedResources,reservationRecords])
+  const completeWork=()=>{if(!failureReady){setTab('Failure');return}const now=toDateTimeInput(new Date());const startForFinish=actualStart||now;setActualFinish(current=>current||(Number(actualHours)>0?addHoursToDate(startForFinish,actualHours):now));setActualStart(current=>current||now);setActualMaterials(current=>mergeActualRows(current,plannedActualMaterials(),true));setActualTools(current=>mergeActualRows(current,plannedActualTools()));
     // Only fill blanks - anything already typed by hand wins.
     setActualLabor(current=>current||plannedCrewName());setLaborCraft(current=>current||plannedCraftCode());setActualHours(current=>current||plannedTotalHours());
     setWorkCompleted(true);setSelectedStatus('COMP')}
