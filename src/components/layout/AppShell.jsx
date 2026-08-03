@@ -107,15 +107,6 @@ export default function AppShell({
           })}
         </nav>
 
-        <div className="sidebar-bottom mt-auto">
-          <div className="user flex items-center gap-3 border-t border-[color-mix(in_srgb,var(--app-sidebar-muted)_25%,transparent)] px-1 pt-4">
-            <div className="avatar grid h-9 w-9 place-items-center rounded-full bg-[var(--app-sidebar-accent)] text-xs font-extrabold text-[var(--app-sidebar-accent-ink)]">{user.initials}</div>
-            <div className="grid min-w-0 flex-1">
-              <strong className="truncate text-xs">{user.name}</strong>
-              <span className="truncate text-[10px] text-[var(--app-sidebar-muted)]">{user.role}</span>
-            </div>
-          </div>
-        </div>
       </aside>
 
       <main className="flex min-h-screen min-w-0 flex-col">
