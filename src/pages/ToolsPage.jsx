@@ -28,14 +28,21 @@ const exportColumns = [
   { key: 'toolNumber', label: 'Tool Number' },
   { key: 'description', label: 'Description' },
   { key: 'category', label: 'Category' },
-  { key: 'location', label: 'Location' },
+  { key: 'location', label: 'Store / Location' },
   { key: 'quantity', label: 'Quantity' },
   { key: 'allocatedQuantity', label: 'Allocated' },
+  { key: 'reservedQuantity', label: 'Reserved' },
   { key: 'availableQuantity', label: 'Available' },
-  { key: 'status', label: 'Status' },
-  { key: 'inspectionDue', label: 'Inspection Due' }
+  { key: 'availability', label: 'Availability' },
+  { key: 'toolStatus', label: 'Tool Status' }
 ]
 const sameTool = (row, id) => String(row.toolNumber || '').trim().toLowerCase() === String(id || '').trim().toLowerCase()
+const cleanCode = value => String(value || '').trim().toLowerCase()
+const toolStatusTone = value => value === 'Available' ? 'green' : 'orange'
+const matchesTool = (tool, value, description) =>
+  cleanCode(tool.toolNumber) === cleanCode(value) ||
+  cleanCode(tool.description) === cleanCode(value) ||
+  cleanCode(tool.description) === cleanCode(description)
 
 const toolUsage = (tool, workOrders) => workOrders.flatMap(order => {
   const resources = Array.isArray(order['PLANNED RESOURCES']) ? order['PLANNED RESOURCES'] : []
@@ -54,24 +61,44 @@ const toolUsage = (tool, workOrders) => workOrders.flatMap(order => {
       source: resource.transactionRef || resource.supplyChainStatus || resource.requestStatus || 'Planned resource'
     }))
 })
-const withToolUsage = (row, workOrders) => {
-  const usage = toolUsage(row, workOrders)
+const activeAllocationsFor = (tool, allocations = []) => allocations.filter(allocation => {
+  if (allocation.type === 'Material') return false
+  if (String(allocation.reservation || '').startsWith('RSV-')) return false
+  if (['CANCELLED', 'CAN'].includes(allocation.status)) return false
+  return matchesTool(tool, allocation.itemCode || allocation.item, allocation.item)
+})
+
+const defaultToolLocation = (storeRows = []) => {
+  const store = storeRows.find(row => row.status !== 'Inactive') || storeRows[0]
+  return store?.name || store?.code || 'Tool Store'
+}
+
+const withToolUsage = (row, workOrders, allocations = [], storeRows = []) => {
+  const activeAllocations = activeAllocationsFor(row, allocations)
   const quantity = Number(row.quantity) || 1
-  const allocatedQuantity = row.status === 'Maintenance' ? 0 : usage.reduce((total, usageRow) => total + (Number(usageRow.quantity) || 0), 0)
-  const availableQuantity = row.status === 'Maintenance' ? 0 : Math.max(0, quantity - allocatedQuantity)
-  const status = row.status === 'Maintenance' ? 'Maintenance' : allocatedQuantity > 0 || availableQuantity <= 0 ? 'Allocated' : 'Available'
+  const reservedQuantity = row.status === 'Maintenance' ? 0 : activeAllocations.reduce((total, allocation) => total + Math.max(0, Number(allocation.quantity || 0) - Number(allocation.deliveredQuantity || 0)), 0)
+  const allocatedQuantity = row.status === 'Maintenance' ? 0 : activeAllocations.reduce((total, allocation) => total + (Number(allocation.deliveredQuantity || 0) || Number(allocation.releasedQuantity || 0) || Number(allocation.arrangedQuantity || 0) || 0), 0)
+  const committedQuantity = allocatedQuantity + reservedQuantity
+  const availableQuantity = row.status === 'Maintenance' ? 0 : Math.max(0, quantity - committedQuantity)
+  const status = row.status === 'Maintenance' ? 'Maintenance' : allocatedQuantity > 0 ? 'Allocated' : reservedQuantity > 0 ? 'Reserved' : availableQuantity <= 0 ? 'Allocated' : 'Available'
+  const availability = status === 'Maintenance' ? 'Maintenance' : availableQuantity > 0 ? 'Available' : 'No Stock'
+  const location = row.location || activeAllocations.find(allocation => allocation.source)?.source || defaultToolLocation(storeRows)
   return {
     ...row,
-    location: row.location || '',
+    location,
     quantity,
     allocatedQuantity,
+    reservedQuantity,
     availableQuantity,
+    availability,
+    toolStatus: status,
     status,
-    inspectionDue: row.inspectionDue || ''
+    inspectionDue: row.inspectionDue || '',
+    inspectionDueLabel: row.inspectionDue || 'Not scheduled'
   }
 }
 
-export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
+export default function ToolsPage({ rows = [], setRows, workOrders = [], allocations = [], storeRows = [] }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -79,8 +106,8 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
   const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/tools/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => sameTool(row, routeId)) || null)
-  const enrichedRows = useMemo(() => rows.map(row => withToolUsage(row, workOrders)), [rows, workOrders])
-  const selectedTool = selected ? withToolUsage(rows.find(row => sameTool(row, selected.toolNumber)) || selected, workOrders) : null
+  const enrichedRows = useMemo(() => rows.map(row => withToolUsage(row, workOrders, allocations, storeRows)), [rows, workOrders, allocations, storeRows])
+  const selectedTool = selected ? withToolUsage(rows.find(row => sameTool(row, selected.toolNumber)) || selected, workOrders, allocations, storeRows) : null
   useEffect(() => {
     if (!routeId) {
       setSelected(null)
@@ -156,7 +183,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
       <StandardFilters
         filters={filters}
         setFilters={setFilters}
-        siteOptions={optionsFromRows(rows, ['site', 'location'])}
+        siteOptions={optionsFromRows(enrichedRows, ['site', 'location'])}
         departmentOptions={optionsFromRows(rows, ['department', 'category'])}
         statusOptions={optionsFromRows(enrichedRows, ['status'])}
       />
@@ -171,12 +198,13 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
             { key: 'toolNumber', label: 'Tool number', render: value => <strong className="mono">{value}</strong> },
             { key: 'description', label: 'Description' },
             { key: 'category', label: 'Category' },
-            { key: 'location', label: 'Location' },
+            { key: 'location', label: 'Store / Location' },
             { key: 'quantity', label: 'Quantity' },
             { key: 'allocatedQuantity', label: 'Allocated' },
+            { key: 'reservedQuantity', label: 'Reserved' },
             { key: 'availableQuantity', label: 'Available' },
-            { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> },
-            { key: 'inspectionDue', label: 'Inspection due' }
+            { key: 'availability', label: 'Availability', render: value => <Badge tone={toolStatusTone(value)}>{value}</Badge> },
+            { key: 'toolStatus', label: 'Tool Status', render: value => <Badge tone={toolStatusTone(value)}>{value}</Badge> }
           ]}
         />
       </section>

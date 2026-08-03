@@ -25,6 +25,7 @@ function daysUntil(dateValue) {
 
 function inspectionState(tool) {
   const days = daysUntil(tool.inspectionDue)
+  if (days === null) return { days, dueSoon: false, overdue: false, label: 'Inspection not scheduled' }
   const dueSoon = days !== null && days <= 30
   const overdue = days !== null && days < 0
   const label = overdue ? 'Inspection overdue' : dueSoon ? 'Inspection due soon' : 'Inspection current'
@@ -37,6 +38,7 @@ export default function ToolDetailPage({ tool, usageRows = [], onBack, onUpdate 
   const inspection = inspectionState(tool)
   const tone = statusTone[tool.status] || 'green'
   const availableUnits = Number(tool.availableQuantity ?? (tool.status === 'Available' ? tool.quantity : 0)) || 0
+  const inspectionDueLabel = tool.inspectionDue || 'Not scheduled'
   const changeStatus = event => onUpdate?.(tool.toolNumber, { status: event.target.value })
 
   return (
@@ -52,9 +54,9 @@ export default function ToolDetailPage({ tool, usageRows = [], onBack, onUpdate 
           backLabel="Back to tools"
           stats={[
             { label: 'Category', value: tool.category },
-            { label: 'Location', value: tool.location },
+            { label: 'Store / Location', value: tool.location },
             { label: 'Available Units', value: availableUnits },
-            { label: 'Inspection Due', value: tool.inspectionDue || '-' }
+            { label: 'Inspection Due', value: inspectionDueLabel }
           ]}
           actions={(
             <select
@@ -110,10 +112,10 @@ export default function ToolDetailPage({ tool, usageRows = [], onBack, onUpdate 
               kicker="CONTROL"
               title="Location & Inspection"
               items={[
-                ['Location', tool.location],
+                ['Store / Location', tool.location],
                 ['Status', tool.status],
                 ['Available Units', availableUnits],
-                ['Inspection Due', tool.inspectionDue],
+                ['Inspection Due', inspectionDueLabel],
                 ['Inspection State', inspection.label],
                 ['Overdue', inspection.overdue ? 'Yes' : 'No']
               ]}
@@ -165,10 +167,10 @@ export default function ToolDetailPage({ tool, usageRows = [], onBack, onUpdate 
         number={tool.toolNumber}
         status={tool.status}
         description={tool.description}
-        summary={[['Category', tool.category], ['Location', tool.location], ['Inspection Due', tool.inspectionDue]]}
+        summary={[['Category', tool.category], ['Store / Location', tool.location], ['Inspection Due', inspectionDueLabel]]}
         sections={[
           { title: 'Tool Information', rows: [[['Tool Number', tool.toolNumber], ['Description', tool.description], ['Category', tool.category], ['Quantity', tool.quantity]]] },
-          { title: 'Location and Inspection', rows: [[['Location', tool.location], ['Status', tool.status], ['Inspection Due', tool.inspectionDue], ['Inspection State', inspection.label]]] },
+          { title: 'Location and Inspection', rows: [[['Store / Location', tool.location], ['Status', tool.status], ['Inspection Due', inspectionDueLabel], ['Inspection State', inspection.label]]] },
           { title: 'Availability', rows: [[['Available Units', availableUnits], ['Inspection Window', inspection.days === null ? '-' : `${inspection.days} days`], ['Due Soon', inspection.dueSoon ? 'Yes' : 'No'], ['Overdue', inspection.overdue ? 'Yes' : 'No']]] }
         ]}
       />

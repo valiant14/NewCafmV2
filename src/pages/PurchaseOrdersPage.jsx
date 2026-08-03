@@ -31,7 +31,12 @@ export default function PurchaseOrdersPage({
 
   const cancelOrder = row => onUpdateOrder?.(row.purchaseOrder, { status: 'CAN', cancelledAt: todayStamp() })
   const updateOrderStatus = (row, nextStatus) => {
-    onUpdateOrder?.(row.purchaseOrder, { status: nextStatus, [`${nextStatus.toLowerCase()}At`]: todayStamp() })
+    const datePatch = {
+      APPR: { approvedAt: todayStamp() },
+      INPRG: {},
+      CLOSE: { receivedAt: todayStamp(), closedAt: todayStamp() }
+    }[nextStatus] || {}
+    onUpdateOrder?.(row.purchaseOrder, { status: nextStatus, ...datePatch })
     if (nextStatus === 'CLOSE') onUpdateRequest?.(row.purchaseRequest, { status: 'CLOSE', closedAt: todayStamp() })
   }
 

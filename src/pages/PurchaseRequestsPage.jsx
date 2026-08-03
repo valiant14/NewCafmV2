@@ -18,9 +18,9 @@ const purchaseRequisitionStatuses = ['WAPPR', 'APPR', 'CLOSE', 'CAN']
 
 const emptyRequest = { type: 'Material', item: '', quantity: 1, source: '', site: '1031', department: '', workOrder: '' }
 
-const buildRequestFields = ({ siteRecords = [], departmentRecords = [], materials = [], storeRows = [] }) => [
+const buildRequestFields = ({ siteRecords = [], departmentRecords = [], materials = [], tools = [], storeRows = [] }) => [
   { key: 'type', label: 'Type', options: ['Material', 'Tool', 'Equipment'] },
-  { key: 'item', label: 'Item', required: true, options: ['', ...materials.map(material => material.description || material.itemNumber).filter(Boolean)] },
+  { key: 'item', label: 'Item', required: true, options: ['', ...materials.map(material => material.description || material.itemNumber).filter(Boolean), ...tools.map(tool => tool.description || tool.toolNumber).filter(Boolean)] },
   { key: 'quantity', label: 'Quantity', required: true, type: 'number', min: 1 },
   { key: 'source', label: 'Store', options: ['', ...storeRows.map(store => store.code).filter(Boolean)] },
   { key: 'site', label: 'Site', required: true, suggestions: siteRecords.filter(site => site.status !== 'Inactive').map(site => ({ value: site.code, label: site.name })), placeholder: '1031' },
@@ -45,6 +45,7 @@ const exportColumns = [
 export default function PurchaseRequestsPage({
   rows = [],
   materials = [],
+  tools = [],
   storeRows = [],
   siteRecords = [],
   departmentRecords = [],
@@ -57,7 +58,7 @@ export default function PurchaseRequestsPage({
   const [formError, setFormError] = useState('')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [requestStatus, setRequestStatus] = useState('All')
-  const requestFields = buildRequestFields({ siteRecords, departmentRecords, materials, storeRows })
+  const requestFields = buildRequestFields({ siteRecords, departmentRecords, materials, tools, storeRows })
 
   const requestRows = requestStatus === 'All' ? rows : rows.filter(row => row.status === requestStatus)
 

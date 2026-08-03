@@ -426,19 +426,19 @@ const apiMappers = {
     endpoint: '/purchase-requisitions',
     key: 'purchaseRequest',
     apiKey: 'pr_num',
-    toApi: row => ({ pr_num: toText(row.purchaseRequest), work_order_num: row.workOrder || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', requested_quantity: toNumberOrNull(row.quantity) || 0, planned_quantity: toNumberOrNull(row.plannedQuantity), available_quantity: toNumberOrNull(row.availableQuantity), store_code: row.source || null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'WAPPR'), po_num: row.purchaseOrder || null, created_at: toDateOrNull(row.createdAt) || new Date(), approved_at: toDateOrNull(row.approvedAt), closed_at: toDateOrNull(row.closedAt), cancelled_at: toDateOrNull(row.cancelledAt) })
+    toApi: row => ({ pr_num: toText(row.purchaseRequest), work_order_num: row.workOrder || null, resource_request_id: row.resourceRequestId || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', requested_quantity: toNumberOrNull(row.quantity) || 0, planned_quantity: toNumberOrNull(row.plannedQuantity), available_quantity: toNumberOrNull(row.availableQuantity), store_code: row.type === 'Material' ? row.source || null : null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'WAPPR'), po_num: row.purchaseOrder || null, created_at: toDateOrNull(row.createdAt) || new Date(), approved_at: toDateOrNull(row.approvedAt), closed_at: toDateOrNull(row.closedAt), cancelled_at: toDateOrNull(row.cancelledAt) })
   },
   purchaseOrders: {
     endpoint: '/purchase-orders',
     key: 'purchaseOrder',
     apiKey: 'po_num',
-    toApi: row => ({ po_num: toText(row.purchaseOrder), pr_num: row.purchaseRequest || null, work_order_num: row.workOrder || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', ordered_quantity: toNumberOrNull(row.quantity) || 0, store_code: row.source || null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'WAPPR'), created_at: toDateOrNull(row.createdAt) || new Date(), approved_at: toDateOrNull(row.approvedAt), received_at: toDateOrNull(row.receivedAt), closed_at: toDateOrNull(row.closedAt), cancelled_at: toDateOrNull(row.cancelledAt) })
+    toApi: row => ({ po_num: toText(row.purchaseOrder), pr_num: row.purchaseRequest || null, work_order_num: row.workOrder || null, resource_request_id: row.resourceRequestId || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', ordered_quantity: toNumberOrNull(row.quantity) || 0, store_code: row.type === 'Material' ? row.source || null : null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'WAPPR'), created_at: toDateOrNull(row.createdAt) || new Date(), approved_at: toDateOrNull(row.approvedAt), received_at: toDateOrNull(row.receivedAt), closed_at: toDateOrNull(row.closedAt), cancelled_at: toDateOrNull(row.cancelledAt) })
   },
   reservations: {
     endpoint: '/reservations',
     key: 'reservation',
     apiKey: 'reservation_num',
-    toApi: row => ({ reservation_num: toText(row.reservation), work_order_num: row.workOrder || null, pr_num: row.purchaseRequest || null, po_num: row.purchaseOrder || null, item_code: row.itemCode || row.item || '', item_description: row.item || '', reserved_quantity: toNumberOrNull(row.quantity) || 0, arranged_quantity: toNumberOrNull(row.arrangedQuantity) || 0, released_quantity: toNumberOrNull(row.releasedQuantity) || 0, delivered_quantity: toNumberOrNull(row.deliveredQuantity) || 0, store_code: row.source || null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'ENTERED'), created_at: toDateOrNull(row.createdAt) || new Date() })
+    toApi: row => ({ reservation_num: toText(row.reservation), work_order_num: row.workOrder || null, resource_request_id: row.resourceRequestId || null, pr_num: row.purchaseRequest || null, po_num: row.purchaseOrder || null, item_code: row.itemCode || row.item || '', item_description: row.item || '', reserved_quantity: toNumberOrNull(row.quantity) || 0, arranged_quantity: toNumberOrNull(row.arrangedQuantity) || 0, released_quantity: toNumberOrNull(row.releasedQuantity) || 0, delivered_quantity: toNumberOrNull(row.deliveredQuantity) || 0, store_code: row.type === 'Material' ? row.source || null : null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'ENTERED'), created_at: toDateOrNull(row.createdAt) || new Date() })
   },
   jobPlans: {
     endpoint: '/job-plans',
@@ -1158,7 +1158,51 @@ export default function App() {
   const deepLinkTabFor=order=>String(order?.WORKORDER)===workOrderDeepLink?.number?workOrderDeepLink.tab:undefined
   const todayStamp=()=>nowLocalDate()
   const materialCodeFor=value=>materialRecords.find(item=>cleanText(item.itemNumber)===cleanText(value)||cleanText(item.description)===cleanText(value))?.itemNumber||cleanText(value)
+  const toolCodeFor=value=>toolRecords.find(item=>cleanText(item.toolNumber)===cleanText(value)||cleanText(item.description)===cleanText(value))?.toolNumber||cleanText(value)
+  const itemCodeFor=(type,value)=>['Tool','Equipment'].includes(type)?toolCodeFor(value):materialCodeFor(value)
   const storeCodeFor=value=>storeRecords.find(store=>cleanText(store.code)===cleanText(value)||cleanText(store.name)===cleanText(value))?.code||cleanText(value)
+  const preferredStoreFor=record=>storeCodeFor(record.source)||storeRecords.find(store=>store.status!=='Inactive')?.code||''
+  const upsertStockRecord=(storeCode,itemCode,patch)=>{
+    if(!storeCode||!itemCode) return
+    const existing=stockRecords.find(row=>String(row.storeroom)===String(storeCode)&&String(row.itemNumber)===String(itemCode))
+    const next={
+      storeroom: storeCode,
+      itemNumber: itemCode,
+      balance: Math.max(0,Number(existing?.balance||0)+Number(patch.balanceDelta||0)),
+      reserved: Math.max(0,Number(existing?.reserved||0)+Number(patch.reservedDelta||0)),
+      reorderLevel: patch.reorderLevel ?? existing?.reorderLevel ?? null
+    }
+    setStockRecords(rows=>{
+      const hasRow=rows.some(row=>String(row.storeroom)===String(storeCode)&&String(row.itemNumber)===String(itemCode))
+      return hasRow
+        ? rows.map(row=>String(row.storeroom)===String(storeCode)&&String(row.itemNumber)===String(itemCode)?next:row)
+        : [next,...rows]
+    })
+    const payload={balance:next.balance,reserved_quantity:next.reserved,reorder_point:next.reorderLevel}
+    const encodedStore=encodeURIComponent(storeCode)
+    const encodedItem=encodeURIComponent(itemCode)
+    const request=existing
+      ? api.put(`/inventory-stock/${encodedStore}/${encodedItem}`, payload)
+      : api.post('/inventory-stock', { store_code: storeCode, item_code: itemCode, ...payload })
+    request.catch(error=>setWorkspaceError(error.message||'Unable to update inventory stock.'))
+  }
+  const receivePurchaseOrderStock=order=>{
+    const quantity=Number(order.quantity||0)
+    if(!quantity) return
+    if(order.type==='Material') {
+      const storeCode=preferredStoreFor(order)
+      const itemCode=itemCodeFor(order.type,order.itemCode||order.item)
+      upsertStockRecord(storeCode,itemCode,{balanceDelta:quantity})
+      return
+    }
+    const toolNumber=itemCodeFor(order.type,order.itemCode||order.item)
+    const existing=toolRecords.find(tool=>cleanText(tool.toolNumber)===cleanText(toolNumber)||cleanText(tool.description)===cleanText(order.item))
+    if(existing) {
+      saveTools(rows=>rows.map(tool=>cleanText(tool.toolNumber)===cleanText(existing.toolNumber)?{...tool,quantity:Number(tool.quantity||0)+quantity,status:tool.status==='Maintenance'?'Maintenance':'Available'}:tool))
+      return
+    }
+    saveTools(rows=>[{toolNumber,description:order.item||toolNumber,category:order.type||'Tool',location:order.source||'',quantity,status:'Available',inspectionDue:''},...rows])
+  }
   const resourceMatches = (resource, record, index) => {
     if (record.resourceRequestId) return String(resource.resourceRequestId || '') === String(record.resourceRequestId)
     if (record.resourceIndex !== undefined) return Number(index) === Number(record.resourceIndex)
@@ -1177,19 +1221,19 @@ export default function App() {
     }))
   }
   const createPurchaseRequest=record=>{
-    // Only dedupe within a work order. Without this guard two standalone requests for the
-    // same item would collapse into one, because both have an undefined work order.
-    const existing=record.workOrder?purchaseRequests.find(row=>row.workOrder===record.workOrder&&row.item===record.item):null
+    // Dedupe only the same planned resource line. Separate lines for the same item are
+    // allowed because each line can represent a different shortage/request.
+    const existing=record.resourceRequestId?purchaseRequests.find(row=>String(row.resourceRequestId||'')===String(record.resourceRequestId)&&!['CAN'].includes(row.status)):null
     if(existing) return existing
-    const created={purchaseRequest:`PR-2026-${String(purchaseRequests.length+1).padStart(4,'0')}`,status:'WAPPR',statusDescription:statusDescription('purchaseRequisition','WAPPR'),createdAt:todayStamp(),...record}
-    savePurchaseRequests(rows=>created.workOrder&&rows.some(row=>row.workOrder===created.workOrder&&row.item===created.item)?rows:[created,...rows])
+    const created={purchaseRequest:`PR-2026-${String(purchaseRequests.length+1).padStart(4,'0')}`,status:'WAPPR',statusDescription:statusDescription('purchaseRequisition','WAPPR'),createdAt:todayStamp(),...record,itemCode:itemCodeFor(record.type,record.itemCode||record.item),source:record.type==='Material'?preferredStoreFor(record):record.source}
+    savePurchaseRequests(rows=>created.resourceRequestId&&rows.some(row=>String(row.resourceRequestId||'')===String(created.resourceRequestId)&&!['CAN'].includes(row.status))?rows:[created,...rows])
     linkWorkOrderResourceTransaction(created, { requestStatus: 'WAPPR', transactionRef: created.purchaseRequest, purchaseRequest: created.purchaseRequest, supplyChainStatus: 'PR waiting approval' })
     return created
   }
   const createPurchaseOrderFromRequest=request=>{
     const existing=purchaseOrders.find(order=>order.purchaseRequest===request.purchaseRequest)
     if(existing) return existing
-    const created={purchaseOrder:`PO-2026-${String(purchaseOrders.length+1).padStart(4,'0')}`,purchaseRequest:request.purchaseRequest,workOrder:request.workOrder,type:request.type,item:request.item,quantity:request.quantity,source:request.source,site:request.site,department:request.department,status:'WAPPR',statusDescription:statusDescription('purchaseOrder','WAPPR'),createdAt:todayStamp()}
+    const created={purchaseOrder:`PO-2026-${String(purchaseOrders.length+1).padStart(4,'0')}`,purchaseRequest:request.purchaseRequest,resourceRequestId:request.resourceRequestId,workOrder:request.workOrder,type:request.type,item:request.item,itemCode:itemCodeFor(request.type,request.itemCode||request.item),quantity:request.quantity,source:request.type==='Material'?preferredStoreFor(request):request.source,site:request.site,department:request.department,status:'WAPPR',statusDescription:statusDescription('purchaseOrder','WAPPR'),createdAt:todayStamp()}
     savePurchaseOrders(rows=>rows.some(order=>order.purchaseRequest===request.purchaseRequest)?rows:[created,...rows])
     savePurchaseRequests(rows=>rows.map(row=>row.purchaseRequest===request.purchaseRequest?{...row,status:'APPR',statusDescription:statusDescription('purchaseRequisition','APPR'),purchaseOrder:created.purchaseOrder,approvedAt:todayStamp()}:row))
     linkWorkOrderResourceTransaction(created, { requestStatus: 'APPR', transactionRef: created.purchaseOrder, purchaseRequest: created.purchaseRequest, purchaseOrder: created.purchaseOrder, supplyChainStatus: 'PO waiting approval' })
@@ -1219,12 +1263,12 @@ export default function App() {
       : null
     if(existing) return existing
     const prefix=record.type==='Material'?'RSV':'ALC'
-    const itemCode=materialCodeFor(record.itemCode||record.item)
+      const itemCode=itemCodeFor(record.type,record.itemCode||record.item)
     const created={reservation:`${prefix}-2026-${String(reservations.length+1).padStart(4,'0')}`,status:'ENTERED',statusDescription:statusDescription('inventoryUsage','ENTERED'),createdAt:todayStamp(),arrangedQuantity:0,releasedQuantity:0,deliveredQuantity:0,...record,itemCode}
     const stockStore=storeCodeFor(created.source)
-    const stockItem=materialCodeFor(created.itemCode||created.item)
+    const stockItem=itemCodeFor(created.type,created.itemCode||created.item)
     const reservedQuantity=Number(created.quantity||0)
-    if(stockStore&&stockItem&&reservedQuantity) {
+    if(created.type==='Material'&&stockStore&&stockItem&&reservedQuantity) {
       setStockRecords(rows=>rows.map(row=>{
         if(String(row.storeroom)!==String(stockStore)||String(row.itemNumber)!==String(stockItem)) return row
         return { ...row, reserved: Number(row.reserved||0)+reservedQuantity }
@@ -1246,13 +1290,18 @@ export default function App() {
     savePurchaseOrders(rows=>rows.map(row=>row.purchaseOrder===reference?{...row,...patch,statusDescription:patch.status?statusDescription('purchaseOrder',patch.status):row.statusDescription}:row))
     if(next) {
       linkWorkOrderResourceTransaction(next, { requestStatus: next.status, purchaseRequest: next.purchaseRequest, purchaseOrder: next.purchaseOrder, transactionRef: next.purchaseOrder, supplyChainStatus: `PO ${statusDescription('purchaseOrder', next.status)}` })
-      if(next.status==='CLOSE') {
+      if(source?.status!=='CLOSE'&&next.status==='CLOSE') {
+        receivePurchaseOrderStock(next)
+      }
+      if(source?.status!=='CLOSE'&&next.status==='CLOSE'&&next.workOrder) {
         const reservation=createReservation({
           workOrder: next.workOrder,
+          resourceRequestId: next.resourceRequestId,
           type: next.type,
           item: next.item,
+          itemCode: itemCodeFor(next.type,next.itemCode||next.item),
           quantity: next.quantity,
-          source: `Received via ${next.purchaseOrder}`,
+          source: next.type==='Material'?preferredStoreFor(next):next.source,
           availableQuantity: Number(next.quantity || 0),
           site: next.site,
           department: next.department,
@@ -1268,7 +1317,7 @@ export default function App() {
     const updated=source?{...source,...patch}:null
     const stockStore=storeCodeFor(updated?.source)
     const stockItem=materialCodeFor(updated?.itemCode||updated?.item)
-    if(stockStore&&stockItem) {
+    if(updated?.type==='Material'&&stockStore&&stockItem) {
       const beforeReleased=Number(source?.releasedQuantity||0)
       const afterReleased=Number(updated.releasedQuantity||0)
       const releaseDelta=Math.max(0,afterReleased-beforeReleased)
@@ -1334,10 +1383,10 @@ export default function App() {
     'Labor': <LaborPage rows={laborRecords} setRows={saveLabor} workOrders={scopedWorkOrders} departmentRecords={departmentRecords}/>,
     'Materials': <MaterialsPage rows={materialRecords} setRows={saveMaterials} stockRows={stockRecords} storeRows={storeRecords} workOrders={scopedWorkOrders}/>,
     'Stores': <StoresPage materials={materialRecords} stockRows={stockRecords} storeRows={storeRecords} setStoreRows={saveStores} locationRows={locationRecords} scopeUser={effectiveUser}/>,
-    'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} materials={materialRecords} storeRows={storeRecords} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
+    'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} materials={materialRecords} tools={toolRecords} storeRows={storeRecords} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
     'Purchase Orders': <PurchaseOrdersPage rows={scopedPurchaseOrders} onUpdateOrder={updatePurchaseOrder} onUpdateRequest={updatePurchaseRequest}/>,
     'Reservations': <ReservationsPage rows={scopedReservations} stockRows={stockRecords} onUpdate={updateReservation}/>,
-    'Tools & Equipment': <ToolsPage rows={toolRecords} setRows={saveTools} workOrders={scopedWorkOrders}/>,
+    'Tools & Equipment': <ToolsPage rows={toolRecords} setRows={saveTools} workOrders={scopedWorkOrders} allocations={scopedReservations} storeRows={storeRecords}/>,
     'Users': <UsersPage rows={userRecords} setRows={saveUsers} roleRows={rolePermissionRecords} laborRows={laborRecords} scopeUser={effectiveUser} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
     'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={saveRoles} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
     'Sites': <SitesSettingsPage rows={siteRecords} setRows={saveSites}/>,
