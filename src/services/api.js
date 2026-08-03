@@ -155,6 +155,7 @@ const mapTool = row => ({
   category: row.category || '',
   location: row.location_code || '',
   quantity: numberValue(row.quantity) || 1,
+  lowLevel: numberValue(row.low_level),
   inspectionDue: row.inspection_due || '',
   status: row.status || 'Available'
 })
@@ -277,6 +278,7 @@ const mapServiceRequest = row => ({
 const mapPurchaseRequest = row => ({
   purchaseRequest: row.pr_num,
   workOrder: row.work_order_num || '',
+  resourceRequestId: row.resource_request_id,
   type: row.request_type,
   item: row.item_description || row.item_code,
   itemCode: row.item_code || '',
@@ -298,6 +300,7 @@ const mapPurchaseOrder = row => ({
   purchaseOrder: row.po_num,
   purchaseRequest: row.pr_num,
   workOrder: row.work_order_num || '',
+  resourceRequestId: row.resource_request_id,
   type: row.request_type,
   item: row.item_description || row.item_code,
   itemCode: row.item_code || '',
@@ -316,8 +319,10 @@ const mapPurchaseOrder = row => ({
 const mapReservation = row => ({
   reservation: row.reservation_num,
   workOrder: row.work_order_num,
+  resourceRequestId: row.resource_request_id,
   purchaseRequest: row.pr_num || '',
   purchaseOrder: row.po_num || '',
+  type: String(row.reservation_num || '').startsWith('ALC-') ? 'Tool' : 'Material',
   item: row.item_description || row.item_code,
   itemCode: row.item_code || '',
   quantity: numberValue(row.reserved_quantity),

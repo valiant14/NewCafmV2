@@ -66,7 +66,7 @@ router.use('/tools-equipment', crudRouter({
   moduleName: 'Tools & Equipment',
   table: 'dbo.tools_equipment',
   key: 'tool_code',
-  columns: ['tool_code', 'description', 'category', 'location_code', 'quantity', 'status', 'inspection_due', 'created_at', 'updated_at']
+  columns: ['tool_code', 'description', 'category', 'location_code', 'quantity', 'low_level', 'status', 'inspection_due', 'created_at', 'updated_at']
 }))
 
 router.use('/failure-library', crudRouter({
@@ -130,7 +130,7 @@ router.use('/purchase-requisitions', crudRouter({
   moduleName: 'Purchase Requisitions',
   table: 'dbo.purchase_requisitions',
   key: 'pr_num',
-  columns: ['pr_num', 'work_order_num', 'request_type', 'item_code', 'item_description', 'requested_quantity', 'planned_quantity', 'available_quantity', 'store_code', 'site_code', 'department_name', 'status', 'po_num', 'created_at', 'approved_at', 'closed_at', 'cancelled_at', 'updated_at'],
+  columns: ['pr_num', 'work_order_num', 'resource_request_id', 'request_type', 'item_code', 'item_description', 'requested_quantity', 'planned_quantity', 'available_quantity', 'store_code', 'site_code', 'department_name', 'status', 'po_num', 'created_at', 'approved_at', 'closed_at', 'cancelled_at', 'updated_at'],
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
@@ -138,7 +138,7 @@ router.use('/purchase-orders', crudRouter({
   moduleName: 'Purchase Orders',
   table: 'dbo.purchase_orders',
   key: 'po_num',
-  columns: ['po_num', 'pr_num', 'work_order_num', 'request_type', 'item_code', 'item_description', 'ordered_quantity', 'store_code', 'site_code', 'department_name', 'status', 'created_at', 'approved_at', 'received_at', 'closed_at', 'cancelled_at', 'updated_at'],
+  columns: ['po_num', 'pr_num', 'work_order_num', 'resource_request_id', 'request_type', 'item_code', 'item_description', 'ordered_quantity', 'store_code', 'site_code', 'department_name', 'status', 'created_at', 'approved_at', 'received_at', 'closed_at', 'cancelled_at', 'updated_at'],
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
@@ -146,7 +146,7 @@ router.use('/reservations', crudRouter({
   moduleName: 'Reservations',
   table: 'dbo.inventory_reservations',
   key: 'reservation_num',
-  columns: ['reservation_num', 'work_order_num', 'pr_num', 'po_num', 'item_code', 'item_description', 'reserved_quantity', 'arranged_quantity', 'released_quantity', 'delivered_quantity', 'store_code', 'site_code', 'department_name', 'status', 'created_at', 'updated_at'],
+  columns: ['reservation_num', 'work_order_num', 'resource_request_id', 'pr_num', 'po_num', 'item_code', 'item_description', 'reserved_quantity', 'arranged_quantity', 'released_quantity', 'delivered_quantity', 'store_code', 'site_code', 'department_name', 'status', 'created_at', 'updated_at'],
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 

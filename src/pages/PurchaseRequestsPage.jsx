@@ -18,9 +18,9 @@ const purchaseRequisitionStatuses = ['WAPPR', 'APPR', 'CLOSE', 'CAN']
 
 const emptyRequest = { type: 'Material', item: '', quantity: 1, source: '', site: '1031', department: '', workOrder: '' }
 
-const buildRequestFields = ({ siteRecords = [], departmentRecords = [], materials = [], storeRows = [] }) => [
+const buildRequestFields = ({ siteRecords = [], departmentRecords = [], materials = [], tools = [], storeRows = [] }) => [
   { key: 'type', label: 'Type', options: ['Material', 'Tool', 'Equipment'] },
-  { key: 'item', label: 'Item', required: true, options: ['', ...materials.map(material => material.description || material.itemNumber).filter(Boolean)] },
+  { key: 'item', label: 'Item', required: true, options: ['', ...materials.map(material => material.description || material.itemNumber).filter(Boolean), ...tools.map(tool => tool.description || tool.toolNumber).filter(Boolean)] },
   { key: 'quantity', label: 'Quantity', required: true, type: 'number', min: 1 },
   { key: 'source', label: 'Store', options: ['', ...storeRows.map(store => store.code).filter(Boolean)] },
   { key: 'site', label: 'Site', required: true, suggestions: siteRecords.filter(site => site.status !== 'Inactive').map(site => ({ value: site.code, label: site.name })), placeholder: '1031' },
@@ -44,7 +44,9 @@ const exportColumns = [
 
 export default function PurchaseRequestsPage({
   rows = [],
+  purchaseOrders = [],
   materials = [],
+  tools = [],
   storeRows = [],
   siteRecords = [],
   departmentRecords = [],
@@ -57,9 +59,15 @@ export default function PurchaseRequestsPage({
   const [formError, setFormError] = useState('')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [requestStatus, setRequestStatus] = useState('All')
-  const requestFields = buildRequestFields({ siteRecords, departmentRecords, materials, storeRows })
+  const requestFields = buildRequestFields({ siteRecords, departmentRecords, materials, tools, storeRows })
 
-  const requestRows = requestStatus === 'All' ? rows : rows.filter(row => row.status === requestStatus)
+  const linkedPoFor = row => purchaseOrders.find(order => order.purchaseRequest === row.purchaseRequest) || null
+  const rowsWithPo = rows.map(row => {
+    const linkedPo = linkedPoFor(row)
+    const status = linkedPo?.status === 'CLOSE' ? 'CLOSE' : linkedPo ? (row.status === 'WAPPR' ? 'APPR' : row.status) : row.status
+    return linkedPo ? { ...row, status, purchaseOrder: row.purchaseOrder || linkedPo.purchaseOrder } : row
+  })
+  const requestRows = requestStatus === 'All' ? rowsWithPo : rowsWithPo.filter(row => row.status === requestStatus)
 
   const visibleRows = applyStandardFilters(requestRows, filters, {
     site: ['site'],
@@ -73,6 +81,11 @@ export default function PurchaseRequestsPage({
   const cancelRequest = row => onUpdateRequest?.(row.purchaseRequest, { status: 'CAN', cancelledAt: todayStamp() })
 
   const requestAction = row => {
+    if (row.purchaseOrder || linkedPoFor(row)) {
+      return row.status === 'CLOSE'
+        ? <Badge tone="green">Closed</Badge>
+        : <Badge tone="blue">PO created</Badge>
+    }
     if (row.status === 'WAPPR') {
       return (
         <div className="flex flex-wrap gap-2">
@@ -115,15 +128,15 @@ export default function PurchaseRequestsPage({
           ...purchaseRequisitionStatuses.map(status => ({
             key: status,
             label: status,
-            count: rows.filter(row => row.status === status).length
+            count: rowsWithPo.filter(row => row.status === status).length
           }))
         ]}
       />
       <StandardFilters
         filters={filters}
         setFilters={setFilters}
-        siteOptions={optionsFromRows(rows, ['site'])}
-        departmentOptions={optionsFromRows(rows, ['department'])}
+        siteOptions={optionsFromRows(rowsWithPo, ['site'])}
+        departmentOptions={optionsFromRows(rowsWithPo, ['department'])}
         statusOptions={purchaseRequisitionStatuses}
       />
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
