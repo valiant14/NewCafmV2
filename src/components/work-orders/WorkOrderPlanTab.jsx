@@ -1,4 +1,4 @@
-import { Plus, X } from 'lucide-react'
+import { Lock, Plus, X } from 'lucide-react'
 import Section from '../ui/Section'
 
 const workspaceClass = 'grid gap-3'
@@ -17,6 +17,7 @@ const editableLaborRowClass = `grid grid-cols-[1fr_120px_1fr_40px] ${rowBaseClas
 const resourceRowClass = `grid grid-cols-[120px_1fr_110px_40px] ${rowBaseClass}`
 const taskRowClass = `grid grid-cols-[90px_1fr_120px_40px] ${rowBaseClass}`
 const emptyClass = 'border-t border-[var(--app-line)] px-3 py-6 text-center text-sm text-[var(--app-muted)]'
+const hasTransaction = row => Boolean(row.transactionRef || row.purchaseRequest || row.purchaseOrder || row.reservation)
 
 export default function WorkOrderPlanTab({
   isPM,
@@ -73,16 +74,18 @@ export default function WorkOrderPlanTab({
         <datalist id="planned-tool-options">{toolMaster.map(item => <option value={item.description} key={item.toolNumber}>{item.toolNumber} · {item.category}</option>)}</datalist>
         <div className={tableClass}>
           <div className={resourceHeadClass}><span>Type</span><span>Item / description</span><span>Quantity</span><span /></div>
-          {plannedResources.length ? plannedResources.map((row, index) => (
+          {plannedResources.length ? plannedResources.map((row, index) => {
+            const locked = hasTransaction(row)
+            return (
             <div className={resourceRowClass} key={index}>
-              <select value={row.type} onChange={event => updatePlannedResourceField(index, 'type', event.target.value)}>
+              <select value={row.type} disabled={locked} title={locked ? 'Submitted resource lines cannot be changed. Add a new row for extra quantity.' : undefined} onChange={event => updatePlannedResourceField(index, 'type', event.target.value)}>
                 <option>Material</option><option>Tool</option><option>Equipment</option>
               </select>
-              <input value={row.item} list={row.type === 'Material' ? 'planned-material-options' : 'planned-tool-options'} onChange={event => updatePlannedResource(index, event.target.value)} placeholder={`Search ${row.type.toLowerCase()} number or description`} />
-              <input value={row.quantity} type="number" min="1" step="1" onChange={event => updatePlannedResourceField(index, 'quantity', event.target.value)} placeholder="Enter count" />
-              <button onClick={() => setPlannedResources(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>
+              <input value={row.item} readOnly={locked} title={locked ? 'Submitted resource lines cannot be changed. Add a new row for extra quantity.' : undefined} list={row.type === 'Material' ? 'planned-material-options' : 'planned-tool-options'} onChange={event => updatePlannedResource(index, event.target.value)} placeholder={`Search ${row.type.toLowerCase()} number or description`} />
+              <input value={row.quantity} readOnly={locked} title={locked ? 'Submitted resource lines cannot be changed. Add a new row for extra quantity.' : undefined} type="number" min="1" step="1" onChange={event => updatePlannedResourceField(index, 'quantity', event.target.value)} placeholder="Enter count" />
+              {locked ? <span className="grid h-9 w-9 place-items-center text-[var(--app-muted)]" title="Submitted resource lines cannot be changed. Add a new row for extra quantity."><Lock size={14} /></span> : <button onClick={() => setPlannedResources(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
             </div>
-          )) : <div className={emptyClass}>No planned materials or tools yet.</div>}
+          )}) : <div className={emptyClass}>No planned materials or tools yet.</div>}
         </div>
       </Section>
 

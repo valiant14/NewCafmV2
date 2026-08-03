@@ -168,6 +168,17 @@ const mapFailureCode = row => ({
   'RC - DESCRIPTION': row.remedy_description || ''
 })
 
+const typedTransactionRefs = row => {
+  const ref = row.transaction_ref || ''
+  const text = String(ref).toUpperCase()
+  const status = String(row.supply_chain_status || '').toUpperCase()
+  return {
+    purchaseRequest: row.purchase_request_num || (text.startsWith('PR-') ? ref : ''),
+    purchaseOrder: row.purchase_order_num || (text.startsWith('PO-') ? ref : ''),
+    reservation: row.reservation_num || (text.startsWith('RSV-') || text.startsWith('ALC-') || status.includes('RESERVATION') ? ref : '')
+  }
+}
+
 const mapResourceRequest = row => ({
   resourceRequestId: row.resource_request_id,
   workOrder: row.work_order_num,
@@ -184,6 +195,7 @@ const mapResourceRequest = row => ({
   availabilityStatus: row.availability_status || '',
   requestStatus: row.request_status || '',
   transactionRef: row.transaction_ref || '',
+  ...typedTransactionRefs(row),
   supplyChainStatus: row.supply_chain_status || ''
 })
 
@@ -198,7 +210,17 @@ const mapPlannedLabor = row => ({
   department: row.department_name || ''
 })
 
-const mapWorkOrder = (row, resourceRequests = [], plannedLabor = []) => ({
+const mapWorkOrderTask = row => ({
+  workOrderTaskId: row.work_order_task_id,
+  workOrder: row.work_order_num,
+  sequence: row.task_sequence,
+  description: row.task_description || '',
+  duration: numberValue(row.duration_minutes),
+  site: row.site_code || '',
+  department: row.department_name || ''
+})
+
+const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTasks = []) => ({
   WORKORDER: row.work_order_num,
   'DESCRIPITION ': row.description,
   'LONG DESCRIPTION': row.long_description || '',
@@ -224,6 +246,9 @@ const mapWorkOrder = (row, resourceRequests = [], plannedLabor = []) => ({
   'PLANNED LABOR': plannedLabor
     .filter(labor => String(labor.workOrder) === String(row.work_order_num))
     .sort((left, right) => Number(left.lineOrder || 0) - Number(right.lineOrder || 0)),
+  'JOB PLAN TASKS': workOrderTasks
+    .filter(task => String(task.workOrder) === String(row.work_order_num))
+    .sort((left, right) => Number(left.sequence || 0) - Number(right.sequence || 0)),
   'PLANNED RESOURCES': resourceRequests.filter(resource => String(resource.workOrder) === String(row.work_order_num))
 })
 
@@ -378,6 +403,7 @@ export async function loadWorkspace() {
     workOrders,
     workOrderResources,
     workOrderPlannedLabor,
+    workOrderTasks,
     serviceRequests,
     purchaseRequests,
     purchaseOrders,
@@ -403,6 +429,7 @@ export async function loadWorkspace() {
     safeGet('/work-orders'),
     safeGet('/work-order-resource-requests'),
     safeGet('/work-order-planned-labor'),
+    safeGet('/work-order-tasks'),
     safeGet('/service-requests'),
     safeGet('/purchase-requisitions'),
     safeGet('/purchase-orders'),
@@ -417,6 +444,7 @@ export async function loadWorkspace() {
   const roles = rolesRaw.map(mapRole)
   const mappedWorkOrderResources = workOrderResources.map(mapResourceRequest)
   const mappedWorkOrderPlannedLabor = workOrderPlannedLabor.map(mapPlannedLabor)
+  const mappedWorkOrderTasks = workOrderTasks.map(mapWorkOrderTask)
   return {
     sites: sites.map(mapSite),
     departments: departments.map(mapDepartment),
@@ -430,7 +458,7 @@ export async function loadWorkspace() {
     inventoryStock: inventoryStock.map(mapInventoryStock),
     tools: tools.map(mapTool),
     failureCodes: failureLibrary.map(mapFailureCode),
-    workOrders: workOrders.map(row => mapWorkOrder(row, mappedWorkOrderResources, mappedWorkOrderPlannedLabor)),
+    workOrders: workOrders.map(row => mapWorkOrder(row, mappedWorkOrderResources, mappedWorkOrderPlannedLabor, mappedWorkOrderTasks)),
     serviceRequests: serviceRequests.map(mapServiceRequest),
     purchaseRequests: purchaseRequests.map(mapPurchaseRequest),
     purchaseOrders: purchaseOrders.map(mapPurchaseOrder),

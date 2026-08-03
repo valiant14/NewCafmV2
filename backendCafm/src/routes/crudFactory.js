@@ -58,9 +58,46 @@ const normalizeSubDepartmentCode = async (pool, payload) => {
   }
 }
 
+const normalizeStoreCode = async (pool, payload) => {
+  const value = payload.store_code
+  if (value === undefined) return payload
+  if (value === null || String(value).trim() === '') {
+    return {
+      ...payload,
+      store_code: null
+    }
+  }
+
+  const result = await pool.request()
+    .input('value', String(value).trim())
+    .query(`
+      select top 1 store_code
+      from dbo.storerooms
+      where store_code = @value
+        or store_name = @value
+      order by
+        case
+          when store_code = @value then 0
+          else 1
+        end,
+        store_code
+    `)
+
+  return {
+    ...payload,
+    store_code: result.recordset[0]?.store_code || null
+  }
+}
+
 const normalizeForeignKeys = async (pool, payload, { table }) => {
-  if (table === 'dbo.departments' || !Object.hasOwn(payload, 'sub_department_code')) return payload
-  return normalizeSubDepartmentCode(pool, payload)
+  let normalized = payload
+  if (table !== 'dbo.departments' && Object.hasOwn(normalized, 'sub_department_code')) {
+    normalized = await normalizeSubDepartmentCode(pool, normalized)
+  }
+  if (table !== 'dbo.storerooms' && Object.hasOwn(normalized, 'store_code')) {
+    normalized = await normalizeStoreCode(pool, normalized)
+  }
+  return normalized
 }
 
 const emitChange = (req, payload) => {
