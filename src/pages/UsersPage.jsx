@@ -84,9 +84,14 @@ export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows
     window.history.pushState({}, '', '/users')
   }
 
+  // The backend keys a user's role off role_id, so a role change has to carry the matching
+  // id - sending the name alone would leave the old role in place.
   const updateUser = (userId, patch) => {
-    setRows?.(current => current.map(row => row.userId === userId ? { ...row, ...patch } : row))
-    setSelected(current => current?.userId === userId ? { ...current, ...patch } : current)
+    const changes = 'role' in patch
+      ? { ...patch, roleId: roleRows.find(row => row.role === patch.role)?.roleId }
+      : patch
+    setRows?.(current => current.map(row => row.userId === userId ? { ...row, ...changes } : row))
+    setSelected(current => current?.userId === userId ? { ...current, ...changes } : current)
   }
 
   const save = () => {
@@ -103,6 +108,7 @@ export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows
         user={selected}
         role={roleRows.find(row => row.role === selected.role)}
         labor={laborRows.find(row => row.personId === selected.laborId)}
+        roleOptions={roleRows.filter(row => row.status !== 'Inactive').map(row => row.role)}
         siteOptions={siteOptions}
         departmentOptions={departmentOptions}
         onBack={close}

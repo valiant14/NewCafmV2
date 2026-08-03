@@ -2,7 +2,7 @@ import { useId } from 'react'
 import Combobox from './Combobox'
 import { cn } from '../../lib/cn'
 
-export default function Field({ label, value = '', required, locked, type = 'text', options, suggestions, onChange, placeholder }) {
+export default function Field({ label, value = '', required, locked, type = 'text', options, suggestions, onChange, onBlur, onKeyDown, placeholder }) {
   const listId=useId()
   const controlClass = cn(
     'w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none transition',
@@ -12,17 +12,17 @@ export default function Field({ label, value = '', required, locked, type = 'tex
   )
 
   return (
-    <label className="group grid min-w-0 gap-2">
+    <label className="group grid min-w-0 content-start gap-2">
       <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">
         {label}
         {required && <b className="text-[var(--app-required)]">*</b>}
       </span>
       {options ? (
-        <select className={controlClass} value={value} onChange={onChange} disabled={locked}>
+        <select className={controlClass} value={value} onChange={onChange} onBlur={onBlur} disabled={locked}>
           {options.map(o => <option key={o}>{o}</option>)}
         </select>
       ) : type === 'textarea' ? (
-        <textarea className={controlClass} value={value} onChange={onChange} readOnly={locked} rows="3" placeholder={placeholder} />
+        <textarea className={controlClass} value={value} onChange={onChange} onBlur={onBlur} onKeyDown={onKeyDown} readOnly={locked} rows="3" placeholder={placeholder} />
       ) : suggestions?.length ? (
         <Combobox
           inputId={listId}
@@ -39,6 +39,8 @@ export default function Field({ label, value = '', required, locked, type = 'tex
           type={type}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
+          onKeyDown={onKeyDown}
           readOnly={locked}
           placeholder={placeholder}
         />

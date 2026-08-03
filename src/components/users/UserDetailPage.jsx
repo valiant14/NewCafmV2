@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BriefcaseBusiness, Building2, ShieldCheck, UserRound, Users } from 'lucide-react'
 import Badge from '../ui/Badge'
+import Combobox from '../ui/Combobox'
 import DataTable from '../ui/DataTable'
 import EmptyState from '../ui/EmptyState'
 import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
@@ -9,12 +10,67 @@ import Field from '../ui/Field'
 
 const userStatuses = ['Active', 'Inactive', 'Locked']
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
-const maskPassword = password => password ? '•'.repeat(Math.min(12, Math.max(6, String(password).length))) : 'Not set'
+const everySite = value => !String(value || '').trim() || /^all sites$/i.test(String(value).trim())
+const everyDepartment = value => !String(value || '').trim() || /^all departments$/i.test(String(value).trim())
 
-export default function UserDetailPage({ user, role, labor, siteOptions = [], departmentOptions = [], onBack, onUpdate }) {
+// Keeps the summary tiles at their original size and weight while making the value itself
+// the control, so the page reads the same but every tile is editable where it is shown.
+const tileControl = 'mt-1.5 w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xl font-extrabold tracking-[-.04em] text-[var(--app-ink)] outline-none transition hover:border-[var(--app-line)] hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-field-focus)] focus:bg-[var(--app-panel)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]'
+
+function AccessTile({ icon: Icon, label, note, children }) {
+  return (
+    <div className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{label}</span>
+        <Icon size={16} className="text-[var(--app-primary)]" />
+      </div>
+      {children}
+      <small className="mt-1 block truncate text-[11px] font-semibold text-[var(--app-muted)]">{note}</small>
+    </div>
+  )
+}
+
+// Each keystroke would otherwise be its own save, so text edits are held locally and
+// committed when the field is left or Enter is pressed.
+function EditableField({ label, value = '', type, placeholder, clearOnCommit, onCommit }) {
+  const [draft, setDraft] = useState(value)
+  useEffect(() => { setDraft(value) }, [value])
+  const commit = () => {
+    if (draft === value) return
+    onCommit(draft)
+    if (clearOnCommit) setDraft('')
+  }
+
+  return (
+    <Field
+      label={label}
+      value={draft}
+      type={type}
+      placeholder={placeholder}
+      onChange={event => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={event => {
+        if (event.key === 'Enter') event.target.blur()
+        if (event.key === 'Escape') setDraft(value)
+      }}
+    />
+  )
+}
+
+export default function UserDetailPage({ user, role, labor, roleOptions = [], siteOptions = [], departmentOptions = [], onBack, onUpdate }) {
   const [tab, setTab] = useState('User Details')
   const changeStatus = event => onUpdate?.(user.userId, { status: event.target.value })
   const updateField = key => event => onUpdate?.(user.userId, { [key]: event.target.value })
+  const commitField = key => value => onUpdate?.(user.userId, { [key]: value })
+  // The user's current role stays selectable even when it is missing from the role master,
+  // so opening the page never silently reassigns them to whichever role sorts first.
+  const roleChoices = [...new Set([user.role, ...roleOptions].filter(Boolean))]
+  // Typing in the role box only filters the list - a user has to hold a role that exists,
+  // so a half-typed name is never saved.
+  const changeRole = event => {
+    const picked = roleChoices.find(item => item.toLowerCase() === String(event.target.value).trim().toLowerCase())
+    if (picked) onUpdate?.(user.userId, { role: picked })
+  }
   const permissionRows = Object.entries(role?.permissions || {}).map(([action, modules]) => ({
     action,
     modules: modules.join(', ') || '-',
@@ -54,49 +110,40 @@ export default function UserDetailPage({ user, role, labor, siteOptions = [], de
 
         {tab === 'User Details' && (
           <main className="space-y-4">
-            <section className="grid gap-3 md:grid-cols-4">
-              {[
-                { icon: UserRound, label: 'Account', value: user.username, note: user.email },
-                { icon: ShieldCheck, label: 'Role', value: user.role, note: role?.status || 'No role' },
-                { icon: Building2, label: 'Scope', value: user.site, note: user.department },
-                { icon: BriefcaseBusiness, label: 'Labor', value: user.laborId || '-', note: labor?.craft || 'No labor link' }
-              ].map(metric => {
-                const Icon = metric.icon
-                return (
-                  <div key={metric.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{metric.label}</span>
-                      <Icon size={16} className="text-[var(--app-primary)]" />
-                    </div>
-                    <strong className="mt-2 block truncate text-xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{metric.value}</strong>
-                    <small className="block truncate text-[11px] font-semibold text-[var(--app-muted)]">{metric.note}</small>
-                  </div>
-                )
-              })}
+            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <AccessTile icon={ShieldCheck} label="Role" note={role?.status || 'No role'}>
+                <Combobox className={tileControl} value={user.role || ''} suggestions={roleChoices} onChange={changeRole} placeholder="Select a role" />
+              </AccessTile>
+
+              <AccessTile icon={Building2} label="Site Scope" note={everySite(user.site) ? 'Every site' : 'Listed sites only'}>
+                <Combobox className={tileControl} value={user.site || ''} suggestions={siteOptions} onChange={updateField('site')} placeholder="All Sites" />
+              </AccessTile>
+
+              <AccessTile icon={Building2} label="Department Scope" note={everyDepartment(user.department) ? 'Every department' : 'Listed departments only'}>
+                <Combobox className={tileControl} value={user.department || ''} suggestions={departmentOptions} onChange={updateField('department')} placeholder="All Departments" />
+              </AccessTile>
+
+              <AccessTile icon={BriefcaseBusiness} label="Labor" note={labor?.craft || 'No labor link'}>
+                <strong className="mt-2 block truncate text-xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{user.laborId || '-'}</strong>
+              </AccessTile>
             </section>
 
-            <InfoCard
-              icon={UserRound}
-              kicker="ACCOUNT"
-              title="User Information"
-              items={[
-                ['User ID', user.userId],
-                ['Username', user.username],
-                ['Password', maskPassword(user.password)],
-                ['Name', user.name],
-                ['Email', user.email],
-                ['Status', user.status],
-                ['Last Login', user.lastLogin]
-              ]}
-            />
             <section className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-              <header className="mb-4 border-b border-[var(--app-line)] pb-4">
-                <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">ACCESS SCOPE</span>
-                <h2 className="text-base font-extrabold text-[var(--app-ink)]">User Site Access</h2>
+              <header className="mb-4 flex items-center gap-3 border-b border-[var(--app-line)] pb-4">
+                <UserRound className="text-[var(--app-muted)]" size={18} />
+                <div>
+                  <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">ACCOUNT</span>
+                  <h2 className="text-base font-extrabold text-[var(--app-ink)]">User Information</h2>
+                </div>
               </header>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Site Scope" value={user.site || ''} onChange={updateField('site')} suggestions={siteOptions} placeholder="All Sites or Riyadh / 1031, Jeddah / 1032" />
-                <Field label="Department Scope" value={user.department || ''} onChange={updateField('department')} suggestions={departmentOptions} placeholder="All Departments or HVAC, Civil" />
+              <div className="grid gap-3 md:grid-cols-3">
+                <Field label="User ID" value={user.userId} locked />
+                <EditableField label="Username" value={user.username || ''} onCommit={commitField('username')} />
+                <Field label="Status" value={user.status} options={userStatuses} onChange={changeStatus} />
+                <EditableField label="Name" value={user.name || ''} onCommit={commitField('name')} />
+                <EditableField label="Email" value={user.email || ''} onCommit={commitField('email')} placeholder="name@company.com" />
+                <EditableField label="New Password" value="" type="password" placeholder="Leave blank to keep current" clearOnCommit onCommit={commitField('password')} />
+                <Field label="Last Login" value={user.lastLogin || '-'} locked />
               </div>
             </section>
           </main>
