@@ -39,6 +39,20 @@ const rowsToRoles = rows => {
   return [...map.values()]
 }
 
+const readRole = async (pool, roleId) => {
+  const result = await pool.request()
+    .input('roleId', roleId)
+    .query(`
+      select r.role_id, r.role_code, r.role_name, r.scope_description, r.status,
+        p.module_name, p.action_name, p.allowed
+      from dbo.roles r
+      left join dbo.role_permissions p on p.role_id = r.role_id
+      where r.role_id = @roleId
+      order by r.role_id
+    `)
+  return rowsToRoles(result.recordset)[0] || null
+}
+
 const syncPermissions = async (pool, roleId, permissions = {}) => {
   const pairs = []
   const seen = new Set()
@@ -135,7 +149,7 @@ router.post('/', requirePermission('Roles & Permissions', 'create'), asyncHandle
     `)
     await syncPermissions(pool, req.params.id, req.body.permissions)
     emitChange(req, { action: 'edit', id: result.recordset[0]?.role_id })
-    return res.json(result.recordset[0])
+    return res.json(await readRole(pool, req.params.id))
   }
   const result = await pool.request()
     .input('role_code', req.body.role_code || codeFromName(req.body.role_name))
@@ -149,7 +163,7 @@ router.post('/', requirePermission('Roles & Permissions', 'create'), asyncHandle
   `)
   await syncPermissions(pool, result.recordset[0].role_id, req.body.permissions)
   emitChange(req, { action: 'create', id: result.recordset[0]?.role_id })
-  res.status(201).json(result.recordset[0])
+  res.status(201).json(await readRole(pool, result.recordset[0].role_id))
 }))
 
 router.put('/:id', requirePermission('Roles & Permissions', 'edit'), asyncHandler(async (req, res) => {
@@ -170,7 +184,7 @@ router.put('/:id', requirePermission('Roles & Permissions', 'edit'), asyncHandle
   if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
   if (req.body.permissions) await syncPermissions(pool, req.params.id, req.body.permissions)
   emitChange(req, { action: 'edit', id: result.recordset[0]?.role_id })
-  res.json(result.recordset[0])
+  res.json(await readRole(pool, req.params.id))
 }))
 
 export default router

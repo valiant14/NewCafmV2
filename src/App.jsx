@@ -179,10 +179,17 @@ const persistRowsToBackend = async ({ before = [], after = [], key, endpoint, ap
   }
 }
 const backendSetter = (setState, config) => update => {
-  let persistence = Promise.resolve()
+  let resolvePersistence
+  let rejectPersistence
+  const persistence = new Promise((resolve, reject) => {
+    resolvePersistence = resolve
+    rejectPersistence = reject
+  })
   setState(current => {
     const next = typeof update === 'function' ? update(current) : update
-    persistence = queuePersistence(config.endpoint, () => persistRowsToBackend({ before: current, after: Array.isArray(next) ? next : [], ...config }))
+    queuePersistence(config.endpoint, () => persistRowsToBackend({ before: current, after: Array.isArray(next) ? next : [], ...config }))
+      .then(resolvePersistence)
+      .catch(rejectPersistence)
     return next
   })
   return persistence
@@ -1318,7 +1325,8 @@ export default function App() {
     const nextRows = typeof update === 'function' ? update(beforeRows) : update
     const beforeCount = Array.isArray(beforeRows) ? beforeRows.length : 0
     const nextCount = Array.isArray(nextRows) ? nextRows.length : 0
-    const action = nextCount > beforeCount ? 'create' : nextCount < beforeCount ? 'edit' : 'edit'
+    const hasUnsavedRole = moduleName === 'Roles & Permissions' && Array.isArray(nextRows) && nextRows.some(row => !row.roleId)
+    const action = nextCount > beforeCount || hasUnsavedRole ? 'create' : nextCount < beforeCount ? 'edit' : 'edit'
     if (!canDo(moduleName, action)) {
       notify(`No ${action} access for ${moduleName}. Ask an administrator to update your role permissions.`, 'error')
       return Promise.resolve()
@@ -1813,7 +1821,7 @@ export default function App() {
         {activePage === 'Overview' ? <OverviewPage onNavigate={navigate} onOpenWorkOrderTab={openWorkOrderTab} currentUser={effectiveUser} projectName={projectName} assets={scopedAssets} incidents={scopedIncidents} workOrders={scopedWorkOrders} pmRecords={pmScheduleRecords} failureCodes={failureCodeRecords} meters={meterRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} reservations={scopedReservations} /> : pages[activePage]}
       </AppShell>
       {toast && (
-        <div className="fixed bottom-5 right-5 z-[100] max-w-sm rounded-2xl border border-[var(--app-line)] bg-white p-4 text-sm shadow-[0_18px_50px_rgba(20,35,29,.18)]">
+        <div className="fixed bottom-5 right-5 z-[9999] max-w-sm rounded-2xl border border-[var(--app-line)] bg-white p-4 text-sm shadow-[0_18px_50px_rgba(20,35,29,.18)]">
           <div className="flex items-start gap-3">
             <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${toast.tone === 'error' ? 'bg-red-500' : toast.tone === 'success' ? 'bg-emerald-600' : 'bg-[var(--app-primary)]'}`} />
             <div className="min-w-0">
