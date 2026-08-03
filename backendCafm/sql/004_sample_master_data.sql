@@ -139,10 +139,10 @@ go
 
 if not exists (
   select 1 from dbo.meter_readings
-  where meter_id = 'MTR-0001' and asset_num = 'FCU-100-0001' and reading_at = cast('2026-08-02T08:00:00' as datetime2)
+  where meter_id = 'MTR-0001' and asset_num = 'CIV-100-0001' and reading_at = cast('2026-08-02T08:00:00' as datetime2)
 )
 insert into dbo.meter_readings(meter_id, asset_num, work_order_num, site_code, department_name, reading_value, reading_unit, reading_at)
-values('MTR-0001', 'FCU-100-0001', null, '1031', 'Mechanical', 1250, 'hours', cast('2026-08-02T08:00:00' as datetime2));
+values('MTR-0001', 'CIV-100-0001', null, '1031', 'Civil', 1250, 'kWh', cast('2026-08-02T08:00:00' as datetime2));
 go
 
 merge dbo.users as target

@@ -15,6 +15,7 @@ const timingGridClass = 'grid flex-1 grid-cols-1 md:grid-cols-3'
 const timingCellClass = 'grid gap-1 border-b border-[var(--app-line)] p-3 text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)] md:border-b-0 md:border-r'
 const formGridClass = 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'
 const twoColumnGridClass = 'grid grid-cols-1 gap-4 md:grid-cols-2'
+const laborGridClass = 'grid grid-cols-1 gap-4 md:grid-cols-[1.4fr_.7fr_.9fr_.9fr]'
 const resourceListClass = 'grid gap-2'
 const resourceRowClass = 'flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-3 [&>span]:flex [&>span]:items-center [&>span]:gap-2 [&>span]:text-[var(--app-primary)] [&_strong]:text-sm [&_strong]:text-[var(--app-ink)] [&_label]:flex [&_label]:items-center [&_label]:gap-2 [&_label]:text-xs [&_label]:text-[var(--app-muted)] [&_input]:h-9 [&_input]:w-24 [&_input]:rounded-lg [&_input]:border [&_input]:border-[var(--app-field-border)] [&_input]:bg-[var(--app-panel)] [&_input]:px-3 [&_input]:text-sm'
 const closeoutGridClass = 'grid gap-3 md:grid-cols-4'
@@ -24,7 +25,7 @@ function formatDateTime(value, fallback = 'Not recorded') {
   return value ? new Date(value).toLocaleString() : fallback
 }
 
-const returnRowClass = 'grid grid-cols-[1.5fr_80px_110px_1fr] items-center gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-3'
+const returnRowClass = 'grid grid-cols-1 items-center gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4 md:grid-cols-[1.5fr_80px_160px_1fr]'
 const cellLabelClass = 'block text-[9px] font-extrabold uppercase tracking-[.1em] text-[var(--app-muted)]'
 const qtyInputClass = 'mt-1 h-9 w-full rounded-lg border border-[var(--app-field-border)] bg-[var(--app-panel)] px-2 text-sm text-[var(--app-ink)] outline-none focus:border-[var(--app-field-focus)]'
 const returnButtonClass = 'inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--warning)] bg-[var(--app-badge-orange-bg)] px-3 text-xs font-bold text-[var(--app-badge-orange-text)] transition hover:brightness-95'
@@ -56,20 +57,20 @@ function ActualResourceSection({ title, note, rows, icon: Icon, update, onReturn
                   <strong className="truncate text-sm text-[var(--app-ink)]">{row.item}</strong>
                 </span>
 
-                <span>
+                <span className="md:justify-self-center">
                   <span className={cellLabelClass}>{isTool ? 'Taken' : 'Issued'}</span>
                   <strong className="mt-1 block text-sm text-[var(--app-ink)]">{plannedOf(row) || '—'}</strong>
                 </span>
 
                 {/* A tool is not consumed, so there is no "used" figure to record for it. */}
-                {isTool ? <span /> : (
+                {isTool ? <span className="hidden md:block" /> : (
                   <label>
                     <span className={cellLabelClass}>Used qty</span>
-                    <input className={qtyInputClass} type="number" min="0" value={row.actualQuantity ?? ''} onChange={event => update(index, event.target.value)} placeholder="0" />
+                    <input className={`${qtyInputClass} max-w-[140px]`} type="number" min="0" value={row.actualQuantity ?? ''} onChange={event => update(index, event.target.value)} placeholder="0" />
                   </label>
                 )}
 
-                <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
                   {over > 0 && <Badge tone="orange">Over by {over}</Badge>}
                   {row.returned
                     ? isRecentlyReturned(row)
@@ -117,8 +118,6 @@ export default function WorkOrderActualTab({
   setCompletionNotes,
   actualLabor,
   setActualLabor,
-  laborCraft,
-  setLaborCraft,
   actualHours,
   setActualHours,
   actualStart,
@@ -169,7 +168,7 @@ export default function WorkOrderActualTab({
 
   return (
     <>
-      {step && (
+      {false && step && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
           <div className="grid gap-1">
             <strong className="text-sm text-[var(--app-ink)]">{step.ready ? `Ready to ${step.label.toLowerCase()}` : 'Not ready yet'}</strong>
@@ -200,9 +199,8 @@ export default function WorkOrderActualTab({
       </Section>
 
       <Section compact title="Actual Labor">
-        <div className={formGridClass}>
-          <Field label="Technician / Labor" value={actualLabor} onChange={event => setActualLabor(event.target.value)} required />
-          <Field label="Labor Craft Code" value={laborCraft} onChange={event => setLaborCraft(event.target.value)} required />
+        <div className={laborGridClass}>
+          <Field label="Technicians / Labor" value={actualLabor} onChange={event => setActualLabor(event.target.value)} required />
           <Field label="Actual Labor Hours" value={actualHours} onChange={event => setActualHours(event.target.value)} type="number" required />
           <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" />
           <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" />

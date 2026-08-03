@@ -1,16 +1,16 @@
 import { useId } from 'react'
 import Combobox from './Combobox'
 
-export function Field({ label, value = '', required, locked, type = 'text', options, suggestions, onChange, placeholder }) {
+export function Field({ label, value = '', required, locked, disabled = false, type = 'text', options, suggestions, onChange, placeholder }) {
   const listId = useId()
   if (locked) return null
-  const controlClass = 'w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]'
+  const controlClass = `w-full rounded-xl border border-[var(--app-field-border)] px-3 text-sm outline-none transition placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)] ${disabled ? 'cursor-not-allowed bg-[var(--app-table-header-bg)] text-[var(--app-muted)]' : 'bg-[var(--app-panel)] text-[var(--app-ink)]'}`
   return <label className="grid min-w-0 gap-2">
     <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">{label}{required && <b className="text-[var(--app-required)]">*</b>}</span>
-    {options ? <select className={`${controlClass} h-11`} value={value} onChange={onChange}>{options.map(option => <option key={option}>{option}</option>)}</select> :
-      type === 'textarea' ? <textarea className={`${controlClass} min-h-[86px] py-3 leading-relaxed`} value={value} onChange={onChange} rows="3" /> :
+    {options ? <select className={`${controlClass} h-11`} value={value} onChange={onChange} disabled={disabled}>{options.map(option => <option key={option}>{option}</option>)}</select> :
+      type === 'textarea' ? <textarea className={`${controlClass} min-h-[86px] py-3 leading-relaxed`} value={value} onChange={onChange} rows="3" disabled={disabled} /> :
       suggestions?.length ? <Combobox inputId={listId} className={`${controlClass} h-11`} value={value} suggestions={suggestions} onChange={onChange} placeholder={placeholder} /> :
-      <input className={`${controlClass} h-11`} type={type} value={value} onChange={onChange} placeholder={placeholder} />}
+      <input className={`${controlClass} h-11`} type={type} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} />}
   </label>
 }
 

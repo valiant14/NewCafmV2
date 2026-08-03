@@ -40,6 +40,16 @@ const safeGet = path => api.get(path).catch(error => {
 
 const dateValue = value => value || ''
 const numberValue = value => value === null || value === undefined ? '' : Number(value)
+const jsonArrayValue = value => {
+  if (Array.isArray(value)) return value
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
 
 const mapSite = row => ({
   code: row.site_code,
@@ -224,7 +234,13 @@ const mapWorkOrderTask = row => ({
   department: row.department_name || ''
 })
 
-const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTasks = []) => ({
+const workOrderMeter = (row, meterRows = []) => meterRows
+  .filter(meter => String(meter.workOrder) === String(row.work_order_num))
+  .sort((left, right) => String(right.readingDate || '').localeCompare(String(left.readingDate || '')))[0] || null
+
+const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTasks = [], meterRows = []) => {
+  const meter = workOrderMeter(row, meterRows)
+  return {
   WORKORDER: row.work_order_num,
   'DESCRIPITION ': row.description,
   'LONG DESCRIPTION': row.long_description || '',
@@ -247,6 +263,19 @@ const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTa
   'PROBLEM CODE': row.problem_code || '',
   'CAUSE CODE': row.cause_code || '',
   'REMEDY CODE': row.remedy_code || '',
+  'PTW REQUIRED': Boolean(row.ptw_required),
+  'PTW FILES': jsonArrayValue(row.ptw_files_json),
+  'GENERAL FILES': jsonArrayValue(row.general_files_json),
+  'TECHNICIAN REMARKS': row.technician_remarks || '',
+  'COMPLETION NOTES': row.completion_notes || '',
+  'ACTUAL LABOR': row.actual_labor || '',
+  'ACTUAL HOURS': row.actual_hours ?? '',
+  'ACTUAL MATERIALS': jsonArrayValue(row.actual_materials_json),
+  'ACTUAL TOOLS': jsonArrayValue(row.actual_tools_json),
+  'METER ID': meter?.meterId || '',
+  'METER READING': meter?.reading ?? '',
+  'METER READING UNIT': meter?.unit || '',
+  'METER READING DATE': meter?.readingDate || '',
   'PLANNED LABOR': plannedLabor
     .filter(labor => String(labor.workOrder) === String(row.work_order_num))
     .sort((left, right) => Number(left.lineOrder || 0) - Number(right.lineOrder || 0)),
@@ -254,7 +283,8 @@ const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTa
     .filter(task => String(task.workOrder) === String(row.work_order_num))
     .sort((left, right) => Number(left.sequence || 0) - Number(right.sequence || 0)),
   'PLANNED RESOURCES': resourceRequests.filter(resource => String(resource.workOrder) === String(row.work_order_num))
-})
+  }
+}
 
 const mapServiceRequest = row => ({
   sr: row.sr_num,
@@ -381,7 +411,9 @@ const mapMeter = row => ({
   department: row.department_name || '',
   reading: row.reading_value,
   unit: row.reading_unit || '',
-  readingDate: row.reading_at || ''
+  meterType: row.reading_unit === 'm3' ? 'Water' : row.reading_unit === 'kWh' ? 'Energy' : 'General',
+  readingDate: row.reading_at || '',
+  status: row.status || 'Active'
 })
 
 const mapJobTask = row => ({
@@ -453,6 +485,7 @@ export async function loadWorkspace() {
   const mappedWorkOrderResources = workOrderResources.map(mapResourceRequest)
   const mappedWorkOrderPlannedLabor = workOrderPlannedLabor.map(mapPlannedLabor)
   const mappedWorkOrderTasks = workOrderTasks.map(mapWorkOrderTask)
+  const mappedMeters = meters.map(mapMeter)
   return {
     sites: sites.map(mapSite),
     departments: departments.map(mapDepartment),
@@ -466,7 +499,7 @@ export async function loadWorkspace() {
     inventoryStock: inventoryStock.map(mapInventoryStock),
     tools: tools.map(mapTool),
     failureCodes: failureLibrary.map(mapFailureCode),
-    workOrders: workOrders.map(row => mapWorkOrder(row, mappedWorkOrderResources, mappedWorkOrderPlannedLabor, mappedWorkOrderTasks)),
+    workOrders: workOrders.map(row => mapWorkOrder(row, mappedWorkOrderResources, mappedWorkOrderPlannedLabor, mappedWorkOrderTasks, mappedMeters)),
     serviceRequests: serviceRequests.map(mapServiceRequest),
     purchaseRequests: purchaseRequests.map(mapPurchaseRequest),
     purchaseOrders: purchaseOrders.map(mapPurchaseOrder),
@@ -475,6 +508,6 @@ export async function loadWorkspace() {
     jobPlans: jobPlans.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status })),
     jobTasks: jobPlanTasks.map(mapJobTask),
     incidents: incidents.map(mapIncident),
-    meters: meters.map(mapMeter)
+    meters: mappedMeters
   }
 }

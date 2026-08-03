@@ -113,6 +113,19 @@ const toDateOrNull = value => {
 }
 const toText = value => String(value ?? '').trim()
 const statusText = (value, fallback = 'Active') => toText(value) || fallback
+const fileMetadata = rows => (Array.isArray(rows) ? rows : []).map(file => ({
+  name: file.name || 'Attachment',
+  size: file.size || '',
+  type: file.type || 'Document',
+  dataUrl: file.dataUrl || ''
+}))
+const actualResourceMetadata = rows => (Array.isArray(rows) ? rows : []).map(row => ({
+  ...row,
+  actualQuantity: row.actualQuantity ?? '',
+  returned: Boolean(row.returned),
+  returnedQuantity: Number(row.returnedQuantity || 0),
+  returnedAt: Number(row.returnedAt || 0)
+}))
 const uniqueCodeOptions = (rows = [], codeKey, descriptionKey) => [
   ...new Map(rows
     .filter(row => cleanText(row?.[codeKey]))
@@ -334,10 +347,72 @@ const persistWorkOrderResources = async order => {
     }
   }
 }
+const workOrderMeterPayloads = order => {
+  const workOrderNum = toText(order.WORKORDER)
+  const readingAt = toDateOrNull(order['METER READING DATE']) || new Date()
+  return [{
+    asset_num: order.ASSET || null,
+    work_order_num: workOrderNum,
+    site_code: order.SITE || '1031',
+    department_name: order['DEPARTMENT '] || '',
+    meter_id: toText(order['METER ID']),
+    reading_value: toNumberOrNull(order['METER READING']),
+    reading_unit: order['METER READING UNIT'] || '',
+    reading_at: readingAt
+  }]
+}
+const comparableMeterPayload = row => ({
+  meter_id: toText(row.meter_id),
+  asset_num: row.asset_num || null,
+  work_order_num: toText(row.work_order_num),
+  site_code: row.site_code || '1031',
+  department_name: row.department_name || '',
+  reading_value: toNumberOrNull(row.reading_value) || 0,
+  reading_unit: row.reading_unit || '',
+  reading_at: toDateOrNull(row.reading_at)?.toISOString?.() || String(row.reading_at || '')
+})
+const sameMeterPayload = (existing, payload) => rowFingerprint(comparableMeterPayload(existing)) === rowFingerprint(comparableMeterPayload(payload))
+const persistWorkOrderMeters = async order => {
+  const workOrderNum = toText(order.WORKORDER)
+  const selectedMeterId = toText(order['METER ID'])
+  if (!workOrderNum) return
+  const rows = await safeApiList('/meter-readings')
+  const generated = rows
+    .filter(row => String(row.work_order_num) === workOrderNum)
+    .filter(row => ['GENERAL', 'WATER', 'ENERGY'].some(suffix => String(row.meter_id || '').toUpperCase().endsWith(`-${suffix}`)))
+  for (const row of generated) {
+    if (row.meter_reading_id) await api.delete(`/meter-readings/${encodeURIComponent(row.meter_reading_id)}`)
+  }
+  const payloads = workOrderMeterPayloads(order)
+  for (const payload of payloads) {
+    const match = rows
+      .filter(row => String(row.meter_id) === selectedMeterId)
+      .sort((left, right) => String(right.reading_at || '').localeCompare(String(left.reading_at || '')))[0]
+    if (!payload.meter_id || payload.reading_value === null) {
+      continue
+    }
+    const cleanPayload = {
+      meter_id: payload.meter_id,
+      asset_num: match?.asset_num || payload.asset_num,
+      work_order_num: payload.work_order_num,
+      site_code: match?.site_code || payload.site_code,
+      department_name: match?.department_name || payload.department_name,
+      reading_value: payload.reading_value,
+      reading_unit: match?.reading_unit || payload.reading_unit,
+      reading_at: payload.reading_at
+    }
+    if (match?.meter_reading_id) {
+      if (!sameMeterPayload(match, cleanPayload)) await api.put(`/meter-readings/${encodeURIComponent(match.meter_reading_id)}`, cleanPayload)
+    } else {
+      await api.post('/meter-readings', cleanPayload)
+    }
+  }
+}
 const persistWorkOrderChildren = async order => {
   await persistWorkOrderResources(order)
   await persistWorkOrderPlannedLabor(order)
   await persistWorkOrderTasks(order)
+  await persistWorkOrderMeters(order)
 }
 const apiMappers = {
   sites: {
@@ -398,7 +473,7 @@ const apiMappers = {
     endpoint: '/work-orders',
     key: 'WORKORDER',
     apiKey: 'work_order_num',
-    toApi: row => ({ work_order_num: toText(row.WORKORDER), description: toText(row['DESCRIPITION '] || row.DESCRIPTION), long_description: row['LONG DESCRIPTION'] || '', location_code: row['LOCATION '] || '', asset_num: row.ASSET || null, status: statusText(row.STATUS, 'WAPPR'), work_type: row['WORK TYPE '] || row['WORK TYPE'] || 'CM', priority: toNumberOrNull(row.PRIORTY || row.priority), site_code: row.SITE || '1031', department_name: row['DEPARTMENT '] || '', sub_department_code: row['SUB DEPARTMENT  NAME'] || '', assigned_department_name: row['ASSIGNED DEPARTMENT'] || row['DEPARTMENT '] || '', target_start_at: toDateOrNull(row['TARGET START ']), target_finish_at: toDateOrNull(row['TARGET FINISH ']), actual_start_at: toDateOrNull(row['ACTUAL START ']), actual_finish_at: toDateOrNull(row['ACTUAL FINISH ']), reported_at: toDateOrNull(row['REPORTED DATE ']) || new Date(), source_sr_num: row['SOURCE SR'] || null, failure_code: row['FAILURE CODE'] || '', problem_code: row['PROBLEM CODE'] || '', cause_code: row['CAUSE CODE'] || '', remedy_code: row['REMEDY CODE'] || '' }),
+    toApi: row => ({ work_order_num: toText(row.WORKORDER), description: toText(row['DESCRIPITION '] || row.DESCRIPTION), long_description: row['LONG DESCRIPTION'] || '', location_code: row['LOCATION '] || '', asset_num: row.ASSET || null, status: statusText(row.STATUS, 'WAPPR'), work_type: row['WORK TYPE '] || row['WORK TYPE'] || 'CM', priority: toNumberOrNull(row.PRIORTY || row.priority), site_code: row.SITE || '1031', department_name: row['DEPARTMENT '] || '', sub_department_code: row['SUB DEPARTMENT  NAME'] || '', assigned_department_name: row['ASSIGNED DEPARTMENT'] || row['DEPARTMENT '] || '', target_start_at: toDateOrNull(row['TARGET START ']), target_finish_at: toDateOrNull(row['TARGET FINISH ']), actual_start_at: toDateOrNull(row['ACTUAL START ']), actual_finish_at: toDateOrNull(row['ACTUAL FINISH ']), reported_at: toDateOrNull(row['REPORTED DATE ']) || new Date(), source_sr_num: row['SOURCE SR'] || null, failure_code: row['FAILURE CODE'] || '', problem_code: row['PROBLEM CODE'] || '', cause_code: row['CAUSE CODE'] || '', remedy_code: row['REMEDY CODE'] || '', ptw_required: Boolean(row['PTW REQUIRED']), ptw_files_json: JSON.stringify(fileMetadata(row['PTW FILES'])), general_files_json: JSON.stringify(fileMetadata(row['GENERAL FILES'])), technician_remarks: row['TECHNICIAN REMARKS'] || '', completion_notes: row['COMPLETION NOTES'] || '', actual_labor: row['ACTUAL LABOR'] || '', actual_hours: toNumberOrNull(row['ACTUAL HOURS']), actual_materials_json: JSON.stringify(actualResourceMetadata(row['ACTUAL MATERIALS'])), actual_tools_json: JSON.stringify(actualResourceMetadata(row['ACTUAL TOOLS'])) }),
     afterRow: persistWorkOrderChildren
   },
   serviceRequests: {
@@ -523,7 +598,7 @@ function WorkOrderWorkflowNotice({ status, missing = [], nextStep }) {
   )
 }
 
-function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, siteRecords = [], departmentRecords = [], assetRecords = [], workOrderRows = [], laborRecords = [], materialRecords = [], stockRecords = [], storeRecords = [], toolRecords = [], jobTaskRecords = [], failureCodeRecords = [], reservationRecords = [], onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder }) {
+function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, siteRecords = [], departmentRecords = [], assetRecords = [], workOrderRows = [], laborRecords = [], materialRecords = [], stockRecords = [], storeRecords = [], toolRecords = [], jobTaskRecords = [], failureCodeRecords = [], reservationRecords = [], meterRecords = [], onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder }) {
   const { user } = useAuth()
   // Pausing the SLA clock is an administrative decision, so the hold controls belong to
   // the Facility Manager rather than to whoever is executing the job.
@@ -583,7 +658,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const sourceRequest=order['SOURCE SR']?{sr:order['SOURCE SR'],reportedBy:order['REPORTED BY']||'',reportedDate:toDateTimeInput(order['REPORTED DATE '])||'',priority:order['SOURCE SR PRIORITY']||'',requestType:order['SOURCE SR TYPE']||''}:null
   const [ptwRequired,setPtwRequired]=useState(Boolean(order['PTW REQUIRED']))
   const [ptwFiles,setPtwFiles]=useState(order['PTW FILES']||[])
-  const [generalFiles,setGeneralFiles]=useState(order['GENERAL FILES']||[{name:'site-inspection-photo.jpg',size:'1.8 MB',type:'Image'}])
+  const [generalFiles,setGeneralFiles]=useState(order['GENERAL FILES']||[])
   const [technicianRemarks,setTechnicianRemarks]=useState(order['TECHNICIAN REMARKS']||'')
   const [completionNotes,setCompletionNotes]=useState(order['COMPLETION NOTES']||'')
   const [actualLabor,setActualLabor]=useState(order['ACTUAL LABOR']||'')
@@ -592,6 +667,9 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const [actualTools,setActualTools]=useState(order['ACTUAL TOOLS']||[])
   const [actualStart,setActualStart]=useState(toDateTimeInput(order['ACTUAL START ']) || '')
   const [actualFinish,setActualFinish]=useState(['COMP','COMPLETED','CLOSE','CLOSED'].includes(String(order.STATUS||'').toUpperCase())?toDateTimeInput(order['ACTUAL FINISH ']) : '')
+  const [meterId,setMeterId]=useState(order['METER ID']||'')
+  const [waterMeterId,setWaterMeterId]=useState(order['WATER METER ID']||'')
+  const [energyMeterId,setEnergyMeterId]=useState(order['ENERGY METER ID']||'')
   const [meterReading,setMeterReading]=useState(order['METER READING']||'')
   const [waterConsumption,setWaterConsumption]=useState(order['WATER CONSUMPTION']||'')
   const [energyConsumption,setEnergyConsumption]=useState(order['ENERGY CONSUMPTION']||'')
@@ -731,8 +809,10 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     setWorkStarted(['INPRG','COMP','CLOSE'].includes(next))
     setWorkCompleted(['COMP','CLOSE'].includes(next))
     setWorkClosed(next==='CLOSE')
-    if(['INPRG','COMP','CLOSE'].includes(next)) setActualStart(current=>current||toDateTimeInput(new Date()))
-    if(['COMP','CLOSE'].includes(next)) setActualFinish(current=>current||toDateTimeInput(new Date()))
+    const now=toDateTimeInput(new Date())
+    const startForFinish=actualStart||now
+    if(['INPRG','COMP','CLOSE'].includes(next)) setActualStart(current=>current||now)
+    if(['COMP','CLOSE'].includes(next)) setActualFinish(current=>current||(Number(actualHours)>0?addHoursToDate(startForFinish,actualHours):now))
   }
   const planMissing=[!plannedLaborReady&&'Plan: labor, estimated hours, and assigned crew',isCM&&!plannedMaterialsReady&&'Plan: required materials',isCM&&!plannedToolsReady&&'Plan: required tools'].filter(Boolean)
   const failureMissing=[isCM&&!failureClass&&'Failure: failure code',isCM&&!problemCode&&'Failure: problem code',causeApplicable&&!causeCode&&'Failure: cause code',remedyApplicable&&!remedyCode&&'Failure: remedy code'].filter(Boolean)
@@ -777,6 +857,9 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     status==='WAPPR'&&!missingFor('APPR').length?'APPR'
     :status==='APPR'&&!missingFor('WSCH').length?'WSCH'
     :status==='WSCH'&&!missingFor('SCHED').length?'SCHED'
+    :status==='SCHED'&&!missingFor('INPRG').length?'INPRG'
+    :status==='INPRG'&&!missingFor('COMP').length?'COMP'
+    :status==='COMP'&&!missingFor('CLOSE').length?'CLOSE'
     :''
   useEffect(()=>{
     if(!autoAdvanceTo) return
@@ -813,8 +896,26 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   }
   const close = () => onClose()
   const reroute=()=>{setTab('Overview');setAssignedDepartment('');setSupervisor('');setWorkStarted(false);setWorkScheduled(false);setWorkWaitingSchedule(false);setWorkApproved(false)}
-  const addFiles=(setter)=>event=>{const files=Array.from(event.target.files||[]).map(file=>({name:file.name,size:file.size>1048576?`${(file.size/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(file.size/1024))} KB`,type:file.type||'Document'}));setter(current=>[...current,...files]);event.target.value=''}
-  const downloadFile=file=>{const blob=new Blob([`Mock CAFM attachment\n\nName: ${file.name}\nType: ${file.type||'Document'}\nSize: ${file.size||'Unknown'}\n\nReal storage integration can replace this generated download.`],{type:'text/plain'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=file.name?.includes('.')?file.name:`${file.name||'attachment'}.txt`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url)}
+  const readAttachment=file=>new Promise(resolve=>{
+    const reader=new FileReader()
+    reader.onload=()=>resolve({name:file.name,size:file.size>1048576?`${(file.size/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(file.size/1024))} KB`,type:file.type||'Document',dataUrl:String(reader.result||'')})
+    reader.onerror=()=>resolve({name:file.name,size:file.size>1048576?`${(file.size/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(file.size/1024))} KB`,type:file.type||'Document',dataUrl:''})
+    reader.readAsDataURL(file)
+  })
+  const addFiles=(setter)=>async event=>{const selected=Array.from(event.target.files||[]);const files=await Promise.all(selected.map(readAttachment));setter(current=>[...current,...files]);event.target.value=''}
+  const downloadFile=file=>{
+    const link=document.createElement('a')
+    link.download=file.name?.includes('.')?file.name:`${file.name||'attachment'}.txt`
+    if(file.dataUrl){
+      link.href=file.dataUrl
+      document.body.appendChild(link);link.click();link.remove()
+      return
+    }
+    const blob=new Blob([`CAFM attachment metadata\n\nName: ${file.name}\nType: ${file.type||'Document'}\nSize: ${file.size||'Unknown'}\n\nThis record was saved before file-content storage was enabled. Re-upload the file to make the original document downloadable.`],{type:'text/plain'})
+    const url=URL.createObjectURL(blob)
+    link.href=url
+    document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url)
+  }
   // Planned labour already names the craft, the hours and who is doing it, so the actual
   // fields start from it rather than being re-keyed. Planned rows store the craft *name*
   // ("HVAC Technician") while the actual field wants the *code* ("HVAC-TECH"), so the crew
@@ -826,12 +927,51 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     if(person?.craftCode) return person.craftCode
     return laborMaster.find(entry=>entry.craft===named.craft)?.craftCode||''
   }
-  const plannedCrewName=()=>plannedLabor.find(row=>row.crew)?.crew||''
+  const plannedCrewName=()=>[...new Set(plannedLabor.map(row=>row.crew).filter(Boolean))].join(', ')
   const plannedTotalHours=()=>{
     const total=plannedLabor.reduce((sum,row)=>sum+(Number(row.hours)||0),0)
     return total?String(total):''
   }
-  const completeWork=()=>{if(!failureReady){setTab('Failure');return}const now=toDateTimeInput(new Date());setActualFinish(now);setActualStart(current=>current||now);setActualMaterials(current=>current.length?current:plannedResources.filter(row=>row.type==='Material').map(row=>({...row,actualQuantity:''})));setActualTools(current=>current.length?current:plannedResources.filter(row=>['Tool','Equipment'].includes(row.type)).map(row=>({...row,actualQuantity:''})));
+  const addHoursToDate=(start,hours)=>{
+    const startDate=new Date(start)
+    const hourCount=Number(hours)
+    if(!start||Number.isNaN(startDate.getTime())||!hourCount) return ''
+    return toDateTimeInput(new Date(startDate.getTime()+(hourCount*60*60*1000)))
+  }
+  const hoursBetween=(start,finish)=>{
+    const startDate=new Date(start)
+    const finishDate=new Date(finish)
+    if(!start||!finish||Number.isNaN(startDate.getTime())||Number.isNaN(finishDate.getTime())) return ''
+    const hours=(finishDate.getTime()-startDate.getTime())/(60*60*1000)
+    return hours>=0?String(Math.round(hours*100)/100):''
+  }
+  const changeActualStart=value=>{
+    setActualStart(value)
+    if(value&&Number(actualHours)>0) setActualFinish(addHoursToDate(value,actualHours))
+    else if(value&&actualFinish) setActualHours(hoursBetween(value,actualFinish))
+  }
+  const changeActualHours=value=>{
+    setActualHours(value)
+    if(actualStart&&Number(value)>0) setActualFinish(addHoursToDate(actualStart,value))
+  }
+  const changeActualFinish=value=>{
+    setActualFinish(value)
+    if(actualStart&&value) setActualHours(hoursBetween(actualStart,value))
+  }
+  const plannedActualMaterials=()=>plannedResources
+    .filter(row=>row.type==='Material'&&row.item)
+    .map(row=>({...row,type:'Material',actualQuantity:row.actualQuantity ?? row.quantity ?? ''}))
+  const plannedActualTools=()=>plannedResources
+    .filter(row=>['Tool','Equipment'].includes(row.type)&&row.item)
+    .map(row=>({...row,type:row.type || 'Tool'}))
+  useEffect(()=>{
+    setActualLabor(current=>current||plannedCrewName())
+    setLaborCraft(current=>current||plannedCraftCode())
+    setActualHours(current=>current||plannedTotalHours())
+    setActualMaterials(current=>current.length?current:plannedActualMaterials())
+    setActualTools(current=>current.length?current:plannedActualTools())
+  },[plannedLabor,plannedResources])
+  const completeWork=()=>{if(!failureReady){setTab('Failure');return}const now=toDateTimeInput(new Date());const startForFinish=actualStart||now;setActualFinish(current=>current||(Number(actualHours)>0?addHoursToDate(startForFinish,actualHours):now));setActualStart(current=>current||now);setActualMaterials(current=>current.length?current:plannedActualMaterials());setActualTools(current=>current.length?current:plannedActualTools());
     // Only fill blanks - anything already typed by hand wins.
     setActualLabor(current=>current||plannedCrewName());setLaborCraft(current=>current||plannedCraftCode());setActualHours(current=>current||plannedTotalHours());
     setWorkCompleted(true);setSelectedStatus('COMP')}
@@ -877,6 +1017,9 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     'ACTUAL HOURS': actualHours,
     'ACTUAL MATERIALS': actualMaterials,
     'ACTUAL TOOLS': actualTools,
+    'METER ID': meterId,
+    'WATER METER ID': waterMeterId,
+    'ENERGY METER ID': energyMeterId,
     'METER READING': meterReading,
     'WATER CONSUMPTION': waterConsumption,
     'ENERGY CONSUMPTION': energyConsumption,
@@ -904,7 +1047,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     setAutoSaveState('Unsaved changes')
     const timer=setTimeout(saveChanges,650)
     return()=>clearTimeout(timer)
-  },[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterReading,waterConsumption,energyConsumption,meterReadingDate,selectedStatus,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
+  },[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterId,waterMeterId,energyMeterId,meterReading,waterConsumption,energyConsumption,meterReadingDate,selectedStatus,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
     <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} statusOptions={statusSelectOptions} onStatusChange={changeStatus} close={close} printWorkOrder={printWorkOrder} workClosed={workClosed} />
     <WorkOrderTabs tabs={workOrderTabs} active={tab} onChange={setTab} showFailureDot={!isPM} />
@@ -912,11 +1055,11 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     <div className={workOrderBodyClass}>
       {tab==='Overview' && <WorkOrderOverviewTab projectName={projectName} sourceRequest={sourceRequest} number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} systemValue={systemValue} setSystemValue={setSystemValue} systemOptions={systemOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={toDateTimeInput(order['REPORTED DATE ']||order['REPORTED DATE']||order['REPORT DATE'])||nowLocalDateTime()} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
       {tab==='Plan' && <WorkOrderPlanTab isPM={isPM} tasksLocked={tasksFromJobPlan} jobPlanNumber={jobPlanNumber} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialRecords} toolMaster={toolRecords} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} updatePlannedResourceField={updatePlannedResourceField} />}
-      {tab==='Actual' && <WorkOrderActualTab actualsEditable={actualsEditable} status={status} preparationReady={preparationReady} planReady={planReady} setTab={setTab} setWorkStarted={value=>{setWorkStarted(value);if(value)setSelectedStatus('INPRG')}} completeWork={completeWork} outlineButtonClass={workOrderOutlineButtonClass} primaryButtonClass={workOrderPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} setActualFinish={setActualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} laborCraft={laborCraft} setLaborCraft={setLaborCraft} actualHours={actualHours} setActualHours={setActualHours} actualStart={actualStart} setActualStart={setActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} failureReady={failureReady} actualReady={actualReady} closeWork={closeWork} returnResource={returnResource} outstanding={outstandingReturnRows} currentUser={user} />}
+      {tab==='Actual' && <WorkOrderActualTab actualsEditable={actualsEditable} status={status} preparationReady={preparationReady} planReady={planReady} setTab={setTab} setWorkStarted={value=>{setWorkStarted(value);if(value)setSelectedStatus('INPRG')}} completeWork={completeWork} outlineButtonClass={workOrderOutlineButtonClass} primaryButtonClass={workOrderPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} setActualFinish={changeActualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} actualHours={actualHours} setActualHours={changeActualHours} actualStart={actualStart} setActualStart={changeActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} failureReady={failureReady} actualReady={actualReady} closeWork={closeWork} returnResource={returnResource} outstanding={outstandingReturnRows} currentUser={user} />}
       {tab==='Failure' && <WorkOrderFailureTab isCM={isCM} causeApplicable={causeApplicable} remedyApplicable={remedyApplicable} failureClass={failureClass} changeFailure={changeFailure} failureClassOptions={failureClassOptions} problemCode={problemCode} setProblemCode={setProblemCode} setCauseCode={setCauseCode} setRemedyCode={setRemedyCode} problemOptions={problemOptions} causeCode={causeCode} causeOptions={causeOptions} remedyCode={remedyCode} remedyOptions={remedyOptions} failureDescription={failureDescription} problemDescription={problemDescription} causeDescription={causeDescription} remedyDescription={remedyDescription} failureCount={failureCodeRecords.length} />}
       {tab==='Material Requests' && <WorkOrderMaterialRequestsTab resourceRequests={resourceRequests} plannedResources={plannedResources} setPlannedResources={setPlannedResources} updatePlanRow={updatePlanRow} getAvailability={resourceAvailability} materialBlocked={materialBlocked} primaryButtonClass={workOrderPrimaryButtonClass} outlineButtonClass={workOrderOutlineButtonClass} setTab={setTab} materials={materialRecords} reservations={reservationRecords} workOrderContext={{ number, site: siteValue, department: department || assignedDepartment, assignedDepartment }} onCreatePurchaseRequest={onCreatePurchaseRequest} onCreateReservation={onCreateReservation} onUpdateWorkOrder={onUpdateWorkOrder} />}
       {tab==='PTW & Files' && <WorkOrderDocumentsTab ptwRequired={ptwRequired} setPtwRequired={setPtwRequired} ptwFiles={ptwFiles} setPtwFiles={setPtwFiles} generalFiles={generalFiles} setGeneralFiles={setGeneralFiles} addFiles={addFiles} downloadFile={downloadFile} />}
-      {tab==='Meters' && <WorkOrderMetersTab meterReading={meterReading} setMeterReading={setMeterReading} waterConsumption={waterConsumption} setWaterConsumption={setWaterConsumption} energyConsumption={energyConsumption} setEnergyConsumption={setEnergyConsumption} meterReadingDate={meterReadingDate} setMeterReadingDate={setMeterReadingDate} />}
+      {tab==='Meters' && <WorkOrderMetersTab workOrderNumber={number} assetValue={assetValue} siteValue={siteValue} department={department} meterRows={meterRecords} meterId={meterId} setMeterId={setMeterId} meterReading={meterReading} setMeterReading={setMeterReading} meterReadingDate={meterReadingDate} setMeterReadingDate={setMeterReadingDate} />}
     </div>
   </div><WorkOrderPrintReport sourceRequest={sourceRequest} systemValue={systemValue} number={number} description={description || order['DESCRIPITION '] || 'Work order'} workType={workType} status={status} priority={priority} siteValue={siteValue} department={department} subDepartment={subDepartment} assignedDepartment={assignedDepartment} locationValue={locationValue} assetValue={assetValue} assetDescription={assetDescription} targetStart={targetStart} targetFinish={targetFinish} actualStart={actualStart} actualFinish={actualFinish} slaLabel={slaLabel} jobPlan={jobPlanNumber} estimatedDuration={order['ESTIMATED DURATION']} pmNumber={order['PM NUMBER']} pmCycle={order['PM CYCLE']} plannedTasks={plannedTasks} plannedLabor={plannedLabor} plannedResources={plannedResources} ptwRequired={ptwRequired} ptwFiles={ptwFiles} generalFiles={generalFiles} meterReading={meterReading} waterConsumption={waterConsumption} energyConsumption={energyConsumption} meterReadingDate={meterReadingDate} failureClass={failureClass} problemCode={problemCode} causeCode={causeCode} remedyCode={remedyCode} technicianRemarks={technicianRemarks} completionNotes={completionNotes} actualLabor={actualLabor} actualHours={actualHours} actualMaterials={actualMaterials} actualTools={actualTools} /></div>
 }
@@ -1144,13 +1287,60 @@ export default function App() {
     const latest = failureClassRows.find(row => row['FAILURE CLASS ID'] === failureRouteId)
     if (latest) setSelectedFailureClass(latest)
   }, [failureClassRows, failureRouteId])
+  const firstProblemCodeForFailure = value => failureCodeRecords
+    .filter(row => cleanText(row['FAILURE CLASS ID']) === cleanText(value) && cleanText(row['PROBLEM CODE']))
+    .sort((left, right) => cleanText(left['PROBLEM CODE']).localeCompare(cleanText(right['PROBLEM CODE']), undefined, { numeric: true, sensitivity: 'base' }))[0]?.['PROBLEM CODE'] || ''
+  const failureFieldsFromRequest = request => {
+    const failureCode = cleanText(request?.failureCode || request?.['FAILURE CODE'] || request?.failure_code)
+    const problemCode = cleanText(request?.problemCode || request?.['PROBLEM CODE'] || request?.problem_code) || firstProblemCodeForFailure(failureCode)
+    return {
+      'FAILURE CODE': failureCode,
+      'PROBLEM CODE': cleanText(problemCode),
+      'CAUSE CODE': cleanText(request?.causeCode || request?.['CAUSE CODE'] || request?.cause_code),
+      'REMEDY CODE': cleanText(request?.remedyCode || request?.['REMEDY CODE'] || request?.remedy_code)
+    }
+  }
+  const syncWorkOrderFailureFromRequest = (number, sourceRequest) => {
+    const request = sourceRequest || serviceRequests.find(item => String(item.convertedWorkOrder) === String(number))
+    const fields = failureFieldsFromRequest(request)
+    if (!fields['FAILURE CODE']) return
+    saveWorkOrders(rows => rows.map(order => {
+      if (String(order.WORKORDER) !== String(number)) return order
+      return {
+        ...order,
+        'FAILURE CODE': fields['FAILURE CODE'],
+        'PROBLEM CODE': fields['PROBLEM CODE'] || order['PROBLEM CODE'] || '',
+        'CAUSE CODE': fields['CAUSE CODE'] || order['CAUSE CODE'] || '',
+        'REMEDY CODE': fields['REMEDY CODE'] || order['REMEDY CODE'] || ''
+      }
+    }))
+  }
+  const nextCorrectiveWorkOrderNumber = () => String(
+    Math.max(56545134, ...allWorkOrders.map(order => Number(order.WORKORDER) || 0)) + 1
+  )
   const convertRequest = request => {
-    const number=String(56545135+allWorkOrders.filter(o=>String(o.WORKORDER).startsWith('56545')).length-3)
-    const cm={'WORKORDER':number,'DESCRIPITION ':request.description,'LOCATION ':request.location,'LOCATION PRIORTY':toLocationPriority(request.priority),'ASSET':request.asset||'Unassigned','STATUS':'WAPPR','WORK TYPE ':'CM','STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':request.assignedDepartment||request.department,'SUB DEPARTMENT  NAME':request.subDepartment||'','PRIORTY':request.priority==='Emergency'?1:request.priority==='High'?2:3,'SITE':request.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':request.reportedDate||nowLocalDateTime(),'SOURCE SR':request.sr,'REPORTED BY':request.reportedBy||'','SOURCE SR PRIORITY':request.priority||'','SOURCE SR TYPE':request.requestType||'','FAILURE CODE':request.failureCode||'','PROBLEM CODE':request.problemCode||'','CAUSE CODE':request.causeCode||'','REMEDY CODE':request.remedyCode||''}
-    saveWorkOrders(rows=>rows.some(o=>o['SOURCE SR']===request.sr)?rows:[...rows,cm])
+    const existing = allWorkOrders.find(order =>
+      String(order['SOURCE SR']) === String(request.sr) ||
+      (request.convertedWorkOrder && String(order.WORKORDER) === String(request.convertedWorkOrder))
+    )
+    if (existing) {
+      const failureFields = failureFieldsFromRequest(request)
+      const updated = {
+        ...existing,
+        ...failureFields,
+        'DEPARTMENT ': request.assignedDepartment || request.department || existing['DEPARTMENT '] || '',
+        'SUB DEPARTMENT  NAME': request.subDepartment || existing['SUB DEPARTMENT  NAME'] || '',
+        'ASSIGNED DEPARTMENT': request.assignedDepartment || request.department || existing['ASSIGNED DEPARTMENT'] || ''
+      }
+      saveWorkOrders(rows => rows.map(order => String(order.WORKORDER) === String(existing.WORKORDER) ? updated : order))
+      return updated
+    }
+    const number=nextCorrectiveWorkOrderNumber()
+    const cm={'WORKORDER':number,'DESCRIPITION ':request.description,'LOCATION ':request.location,'LOCATION PRIORTY':toLocationPriority(request.priority),'ASSET':request.asset||'Unassigned','STATUS':'WAPPR','WORK TYPE ':'CM','STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':request.assignedDepartment||request.department,'SUB DEPARTMENT  NAME':request.subDepartment||'','PRIORTY':request.priority==='Emergency'?1:request.priority==='High'?2:3,'SITE':request.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':request.reportedDate||nowLocalDateTime(),'SOURCE SR':request.sr,'REPORTED BY':request.reportedBy||'','SOURCE SR PRIORITY':request.priority||'','SOURCE SR TYPE':request.requestType||'',...failureFieldsFromRequest(request)}
+    saveWorkOrders(rows=>[...rows,cm])
     return cm
   }
-  const openConvertedWorkOrder=number=>{if(!canNavigate('Work Orders')) return navigate(fallbackPage);setActive('Work Orders');setSearch('');window.history.pushState({},'',`/work-orders/${number}`)}
+  const openConvertedWorkOrder=(number, sourceRequest)=>{if(!canNavigate('Work Orders')) return navigate(fallbackPage);syncWorkOrderFailureFromRequest(number, sourceRequest);setActive('Work Orders');setSearch('');window.history.pushState({},'',`/work-orders/${number}`)}
   // Deep link carries the target number so the tab only applies to that order, never
   // to whichever work order the user opens next.
   const [workOrderDeepLink,setWorkOrderDeepLink]=useState(null)
@@ -1353,7 +1543,7 @@ export default function App() {
   const pages = {
     'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions}/>,
     'Incidents': <IncidentsPage rows={scopedIncidents} setRows={saveIncidents}/>,
-    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={reservations} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
+    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={reservations} meterRecords={meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
     'Assets': <AssetsPage rows={scopedAssets} setRows={saveAssets} workOrders={scopedWorkOrders} />,
     'Preventive Maintenance': <PreventiveMaintenancePage rows={pmScheduleRecords} setRows={savePmSchedules} assets={scopedAssets} jobTasks={jobTaskRecords} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} scopeUser={effectiveUser} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Meters': <MetersPage rows={meterRecords} setRows={saveMeters} assets={scopedAssets} workOrders={scopedWorkOrders} />,

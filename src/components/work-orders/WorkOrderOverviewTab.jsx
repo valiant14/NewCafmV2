@@ -116,8 +116,8 @@ export default function WorkOrderOverviewTab({
             <Field label="Reported Date" value={reportedDate} type="datetime-local" locked />
             <Field label="Target Start" value={targetStart} required onChange={event => setTargetStart(event.target.value)} type="datetime-local" locked={isPM} />
             <Field label="Target Finish" value={targetFinish} required onChange={event => setTargetFinish(event.target.value)} type="datetime-local" />
-            <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" />
-            <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" />
+            <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" disabled />
+            <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" disabled />
             <Field label="SLA Met?" value={slaLabel} locked />
           </div>
         </Section>

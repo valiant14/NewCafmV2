@@ -151,7 +151,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button variant="outline" onClick={() => printWithoutBrowserTitle()}><Printer size={15} /> Print</Button>
                 {form.status === 'RESOLVED' && form.convertedWorkOrder ? (
-                  <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>
+                  <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder, form)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>
                 ) : (
                   <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} /> Approve & convert to CM</Button>
                 )}
