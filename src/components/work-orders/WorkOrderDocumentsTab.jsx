@@ -47,7 +47,7 @@ export default function WorkOrderDocumentsTab({
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]"><ShieldCheck size={20} /></span>
           <div>
             <strong>Permit to Work required?</strong>
-            <p className="text-xs text-[var(--app-muted)]">Default is No. Enable only when execution requires an approved permit.</p>
+            <p className="text-xs text-[var(--app-muted)]">Default is Yes. Select No only when this work does not require an approved permit.</p>
           </div>
         </div>
         <div className="flex rounded-xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-1">
@@ -85,7 +85,7 @@ export default function WorkOrderDocumentsTab({
           {!ptwFiles.length && (
             <div className="m-3 flex items-center gap-2 rounded-xl bg-[var(--app-badge-orange-bg)] p-3 text-xs text-[var(--app-badge-orange-text)]">
               <AlertTriangle size={16} />
-              <span>Work Order status is HOLD until a PTW document is attached.</span>
+              <span>Work cannot start until a PTW document is attached, unless PTW is marked not required.</span>
             </div>
           )}
         </section>
