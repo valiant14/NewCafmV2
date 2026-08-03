@@ -8,7 +8,7 @@ const materialFields = [
   { label: 'Storeroom', key: 'storeroom', placeholder: 'DIWAN-MAIN' },
   { label: 'Balance', key: 'balance', type: 'number', min: 0 },
   { label: 'Reserved', key: 'reserved', type: 'number', min: 0 },
-  { label: 'Reorder Level', key: 'reorderLevel', type: 'number', min: 0 },
+  { label: 'Low Level', key: 'reorderLevel', type: 'number', min: 0 },
   { label: 'Availability', key: 'availability', options: ['Available', 'Purchase Required'], full: true }
 ]
 

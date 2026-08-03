@@ -55,7 +55,7 @@ const exportColumns = [
   { key: 'balance', label: 'Total Balance' },
   { key: 'reserved', label: 'Total Reserved' },
   { key: 'available', label: 'Available' },
-  { key: 'reorderLevel', label: 'Reorder Level' },
+  { key: 'reorderLevel', label: 'Low Level' },
   { key: 'availability', label: 'Availability' },
   { key: 'status', label: 'Material Status' }
 ]
@@ -80,7 +80,7 @@ const materialUsage = (material, workOrders) => workOrders.flatMap(order => {
     }))
 })
 
-export default function MaterialsPage({ rows = [], setRows, stockRows = [], storeRows = [], workOrders = [] }) {
+export default function MaterialsPage({ rows = [], setRows, stockRows = [], storeRows = [], workOrders = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest, onUpdateStock }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -136,7 +136,7 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
   }
 
   if (selectedMaterial) {
-    return <MaterialDetailPage material={selectedMaterial} stockRows={stockRows} storeRows={storeRows} usageRows={materialUsage(selectedMaterial, workOrders)} onBack={close} onUpdate={updateMaterial} />
+    return <MaterialDetailPage material={selectedMaterial} stockRows={stockRows} storeRows={storeRows} usageRows={materialUsage(selectedMaterial, workOrders)} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} onBack={close} onUpdate={updateMaterial} onCreateRequest={onCreateRequest} onUpdateStock={onUpdateStock} />
   }
 
   return (
@@ -190,7 +190,7 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
             { key: 'balance', label: 'Balance' },
             { key: 'reserved', label: 'Reserved' },
             { key: 'available', label: 'Available', render: (value, row) => <Badge tone={row.availability === 'Available' ? 'green' : 'orange'}>{value}</Badge> },
-            { key: 'reorderLevel', label: 'Reorder level' },
+            { key: 'reorderLevel', label: 'Low level' },
             { key: 'availability', label: 'Availability', render: value => <Badge tone={materialStatusTone(value)}>{value}</Badge> },
             { key: 'status', label: 'Material Status', render: value => value ? <Badge tone={materialStatusTone(value)}>{value}</Badge> : '—' }
           ]}

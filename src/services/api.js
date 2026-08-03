@@ -155,6 +155,7 @@ const mapTool = row => ({
   category: row.category || '',
   location: row.location_code || '',
   quantity: numberValue(row.quantity) || 1,
+  lowLevel: numberValue(row.low_level),
   inspectionDue: row.inspection_due || '',
   status: row.status || 'Available'
 })

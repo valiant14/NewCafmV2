@@ -20,6 +20,7 @@ const empty = {
   category: '',
   location: '',
   quantity: 1,
+  lowLevel: 0,
   status: 'Available',
   inspectionDue: ''
 }
@@ -28,11 +29,12 @@ const exportColumns = [
   { key: 'toolNumber', label: 'Tool Number' },
   { key: 'description', label: 'Description' },
   { key: 'category', label: 'Category' },
-  { key: 'location', label: 'Store / Location' },
-  { key: 'quantity', label: 'Quantity' },
-  { key: 'allocatedQuantity', label: 'Allocated' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'stores', label: 'Stores' },
+  { key: 'balance', label: 'Balance' },
   { key: 'reservedQuantity', label: 'Reserved' },
   { key: 'availableQuantity', label: 'Available' },
+  { key: 'lowLevel', label: 'Low Level' },
   { key: 'availability', label: 'Availability' },
   { key: 'toolStatus', label: 'Tool Status' }
 ]
@@ -81,12 +83,17 @@ const withToolUsage = (row, workOrders, allocations = [], storeRows = []) => {
   const committedQuantity = allocatedQuantity + reservedQuantity
   const availableQuantity = row.status === 'Maintenance' ? 0 : Math.max(0, quantity - committedQuantity)
   const status = row.status === 'Maintenance' ? 'Maintenance' : allocatedQuantity > 0 ? 'Allocated' : reservedQuantity > 0 ? 'Reserved' : availableQuantity <= 0 ? 'Allocated' : 'Available'
-  const availability = status === 'Maintenance' ? 'Maintenance' : availableQuantity > 0 ? 'Available' : 'No Stock'
+  const lowLevel = Number(row.lowLevel || 0)
+  const availability = status === 'Maintenance' ? 'Maintenance' : availableQuantity <= 0 ? 'No Stock' : availableQuantity <= lowLevel ? 'Low Stock' : 'Available'
   const location = row.location || activeAllocations.find(allocation => allocation.source)?.source || defaultToolLocation(storeRows)
   return {
     ...row,
+    unit: row.unit || 'EA',
     location,
+    stores: location,
+    balance: quantity,
     quantity,
+    lowLevel,
     allocatedQuantity,
     reservedQuantity,
     availableQuantity,
@@ -98,7 +105,7 @@ const withToolUsage = (row, workOrders, allocations = [], storeRows = []) => {
   }
 }
 
-export default function ToolsPage({ rows = [], setRows, workOrders = [], allocations = [], storeRows = [] }) {
+export default function ToolsPage({ rows = [], setRows, workOrders = [], allocations = [], storeRows = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -141,7 +148,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [], allocat
 
   const save = () => {
     if (!form.toolNumber || !form.description) return
-    const row = { ...form, quantity: Number(form.quantity) }
+    const row = { ...form, quantity: Number(form.quantity), lowLevel: Number(form.lowLevel || 0) }
     setRows?.(current => [...current, row])
     setAdding(false)
     setForm(empty)
@@ -149,7 +156,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [], allocat
   }
 
   if (selectedTool) {
-    return <ToolDetailPage tool={selectedTool} usageRows={toolUsage(selectedTool, workOrders)} onBack={close} onUpdate={updateTool} />
+    return <ToolDetailPage tool={selectedTool} usageRows={toolUsage(selectedTool, workOrders)} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} onBack={close} onUpdate={updateTool} onCreateRequest={onCreateRequest} />
   }
 
   return (
@@ -198,11 +205,12 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [], allocat
             { key: 'toolNumber', label: 'Tool number', render: value => <strong className="mono">{value}</strong> },
             { key: 'description', label: 'Description' },
             { key: 'category', label: 'Category' },
-            { key: 'location', label: 'Store / Location' },
-            { key: 'quantity', label: 'Quantity' },
-            { key: 'allocatedQuantity', label: 'Allocated' },
+            { key: 'unit', label: 'Unit' },
+            { key: 'stores', label: 'Stores' },
+            { key: 'balance', label: 'Balance' },
             { key: 'reservedQuantity', label: 'Reserved' },
             { key: 'availableQuantity', label: 'Available' },
+            { key: 'lowLevel', label: 'Low level' },
             { key: 'availability', label: 'Availability', render: value => <Badge tone={toolStatusTone(value)}>{value}</Badge> },
             { key: 'toolStatus', label: 'Tool Status', render: value => <Badge tone={toolStatusTone(value)}>{value}</Badge> }
           ]}

@@ -6,6 +6,7 @@ const toolFields = [
   { label: 'Category', key: 'category', placeholder: 'e.g. Electrical Test' },
   { label: 'Store / Location', key: 'location', placeholder: 'Main Tool Store' },
   { label: 'Quantity', key: 'quantity', type: 'number', min: 1 },
+  { label: 'Low Level', key: 'lowLevel', type: 'number', min: 0 },
   { label: 'Status', key: 'status', options: ['Available', 'Allocated', 'Maintenance'] },
   { label: 'Inspection Due', key: 'inspectionDue', type: 'date', full: true }
 ]
