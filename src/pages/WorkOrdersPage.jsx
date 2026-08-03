@@ -58,7 +58,7 @@ const exportColumns = excelDate => {
 
 const workOrderTemplateHeaders = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTION', 'STATUS', 'WORK TYPE ', 'PRIORTY', 'SITE', 'DEPARTMENT ', 'SUB DEPARTMENT  NAME', 'LOCATION ', 'ASSET', 'TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'FAILURE CODE', 'PROBLEM CODE']
 
-export default function WorkOrdersPage({ rows, assets, siteRecords = [], departmentRecords = [], onCreate, onImportRows, EditorComponent, excelDate }) {
+export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRecords = [], departmentRecords = [], onCreate, onImportRows, EditorComponent, excelDate }) {
   const { user } = useAuth()
   const routeId = decodeURIComponent(window.location.pathname.split('/work-orders/')[1] || '')
   const [selected, setSelected] = useState(() => {
@@ -223,7 +223,7 @@ export default function WorkOrdersPage({ rows, assets, siteRecords = [], departm
     </div>
   )
 
-  if (selected?.WORKORDER) return <EditorComponent page order={selected} onClose={closeOrder} />
-  if (creating) return <>{listView}<CreateWorkOrderModal rows={rows} assets={assets} siteRecords={siteRecords} departmentRecords={departmentRecords} onCancel={closeCreate} onCreate={create} /></>
+  if (selected?.WORKORDER) return EditorComponent({ page: true, order: selected, onClose: closeOrder })
+  if (creating) return <>{listView}<CreateWorkOrderModal rows={rows} assets={assets} locationRows={locationRows} siteRecords={siteRecords} departmentRecords={departmentRecords} onCancel={closeCreate} onCreate={create} /></>
   return listView
 }

@@ -100,6 +100,14 @@ const toLocationPriority = value => {
 const maximoWorkOrderStatusDescriptions = new Proxy({}, { get: (_, status) => statusDescription('workOrder', status) })
 const cleanText = value => String(value ?? '').trim()
 const toNumberOrNull = value => value === '' || value === null || value === undefined ? null : Number(value)
+const toDateOrNull = value => {
+  if (value === '' || value === null || value === undefined) return null
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+  const text = String(value).trim()
+  if (!text || text === '-' || /^invalid date$/i.test(text)) return null
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T00:00:00` : text)
+  return Number.isNaN(date.getTime()) ? null : date
+}
 const toText = value => String(value ?? '').trim()
 const statusText = (value, fallback = 'Active') => toText(value) || fallback
 const uniqueCodeOptions = (rows = [], codeKey, descriptionKey) => [
@@ -158,6 +166,23 @@ const resourceNaturalKey = row => [
   row.transaction_ref || '',
   row.source_type || ''
 ].map(value => String(value || '').trim()).join('|')
+const comparableResourcePayload = row => ({
+  work_order_num: toText(row.work_order_num),
+  resource_type: row.resource_type || 'Material',
+  item_code: row.item_code || null,
+  item_description: toText(row.item_description),
+  requested_quantity: toNumberOrNull(row.requested_quantity) || 0,
+  available_quantity: toNumberOrNull(row.available_quantity) || 0,
+  store_code: row.store_code || null,
+  site_code: row.site_code || '1031',
+  department_name: row.department_name || '',
+  source_type: row.source_type || '',
+  availability_status: row.availability_status || '',
+  request_status: row.request_status || '',
+  transaction_ref: row.transaction_ref || '',
+  supply_chain_status: row.supply_chain_status || ''
+})
+const sameResourcePayload = (existing, payload) => rowFingerprint(comparableResourcePayload(existing)) === rowFingerprint(comparableResourcePayload(payload))
 const workOrderResourcePayload = (order, resource) => ({
   ...(resource.resourceRequestId ? { resource_request_id: resource.resourceRequestId } : {}),
   work_order_num: toText(order.WORKORDER),
@@ -175,6 +200,55 @@ const workOrderResourcePayload = (order, resource) => ({
   transaction_ref: resource.transactionRef || resource.purchaseRequest || resource.purchaseOrder || resource.reservation || '',
   supply_chain_status: resource.supplyChainStatus || ''
 })
+const plannedLaborPayload = (order, labor, index) => ({
+  ...(labor.plannedLaborId ? { planned_labor_id: labor.plannedLaborId } : {}),
+  work_order_num: toText(order.WORKORDER),
+  line_order: Number(labor.lineOrder || index + 1),
+  craft_name: toText(labor.craft),
+  estimated_hours: toNumberOrNull(labor.hours) || 0,
+  assigned_crew: toText(labor.crew),
+  site_code: order.SITE || '1031',
+  department_name: order['DEPARTMENT '] || ''
+})
+const comparablePlannedLaborPayload = row => ({
+  work_order_num: toText(row.work_order_num),
+  line_order: Number(row.line_order || 0),
+  craft_name: toText(row.craft_name),
+  estimated_hours: toNumberOrNull(row.estimated_hours) || 0,
+  assigned_crew: toText(row.assigned_crew),
+  site_code: row.site_code || '1031',
+  department_name: row.department_name || ''
+})
+const samePlannedLaborPayload = (existing, payload) => rowFingerprint(comparablePlannedLaborPayload(existing)) === rowFingerprint(comparablePlannedLaborPayload(payload))
+const persistWorkOrderPlannedLabor = async order => {
+  const plannedLabor = Array.isArray(order['PLANNED LABOR']) ? order['PLANNED LABOR'] : []
+  const workOrderNum = toText(order.WORKORDER)
+  if (!workOrderNum) return
+  const existing = (await safeApiList('/work-order-planned-labor'))
+    .filter(row => String(row.work_order_num) === workOrderNum)
+  const matched = new Set()
+  for (const [index, labor] of plannedLabor.entries()) {
+    const payload = plannedLaborPayload(order, labor, index)
+    if (!payload.craft_name && !payload.assigned_crew && !payload.estimated_hours) continue
+    const match = labor.plannedLaborId
+      ? existing.find(row => String(row.planned_labor_id) === String(labor.plannedLaborId))
+      : existing.find(row => Number(row.line_order) === Number(payload.line_order))
+    if (match) {
+      matched.add(String(match.planned_labor_id))
+      if (!samePlannedLaborPayload(match, payload)) {
+        await api.put(`/work-order-planned-labor/${encodeURIComponent(match.planned_labor_id)}`, payload)
+      }
+    } else {
+      const saved = await api.post('/work-order-planned-labor', payload)
+      if (saved?.planned_labor_id) matched.add(String(saved.planned_labor_id))
+    }
+  }
+  for (const row of existing) {
+    if (!matched.has(String(row.planned_labor_id))) {
+      await api.delete(`/work-order-planned-labor/${encodeURIComponent(row.planned_labor_id)}`)
+    }
+  }
+}
 const persistWorkOrderResources = async order => {
   const resources = Array.isArray(order['PLANNED RESOURCES']) ? order['PLANNED RESOURCES'] : []
   const workOrderNum = toText(order.WORKORDER)
@@ -190,7 +264,9 @@ const persistWorkOrderResources = async order => {
       : existing.find(row => resourceNaturalKey(row) === resourceNaturalKey(payload))
     if (match) {
       matched.add(String(match.resource_request_id))
-      await api.put(`/work-order-resource-requests/${encodeURIComponent(match.resource_request_id)}`, payload)
+      if (!sameResourcePayload(match, payload)) {
+        await api.put(`/work-order-resource-requests/${encodeURIComponent(match.resource_request_id)}`, payload)
+      }
     } else {
       const saved = await api.post('/work-order-resource-requests', payload)
       if (saved?.resource_request_id) matched.add(String(saved.resource_request_id))
@@ -201,6 +277,10 @@ const persistWorkOrderResources = async order => {
       await api.delete(`/work-order-resource-requests/${encodeURIComponent(row.resource_request_id)}`)
     }
   }
+}
+const persistWorkOrderChildren = async order => {
+  await persistWorkOrderResources(order)
+  await persistWorkOrderPlannedLabor(order)
 }
 const apiMappers = {
   sites: {
@@ -219,7 +299,7 @@ const apiMappers = {
     endpoint: '/assets',
     key: 'assetnum',
     apiKey: 'asset_num',
-    toApi: row => ({ asset_num: toText(row.assetnum), description: toText(row.description), location_code: row.location || '', parent_asset_num: row.parent || null, department_name: row.department || '', sub_department_code: row['sub department'] || row.subDepartment || '', priority: toNumberOrNull(row.prioity || row.priority), site_code: row.site || '1031', status: statusText(row.status, 'OPERATING'), model_num: row.modelnum || '', serial_num: row.serialnum || '', install_date: row.installdate || null, quantity: toNumberOrNull(row.quantity) || 1 })
+    toApi: row => ({ asset_num: toText(row.assetnum), description: toText(row.description), location_code: row.location || '', parent_asset_num: row.parent || null, department_name: row.department || '', sub_department_code: row['sub department'] || row.subDepartment || '', priority: toNumberOrNull(row.prioity || row.priority), site_code: row.site || '1031', status: statusText(row.status, 'OPERATING'), model_num: row.modelnum || '', serial_num: row.serialnum || '', install_date: toDateOrNull(row.installdate), quantity: toNumberOrNull(row.quantity) || 1 })
   },
   locations: {
     endpoint: '/locations',
@@ -261,50 +341,50 @@ const apiMappers = {
     endpoint: '/work-orders',
     key: 'WORKORDER',
     apiKey: 'work_order_num',
-    toApi: row => ({ work_order_num: toText(row.WORKORDER), description: toText(row['DESCRIPITION '] || row.DESCRIPTION), long_description: row['LONG DESCRIPTION'] || '', location_code: row['LOCATION '] || '', asset_num: row.ASSET || null, status: statusText(row.STATUS, 'WAPPR'), work_type: row['WORK TYPE '] || row['WORK TYPE'] || 'CM', priority: toNumberOrNull(row.PRIORTY || row.priority), site_code: row.SITE || '1031', department_name: row['DEPARTMENT '] || '', sub_department_code: row['SUB DEPARTMENT  NAME'] || '', assigned_department_name: row['ASSIGNED DEPARTMENT'] || row['DEPARTMENT '] || '', target_start_at: row['TARGET START '] || null, target_finish_at: row['TARGET FINISH '] || null, actual_start_at: row['ACTUAL START '] || null, actual_finish_at: row['ACTUAL FINISH '] || null, reported_at: row['REPORTED DATE '] || null, source_sr_num: row['SOURCE SR'] || null, failure_code: row['FAILURE CODE'] || '', problem_code: row['PROBLEM CODE'] || '', cause_code: row['CAUSE CODE'] || '', remedy_code: row['REMEDY CODE'] || '' }),
-    afterRow: persistWorkOrderResources
+    toApi: row => ({ work_order_num: toText(row.WORKORDER), description: toText(row['DESCRIPITION '] || row.DESCRIPTION), long_description: row['LONG DESCRIPTION'] || '', location_code: row['LOCATION '] || '', asset_num: row.ASSET || null, status: statusText(row.STATUS, 'WAPPR'), work_type: row['WORK TYPE '] || row['WORK TYPE'] || 'CM', priority: toNumberOrNull(row.PRIORTY || row.priority), site_code: row.SITE || '1031', department_name: row['DEPARTMENT '] || '', sub_department_code: row['SUB DEPARTMENT  NAME'] || '', assigned_department_name: row['ASSIGNED DEPARTMENT'] || row['DEPARTMENT '] || '', target_start_at: toDateOrNull(row['TARGET START ']), target_finish_at: toDateOrNull(row['TARGET FINISH ']), actual_start_at: toDateOrNull(row['ACTUAL START ']), actual_finish_at: toDateOrNull(row['ACTUAL FINISH ']), reported_at: toDateOrNull(row['REPORTED DATE ']) || new Date(), source_sr_num: row['SOURCE SR'] || null, failure_code: row['FAILURE CODE'] || '', problem_code: row['PROBLEM CODE'] || '', cause_code: row['CAUSE CODE'] || '', remedy_code: row['REMEDY CODE'] || '' }),
+    afterRow: persistWorkOrderChildren
   },
   serviceRequests: {
     endpoint: '/service-requests',
     key: 'sr',
     apiKey: 'sr_num',
-    toApi: row => ({ sr_num: toText(row.sr), description: toText(row.description), long_description: row.longDescription || '', site_code: row.site || '1031', location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', sub_department_code: row.subDepartment || '', assigned_department_name: row.assignedDepartment || '', reported_by: row.reportedBy || '', reported_at: row.reportedDate || null, priority: row.priority || '', request_type: row.requestType || 'Service', failure_code: row.failureCode || '', status: statusText(row.status, 'NEW'), converted_work_order_num: row.convertedWorkOrder || null })
+    toApi: row => ({ sr_num: toText(row.sr), description: toText(row.description), long_description: row.longDescription || '', site_code: row.site || '1031', location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', sub_department_code: row.subDepartment || '', assigned_department_name: row.assignedDepartment || '', reported_by: row.reportedBy || '', reported_at: toDateOrNull(row.reportedDate) || new Date(), priority: row.priority || '', request_type: row.requestType || 'Service', failure_code: row.failureCode || '', status: statusText(row.status, 'NEW'), converted_work_order_num: row.convertedWorkOrder || null })
   },
   incidents: {
     endpoint: '/incidents',
     key: 'incidentNumber',
     apiKey: 'incident_num',
-    toApi: row => ({ incident_num: toText(row.incidentNumber || row.incident), description: toText(row.description), site_code: row.site || '1031', location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', status: statusText(row.status, 'NEW'), reported_at: row.reportedDate || null })
+    toApi: row => ({ incident_num: toText(row.incidentNumber || row.incident), description: toText(row.description), site_code: row.site || '1031', location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', status: statusText(row.status, 'NEW'), reported_at: toDateOrNull(row.reportedDate) || new Date() })
   },
   pm: {
     endpoint: '/preventive-maintenance',
     key: 'pmNumber',
     apiKey: 'pm_num',
-    toApi: row => ({ pm_num: toText(row.pmNumber), description: toText(row.description), asset_num: row.asset || null, route_code: row.route || '', location_code: row.location || '', job_plan_num: row.jobPlan || null, next_date: row.startDate || null, lead_time_days: toNumberOrNull(row.leadTime) || 0, frequency: toNumberOrNull(row.frequency) || 1, frequency_unit: row.freqUnit || 'MONTHS', pm_counter: toNumberOrNull(row.pmCounter) || 0, work_type: row.workType || 'PM', wo_status: row.woStatus || 'WSCH', store_code: row.storeLocation || null, supervisor: row.supervisor || '', lead_person: row.lead || '', person_group: row.personGroup || '', site_code: row.site || '1031', department_name: row.department || '', sub_department_code: row.subDepartment || '', pm_status: row.pmStatus || 'ACTIVE', last_generated_cycle: row.lastGeneratedCycle || '' })
+    toApi: row => ({ pm_num: toText(row.pmNumber), description: toText(row.description), asset_num: row.asset || null, route_code: row.route || '', location_code: row.location || '', job_plan_num: row.jobPlan || null, next_date: toDateOrNull(row.startDate), lead_time_days: toNumberOrNull(row.leadTime) || 0, frequency: toNumberOrNull(row.frequency) || 1, frequency_unit: row.freqUnit || 'MONTHS', pm_counter: toNumberOrNull(row.pmCounter) || 0, work_type: row.workType || 'PM', wo_status: row.woStatus || 'WSCH', store_code: row.storeLocation || null, supervisor: row.supervisor || '', lead_person: row.lead || '', person_group: row.personGroup || '', site_code: row.site || '1031', department_name: row.department || '', sub_department_code: row.subDepartment || '', pm_status: row.pmStatus || 'ACTIVE', last_generated_cycle: row.lastGeneratedCycle || '' })
   },
   meters: {
     endpoint: '/meter-readings',
     key: 'meterReadingId',
     apiKey: 'meter_reading_id',
-    toApi: row => ({ ...(row.meterReadingId ? { meter_reading_id: row.meterReadingId } : {}), meter_id: toText(row.meterId), asset_num: row.asset || null, work_order_num: row.workOrder || null, site_code: row.site || '1031', department_name: row.department || '', reading_value: toNumberOrNull(row.reading) || 0, reading_unit: row.unit || '', reading_at: row.readingDate || new Date().toISOString() })
+    toApi: row => ({ ...(row.meterReadingId ? { meter_reading_id: row.meterReadingId } : {}), meter_id: toText(row.meterId), asset_num: row.asset || null, work_order_num: row.workOrder || null, site_code: row.site || '1031', department_name: row.department || '', reading_value: toNumberOrNull(row.reading) || 0, reading_unit: row.unit || '', reading_at: toDateOrNull(row.readingDate) || new Date() })
   },
   purchaseRequests: {
     endpoint: '/purchase-requisitions',
     key: 'purchaseRequest',
     apiKey: 'pr_num',
-    toApi: row => ({ pr_num: toText(row.purchaseRequest), work_order_num: row.workOrder || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', requested_quantity: toNumberOrNull(row.quantity) || 0, planned_quantity: toNumberOrNull(row.plannedQuantity), available_quantity: toNumberOrNull(row.availableQuantity), store_code: row.source || null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'WAPPR'), po_num: row.purchaseOrder || null, created_at: row.createdAt || null, approved_at: row.approvedAt || null, closed_at: row.closedAt || null, cancelled_at: row.cancelledAt || null })
+    toApi: row => ({ pr_num: toText(row.purchaseRequest), work_order_num: row.workOrder || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', requested_quantity: toNumberOrNull(row.quantity) || 0, planned_quantity: toNumberOrNull(row.plannedQuantity), available_quantity: toNumberOrNull(row.availableQuantity), store_code: row.source || null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'WAPPR'), po_num: row.purchaseOrder || null, created_at: toDateOrNull(row.createdAt) || new Date(), approved_at: toDateOrNull(row.approvedAt), closed_at: toDateOrNull(row.closedAt), cancelled_at: toDateOrNull(row.cancelledAt) })
   },
   purchaseOrders: {
     endpoint: '/purchase-orders',
     key: 'purchaseOrder',
     apiKey: 'po_num',
-    toApi: row => ({ po_num: toText(row.purchaseOrder), pr_num: row.purchaseRequest || null, work_order_num: row.workOrder || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', ordered_quantity: toNumberOrNull(row.quantity) || 0, store_code: row.source || null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'WAPPR'), created_at: row.createdAt || null, approved_at: row.approvedAt || null, received_at: row.receivedAt || null, closed_at: row.closedAt || null, cancelled_at: row.cancelledAt || null })
+    toApi: row => ({ po_num: toText(row.purchaseOrder), pr_num: row.purchaseRequest || null, work_order_num: row.workOrder || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', ordered_quantity: toNumberOrNull(row.quantity) || 0, store_code: row.source || null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'WAPPR'), created_at: toDateOrNull(row.createdAt) || new Date(), approved_at: toDateOrNull(row.approvedAt), received_at: toDateOrNull(row.receivedAt), closed_at: toDateOrNull(row.closedAt), cancelled_at: toDateOrNull(row.cancelledAt) })
   },
   reservations: {
     endpoint: '/reservations',
     key: 'reservation',
     apiKey: 'reservation_num',
-    toApi: row => ({ reservation_num: toText(row.reservation), work_order_num: row.workOrder || null, pr_num: row.purchaseRequest || null, po_num: row.purchaseOrder || null, item_code: row.itemCode || row.item || '', item_description: row.item || '', reserved_quantity: toNumberOrNull(row.quantity) || 0, arranged_quantity: toNumberOrNull(row.arrangedQuantity) || 0, released_quantity: toNumberOrNull(row.releasedQuantity) || 0, delivered_quantity: toNumberOrNull(row.deliveredQuantity) || 0, store_code: row.source || null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'ENTERED'), created_at: row.createdAt || null })
+    toApi: row => ({ reservation_num: toText(row.reservation), work_order_num: row.workOrder || null, pr_num: row.purchaseRequest || null, po_num: row.purchaseOrder || null, item_code: row.itemCode || row.item || '', item_description: row.item || '', reserved_quantity: toNumberOrNull(row.quantity) || 0, arranged_quantity: toNumberOrNull(row.arrangedQuantity) || 0, released_quantity: toNumberOrNull(row.releasedQuantity) || 0, delivered_quantity: toNumberOrNull(row.deliveredQuantity) || 0, store_code: row.source || null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'ENTERED'), created_at: toDateOrNull(row.createdAt) || new Date() })
   },
   jobPlans: {
     endpoint: '/job-plans',
@@ -397,6 +477,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const [tab, setTab] = useState(workOrderTabs.includes(initialTab) ? initialTab : 'Overview')
   const [autoSaveState,setAutoSaveState]=useState('Saved')
   const saveReady = useRef(false)
+  const lastSavedFingerprint = useRef('')
   const [selectedStatus,setSelectedStatus]=useState(normalizeWoStatus(order.STATUS))
   const [heldFrom,setHeldFrom]=useState(order['HELD FROM']||'')
   const [holdPeriods,setHoldPeriods]=useState(Array.isArray(order.holdPeriods)?order.holdPeriods:[])
@@ -465,7 +546,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     : [...new Set([...assetRecords.map(a=>String(a.site)),...workOrderRows.map(o=>String(o.SITE))].filter(Boolean))].sort()
   const departmentOptions=[...new Map(departmentRecords.filter(department=>department.status!=='Inactive'&&department.department).map(department=>[department.department,{value:department.department,label:''}])).values()]
   const selectedDepartment=departments.find(item=>sameDepartment(item.name,department))
-  const masterSubDepartments=departmentRecords.filter(item=>item.status!=='Inactive'&&sameDepartment(item.department,department)).map(item=>({value:item.description,label:item.subDepartmentCode}))
+  const masterSubDepartments=departmentRecords.filter(item=>item.status!=='Inactive'&&sameDepartment(item.department,department)).map(item=>({value:item.subDepartmentCode,label:item.description}))
   const subDepartmentOptions=masterSubDepartments.length?masterSubDepartments:(selectedDepartment?.subDepartments||departments.flatMap(item=>item.subDepartments)).map(item=>({value:item.name,label:item.code}))
   const workGroupOptions=workGroupsForDepartment(assignedDepartment)
   const systemOptions=systemNamesForDepartment(department)
@@ -530,9 +611,9 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const materialBlocked=materialRequests.some(resource=>resourceAvailability(resource).availability==='Purchase Required'&&!hasSupplyChainTransaction(resource))
   const ptwBlocked=ptwRequired&&ptwFiles.length===0
   const targetOutOfOrder=Boolean(targetStart&&targetFinish&&new Date(targetFinish)<new Date(targetStart))
-  const overviewReady=Boolean(description.trim()&&siteValue&&assetValue&&assetDescription.trim()&&locationValue&&department&&assignedDepartment&&targetStart&&targetFinish&&!targetOutOfOrder)
-  const overviewMissing=[!description.trim()&&'Description',!siteValue&&'Site',!assetValue&&'Asset',!assetDescription.trim()&&'Asset Description',!locationValue&&'Location',!department&&'Department',!assignedDepartment&&'Assigned Department',!targetStart&&'Target Start',!targetFinish&&'Target Finish',targetOutOfOrder&&'Target Finish must be on or after Target Start'].filter(Boolean)
-  const plannedLaborReady=plannedLabor.some(row=>row.craft&&Number(row.hours)>0)
+  const overviewReady=Boolean(description.trim()&&siteValue&&locationValue&&department&&assignedDepartment&&targetStart&&targetFinish&&!targetOutOfOrder)
+  const overviewMissing=[!description.trim()&&'Description',!siteValue&&'Site',!locationValue&&'Location',!department&&'Department',!assignedDepartment&&'Assigned Department',!targetStart&&'Target Start',!targetFinish&&'Target Finish',targetOutOfOrder&&'Target Finish must be on or after Target Start'].filter(Boolean)
+  const plannedLaborReady=plannedLabor.some(row=>cleanText(row.craft)&&Number(row.hours)>0&&cleanText(row.crew))
   const plannedMaterialsReady=plannedResources.some(row=>row.type==='Material'&&row.item&&Number(row.quantity)>0)
   const plannedToolsReady=plannedResources.some(row=>['Tool','Equipment'].includes(row.type)&&row.item&&Number(row.quantity)>0)
   const planReady=Boolean(plannedLaborReady&&(!isCM||(plannedMaterialsReady&&plannedToolsReady)))
@@ -577,7 +658,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     if(['INPRG','COMP','CLOSE'].includes(next)) setActualStart(current=>current||toDateTimeInput(new Date()))
     if(['COMP','CLOSE'].includes(next)) setActualFinish(current=>current||toDateTimeInput(new Date()))
   }
-  const planMissing=[!plannedLaborReady&&'Plan: labor and estimated hours',isCM&&!plannedMaterialsReady&&'Plan: required materials',isCM&&!plannedToolsReady&&'Plan: required tools'].filter(Boolean)
+  const planMissing=[!plannedLaborReady&&'Plan: labor, estimated hours, and assigned crew',isCM&&!plannedMaterialsReady&&'Plan: required materials',isCM&&!plannedToolsReady&&'Plan: required tools'].filter(Boolean)
   const failureMissing=[isCM&&!failureClass&&'Failure: failure code',isCM&&!problemCode&&'Failure: problem code',causeApplicable&&!causeCode&&'Failure: cause code',remedyApplicable&&!remedyCode&&'Failure: remedy code'].filter(Boolean)
   const actualMissing=[!technicianRemarks.trim()&&'Actual: technician remarks',!completionNotes.trim()&&'Actual: completion notes',!actualLabor.trim()&&'Actual: labor',!Number(actualHours)&&'Actual: labor hours',!actualMaterialsReady&&'Actual: materials',!actualToolsReady&&'Actual: tools',!returnsSettledNow&&`Return to store: ${describeOutstanding(actualMaterials,actualTools)}`].filter(Boolean)
   const holdMissing=[materialBlocked&&'Material Requests: create PR or resolve stock',ptwBlocked&&'PTW & Files: attach permit file'].filter(Boolean)
@@ -597,6 +678,11 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     :missingFor(status).length?missingFor(status)
     :nextInChain?missingFor(nextInChain):[]
   const allowedStatuses=workOrderTransitions(status,heldFrom)
+  const statusSelectOptions=statusOptions('workOrder').map(value=>({
+    value,
+    label:`${value} · ${maximoWorkOrderStatusDescriptions[value] || value}`,
+    disabled:value!==status&&!allowedStatuses.includes(value)
+  }))
   const workflowNextStep={
     WAPPR: overviewReady?'Approving automatically':'Complete Work Order overview fields',
     APPR: preparationReady?'Scheduling automatically':'Complete planning to move into the schedule',
@@ -609,10 +695,8 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     CLOSE: 'Workflow complete'
   }[status] || 'Review the work order'
 
-  // The status select is gone, so the preparation stages advance on their own the moment
-  // their entry conditions are met. Only the stages that represent a human act - starting
-  // work, completing it, closing it - still wait for a button, and holds are never left
-  // automatically because the operator decides when material has actually arrived.
+  // Preparation stages advance on their own when their entry conditions are met. The
+  // dropdown still exposes valid manual transitions for supervisors and dispatchers.
   const autoAdvanceTo=
     status==='WAPPR'&&!missingFor('APPR').length?'APPR'
     :status==='APPR'&&!missingFor('WSCH').length?'WSCH'
@@ -676,61 +760,77 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     setActualLabor(current=>current||plannedCrewName());setLaborCraft(current=>current||plannedCraftCode());setActualHours(current=>current||plannedTotalHours());
     setWorkCompleted(true);setSelectedStatus('COMP')}
   const printWorkOrder=()=>{if(isPM&&tab!=='Plan')setTab('Plan');printWithoutBrowserTitle()}
+  const currentWorkOrderSnapshot=()=>({
+    WORKORDER: number,
+    'DESCRIPITION ': description,
+    'LONG DESCRIPTION': longDescription,
+    PRIORTY: Number(String(priority).charAt(0)) || Number(priority) || 3,
+    SITE: siteValue,
+    ASSET: assetValue,
+    'ASSET DESCRIPTION': assetDescription,
+    'LOCATION ': locationValue,
+    'DEPARTMENT ': department,
+    'SUB DEPARTMENT  NAME': subDepartment,
+    'ASSIGNED DEPARTMENT': assignedDepartment,
+    'WORK GROUP': workGroup,
+    'SYSTEM': systemValue,
+    'HELD FROM': heldFrom,
+    holdPeriods,
+    SUPERVISOR: supervisor,
+    'LABOR CRAFT CODE': laborCraft,
+    STATUS: status,
+    'STATUS DESCRIPITION': maximoWorkOrderStatusDescriptions[status] || status,
+    'TARGET START ': targetStart,
+    'TARGET FINISH ': targetFinish,
+    'ACTUAL START ': actualStart,
+    'ACTUAL FINISH ': actualFinish,
+    'FAILURE CODE': failureClass,
+    'PROBLEM CODE': problemCode,
+    'CAUSE CODE': causeCode,
+    'REMEDY CODE': remedyCode,
+    'JOB PLAN': jobPlanNumber,
+    'JOB PLAN TASKS': plannedTasks,
+    'PLANNED LABOR': plannedLabor,
+    'PLANNED RESOURCES': plannedResources,
+    'PTW REQUIRED': ptwRequired,
+    'PTW FILES': ptwFiles,
+    'GENERAL FILES': generalFiles,
+    'TECHNICIAN REMARKS': technicianRemarks,
+    'COMPLETION NOTES': completionNotes,
+    'ACTUAL LABOR': actualLabor,
+    'ACTUAL HOURS': actualHours,
+    'ACTUAL MATERIALS': actualMaterials,
+    'ACTUAL TOOLS': actualTools,
+    'METER READING': meterReading,
+    'WATER CONSUMPTION': waterConsumption,
+    'ENERGY CONSUMPTION': energyConsumption,
+    'METER READING DATE': meterReadingDate
+  })
+  const saveFingerprint=()=>rowFingerprint(currentWorkOrderSnapshot())
   const saveChanges=()=>{
+    const fingerprint = saveFingerprint()
+    if (lastSavedFingerprint.current === fingerprint) {
+      setAutoSaveState('Saved')
+      return Promise.resolve()
+    }
     const updatedOrder = {
       ...order,
-      WORKORDER: number,
-      'DESCRIPITION ': description,
-      'LONG DESCRIPTION': longDescription,
-      PRIORTY: Number(String(priority).charAt(0)) || Number(priority) || 3,
-      SITE: siteValue,
-      ASSET: assetValue,
-      'ASSET DESCRIPTION': assetDescription,
-      'LOCATION ': locationValue,
-      'DEPARTMENT ': department,
-      'SUB DEPARTMENT  NAME': subDepartment,
-      'ASSIGNED DEPARTMENT': assignedDepartment,
-      'WORK GROUP': workGroup,
-      'SYSTEM': systemValue,
-      'HELD FROM': heldFrom,
-      holdPeriods,
-      SUPERVISOR: supervisor,
-      'LABOR CRAFT CODE': laborCraft,
-      STATUS: status,
-      'STATUS DESCRIPITION': maximoWorkOrderStatusDescriptions[status] || status,
-      'TARGET START ': targetStart,
-      'TARGET FINISH ': targetFinish,
-      'ACTUAL START ': actualStart,
-      'ACTUAL FINISH ': actualFinish,
-      'FAILURE CODE': failureClass,
-      'PROBLEM CODE': problemCode,
-      'CAUSE CODE': causeCode,
-      'REMEDY CODE': remedyCode,
-      'JOB PLAN': jobPlanNumber,
-      'JOB PLAN TASKS': plannedTasks,
-      'PLANNED LABOR': plannedLabor,
-      'PLANNED RESOURCES': plannedResources,
-      'PTW REQUIRED': ptwRequired,
-      'PTW FILES': ptwFiles,
-      'GENERAL FILES': generalFiles,
-      'TECHNICIAN REMARKS': technicianRemarks,
-      'COMPLETION NOTES': completionNotes,
-      'ACTUAL LABOR': actualLabor,
-      'ACTUAL HOURS': actualHours,
-      'ACTUAL MATERIALS': actualMaterials,
-      'ACTUAL TOOLS': actualTools,
-      'METER READING': meterReading,
-      'WATER CONSUMPTION': waterConsumption,
-      'ENERGY CONSUMPTION': energyConsumption,
-      'METER READING DATE': meterReadingDate
+      ...currentWorkOrderSnapshot()
     }
     setAutoSaveState('Saving')
-    onUpdateWorkOrder?.(number, updatedOrder)
-    setTimeout(()=>setAutoSaveState('Saved'),350)
+    Promise.resolve(onUpdateWorkOrder?.(number, updatedOrder))
+      .then(()=>{lastSavedFingerprint.current = fingerprint; setAutoSaveState('Saved')})
+      .catch(()=>setAutoSaveState('Save failed'))
   }
-  useEffect(()=>{if(!saveReady.current){saveReady.current=true;return}setAutoSaveState('Unsaved changes')},[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterReading,waterConsumption,energyConsumption,meterReadingDate,selectedStatus,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
+  useEffect(()=>{
+    if(!saveReady.current){saveReady.current=true;lastSavedFingerprint.current=saveFingerprint();return}
+    if(lastSavedFingerprint.current===saveFingerprint()){setAutoSaveState('Saved');return}
+    setAutoSaveState('Unsaved changes')
+    const timer=setTimeout(saveChanges,650)
+    return()=>clearTimeout(timer)
+  },[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterReading,waterConsumption,energyConsumption,meterReadingDate,selectedStatus,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
-    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} autoSaveState={autoSaveState} onSave={saveChanges} overviewReady={overviewReady} preparationReady={preparationReady} failureReady={failureReady} actualReady={actualReady} close={close} printWorkOrder={printWorkOrder} onMaterialHold={putOnMaterialHold} onResume={resumeFromMaterialHold} onMaterialHoldStatus={status===HOLD_MATERIAL} canMaterialHold={allowedStatuses.includes(HOLD_MATERIAL)} canManageHold={canManageHold} workClosed={workClosed} />
+    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} statusOptions={statusSelectOptions} onStatusChange={changeStatus} close={close} printWorkOrder={printWorkOrder} workClosed={workClosed} />
     <WorkOrderTabs tabs={workOrderTabs} active={tab} onChange={setTab} showFailureDot={!isPM} />
     <WorkOrderWorkflowNotice status={status} missing={workflowMissing} nextStep={workflowNextStep} />
     <div className={workOrderBodyClass}>
@@ -746,7 +846,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
 }
 
 export default function App() {
-  const { isAuthenticated, user, applySessionUpdate } = useAuth()
+  const { isAuthenticated, user, logout, applySessionUpdate } = useAuth()
   const [active, setActive] = useState(()=>routeToPage(window.location.pathname))
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -774,7 +874,6 @@ export default function App() {
   const [failureCodeRecords,setFailureCodeRecords]=useState(failureCodes)
   const [workspaceLoading,setWorkspaceLoading]=useState(false)
   const [workspaceError,setWorkspaceError]=useState('')
-  const [realtimeChange,setRealtimeChange]=useState(null)
   const [projectName,setProjectName]=useState(readProjectName)
   const changeProjectName=name=>setProjectName(writeProjectName(name))
   const applyWorkspaceData = useCallback(data => {
@@ -808,11 +907,15 @@ export default function App() {
     try {
       applyWorkspaceData(await loadWorkspace())
     } catch (error) {
+      if (error.status === 401) {
+        logout()
+        return
+      }
       setWorkspaceError(error.message || 'Unable to load backend data.')
     } finally {
       if (!silent) setWorkspaceLoading(false)
     }
-  }, [applyWorkspaceData, isAuthenticated])
+  }, [applyWorkspaceData, isAuthenticated, logout])
   useEffect(() => {
     refreshWorkspace()
   }, [refreshWorkspace])
@@ -820,7 +923,6 @@ export default function App() {
     if (!isAuthenticated) return undefined
     let timer
     const unsubscribe = subscribeWorkspaceChanges(change => {
-      setRealtimeChange(change)
       clearTimeout(timer)
       timer = setTimeout(() => refreshWorkspace({ silent: true }), 250)
     })
@@ -1080,7 +1182,7 @@ export default function App() {
   const pages = {
     'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions}/>,
     'Incidents': <IncidentsPage rows={scopedIncidents} setRows={saveIncidents}/>,
-    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
+    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
     'Assets': <AssetsPage rows={scopedAssets} setRows={saveAssets} workOrders={scopedWorkOrders} />,
     'Preventive Maintenance': <PreventiveMaintenancePage rows={pmScheduleRecords} setRows={savePmSchedules} assets={scopedAssets} jobTasks={jobTaskRecords} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} scopeUser={effectiveUser} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Meters': <MetersPage rows={meterRecords} setRows={saveMeters} assets={scopedAssets} workOrders={scopedWorkOrders} />,

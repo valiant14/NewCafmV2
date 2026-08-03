@@ -50,7 +50,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
   ).values()]
   const subDepartmentOptions = departmentRecords
     .filter(department => department.status !== 'Inactive' && sameDepartment(department.department, form.department))
-    .map(department => ({ value: department.description, label: department.subDepartmentCode }))
+    .map(department => ({ value: department.subDepartmentCode, label: department.description }))
 
   const updateSite = event => setForm({ ...form, site: event.target.value, location: '', asset: '' })
   const updateAsset = event => {

@@ -5,12 +5,62 @@ import { addScopeWhere } from '../middleware/scope.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { bindParams } from '../utils/sqlParams.js'
 
+const dateColumnPattern = /(^|_)(date|at)$|_date$|_at$/
+
 const assertKnownColumn = (columns, key) => {
   if (!columns.includes(key)) {
     const error = new Error(`Unsupported field: ${key}`)
     error.status = 400
     throw error
   }
+}
+
+const normalizeColumnValue = (column, value) => {
+  if (!dateColumnPattern.test(column) || value === null || value === undefined || value === '') return value
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const normalizePayload = payload => Object.fromEntries(
+  Object.entries(payload || {}).map(([column, value]) => [column, normalizeColumnValue(column, value)])
+)
+
+const normalizeSubDepartmentCode = async (pool, payload) => {
+  const value = payload.sub_department_code
+  if (value === undefined) return payload
+  if (value === null || String(value).trim() === '') {
+    return {
+      ...payload,
+      sub_department_code: null
+    }
+  }
+
+  const result = await pool.request()
+    .input('value', String(value).trim())
+    .query(`
+      select top 1 sub_department_code
+      from dbo.departments
+      where sub_department_code = @value
+        or description = @value
+        or department_name = @value
+      order by
+        case
+          when sub_department_code = @value then 0
+          when description = @value then 1
+          else 2
+        end,
+        sub_department_code
+    `)
+
+  return {
+    ...payload,
+    sub_department_code: result.recordset[0]?.sub_department_code || null
+  }
+}
+
+const normalizeForeignKeys = async (pool, payload, { table }) => {
+  if (table === 'dbo.departments' || !Object.hasOwn(payload, 'sub_department_code')) return payload
+  return normalizeSubDepartmentCode(pool, payload)
 }
 
 const emitChange = (req, payload) => {
@@ -45,10 +95,11 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
   }))
 
   router.post('/', permit('create'), asyncHandler(async (req, res) => {
-    const payload = req.body || {}
+    let payload = normalizePayload(req.body || {})
     Object.keys(payload).forEach(column => assertKnownColumn(columns, column))
-    const insertColumns = columns.filter(column => payload[column] !== undefined)
     const pool = await getPool()
+    payload = await normalizeForeignKeys(pool, payload, { table })
+    const insertColumns = columns.filter(column => payload[column] !== undefined)
     const request = bindParams(pool.request(), Object.fromEntries(insertColumns.map(column => [column, payload[column]])))
     const result = await request.query(`
       insert into ${table} (${insertColumns.join(', ')})
@@ -60,11 +111,12 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
   }))
 
   router.put('/:id', permit('edit'), asyncHandler(async (req, res) => {
-    const payload = req.body || {}
+    let payload = normalizePayload(req.body || {})
     Object.keys(payload).forEach(column => assertKnownColumn(columns, column))
+    const pool = await getPool()
+    payload = await normalizeForeignKeys(pool, payload, { table })
     const updateColumns = editable.filter(column => payload[column] !== undefined)
     if (!updateColumns.length) return res.status(400).json({ error: 'BadRequest', message: 'No editable fields supplied' })
-    const pool = await getPool()
     const request = bindParams(pool.request(), Object.fromEntries(updateColumns.map(column => [column, payload[column]])))
     request.input('id', req.params.id)
     const timestampUpdate = columns.includes('updated_at') ? ', updated_at = sysutcdatetime()' : ''

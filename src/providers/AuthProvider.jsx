@@ -12,6 +12,13 @@ const safeStoredUser = () => {
     return null
   }
 }
+const sameSessionValue = (left, right) => {
+  if (Object.is(left, right)) return true
+  if (left && right && typeof left === 'object' && typeof right === 'object') {
+    return JSON.stringify(left) === JSON.stringify(right)
+  }
+  return false
+}
 
 export function AuthProvider({ children }) {
   const initialToken = getAuthToken()
@@ -29,7 +36,7 @@ export function AuthProvider({ children }) {
       if (!current) return current
       // Nothing changed - bail before setting state, or this loops against the effect
       // in App that feeds it.
-      const changed = Object.keys(patch).some(key => !Object.is(current[key], patch[key]))
+      const changed = Object.keys(patch).some(key => !sameSessionValue(current[key], patch[key]))
       if (!changed) return current
       const next = { ...current, ...patch }
       localStorage.setItem(storageKey, JSON.stringify(next))
@@ -37,7 +44,7 @@ export function AuthProvider({ children }) {
     })
   }, [])
 
-  const login = async ({ username, password }) => {
+  const login = useCallback(async ({ username, password }) => {
     try {
       const result = await api.login({ username: username?.trim(), password })
       const sessionUser = {
@@ -54,16 +61,16 @@ export function AuthProvider({ children }) {
       setAuthError(error.message || 'Invalid username or password.')
       return false
     }
-  }
+  }, [])
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setAuthToken('')
     localStorage.removeItem(storageKey)
     setToken('')
     setUser(null)
     setAuthError('')
     window.history.pushState({}, '', '/')
-  }
+  }, [])
 
   const value = useMemo(() => ({
     user,
@@ -73,7 +80,7 @@ export function AuthProvider({ children }) {
     logout,
     applySessionUpdate,
     isAuthenticated: Boolean(user && token)
-  }), [user, token, authError, applySessionUpdate])
+  }), [user, token, authError, login, logout, applySessionUpdate])
 
   return (
     <AuthContext.Provider value={value}>

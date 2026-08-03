@@ -79,7 +79,7 @@ export default function WorkOrderOverviewTab({
 
         <Section compact title="Asset & Location" note="Equipment, facility, and project relationship">
           <div className={gridClass}>
-            <Field label="Asset" value={assetValue} required onChange={changeAsset} suggestions={assetOptions} placeholder="Search asset number or description" />
+            <Field label="Asset" value={assetValue} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'Optional - no scoped assets available'} />
             <Field label="Location" value={locationValue} required onChange={event => setLocationValue(event.target.value)} suggestions={locationOptions} placeholder="Search or select a location" />
             <Field label="Asset Description" value={assetDescription} required onChange={event => setAssetDescription(event.target.value)} placeholder="Required asset description" />
             <Field label="Project" value={projectName} required locked />

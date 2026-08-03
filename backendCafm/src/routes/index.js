@@ -102,6 +102,14 @@ router.use('/work-order-resource-requests', crudRouter({
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
+router.use('/work-order-planned-labor', crudRouter({
+  moduleName: 'Work Orders',
+  table: 'dbo.work_order_planned_labor',
+  key: 'planned_labor_id',
+  columns: ['planned_labor_id', 'work_order_num', 'line_order', 'craft_name', 'estimated_hours', 'assigned_crew', 'site_code', 'department_name', 'created_at', 'updated_at'],
+  scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
+}))
+
 router.use('/service-requests', crudRouter({
   moduleName: 'Job Requests',
   table: 'dbo.service_requests',

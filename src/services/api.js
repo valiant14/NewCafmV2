@@ -8,8 +8,10 @@ const request = async (path, options = {}) => {
   const token = getAuthToken()
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
+    cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     }
@@ -185,7 +187,18 @@ const mapResourceRequest = row => ({
   supplyChainStatus: row.supply_chain_status || ''
 })
 
-const mapWorkOrder = (row, resourceRequests = []) => ({
+const mapPlannedLabor = row => ({
+  plannedLaborId: row.planned_labor_id,
+  workOrder: row.work_order_num,
+  lineOrder: row.line_order,
+  craft: row.craft_name || '',
+  hours: numberValue(row.estimated_hours),
+  crew: row.assigned_crew || '',
+  site: row.site_code || '',
+  department: row.department_name || ''
+})
+
+const mapWorkOrder = (row, resourceRequests = [], plannedLabor = []) => ({
   WORKORDER: row.work_order_num,
   'DESCRIPITION ': row.description,
   'LONG DESCRIPTION': row.long_description || '',
@@ -208,6 +221,9 @@ const mapWorkOrder = (row, resourceRequests = []) => ({
   'PROBLEM CODE': row.problem_code || '',
   'CAUSE CODE': row.cause_code || '',
   'REMEDY CODE': row.remedy_code || '',
+  'PLANNED LABOR': plannedLabor
+    .filter(labor => String(labor.workOrder) === String(row.work_order_num))
+    .sort((left, right) => Number(left.lineOrder || 0) - Number(right.lineOrder || 0)),
   'PLANNED RESOURCES': resourceRequests.filter(resource => String(resource.workOrder) === String(row.work_order_num))
 })
 
@@ -361,6 +377,7 @@ export async function loadWorkspace() {
     failureLibrary,
     workOrders,
     workOrderResources,
+    workOrderPlannedLabor,
     serviceRequests,
     purchaseRequests,
     purchaseOrders,
@@ -385,6 +402,7 @@ export async function loadWorkspace() {
     safeGet('/failure-library'),
     safeGet('/work-orders'),
     safeGet('/work-order-resource-requests'),
+    safeGet('/work-order-planned-labor'),
     safeGet('/service-requests'),
     safeGet('/purchase-requisitions'),
     safeGet('/purchase-orders'),
@@ -398,6 +416,7 @@ export async function loadWorkspace() {
 
   const roles = rolesRaw.map(mapRole)
   const mappedWorkOrderResources = workOrderResources.map(mapResourceRequest)
+  const mappedWorkOrderPlannedLabor = workOrderPlannedLabor.map(mapPlannedLabor)
   return {
     sites: sites.map(mapSite),
     departments: departments.map(mapDepartment),
@@ -411,7 +430,7 @@ export async function loadWorkspace() {
     inventoryStock: inventoryStock.map(mapInventoryStock),
     tools: tools.map(mapTool),
     failureCodes: failureLibrary.map(mapFailureCode),
-    workOrders: workOrders.map(row => mapWorkOrder(row, mappedWorkOrderResources)),
+    workOrders: workOrders.map(row => mapWorkOrder(row, mappedWorkOrderResources, mappedWorkOrderPlannedLabor)),
     serviceRequests: serviceRequests.map(mapServiceRequest),
     purchaseRequests: purchaseRequests.map(mapPurchaseRequest),
     purchaseOrders: purchaseOrders.map(mapPurchaseOrder),

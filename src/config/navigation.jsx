@@ -21,8 +21,9 @@ import {
 
 export const navigationItems = [
   { section: 'Workspace', name: 'Overview', path: '/', icon: LayoutDashboard },
+    { section: 'Workspace', name: 'Job Requests', path: '/job-requests', icon: FileText },
   { section: 'Workspace', name: 'Work Orders', path: '/work-orders', icon: ClipboardList, counter: 'workOrders' },
-  { section: 'Workspace', name: 'Job Requests', path: '/job-requests', icon: FileText },
+
   { section: 'Workspace', name: 'Preventive Maintenance', path: '/preventive-maintenance', icon: CalendarClock },
   { section: 'Workspace', name: 'Incidents', path: '/incidents', icon: AlertTriangle },
   { section: 'Workspace', name: 'Job Plans', path: '/job-plans', icon: Wrench },

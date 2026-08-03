@@ -8,7 +8,7 @@ import { sameDepartment } from '../../lib/departments'
 const workTypes = ['CM', 'PM', 'Incident']
 const priorities = ['1 - Emergency', '2 - High', '3 - Medium', '4 - Low']
 
-export default function CreateWorkOrderModal({ rows, assets, siteRecords = [], departmentRecords = [], onCancel, onCreate }) {
+export default function CreateWorkOrderModal({ rows, assets, locationRows = [], siteRecords = [], departmentRecords = [], onCancel, onCreate }) {
   const [form, setForm] = useState({ type: 'CM', description: '', priority: priorities[2], site: '', location: '', asset: '', department: '', subDepartment: '' })
   const [error, setError] = useState('')
   const update = key => event => setForm({ ...form, [key]: event.target.value })
@@ -17,14 +17,19 @@ export default function CreateWorkOrderModal({ rows, assets, siteRecords = [], d
     : [...new Set([...assets.map(asset => String(asset.site)), ...rows.map(order => String(order.SITE))].filter(Boolean))].sort()
   const siteAssets = assets.filter(asset => !form.site || String(asset.site) === form.site)
   const assetOptions = siteAssets.map(asset => ({ value: asset.assetnum, label: asset.description?.trim() }))
-  const locations = [...new Set([...siteAssets.map(asset => asset.location), ...rows.filter(order => !form.site || String(order.SITE) === form.site).map(order => order['LOCATION '])].filter(Boolean))].sort()
+  const siteLocations = locationRows.filter(location => !form.site || String(location.site) === form.site)
+  const locations = [...new Set([
+    ...siteLocations.map(location => location.location),
+    ...siteAssets.map(asset => asset.location),
+    ...rows.filter(order => !form.site || String(order.SITE) === form.site).map(order => order['LOCATION '])
+  ].filter(Boolean))].sort()
   const departmentOptions = [...new Map(departmentRecords
     .filter(department => department.status !== 'Inactive' && department.department)
     .map(department => [department.department, { value: department.department, label: '' }])
   ).values()]
   const subDepartmentOptions = departmentRecords
     .filter(department => department.status !== 'Inactive' && sameDepartment(department.department, form.department))
-    .map(department => ({ value: department.description, label: department.subDepartmentCode }))
+    .map(department => ({ value: department.subDepartmentCode, label: department.description }))
   const changeSite = event => setForm({ ...form, site: event.target.value, location: '', asset: '' })
   const changeAsset = event => {
     const value = event.target.value
@@ -44,7 +49,6 @@ export default function CreateWorkOrderModal({ rows, assets, siteRecords = [], d
     !form.description.trim() && 'Description',
     !form.site && 'Site',
     !form.location && 'Location',
-    !form.asset && 'Asset',
     !form.department && 'Department'
   ].filter(Boolean)
 
@@ -72,7 +76,7 @@ export default function CreateWorkOrderModal({ rows, assets, siteRecords = [], d
             <div className="md:col-span-2"><Field label="Description" value={form.description} required onChange={update('description')} /></div>
             <Field label="Site" value={form.site} required onChange={changeSite} suggestions={sites} placeholder="Search or select a site" />
             <Field label="Location" value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
-            <div className="md:col-span-2"><Field label="Asset" value={form.asset} required onChange={changeAsset} suggestions={assetOptions} placeholder="Search asset number or description" /></div>
+            <div className="md:col-span-2"><Field label="Asset" value={form.asset} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'Optional - no scoped assets available'} /></div>
             <Field label="Department" value={form.department} required onChange={changeDepartment} suggestions={departmentOptions} placeholder="Search department" />
             <Field label="Sub Department" value={form.subDepartment} onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder={form.department ? 'Search sub department' : 'Select department first'} />
           </div>
