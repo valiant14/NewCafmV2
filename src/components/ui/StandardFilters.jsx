@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Filter, RotateCcw } from 'lucide-react'
+import Combobox from './Combobox'
 import { emptyStandardFilters } from '../../lib/standardFilters'
 
 const storageKey = 'facility-command-filters-open'
@@ -7,7 +8,7 @@ const shellClass = 'mb-4 rounded-2xl border border-[var(--app-line)] bg-[var(--a
 const gridClass = 'grid gap-3 md:grid-cols-2 xl:grid-cols-5'
 const fieldClass = 'grid gap-1'
 const labelClass = 'text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]'
-const controlClass = 'h-10 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-field-bg)] px-3 text-[length:var(--app-field-font-size)] text-[var(--app-ink)] outline-none transition focus:border-[var(--app-primary)]'
+const controlClass = 'h-10 w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-field-bg)] px-3 text-[length:var(--app-field-font-size)] text-[var(--app-ink)] outline-none transition focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]'
 const chipClass = 'inline-flex items-center rounded-full border border-[var(--app-line)] bg-[var(--app-soft-bg)] px-2.5 py-1 text-[10px] font-bold text-[var(--app-ink)]'
 const countClass = 'inline-flex items-center rounded-full bg-[var(--app-badge-blue-bg)] px-2 py-0.5 text-[10px] font-extrabold text-[var(--app-badge-blue-text)]'
 
@@ -25,14 +26,22 @@ const readStoredOpen = fallback => {
   return stored === null ? fallback : stored === 'open'
 }
 
+// A searchable picker rather than a native select: these lists grow with the data, and the
+// browser menu could not be filtered or styled. Typing narrows the list; only a real option
+// is applied, and picking the "All ..." row (or clearing) drops the filter.
 function SelectFilter({ label, value, onChange, options, placeholder }) {
+  const choices = [placeholder, ...options.filter(option => String(option || '').trim() && option !== placeholder)]
+  const pick = event => {
+    const next = String(event.target.value || '').trim()
+    if (!next) return onChange('')
+    const matched = choices.find(option => option.toLowerCase() === next.toLowerCase())
+    if (matched) onChange(matched === placeholder ? '' : matched)
+  }
+
   return (
     <label className={fieldClass}>
       <span className={labelClass}>{label}</span>
-      <select className={controlClass} value={value} onChange={event => onChange(event.target.value)}>
-        <option value="">{placeholder}</option>
-        {options.map(option => <option key={option} value={option}>{option}</option>)}
-      </select>
+      <Combobox className={controlClass} value={value} suggestions={choices} onChange={pick} placeholder={placeholder} />
     </label>
   )
 }

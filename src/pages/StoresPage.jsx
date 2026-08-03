@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, BarChart3, ChevronRight, ClipboardList, Package, PackageCheck, Plus, Warehouse } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
+import Combobox from '../components/ui/Combobox'
 import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
@@ -10,6 +11,7 @@ import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../components/ui/ModalFrame'
 import { storeLocation, storeStockRows, storeSummary } from '../lib/inventory'
 import { scopeRowsForUser } from '../lib/accessControl'
 import { useAuth } from '../providers/AuthProvider'
@@ -21,7 +23,8 @@ const summaryColumns = [
   { key: 'locationDescription', label: 'Location' },
   { key: 'site', label: 'Site' },
   { key: 'itemCount', label: 'Items Held' },
-  { key: 'totalQuantity', label: 'On-Hand Quantity' }
+  { key: 'totalQuantity', label: 'On-Hand Quantity' },
+  { key: 'status', label: 'Status' }
 ]
 
 const stockColumns = [
@@ -34,6 +37,9 @@ const stockColumns = [
   { key: 'available', label: 'Available' },
   { key: 'reorderLevel', label: 'Reorder Level' }
 ]
+
+const storeStatuses = ['Active', 'Inactive']
+const storeStatusTone = status => String(status || 'Active') === 'Inactive' ? 'orange' : 'green'
 
 const emptyStore = {
   code: '',
@@ -119,22 +125,62 @@ const allToolRows = (tools = [], storeRows = []) => storeRows.filter(isUsableSto
   }))
 )
 
-function Widget({ icon: Icon, label, value, note, tone = 'neutral' }) {
+const inventoryRowKey = row => `${row.storeroom}-${row.itemNumber}`
+
+const inventoryDrillColumns = [
+  { key: 'itemNumber', label: 'Item', render: value => <strong className="mono">{value}</strong> },
+  { key: 'description', label: 'Description' },
+  { key: 'storeName', label: 'Store' },
+  { key: 'balance', label: 'Balance' },
+  { key: 'reserved', label: 'Reserved' },
+  { key: 'available', label: 'Available' },
+  { key: 'reorderLevel', label: 'Low Level' },
+  { key: 'status', label: 'Status', render: (value, row) => <Badge tone={availabilityTone(row)}>{value}</Badge> }
+]
+
+const storeDrillColumns = [
+  { key: 'code', label: 'Warehouse', render: value => <strong className="mono">{value}</strong> },
+  { key: 'name', label: 'Warehouse Name' },
+  { key: 'site', label: 'Site' },
+  { key: 'itemCount', label: 'Items Held' },
+  { key: 'totalQuantity', label: 'On Hand' },
+  { key: 'belowReorder', label: 'Low Stock', render: value => <Badge tone={value ? 'orange' : 'green'}>{value}</Badge> },
+  { key: 'status', label: 'Status', render: value => <Badge tone={storeStatusTone(value)}>{value || 'Active'}</Badge> }
+]
+
+function Widget({ icon: Icon, label, value, note, tone = 'neutral', onClick }) {
   const toneClass = {
     green: 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]',
     orange: 'bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]',
     blue: 'bg-[var(--app-badge-blue-bg)] text-[var(--app-badge-blue-text)]',
     neutral: 'bg-[var(--app-soft-bg)] text-[var(--app-muted)]'
   }[tone] || 'bg-[var(--app-soft-bg)] text-[var(--app-muted)]'
-  return (
-    <div className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-3.5 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
+  const body = (
+    <>
       <div className="flex items-center justify-between gap-3">
         <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{label}</span>
         <span className={`grid h-8 w-8 place-items-center rounded-xl ${toneClass}`}><Icon size={16} /></span>
       </div>
-      <strong className="mt-1.5 block text-2xl font-extrabold text-[var(--app-ink)]">{value}</strong>
-      <small className="text-[11px] font-semibold text-[var(--app-muted)]">{note}</small>
-    </div>
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <strong className="text-2xl font-extrabold text-[var(--app-ink)]">{value}</strong>
+        {onClick && <ChevronRight size={16} className="shrink-0 text-[var(--app-muted)]" />}
+      </div>
+      <small className="block text-[11px] font-semibold text-[var(--app-muted)]">{note}</small>
+    </>
+  )
+  const cardClass = 'rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-3.5 text-left shadow-[0_8px_24px_rgba(32,55,45,.05)]'
+
+  if (!onClick) return <div className={cardClass}>{body}</div>
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`View ${label}`}
+      className={`${cardClass} w-full transition hover:border-[var(--app-primary)] hover:shadow-[0_12px_28px_rgba(32,55,45,.12)] focus:outline-none focus:ring-4 focus:ring-[var(--app-field-focus-ring)]`}
+    >
+      {body}
+    </button>
   )
 }
 
@@ -142,6 +188,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
   const { user } = useAuth()
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [drill, setDrill] = useState(null)
   const [form, setForm] = useState(emptyStore)
   const [error, setError] = useState('')
   const routeId = decodeURIComponent(window.location.pathname.split('/stores/')[1] || '')
@@ -182,6 +229,25 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
     window.history.pushState({}, '', `${basePath}/${encodeURIComponent(row.itemNumber)}`)
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
+  // Every headline figure on this page is a count or a sum of rows already in memory, so a
+  // tile opens the rows it was calculated from rather than jumping to another page.
+  const showStock = config => setDrill({
+    rowKey: inventoryRowKey,
+    columns: inventoryDrillColumns,
+    exportColumns: stockColumns,
+    onRowClick: row => { setDrill(null); openInventoryRow(row) },
+    ...config
+  })
+  const showStores = () => setDrill({
+    eyebrow: 'STORES',
+    title: 'All stores',
+    description: 'Every storeroom in your scope. Select one to open its stock list.',
+    rows: summary,
+    rowKey: 'code',
+    columns: storeDrillColumns,
+    exportColumns: summaryColumns,
+    onRowClick: store => { setDrill(null); open(store) }
+  })
   const openNew = () => {
     setForm(emptyStore)
     setError('')
@@ -194,6 +260,12 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
     setStoreRows?.(current => [{ ...form, code }, ...current])
     setModalOpen(false)
     setForm(emptyStore)
+  }
+  // Status was captured when a store was created but never shown or editable afterwards,
+  // so a store could not be retired or brought back once it existed.
+  const updateStore = (code, patch) => {
+    setStoreRows?.(current => current.map(store => store.code === code ? { ...store, ...patch } : store))
+    setSelected(current => current?.code === code ? { ...current, ...patch } : current)
   }
   const importRows = async rows => {
     const normalized = normalizeImportRows(rows)
@@ -215,6 +287,16 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
           description={`${selected.code} · ${location ? `${location.location} — ${location.description}` : 'Location not linked'}`}
           actions={(
             <div className="flex items-center gap-2">
+              <div className="w-[160px]">
+                <Combobox
+                  picker
+                  className="h-10 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+                  value={selected.status || 'Active'}
+                  suggestions={storeStatuses}
+                  onChange={event => updateStore(selected.code, { status: event.target.value })}
+                  placeholder="Status"
+                />
+              </div>
               <ExportExcelButton module={`Store ${selected.code}`} rows={rows} columns={[{ key: 'type', label: 'Type' }, ...stockColumns]} />
               <Button variant="outline" onClick={close}>Back to stores</Button>
             </div>
@@ -261,12 +343,78 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
       />
       <ImportNotice fileName={imported} subject="stores" onClear={() => setImported('')} />
       <section className="mt-6 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Widget icon={Warehouse} label="Stores" value={summary.length} note={`${summary.filter(store => store.status === 'Active').length} active`} tone="blue" />
-        <Widget icon={Package} label="Stocked Items" value={stockReportRows.length} note={`${materials.length} material / ${tools.length} tool masters`} />
-        <Widget icon={BarChart3} label="Balance" value={totalBalance} note="Total on hand" tone="green" />
-        <Widget icon={ClipboardList} label="Reserved" value={totalReserved} note="Committed to work" tone="orange" />
-        <Widget icon={PackageCheck} label="Available" value={totalAvailable} note="Ready to issue" tone="green" />
-        <Widget icon={AlertTriangle} label="Low / No Stock" value={lowStockRows.length} note="Needs attention" tone={lowStockRows.length ? 'orange' : 'green'} />
+        <Widget
+          icon={Warehouse}
+          label="Stores"
+          value={summary.length}
+          note={`${summary.filter(store => String(store.status || 'Active') !== 'Inactive').length} active`}
+          tone="blue"
+          onClick={showStores}
+        />
+        <Widget
+          icon={Package}
+          label="Stocked Items"
+          value={stockReportRows.length}
+          note={`${materials.length} material / ${tools.length} tool masters`}
+          onClick={() => showStock({
+            eyebrow: 'STOCKED ITEMS',
+            title: 'Every stocked item',
+            description: 'Materials and tools held across all stores.',
+            rows: stockReportRows
+          })}
+        />
+        <Widget
+          icon={BarChart3}
+          label="Balance"
+          value={totalBalance}
+          note="Total on hand"
+          tone="green"
+          onClick={() => showStock({
+            eyebrow: 'BALANCE',
+            title: 'On-hand balance',
+            description: `${totalBalance} units in total, largest holdings first.`,
+            rows: [...stockReportRows].sort((a, b) => Number(b.balance || 0) - Number(a.balance || 0))
+          })}
+        />
+        <Widget
+          icon={ClipboardList}
+          label="Reserved"
+          value={totalReserved}
+          note="Committed to work"
+          tone="orange"
+          onClick={() => showStock({
+            eyebrow: 'RESERVED',
+            title: 'Reserved stock',
+            description: `${totalReserved} units committed to work orders and reservations.`,
+            rows: stockReportRows.filter(row => Number(row.reserved || 0) > 0)
+          })}
+        />
+        <Widget
+          icon={PackageCheck}
+          label="Available"
+          value={totalAvailable}
+          note="Ready to issue"
+          tone="green"
+          onClick={() => showStock({
+            eyebrow: 'AVAILABLE',
+            title: 'Available to issue',
+            description: `${totalAvailable} units free of any reservation.`,
+            rows: stockReportRows.filter(row => Number(row.available || 0) > 0)
+          })}
+        />
+        <Widget
+          icon={AlertTriangle}
+          label="Low / No Stock"
+          value={lowStockRows.length}
+          note="Needs attention"
+          tone={lowStockRows.length ? 'orange' : 'green'}
+          onClick={() => showStock({
+            eyebrow: 'LOW / NO STOCK',
+            title: 'Low and no stock items',
+            description: 'Items at or below their configured low level.',
+            rows: lowStockRows
+          })}
+        />
       </section>
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_.9fr]">
         <div className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
@@ -327,10 +475,43 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
             { key: 'belowReorder', label: 'Low Stock Items', render: value => (
               <Badge tone={value ? 'orange' : 'green'}>{value}</Badge>
             ) },
+            { key: 'status', label: 'Status', render: value => <Badge tone={storeStatusTone(value)}>{value || 'Active'}</Badge> },
             { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
           ]}
         />
       </section>
+      {drill && (
+        <ModalOverlay>
+          <ModalPanel className="max-w-6xl" labelledBy="stores-drilldown-title">
+            <ModalHeader
+              eyebrow={drill.eyebrow}
+              title={drill.title}
+              titleId="stores-drilldown-title"
+              description={drill.description}
+              onClose={() => setDrill(null)}
+            />
+            <div className="overflow-auto px-6 py-5">
+              {drill.rows.length ? (
+                <div className="overflow-hidden rounded-2xl border border-[var(--app-line)]">
+                  <DataTable
+                    rows={drill.rows}
+                    rowKey={drill.rowKey}
+                    columns={drill.columns}
+                    onRowClick={drill.onRowClick}
+                    pagination
+                  />
+                </div>
+              ) : (
+                <EmptyState icon={PackageCheck} title="Nothing to list" description="No records sit behind this figure yet." />
+              )}
+            </div>
+            <ModalFooter>
+              <ExportExcelButton module={drill.title} rows={drill.rows} columns={drill.exportColumns} />
+              <Button variant="outline" onClick={() => setDrill(null)}>Close</Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalOverlay>
+      )}
       {modalOpen && (
         <MasterRecordModal
           title="Add store"

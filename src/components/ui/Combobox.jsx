@@ -21,12 +21,16 @@ const isKnownValue = (text, suggestions) => {
 // Native datalist filters the list by the input's contents, so a field holding a complete
 // value shows an empty list and can only be changed by deleting first. This opens the
 // whole list on demand instead.
+// `picker` turns this into a styled replacement for a native select: the value can only be
+// chosen from the list, so there is no typing and no clear button - useful for fixed sets
+// like a status, where free text would be meaningless.
 export default function Combobox({
   value = '',
   suggestions = [],
   onChange,
   placeholder,
   disabled,
+  picker = false,
   className,
   inputId
 }) {
@@ -161,11 +165,11 @@ export default function Combobox({
         aria-autocomplete="list"
         aria-activedescendant={open && highlight >= 0 ? `${id}-option-${highlight}` : undefined}
         autoComplete="off"
-        className={`${className} pr-16`}
+        className={`${className} ${picker ? 'cursor-pointer pr-9' : 'pr-16'}`}
         value={query === null ? text : query}
         placeholder={placeholder}
         disabled={disabled}
-        readOnly={disabled}
+        readOnly={disabled || picker}
         onClick={() => !disabled && openList()}
         onChange={event => { setQuery(event.target.value); setHighlight(-1); setOpen(true); emit(event.target.value) }}
         onKeyDown={onKeyDown}
@@ -173,7 +177,7 @@ export default function Combobox({
       />
 
       <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1">
-        {text && !disabled && (
+        {text && !disabled && !picker && (
           <button
             type="button"
             aria-label="Clear"
