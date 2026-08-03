@@ -65,7 +65,8 @@ export const storeSummary = (materials = [], rows = [], storeRows = [], location
     totalReserved: sum(stock, 'reserved'),
     belowReorder: stock.filter(row => {
       const material = materials.find(item => clean(item.itemNumber) === clean(row.itemNumber))
-      return material && Number(row.balance) - Number(row.reserved) <= Number(material.reorderLevel || 0)
+      const reorderLevel = Number((row.reorderLevel ?? material?.reorderLevel) || 0)
+      return material && Number(row.balance) - Number(row.reserved) <= reorderLevel
     }).length
   }
 })
@@ -81,6 +82,6 @@ export const storeStockRows = (storeCode, materials = [], rows = []) =>
       balance: Number(row.balance) || 0,
       reserved: Number(row.reserved) || 0,
       available: Math.max(0, (Number(row.balance) || 0) - (Number(row.reserved) || 0)),
-      reorderLevel: Number(material.reorderLevel) || 0
+      reorderLevel: Number((row.reorderLevel ?? material.reorderLevel) || 0)
     }
   })
