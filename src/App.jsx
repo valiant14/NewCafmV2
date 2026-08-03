@@ -47,6 +47,7 @@ import { canTransitionWorkOrder, statusDescription, statusOptions, workOrderTran
 import { HOLD_MATERIAL, effectiveTargetTime, endHold, holdSince, isOnHold, startHold } from './lib/holdPeriods'
 import { describeOutstanding, markReturned, outstandingReturns } from './lib/resourceReturns'
 import { canViewPage, filterNavigationForUser, firstAllowedPage, scopeRowsForUser } from './lib/accessControl'
+import { deriveDepartmentOptions, deriveSiteOptions } from './lib/referenceFallbacks'
 import { api, loadWorkspace } from './services/api'
 import { subscribeWorkspaceChanges } from './services/realtime'
 
@@ -541,10 +542,8 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const [meterReadingDate,setMeterReadingDate]=useState(toDateTimeInput(order['METER READING DATE'])||'')
   const [targetStart,setTargetStart]=useState(toDateTimeInput(order['TARGET START ']))
   const [targetFinish,setTargetFinish]=useState(toDateTimeInput(order['TARGET FINISH ']))
-  const siteOptions=siteRecords.length
-    ? siteRecords.filter(site=>site.status!=='Inactive').map(site=>({value:site.code,label:site.name}))
-    : [...new Set([...assetRecords.map(a=>String(a.site)),...workOrderRows.map(o=>String(o.SITE))].filter(Boolean))].sort()
-  const departmentOptions=[...new Map(departmentRecords.filter(department=>department.status!=='Inactive'&&department.department).map(department=>[department.department,{value:department.department,label:''}])).values()]
+  const siteOptions=deriveSiteOptions({siteRecords,user,assets:assetRecords,orders:workOrderRows})
+  const departmentOptions=deriveDepartmentOptions({departmentRecords,user,assets:assetRecords,orders:workOrderRows})
   const selectedDepartment=departments.find(item=>sameDepartment(item.name,department))
   const masterSubDepartments=departmentRecords.filter(item=>item.status!=='Inactive'&&sameDepartment(item.department,department)).map(item=>({value:item.subDepartmentCode,label:item.description}))
   const subDepartmentOptions=masterSubDepartments.length?masterSubDepartments:(selectedDepartment?.subDepartments||departments.flatMap(item=>item.subDepartments)).map(item=>({value:item.name,label:item.code}))

@@ -1,5 +1,5 @@
 ﻿import { Bell, ChevronRight, LogOut, Menu, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import sederLogo from '../../Assets/seder-logo.svg'
 import { useAuth } from '../../providers/AuthProvider'
@@ -23,6 +23,18 @@ export default function AppShell({
 }) {
   const { user, logout } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef(null)
+  // The blurred header creates a containing block for fixed descendants, so a backdrop
+  // element can't cover the page - close on any click outside the menu instead.
+  useEffect(() => {
+    if (!userMenuOpen) return undefined
+    const closeOnOutsideClick = event => {
+      if (!userMenuRef.current?.contains(event.target)) setUserMenuOpen(false)
+    }
+    document.addEventListener('mousedown', closeOnOutsideClick)
+    return () => document.removeEventListener('mousedown', closeOnOutsideClick)
+  }, [userMenuOpen])
   const sections = useMemo(
     () => [...new Map(navigation.map(item => [item.section, navigation.filter(navItem => navItem.section === item.section)]))],
     [navigation]
@@ -102,7 +114,6 @@ export default function AppShell({
               <strong className="truncate text-xs">{user.name}</strong>
               <span className="truncate text-[10px] text-[var(--app-sidebar-muted)]">{user.role}</span>
             </div>
-            <button className="grid h-8 w-8 place-items-center rounded-lg text-[var(--app-sidebar-muted)] transition hover:bg-[var(--app-sidebar-hover)] hover:text-[var(--app-sidebar-text)]" onClick={logout} title="Logout" aria-label="Logout"><LogOut size={16} /></button>
           </div>
         </div>
       </aside>
@@ -122,7 +133,39 @@ export default function AppShell({
               <Bell size={19} />
               {overdueCount > 0 && <b className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--danger)] px-1 text-[7px] text-white ring-2 ring-[var(--app-panel)]">{overdueCount}</b>}
             </button>
-            <div className="top-avatar grid h-8 w-8 place-items-center rounded-full bg-[var(--app-sidebar-accent)] text-[10px] font-extrabold text-[var(--app-sidebar-accent-ink)]" title={`${user.name} · ${user.role}`}>{user.initials}</div>
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                className="top-avatar flex items-center gap-2.5 rounded-full py-1 pl-1 pr-1 transition hover:bg-[var(--app-table-hover-bg)] sm:pr-3"
+                title={`${user.name} · ${user.role}`}
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+                onClick={() => setUserMenuOpen(open => !open)}
+              >
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--app-sidebar-accent)] text-[10px] font-extrabold text-[var(--app-sidebar-accent-ink)]">{user.initials}</span>
+                <span className="hidden min-w-0 text-left sm:grid">
+                  <strong className="truncate text-xs text-[var(--app-ink)]">{user.name}</strong>
+                  <span className="truncate text-[10px] text-[var(--app-muted)]">{user.role}</span>
+                </span>
+              </button>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-11 z-50 w-56 rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-2 shadow-xl" role="menu">
+                  <div className="grid gap-0.5 border-b border-[var(--app-line)] px-3 pb-2 pt-1">
+                    <strong className="truncate text-xs text-[var(--app-ink)]">{user.name}</strong>
+                    <span className="truncate text-[10px] text-[var(--app-muted)]">{user.role}</span>
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-[var(--app-ink)] transition hover:bg-[var(--app-table-hover-bg)]"
+                    onClick={() => { setUserMenuOpen(false); logout() }}
+                  >
+                    <LogOut size={14} />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
