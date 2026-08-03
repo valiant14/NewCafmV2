@@ -24,7 +24,8 @@ export default function WorkOrderHeader({
   onStatusChange,
   close,
   printWorkOrder,
-  workClosed = false
+  workClosed = false,
+  statusLocked = false
 }) {
   return (
     <header className={headerClass}>
@@ -46,7 +47,7 @@ export default function WorkOrderHeader({
               className="h-10 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-bold text-[var(--app-ink)] outline-none transition focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
               value={status}
               onChange={event => onStatusChange?.(event.target.value)}
-              disabled={workClosed}
+              disabled={workClosed || statusLocked}
             >
               {statusOptions.map(option => (
                 <option key={option.value} value={option.value} disabled={option.disabled}>

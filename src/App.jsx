@@ -48,7 +48,7 @@ import { readProjectName } from './lib/projectSettings'
 import { canTransitionWorkOrder, statusDescription, statusOptions, workOrderTransitions } from './lib/statusMatrix'
 import { HOLD_MATERIAL, effectiveTargetTime, endHold, holdSince, isOnHold, startHold } from './lib/holdPeriods'
 import { describeOutstanding, markReturned, outstandingReturns } from './lib/resourceReturns'
-import { canViewPage, filterNavigationForUser, firstAllowedPage, scopeRowsForUser } from './lib/accessControl'
+import { canUseAction, canViewPage, filterNavigationForUser, firstAllowedPage, scopeRowsForUser } from './lib/accessControl'
 import { deriveDepartmentOptions, deriveSiteOptions } from './lib/referenceFallbacks'
 import { api, loadWorkspace } from './services/api'
 import { subscribeWorkspaceChanges } from './services/realtime'
@@ -607,6 +607,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   // Pausing the SLA clock is an administrative decision, so the hold controls belong to
   // the Facility Manager rather than to whoever is executing the job.
   const canManageHold = user?.role === 'Facility Manager'
+  const canEditWorkOrder = canUseAction(user, 'Work Orders', 'edit')
   const workType=(order['WORK TYPE'] || order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const isPM = workType === 'PM'
   const isCM = workType === 'CM'
@@ -1095,6 +1096,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   })
   const saveFingerprint=()=>rowFingerprint(currentWorkOrderSnapshot())
   const saveChanges=()=>{
+    if(!canEditWorkOrder){setAutoSaveState('Read only');return Promise.resolve()}
     const fingerprint = saveFingerprint()
     if (lastSavedFingerprint.current === fingerprint) {
       setAutoSaveState('Saved')
@@ -1117,7 +1119,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     return()=>clearTimeout(timer)
   },[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,ptwFiles,generalFiles,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterId,waterMeterId,energyMeterId,meterReading,waterConsumption,energyConsumption,meterReadingDate,selectedStatus,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
-    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} statusOptions={statusSelectOptions} onStatusChange={changeStatus} close={close} printWorkOrder={printWorkOrder} workClosed={workClosed} />
+    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={maximoWorkOrderStatusDescriptions[status] || status} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} statusOptions={statusSelectOptions} onStatusChange={changeStatus} close={close} printWorkOrder={printWorkOrder} workClosed={workClosed} statusLocked={!canEditWorkOrder} />
     <WorkOrderTabs tabs={workOrderTabs} active={tab} onChange={setTab} alertTabs={tabAlerts} />
     <WorkOrderWorkflowNotice status={status} missing={workflowMissing} nextStep={workflowNextStep} />
     <div className={workOrderBodyClass}>
@@ -1259,26 +1261,79 @@ export default function App() {
   const scopedPurchaseRequests = useMemo(() => scopeRowsForUser(purchaseRequests, effectiveUser, ['site'], ['department']), [purchaseRequests, effectiveUser])
   const scopedPurchaseOrders = useMemo(() => scopeRowsForUser(purchaseOrders, effectiveUser, ['site'], ['department']), [purchaseOrders, effectiveUser])
   const scopedReservations = useMemo(() => scopeRowsForUser(reservations, effectiveUser, ['site'], ['department']), [reservations, effectiveUser])
-  const saveAssets = useMemo(() => backendSetter(setAssetRecords, apiMappers.assets), [])
-  const saveLocations = useMemo(() => backendSetter(setLocationRecords, apiMappers.locations), [])
-  const saveLabor = useMemo(() => backendSetter(setLaborRecords, apiMappers.labor), [])
-  const saveMaterials = useMemo(() => backendSetter(setMaterialRecords, apiMappers.materials), [])
-  const saveStores = useMemo(() => backendSetter(setStoreRecords, apiMappers.stores), [])
-  const saveTools = useMemo(() => backendSetter(setToolRecords, apiMappers.tools), [])
-  const saveFailureCodes = useMemo(() => backendSetter(setFailureCodeRecords, apiMappers.failureCodes), [])
-  const saveMeters = useMemo(() => backendSetter(setMeterRecords, apiMappers.meters), [])
-  const saveWorkOrders = useMemo(() => backendSetter(setAllWorkOrders, apiMappers.workOrders), [])
-  const saveServiceRequests = useMemo(() => backendSetter(setServiceRequests, apiMappers.serviceRequests), [])
-  const saveIncidents = useMemo(() => backendSetter(setIncidents, apiMappers.incidents), [])
-  const savePmSchedules = useMemo(() => backendSetter(setPmScheduleRecords, apiMappers.pm), [])
-  const savePurchaseRequests = useMemo(() => backendSetter(setPurchaseRequests, apiMappers.purchaseRequests), [])
-  const savePurchaseOrders = useMemo(() => backendSetter(setPurchaseOrders, apiMappers.purchaseOrders), [])
-  const saveReservations = useMemo(() => backendSetter(setReservations, apiMappers.reservations), [])
-  const saveSites = useMemo(() => backendSetter(setSiteRecords, apiMappers.sites), [])
-  const saveDepartments = useMemo(() => backendSetter(setDepartmentRecords, apiMappers.departments), [])
-  const saveJobPlans = useMemo(() => backendSetter(setJobPlanRecords, apiMappers.jobPlans), [])
-  const saveUsers = useMemo(() => backendSetter(setUserRecords, apiMappers.users), [])
-  const saveRoles = useMemo(() => backendSetter(setRolePermissionRecords, apiMappers.roles), [])
+  const canDo = useCallback((moduleName, action) => canUseAction(effectiveUser, moduleName, action), [effectiveUser])
+  const guardSave = useCallback((moduleName, saveFn) => update => {
+    const beforeRows = moduleName === 'Assets' ? assetRecords
+      : moduleName === 'Locations' ? locationRecords
+      : moduleName === 'Labor' ? laborRecords
+      : moduleName === 'Materials' ? materialRecords
+      : moduleName === 'Stores' ? storeRecords
+      : moduleName === 'Tools & Equipment' ? toolRecords
+      : moduleName === 'Failure Library' ? failureCodeRecords
+      : moduleName === 'Meters' ? meterRecords
+      : moduleName === 'Work Orders' ? allWorkOrders
+      : moduleName === 'Job Requests' ? serviceRequests
+      : moduleName === 'Incidents' ? incidents
+      : moduleName === 'Preventive Maintenance' ? pmScheduleRecords
+      : moduleName === 'Purchase Requisitions' ? purchaseRequests
+      : moduleName === 'Purchase Orders' ? purchaseOrders
+      : moduleName === 'Reservations' ? reservations
+      : moduleName === 'Sites' ? siteRecords
+      : moduleName === 'Departments' ? departmentRecords
+      : moduleName === 'Job Plans' ? jobPlanRecords
+      : moduleName === 'Users' ? userRecords
+      : moduleName === 'Roles & Permissions' ? rolePermissionRecords
+      : []
+    const nextRows = typeof update === 'function' ? update(beforeRows) : update
+    const beforeCount = Array.isArray(beforeRows) ? beforeRows.length : 0
+    const nextCount = Array.isArray(nextRows) ? nextRows.length : 0
+    const action = nextCount > beforeCount ? 'create' : nextCount < beforeCount ? 'edit' : 'edit'
+    if (!canDo(moduleName, action)) {
+      setWorkspaceError(`No ${action} access for ${moduleName}. Ask an administrator to update your role permissions.`)
+      return Promise.resolve()
+    }
+    return saveFn(nextRows)
+  }, [assetRecords, locationRecords, laborRecords, materialRecords, storeRecords, toolRecords, failureCodeRecords, meterRecords, allWorkOrders, serviceRequests, incidents, pmScheduleRecords, purchaseRequests, purchaseOrders, reservations, siteRecords, departmentRecords, jobPlanRecords, userRecords, rolePermissionRecords, canDo])
+  const rawSaveAssets = useMemo(() => backendSetter(setAssetRecords, apiMappers.assets), [])
+  const rawSaveLocations = useMemo(() => backendSetter(setLocationRecords, apiMappers.locations), [])
+  const rawSaveLabor = useMemo(() => backendSetter(setLaborRecords, apiMappers.labor), [])
+  const rawSaveMaterials = useMemo(() => backendSetter(setMaterialRecords, apiMappers.materials), [])
+  const rawSaveStores = useMemo(() => backendSetter(setStoreRecords, apiMappers.stores), [])
+  const rawSaveTools = useMemo(() => backendSetter(setToolRecords, apiMappers.tools), [])
+  const rawSaveFailureCodes = useMemo(() => backendSetter(setFailureCodeRecords, apiMappers.failureCodes), [])
+  const rawSaveMeters = useMemo(() => backendSetter(setMeterRecords, apiMappers.meters), [])
+  const rawSaveWorkOrders = useMemo(() => backendSetter(setAllWorkOrders, apiMappers.workOrders), [])
+  const rawSaveServiceRequests = useMemo(() => backendSetter(setServiceRequests, apiMappers.serviceRequests), [])
+  const rawSaveIncidents = useMemo(() => backendSetter(setIncidents, apiMappers.incidents), [])
+  const rawSavePmSchedules = useMemo(() => backendSetter(setPmScheduleRecords, apiMappers.pm), [])
+  const rawSavePurchaseRequests = useMemo(() => backendSetter(setPurchaseRequests, apiMappers.purchaseRequests), [])
+  const rawSavePurchaseOrders = useMemo(() => backendSetter(setPurchaseOrders, apiMappers.purchaseOrders), [])
+  const rawSaveReservations = useMemo(() => backendSetter(setReservations, apiMappers.reservations), [])
+  const rawSaveSites = useMemo(() => backendSetter(setSiteRecords, apiMappers.sites), [])
+  const rawSaveDepartments = useMemo(() => backendSetter(setDepartmentRecords, apiMappers.departments), [])
+  const rawSaveJobPlans = useMemo(() => backendSetter(setJobPlanRecords, apiMappers.jobPlans), [])
+  const rawSaveUsers = useMemo(() => backendSetter(setUserRecords, apiMappers.users), [])
+  const rawSaveRoles = useMemo(() => backendSetter(setRolePermissionRecords, apiMappers.roles), [])
+  const saveAssets = useMemo(() => guardSave('Assets', rawSaveAssets), [guardSave, rawSaveAssets])
+  const saveLocations = useMemo(() => guardSave('Locations', rawSaveLocations), [guardSave, rawSaveLocations])
+  const saveLabor = useMemo(() => guardSave('Labor', rawSaveLabor), [guardSave, rawSaveLabor])
+  const saveMaterials = useMemo(() => guardSave('Materials', rawSaveMaterials), [guardSave, rawSaveMaterials])
+  const saveStores = useMemo(() => guardSave('Stores', rawSaveStores), [guardSave, rawSaveStores])
+  const saveTools = useMemo(() => guardSave('Tools & Equipment', rawSaveTools), [guardSave, rawSaveTools])
+  const saveFailureCodes = useMemo(() => guardSave('Failure Library', rawSaveFailureCodes), [guardSave, rawSaveFailureCodes])
+  const saveMeters = useMemo(() => guardSave('Meters', rawSaveMeters), [guardSave, rawSaveMeters])
+  const saveWorkOrders = useMemo(() => guardSave('Work Orders', rawSaveWorkOrders), [guardSave, rawSaveWorkOrders])
+  const saveServiceRequests = useMemo(() => guardSave('Job Requests', rawSaveServiceRequests), [guardSave, rawSaveServiceRequests])
+  const saveIncidents = useMemo(() => guardSave('Incidents', rawSaveIncidents), [guardSave, rawSaveIncidents])
+  const savePmSchedules = useMemo(() => guardSave('Preventive Maintenance', rawSavePmSchedules), [guardSave, rawSavePmSchedules])
+  const savePurchaseRequests = useMemo(() => guardSave('Purchase Requisitions', rawSavePurchaseRequests), [guardSave, rawSavePurchaseRequests])
+  const savePurchaseOrders = useMemo(() => guardSave('Purchase Orders', rawSavePurchaseOrders), [guardSave, rawSavePurchaseOrders])
+  const saveReservations = useMemo(() => guardSave('Reservations', rawSaveReservations), [guardSave, rawSaveReservations])
+  const saveSites = useMemo(() => guardSave('Sites', rawSaveSites), [guardSave, rawSaveSites])
+  const saveDepartments = useMemo(() => guardSave('Departments', rawSaveDepartments), [guardSave, rawSaveDepartments])
+  const saveJobPlans = useMemo(() => guardSave('Job Plans', rawSaveJobPlans), [guardSave, rawSaveJobPlans])
+  const saveUsers = useMemo(() => guardSave('Users', rawSaveUsers), [guardSave, rawSaveUsers])
+  const saveRoles = useMemo(() => guardSave('Roles & Permissions', rawSaveRoles), [guardSave, rawSaveRoles])
   useEffect(() => {
     const nextStatuses = new Map()
     serviceRequests.forEach(request => {
@@ -1301,6 +1356,14 @@ export default function App() {
   const allowedNavigation = useMemo(() => filterNavigationForUser(navigationItems, effectiveUser), [effectiveUser])
   const fallbackPage = firstAllowedPage(navigationItems, effectiveUser)
   const canNavigate = name => canViewPage(effectiveUser, name)
+  const accessFor = useCallback(moduleName => ({
+    view: canDo(moduleName, 'view'),
+    create: canDo(moduleName, 'create'),
+    edit: canDo(moduleName, 'edit'),
+    approve: canDo(moduleName, 'approve'),
+    close: canDo(moduleName, 'close'),
+    import: canDo(moduleName, 'import')
+  }), [canDo])
   const activePage = canNavigate(active) ? active : fallbackPage
   const navigate = name => {
     if (!canNavigate(name)) {
@@ -1491,6 +1554,7 @@ export default function App() {
     }))
   }
   const createPurchaseRequest=record=>{
+    if(!canDo('Purchase Requisitions','create')){setWorkspaceError('No create access for Purchase Requisitions.');return null}
     // Dedupe only the same planned resource line. Separate lines for the same item are
     // allowed because each line can represent a different shortage/request.
     const existing=record.resourceRequestId?purchaseRequests.find(row=>String(row.resourceRequestId||'')===String(record.resourceRequestId)&&!['CAN'].includes(row.status)):null
@@ -1501,6 +1565,7 @@ export default function App() {
     return created
   }
   const createPurchaseOrderFromRequest=request=>{
+    if(!canDo('Purchase Orders','create')||!canDo('Purchase Requisitions','approve')){setWorkspaceError('No approve/create access for this purchase workflow.');return null}
     const existing=purchaseOrders.find(order=>order.purchaseRequest===request.purchaseRequest)
     if(existing) return existing
     const created={purchaseOrder:`PO-2026-${String(purchaseOrders.length+1).padStart(4,'0')}`,purchaseRequest:request.purchaseRequest,resourceRequestId:request.resourceRequestId,workOrder:request.workOrder,type:request.type,item:request.item,itemCode:itemCodeFor(request.type,request.itemCode||request.item),quantity:request.quantity,source:request.type==='Material'?preferredStoreFor(request):request.source,site:request.site,department:request.department,status:'WAPPR',statusDescription:statusDescription('purchaseOrder','WAPPR'),createdAt:todayStamp()}
@@ -1528,6 +1593,7 @@ export default function App() {
     if(form['JOB TASK DESCRIPTION']) setJobTaskRecords(rows=>[...rows,{...form,JPNUM:jpnum,JOBTASKID:form.JOBTASKID||`${jpnum}-${form['JOB TASK SEQUENCE']||rows.filter(row=>row.JPNUM===jpnum).length+1}`}])
   }
   const createReservation=record=>{
+    if(!canDo('Reservations','create')){setWorkspaceError('No create access for Reservations.');return null}
     const existing=record.resourceRequestId
       ? reservations.find(row=>String(row.resourceRequestId||'')===String(record.resourceRequestId)&&!['CANCELLED'].includes(row.status))
       : null
@@ -1612,7 +1678,7 @@ export default function App() {
     if(updated) linkWorkOrderResourceTransaction(updated, { requestStatus: updated.status, transactionRef: updated.reservation, reservation: updated.reservation, purchaseRequest: updated.purchaseRequest, purchaseOrder: updated.purchaseOrder, supplyChainStatus: `Reservation ${statusDescription('inventoryUsage', updated.status)}` })
   }
   const updateWorkOrder=(number,patch)=>saveWorkOrders(rows=>rows.map(order=>String(order.WORKORDER)===String(number)?{...order,...patch}:order))
-  const createWorkOrder=form=>{const next=Math.max(...allWorkOrders.map(order=>Number(order.WORKORDER)||0),56545134)+1;const created={'WORKORDER':String(next),'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':toLocationPriority(form.priority),'ASSET':form.asset,'STATUS':'WAPPR','WORK TYPE ':form.type,'STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':form.department||'','SUB DEPARTMENT  NAME':form.subDepartment||'','ASSIGNED DEPARTMENT':form.department||'','ASSET DESCRIPTION':assetDescriptionFromMaster(form.asset, assetRecords),'SYSTEM':assetFromMaster(form.asset, assetRecords)?.system||'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':nowLocalDateTime(),'PTW REQUIRED':true};saveWorkOrders(rows=>[...rows,created]);return created}
+  const createWorkOrder=form=>{if(!canDo('Work Orders','create')){setWorkspaceError('No create access for Work Orders.');return null}const next=Math.max(...allWorkOrders.map(order=>Number(order.WORKORDER)||0),56545134)+1;const created={'WORKORDER':String(next),'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':toLocationPriority(form.priority),'ASSET':form.asset,'STATUS':'WAPPR','WORK TYPE ':form.type,'STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':form.department||'','SUB DEPARTMENT  NAME':form.subDepartment||'','ASSIGNED DEPARTMENT':form.department||'','ASSET DESCRIPTION':assetDescriptionFromMaster(form.asset, assetRecords),'SYSTEM':assetFromMaster(form.asset, assetRecords)?.system||'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':nowLocalDateTime(),'PTW REQUIRED':true};saveWorkOrders(rows=>[...rows,created]);return created}
   const generatePmWorkOrder=(pm,tasks)=>saveWorkOrders(rows=>{
     if(rows.some(order=>order['PM NUMBER']===pm.pmNumber&&order['PM CYCLE']===pm.cycle)) return rows
     const assetRecord=assetFromMaster(pm.asset, assetRecords)
@@ -1621,9 +1687,9 @@ export default function App() {
     return [...rows,{'WORKORDER':pm.workOrder,'DESCRIPITION ':pm.description,'LOCATION ':inheritedLocation,'LOCATION PRIORTY':3,'ASSET':pm.asset,'ASSET DESCRIPTION':assetRecord?.description?.trim() || '','STATUS':pm.woStatus||'WSCH','WORK TYPE ':'PM','STATUS DESCRIPITION':maximoWorkOrderStatusDescriptions[pm.woStatus||'WSCH']||'Waiting for Schedule','DEPARTMENT ':pm.department,'SUB DEPARTMENT  NAME':pm.subDepartment,'ASSIGNED DEPARTMENT':pm.department,'PRIORTY':3,'SITE':inheritedSite,'TARGET START ':pm.startDate,'TARGET FINISH ':pm.startDate,'REPORTED DATE ':nowLocalDateTime(),'PM NUMBER':pm.pmNumber,'PM CYCLE':pm.cycle,'JOB PLAN':pm.jobPlan,'JOB PLAN TASKS':tasks,'ESTIMATED DURATION':tasks.reduce((sum,task)=>sum+Number(task['TASK DURATION IN HOUR']||0),0)*24,'ROUTE':pm.route,'LEAD TIME (DAYS)':pm.leadTime,'FREQUENCY':pm.frequency,'FREQUNIT':pm.freqUnit,'PMCOUNTER':pm.pmCounter,'STORELOC':pm.storeLocation,'SUPERVISOR':pm.supervisor,'LEAD':pm.lead,'PERSONGROUP':pm.personGroup,'PM STATUS':pm.pmStatus}]
   })
   const pages = {
-    'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} allRequests={serviceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions}/>,
+    'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} allRequests={serviceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions} access={accessFor('Job Requests')}/>,
     'Incidents': <IncidentsPage rows={scopedIncidents} setRows={saveIncidents}/>,
-    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={reservations} meterRecords={meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
+    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={reservations} meterRecords={meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached} access={accessFor('Work Orders')}/>,
     'Assets': <AssetsPage rows={scopedAssets} setRows={saveAssets} workOrders={scopedWorkOrders} />,
     'Preventive Maintenance': <PreventiveMaintenancePage rows={pmScheduleRecords} setRows={savePmSchedules} assets={scopedAssets} jobTasks={jobTaskRecords} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} scopeUser={effectiveUser} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Meters': <MetersPage rows={meterRecords} setRows={saveMeters} assets={scopedAssets} workOrders={scopedWorkOrders} />,

@@ -1,6 +1,6 @@
 import { normalizeDepartmentName } from './departments'
 
-const pagePermissionAliases = {
+export const pagePermissionAliases = {
   Overview: ['Overview', 'Reports'],
   'Job Requests': ['Job Requests'],
   'Work Orders': ['Work Orders'],
@@ -57,6 +57,13 @@ export const scopeValuesFromText = value => {
 export const canViewPage = (user, pageName) => {
   if (!user) return false
   const allowed = user.permissions?.view || []
+  const aliases = pagePermissionAliases[pageName] || [pageName]
+  return aliases.some(alias => allowed.includes(alias))
+}
+
+export const canUseAction = (user, pageName, action = 'view') => {
+  if (!user) return false
+  const allowed = user.permissions?.[action] || []
   const aliases = pagePermissionAliases[pageName] || [pageName]
   return aliases.some(alias => allowed.includes(alias))
 }

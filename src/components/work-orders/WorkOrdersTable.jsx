@@ -3,52 +3,60 @@ import Badge from '../ui/Badge'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import { isOnHold } from '../../lib/holdPeriods'
 
-const headers = ['WORKORDER', 'DESCRIPITION', 'LOCATION', 'LOCATION PRIORTY', 'ASSET', 'STATUS', 'WORK TYPE', 'STATUS DESCRIPITION', 'DEPARTMENT', 'SUB DEPARTMENT', 'SUB DEPARTMENT NAME', 'TARGET START', 'TARGET FINISH', 'ACTUAL START', 'ACTUAL FINISH', 'REPORTED DATE', 'PRIORTY', 'SITE', 'JOP PLAN', 'DURATION', 'PM', '']
+const cellClass = 'px-4 py-3.5 align-middle text-[var(--app-table-text)]'
+const compactClass = `${cellClass} whitespace-nowrap`
+const textValue = value => String(value ?? '').trim() || '-'
+
+const columns = [
+  { key: 'WORKORDER', label: 'Work Order', sortKey: 'WORKORDER', className: compactClass, render: order => <strong className="mono text-[var(--app-ink)]">#{order.WORKORDER}</strong> },
+  { key: 'description', label: 'Description', sortKey: 'DESCRIPITION', className: cellClass, render: order => textValue(order['DESCRIPITION ']) },
+  { key: 'location', label: 'Location', sortKey: 'LOCATION', className: cellClass, render: order => textValue(order['LOCATION ']) },
+  { key: 'asset', label: 'Asset', sortKey: 'ASSET', className: compactClass, render: order => <strong>{textValue(order.ASSET)}</strong> },
+  { key: 'status', label: 'Status', sortKey: 'STATUS', className: compactClass, render: order => <Badge tone={statusTone(order.STATUS)}>{order.STATUS} · {statusDescription('workOrder', order.STATUS) || textValue(order.STATUS)}</Badge> },
+  { key: 'type', label: 'Type', sortKey: 'WORK TYPE', className: compactClass, render: (order, { orderType }) => <Badge tone="blue">{orderType(order)}</Badge> },
+  { key: 'department', label: 'Department', sortKey: 'DEPARTMENT', className: compactClass, render: order => textValue(order['DEPARTMENT ']) },
+  { key: 'assignedDepartment', label: 'Assigned Department', sortKey: 'ASSIGNED DEPARTMENT', className: compactClass, render: order => textValue(order['ASSIGNED DEPARTMENT']) },
+  { key: 'subDepartment', label: 'Sub Department', sortKey: 'SUB DEPARTMENT NAME', className: compactClass, render: order => textValue(order['SUB DEPARTMENT  NAME']) },
+  { key: 'targetStart', label: 'Target Start', sortKey: 'TARGET START', className: compactClass, render: (order, { excelDate }) => excelDate(order['TARGET START ']) },
+  { key: 'targetFinish', label: 'Target Finish', sortKey: 'TARGET FINISH', className: compactClass, render: (order, { excelDate }) => isOnHold(order) ? <Badge tone="orange">SLA Paused</Badge> : excelDate(order['TARGET FINISH ']) },
+  { key: 'actualStart', label: 'Actual Start', sortKey: 'ACTUAL START', className: compactClass, render: (order, { excelDate }) => excelDate(order['ACTUAL START ']) },
+  { key: 'actualFinish', label: 'Actual Finish', sortKey: 'ACTUAL FINISH', className: compactClass, render: (order, { excelDate }) => excelDate(order['ACTUAL FINISH ']) },
+  { key: 'reportedDate', label: 'Reported Date', sortKey: 'REPORTED DATE', className: compactClass, render: (order, { excelDate }) => excelDate(order['REPORTED DATE ']) },
+  { key: 'priority', label: 'Priority', sortKey: 'PRIORTY', className: compactClass, render: order => textValue(order.PRIORTY) },
+  { key: 'site', label: 'Site', sortKey: 'SITE', className: compactClass, render: order => textValue(order.SITE) },
+  { key: 'sourceSr', label: 'Source SR', sortKey: 'SOURCE SR', className: compactClass, render: order => textValue(order['SOURCE SR']) },
+  { key: 'open', label: '', className: compactClass, render: () => <ChevronRight size={17} /> }
+]
 
 export default function WorkOrdersTable({ rows, currentPage, pageSize, pageCount, total, onOpen, onPageChange, onPageSizeChange, orderType, excelDate, sort, onSort }) {
   const from = total ? ((currentPage - 1) * pageSize) + 1 : 0
   const to = Math.min(currentPage * pageSize, total)
+  const context = { orderType, excelDate }
 
   return (
     <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
       <div className="overflow-auto">
-        <table className="w-full min-w-[1900px] border-collapse text-left text-[length:var(--app-table-font-size)]">
+        <table className="w-full min-w-[1650px] border-collapse text-left text-[length:var(--app-table-font-size)]">
           <thead>
             <tr>
-              {headers.map(header => (
-                <th key={header || 'open'} className="whitespace-nowrap border-y border-[var(--app-line)] bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]">
-                  {header ? <button className="inline-flex items-center gap-1 uppercase hover:text-[var(--app-primary)]" onClick={() => onSort?.(header)}>{header}{sort?.key === header && <span>{sort.direction === 'asc' ? '↑' : '↓'}</span>}</button> : null}
+              {columns.map(column => (
+                <th key={column.key} className="whitespace-nowrap border-y border-[var(--app-line)] bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]">
+                  {column.sortKey ? (
+                    <button className="inline-flex items-center gap-1 uppercase hover:text-[var(--app-primary)]" onClick={() => onSort?.(column.sortKey)}>
+                      {column.label}
+                      {sort?.key === column.sortKey && <span>{sort.direction === 'asc' ? '↑' : '↓'}</span>}
+                    </button>
+                  ) : column.label}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((order, index) => (
-              <tr key={index} className="cursor-pointer border-b border-[var(--app-line)] text-[var(--app-table-text)] transition hover:bg-[var(--app-table-hover-bg)]" onClick={() => onOpen(order)}>
-                <td className="px-4 py-3.5 text-[var(--app-table-text)]"><strong className="mono text-[var(--app-ink)]">#{order.WORKORDER}</strong></td>
-                <td className="px-4 py-3.5 text-[var(--app-table-text)]">{order['DESCRIPITION '] || '-'}</td>
-                <td className="px-4 py-3.5 text-[var(--app-table-text)]">{order['LOCATION '] || '-'}</td>
-                <td className="px-4 py-3.5"><Badge tone={String(order['LOCATION PRIORTY'] || '').trim() === 'VIP' ? 'purple' : 'neutral'}>{order['LOCATION PRIORTY'] || '-'}</Badge></td>
-                <td className="px-4 py-3.5"><strong>{order.ASSET || '-'}</strong></td>
-                <td className="px-4 py-3.5"><Badge tone={statusTone(order.STATUS)}>{statusDescription('workOrder', order.STATUS) || order.STATUS || '-'}</Badge></td>
-                <td className="px-4 py-3.5"><Badge tone="blue">{orderType(order)}</Badge></td>
-                <td className="px-4 py-3.5">{order['STATUS DESCRIPITION'] || '-'}</td>
-                <td className="px-4 py-3.5">{order['DEPARTMENT '] || '-'}</td>
-                <td className="px-4 py-3.5">{order['SUB DEPARTMENT '] || '-'}</td>
-                <td className="px-4 py-3.5">{order['SUB DEPARTMENT  NAME'] || '-'}</td>
-                <td className="px-4 py-3.5">{excelDate(order['TARGET START '])}</td>
-                {/* The clock is stopped while material is awaited, so the deadline is not
-                    the meaningful thing to show - the pause is. */}
-                <td className="px-4 py-3.5">{isOnHold(order) ? <Badge tone="orange">SLA Paused</Badge> : excelDate(order['TARGET FINISH '])}</td>
-                <td className="px-4 py-3.5">{excelDate(order['ACTUAL START '])}</td>
-                <td className="px-4 py-3.5">{excelDate(order['ACTUAL FINISH '])}</td>
-                <td className="px-4 py-3.5">{excelDate(order['REPORTED DATE '])}</td>
-                <td className="px-4 py-3.5">{order.PRIORTY || '-'}</td>
-                <td className="px-4 py-3.5">{order.SITE || '-'}</td>
-                <td className="px-4 py-3.5">{order['JOP PLAN '] || '-'}</td>
-                <td className="px-4 py-3.5">{order['DURATION '] || '-'}</td>
-                <td className="px-4 py-3.5">{order['PM '] || '-'}</td>
-                <td className="px-4 py-3.5"><ChevronRight size={17} /></td>
+            {rows.map(order => (
+              <tr key={order.WORKORDER} className="cursor-pointer border-b border-[var(--app-line)] text-[var(--app-table-text)] transition hover:bg-[var(--app-table-hover-bg)]" onClick={() => onOpen(order)}>
+                {columns.map(column => (
+                  <td key={column.key} className={column.className}>{column.render(order, context)}</td>
+                ))}
               </tr>
             ))}
           </tbody>

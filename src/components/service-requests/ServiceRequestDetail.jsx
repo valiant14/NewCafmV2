@@ -15,7 +15,7 @@ const tabs = [
   ['Attachments', Paperclip]
 ]
 
-export default function ServiceRequestDetail({ request, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, onBack, onSubmit, onApprove, onOpenWorkOrder, modal = false }) {
+export default function ServiceRequestDetail({ request, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, onBack, onSubmit, onApprove, onOpenWorkOrder, modal = false, access = {} }) {
   const [form, setForm] = useState(request)
   const [submitError, setSubmitError] = useState('')
   const [activeTab, setActiveTab] = useState('Request Details')
@@ -71,6 +71,8 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
   })
 
   const handlePrimary = async () => {
+    if (isNew && !access.create) return setSubmitError('You do not have create access for Job Requests.')
+    if (!isNew && !access.approve) return setSubmitError('You do not have approve access for Job Requests.')
     if (isNew && !canSubmit) return setSubmitError('Complete Description, Site, Location, and Reported By before submitting.')
     if (!isNew && !canConvert) {
       setActiveTab(form.asset?.trim() ? 'Department Review' : 'Request Details')
@@ -125,7 +127,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
 
       <ModalFooter>
         <Button variant="outline" onClick={onBack}>Cancel</Button>
-        <Button onClick={handlePrimary}><Check size={15} /> Submit request</Button>
+        <Button onClick={handlePrimary} disabled={!access.create}><Check size={15} /> Submit request</Button>
       </ModalFooter>
     </ModalPanel>
   )
@@ -153,7 +155,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
                 {form.convertedWorkOrder ? (
                   <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder, form)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>
                 ) : (
-                  <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} /> Approve & convert to CM</Button>
+                  access.approve ? <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} /> Approve & convert to CM</Button> : null
                 )}
               </div>
             )}

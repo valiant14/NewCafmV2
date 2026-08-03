@@ -58,7 +58,7 @@ const exportColumns = excelDate => {
 
 const workOrderTemplateHeaders = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTION', 'STATUS', 'WORK TYPE ', 'PRIORTY', 'SITE', 'DEPARTMENT ', 'SUB DEPARTMENT  NAME', 'LOCATION ', 'ASSET', 'TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'FAILURE CODE', 'PROBLEM CODE']
 
-export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRecords = [], departmentRecords = [], onCreate, onImportRows, EditorComponent, excelDate }) {
+export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRecords = [], departmentRecords = [], onCreate, onImportRows, EditorComponent, excelDate, access = {} }) {
   const { user } = useAuth()
   const routeId = decodeURIComponent(window.location.pathname.split('/work-orders/')[1] || '')
   const [selected, setSelected] = useState(() => {
@@ -98,6 +98,9 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
     if (key === 'DESCRIPITION') return order['DESCRIPITION ']
     if (key === 'LOCATION') return order['LOCATION ']
     if (key === 'DEPARTMENT') return order['DEPARTMENT ']
+    if (key === 'ASSIGNED DEPARTMENT') return order['ASSIGNED DEPARTMENT']
+    if (key === 'SUB DEPARTMENT NAME') return order['SUB DEPARTMENT  NAME']
+    if (key === 'SOURCE SR') return order['SOURCE SR']
     if (key === 'TARGET START') return order['TARGET START ']
     if (key === 'TARGET FINISH') return order['TARGET FINISH ']
     if (key === 'ACTUAL START') return order['ACTUAL START ']
@@ -137,7 +140,9 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
     window.history.pushState({}, '', '/work-orders')
   }
   const create = form => {
+    if (!access.create) return
     const created = onCreate(form)
+    if (!created) return
     setCreating(false)
     setSelected(created)
     window.history.replaceState({}, '', `/work-orders/${created.WORKORDER}`)
@@ -151,7 +156,7 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
           eyebrow="MAINTENANCE OPERATIONS"
           title="Work Orders"
           description="Track, plan, execute, and close every maintenance work order."
-          actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={workOrderTemplateHeaders} fileName="Work_Orders_Template.xlsx" /><ExportExcelButton module="Work Orders" rows={sorted} columns={exportColumns(excelDate)} /><ExcelImportButton fileName={imported} onFile={setImported} onImport={importedRows => onImportRows?.(importedRows)} /><Button variant="outline" onClick={printList}><Printer size={16} /> Print list</Button><Button onClick={openCreate}><Plus size={17} />New work order</Button></div>}
+          actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={workOrderTemplateHeaders} fileName="Work_Orders_Template.xlsx" /><ExportExcelButton module="Work Orders" rows={sorted} columns={exportColumns(excelDate)} />{access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={importedRows => onImportRows?.(importedRows)} />}<Button variant="outline" onClick={printList}><Printer size={16} /> Print list</Button>{access.create && <Button onClick={openCreate}><Plus size={17} />New work order</Button>}</div>}
         />
         <ImportNotice fileName={imported} subject="work order" onClear={() => setImported('')} />
         <IndexTabs
@@ -224,6 +229,6 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
   )
 
   if (selected?.WORKORDER) return EditorComponent({ page: true, order: selected, onClose: closeOrder })
-  if (creating) return <>{listView}<CreateWorkOrderModal rows={rows} assets={assets} locationRows={locationRows} siteRecords={siteRecords} departmentRecords={departmentRecords} onCancel={closeCreate} onCreate={create} /></>
+  if (creating && access.create) return <>{listView}<CreateWorkOrderModal rows={rows} assets={assets} locationRows={locationRows} siteRecords={siteRecords} departmentRecords={departmentRecords} onCancel={closeCreate} onCreate={create} /></>
   return listView
 }

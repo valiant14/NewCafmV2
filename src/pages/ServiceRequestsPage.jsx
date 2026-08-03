@@ -53,7 +53,7 @@ const exportColumns = [
   { key: 'convertedWorkOrder', label: 'Converted Work Order' }
 ]
 
-export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, allRequests = requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions }) {
+export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, allRequests = requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, access = {} }) {
   const { user } = useAuth()
   const requestFromPath = () => {
     const id = decodeURIComponent((window.location.pathname.split('/job-requests/')[1] || window.location.pathname.split('/service-requests/')[1] || ''))
@@ -93,12 +93,14 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     // blankRequest() stamps when the form is constructed - which is route-evaluation
     // time - so the reported time is taken again at the moment of submission.
     const submitted = { ...request, reportedDate: nowLocalDateTime(), sr: nextRequestNumber(), status: 'WAPPR', requestType: 'Service' }
+    if (!access.create) return request
     await setRequests(list => [...list, submitted])
     setSelected(submitted)
     window.history.replaceState({}, '', `/job-requests/${submitted.sr}`)
     return submitted
   }
   const approve = async request => {
+    if (!access.approve) return request
     const createdWorkOrder = await onConvert(request)
     const updated = { ...request, status: 'CONVERTED', convertedWorkOrder: createdWorkOrder.WORKORDER }
     await setRequests(list => list.map(item => item.sr === updated.sr ? updated : item))
@@ -113,7 +115,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
         eyebrow="REQUEST INTAKE"
         title="Job Requests"
         description="Submit, review, approve, and convert job requests into Corrective Maintenance work orders."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={templateHeaders} fileName="Job_Requests_Template.xlsx" /><ExportExcelButton module="Job Requests" rows={visible} columns={exportColumns} /><ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRequests(rows.map((row, index) => ({ ...blankRequest(), ...row, status: normalizeStatus('serviceRequest', row.status, 'NEW'), sr: row.sr || `SR-IMPORT-${String(index + 1).padStart(4, '0')}` })))} /><Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={templateHeaders} fileName="Job_Requests_Template.xlsx" /><ExportExcelButton module="Job Requests" rows={visible} columns={exportColumns} />{access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRequests(rows.map((row, index) => ({ ...blankRequest(), ...row, status: normalizeStatus('serviceRequest', row.status, 'NEW'), sr: row.sr || `SR-IMPORT-${String(index + 1).padStart(4, '0')}` })))} />}{access.create && <Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button>}</div>}
       />
       <ImportNotice fileName={imported} subject="job request" onClear={() => setImported('')} />
       <IndexTabs
@@ -153,7 +155,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     </>
   )
 
-  const detailProps = { assets, workOrders, siteRecords, departmentRecords, failureOptions, onBack: close, onSubmit: submit, onApprove: approve, onOpenWorkOrder }
+  const detailProps = { assets, workOrders, siteRecords, departmentRecords, failureOptions, onBack: close, onSubmit: submit, onApprove: approve, onOpenWorkOrder, access }
   if (selected?.status === 'NEW') return <>{listView}<ModalOverlay><ServiceRequestDetail modal request={selected} {...detailProps} /></ModalOverlay></>
   if (selected) return <ServiceRequestDetail request={selected} {...detailProps} />
   return listView
