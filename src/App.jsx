@@ -98,7 +98,7 @@ const toLocationPriority = value => {
   return 3
 }
 const maximoWorkOrderStatusDescriptions = new Proxy({}, { get: (_, status) => statusDescription('workOrder', status) })
-const cleanText = value => String(value ?? '').trim()
+const cleanText = value => String(value ?? '').replace(/\s+/g, ' ').trim()
 const toNumberOrNull = value => value === '' || value === null || value === undefined ? null : Number(value)
 const toDateOrNull = value => {
   if (value === '' || value === null || value === undefined) return null
@@ -559,17 +559,35 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const locationOptions=[...new Set([...assetsForSite.map(a=>a.location),...workOrderRows.filter(o=>!siteValue||String(o.SITE)===siteValue).map(o=>o['LOCATION '])].filter(Boolean))].sort()
   const changeSite=e=>{setSiteValue(e.target.value);setAssetValue('');setLocationValue('')}
   const changeAsset=e=>{const value=e.target.value;setAssetValue(value);const match=assetRecords.find(a=>cleanText(a.assetnum)===cleanText(value));setAssetDescription(match?.description?.trim()||'');if(match?.location)setLocationValue(match.location);if(match?.site)setSiteValue(String(match.site));if(match?.system)setSystemValue(current=>current||match.system)}
-  const matchingFailures=failureCodeRecords.filter(row=>!failureClass||row['FAILURE CLASS ID']===failureClass)
+  const matchingFailures=failureCodeRecords.filter(row=>!failureClass||cleanText(row['FAILURE CLASS ID'])===cleanText(failureClass))
   const failureClassOptions=uniqueCodeOptions(failureCodeRecords,'FAILURE CLASS ID','DESCRIPTION')
   const problemOptions=uniqueCodeOptions(matchingFailures,'PROBLEM CODE','PC - DESCRIPTION')
-  const selectedProblems=matchingFailures.filter(row=>!problemCode||row['PROBLEM CODE']===problemCode)
+  const selectedProblems=matchingFailures.filter(row=>!problemCode||cleanText(row['PROBLEM CODE'])===cleanText(problemCode))
   const causeOptions=uniqueCodeOptions(selectedProblems,'CAUSE CODE','CC - DESCRIPTION')
-  const remedyOptions=uniqueCodeOptions(selectedProblems.filter(row=>!causeCode||row['CAUSE CODE']===causeCode),'REMEDY CODE','RC - DESCRIPTION')
-  const failureDescription=failureCodeRecords.find(row=>row['FAILURE CLASS ID']===failureClass)?.DESCRIPTION||''
-  const problemDescription=failureCodeRecords.find(row=>row['FAILURE CLASS ID']===failureClass&&row['PROBLEM CODE']===problemCode)?.['PC - DESCRIPTION']||''
-  const causeDescription=failureCodeRecords.find(row=>row['PROBLEM CODE']===problemCode&&row['CAUSE CODE']===causeCode)?.['CC - DESCRIPTION']||''
-  const remedyDescription=failureCodeRecords.find(row=>row['PROBLEM CODE']===problemCode&&row['REMEDY CODE']===remedyCode)?.['RC - DESCRIPTION']||''
-  const changeFailure=e=>{setFailureClass(e.target.value);setProblemCode('');setCauseCode('');setRemedyCode('')}
+  const remedyOptions=uniqueCodeOptions(selectedProblems.filter(row=>!causeCode||cleanText(row['CAUSE CODE'])===cleanText(causeCode)),'REMEDY CODE','RC - DESCRIPTION')
+  const failureDescription=failureCodeRecords.find(row=>cleanText(row['FAILURE CLASS ID'])===cleanText(failureClass))?.DESCRIPTION||''
+  const problemDescription=failureCodeRecords.find(row=>cleanText(row['FAILURE CLASS ID'])===cleanText(failureClass)&&cleanText(row['PROBLEM CODE'])===cleanText(problemCode))?.['PC - DESCRIPTION']||''
+  const causeDescription=failureCodeRecords.find(row=>cleanText(row['PROBLEM CODE'])===cleanText(problemCode)&&cleanText(row['CAUSE CODE'])===cleanText(causeCode))?.['CC - DESCRIPTION']||''
+  const remedyDescription=failureCodeRecords.find(row=>cleanText(row['PROBLEM CODE'])===cleanText(problemCode)&&cleanText(row['REMEDY CODE'])===cleanText(remedyCode))?.['RC - DESCRIPTION']||''
+  const firstProblemForFailure=value=>failureCodeRecords
+    .filter(row=>cleanText(row['FAILURE CLASS ID'])===cleanText(value)&&cleanText(row['PROBLEM CODE']))
+    .sort((left,right)=>cleanText(left['PROBLEM CODE']).localeCompare(cleanText(right['PROBLEM CODE']),undefined,{numeric:true,sensitivity:'base'}))[0]
+  const changeFailure=e=>{
+    const next=e.target.value
+    const problem=firstProblemForFailure(next)
+    setFailureClass(next)
+    setProblemCode(problem?cleanText(problem['PROBLEM CODE']):'')
+    setCauseCode('')
+    setRemedyCode('')
+  }
+  useEffect(()=>{
+    if(!cleanText(failureClass)||cleanText(problemCode)) return
+    const problem=firstProblemForFailure(failureClass)
+    if(!problem) return
+    setProblemCode(cleanText(problem['PROBLEM CODE']))
+    setCauseCode('')
+    setRemedyCode('')
+  },[failureClass,problemCode,failureCodeRecords])
   const updatePlanRow=(setter,index,key,value)=>setter(rows=>rows.map((row,rowIndex)=>rowIndex===index?{...row,[key]:value}:row))
   // Changing what was used invalidates any return already confirmed against the old
   // figure - returning 1 of 2 then marking both used must not keep claiming "Returned 1".
