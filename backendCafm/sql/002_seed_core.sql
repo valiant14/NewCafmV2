@@ -86,11 +86,12 @@ insert into dbo.role_permissions(role_id, module_name, action_name, allowed)
 select r.role_id, m.module_name, a.action_name, 1
 from dbo.roles r
 join dbo.permission_modules m on m.module_name in (
-  'Overview', 'Work Orders', 'Assets', 'Locations', 'Failure Library', 'Meters',
+  'Overview', 'Job Requests', 'Work Orders', 'Assets', 'Locations', 'Failure Library', 'Meters',
   'Materials', 'Stores', 'Tools & Equipment'
 )
 join dbo.permission_actions a on (
   a.action_name = 'view'
+  or (a.action_name = 'create' and m.module_name = 'Job Requests')
   or (a.action_name = 'edit' and m.module_name in ('Work Orders', 'Meters'))
 )
 where r.role_code = 'CIVIL_TECHNICIAN'

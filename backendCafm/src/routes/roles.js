@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import sql from 'mssql'
 import { getPool } from '../db/pool.js'
 import { requirePermission } from '../middleware/auth.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
@@ -39,27 +40,64 @@ const rowsToRoles = rows => {
 }
 
 const syncPermissions = async (pool, roleId, permissions = {}) => {
-  await pool.request().input('roleId', roleId).query('delete from dbo.role_permissions where role_id = @roleId')
+  const pairs = []
+  const seen = new Set()
   for (const [action, modules] of Object.entries(permissions || {})) {
     for (const moduleName of permissionList(modules)) {
-      await pool.request()
+      const key = `${action}::${moduleName}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      pairs.push({ action, moduleName })
+    }
+  }
+
+  const transaction = new sql.Transaction(pool)
+  await transaction.begin()
+  try {
+    await new sql.Request(transaction)
+      .input('roleId', roleId)
+      .input('resource', `role-permissions-${roleId}`)
+      .query(`
+        declare @lockResult int;
+        exec @lockResult = sp_getapplock
+          @Resource = @resource,
+          @LockMode = 'Exclusive',
+          @LockOwner = 'Transaction',
+          @LockTimeout = 10000;
+
+        if @lockResult < 0
+          throw 51000, 'Unable to lock role permissions for update.', 1;
+
+        delete from dbo.role_permissions where role_id = @roleId;
+      `)
+
+    for (const pair of pairs) {
+      await new sql.Request(transaction)
         .input('roleId', roleId)
-        .input('moduleName', moduleName)
-        .input('actionName', action)
+        .input('moduleName', pair.moduleName)
+        .input('actionName', pair.action)
         .query(`
-          if exists(select 1 from dbo.permission_modules where module_name = @moduleName)
-             and exists(select 1 from dbo.permission_actions where action_name = @actionName)
-             and not exists(
-               select 1
-               from dbo.role_permissions
-               where role_id = @roleId
-                 and module_name = @moduleName
-                 and action_name = @actionName
-             )
+          if not exists(select 1 from dbo.permission_modules with (updlock, holdlock) where module_name = @moduleName)
+            insert into dbo.permission_modules(module_name) values(@moduleName);
+
+          if not exists(select 1 from dbo.permission_actions with (updlock, holdlock) where action_name = @actionName)
+            insert into dbo.permission_actions(action_name) values(@actionName);
+
           insert into dbo.role_permissions(role_id, module_name, action_name, allowed)
-          values(@roleId, @moduleName, @actionName, 1)
+          select @roleId, @moduleName, @actionName, 1
+          where not exists(
+              select 1
+              from dbo.role_permissions
+              where role_id = @roleId
+                and module_name = @moduleName
+                and action_name = @actionName
+            );
         `)
     }
+    await transaction.commit()
+  } catch (error) {
+    await transaction.rollback()
+    throw error
   }
 }
 

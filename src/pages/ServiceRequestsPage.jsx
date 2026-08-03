@@ -95,8 +95,8 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     const submitted = { ...request, reportedDate: nowLocalDateTime(), sr: nextRequestNumber(), status: 'WAPPR', requestType: 'Service' }
     if (!access.create) return request
     await setRequests(list => [...list, submitted])
-    setSelected(submitted)
-    window.history.replaceState({}, '', `/job-requests/${submitted.sr}`)
+    setSelected(null)
+    window.history.replaceState({}, '', '/job-requests')
     return submitted
   }
   const approve = async request => {
