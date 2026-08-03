@@ -15,14 +15,13 @@ import { scopeRowsForUser } from '../lib/accessControl'
 import { useAuth } from '../providers/AuthProvider'
 
 const summaryColumns = [
-  { key: 'code', label: 'Store' },
-  { key: 'name', label: 'Store Name' },
+  { key: 'code', label: 'Warehouse Code' },
+  { key: 'name', label: 'Warehouse Name' },
   { key: 'location', label: 'Location Code' },
   { key: 'locationDescription', label: 'Location' },
   { key: 'site', label: 'Site' },
-  { key: 'department', label: 'Department' },
-  { key: 'itemCount', label: 'Items' },
-  { key: 'totalQuantity', label: 'Total Quantity' }
+  { key: 'itemCount', label: 'Items Held' },
+  { key: 'totalQuantity', label: 'On-Hand Quantity' }
 ]
 
 const stockColumns = [
@@ -80,9 +79,26 @@ const allStockRows = (materials, stockRows, storeRows) => stockRows.map(row => {
   }
 })
 const cleanKey = value => String(value || '').trim().toLowerCase()
-const matchesStore = (store, value) => [store.code, store.name].some(item => cleanKey(item) === cleanKey(value))
-const toolRowsForStore = (store, tools = []) => tools
-  .filter(tool => matchesStore(store, tool.location))
+const isUsableStore = store => {
+  const code = String(store?.code || '').trim()
+  const name = String(store?.name || '').trim()
+  return code && !/^\d+$/.test(code) && name && !/^\d+$/.test(name)
+}
+const defaultStoreCode = (storeRows = []) => {
+  const validStores = storeRows.filter(isUsableStore)
+  const store = validStores.find(row => row.status !== 'Inactive') || validStores[0]
+  return store?.code || store?.name || 'DIWAN-MAIN'
+}
+const normalizedStoreCode = (value, storeRows = []) => {
+  const raw = String(value || '').trim()
+  const matched = storeRows.filter(isUsableStore).find(store => [store.code, store.name].some(item => cleanKey(item) === cleanKey(raw)))
+  if (matched) return matched.code || matched.name
+  return raw && !/^\d+$/.test(raw) ? raw : defaultStoreCode(storeRows)
+}
+const matchesStore = (store, value, storeRows = []) =>
+  [store.code, store.name].some(item => cleanKey(item) === cleanKey(normalizedStoreCode(value, storeRows)))
+const toolRowsForStore = (store, tools = [], storeRows = []) => tools
+  .filter(tool => matchesStore(store, tool.location, storeRows))
   .map(tool => ({
     itemNumber: tool.toolNumber,
     type: 'Tool',
@@ -94,6 +110,14 @@ const toolRowsForStore = (store, tools = []) => tools
     available: Math.max(0, Number(tool.availableQuantity ?? tool.quantity) || 0),
     reorderLevel: Number(tool.lowLevel) || 0
   }))
+const allToolRows = (tools = [], storeRows = []) => storeRows.filter(isUsableStore).flatMap(store =>
+  toolRowsForStore(store, tools, storeRows).map(row => ({
+    ...row,
+    storeroom: store.code,
+    storeName: store.name || store.code,
+    status: Number(row.available || 0) <= 0 ? 'No Stock' : Number(row.available || 0) <= Number(row.reorderLevel || 0) ? 'Low Stock' : 'Available'
+  }))
+)
 
 function Widget({ icon: Icon, label, value, note, tone = 'neutral' }) {
   const toneClass = {
@@ -121,8 +145,17 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
   const [form, setForm] = useState(emptyStore)
   const [error, setError] = useState('')
   const routeId = decodeURIComponent(window.location.pathname.split('/stores/')[1] || '')
-  const summary = scopeRowsForUser(storeSummary(materials, stockRows, storeRows, locationRows), scopeUser || user, ['site'])
-  const stockReportRows = allStockRows(materials, stockRows, storeRows)
+  const summary = scopeRowsForUser(storeSummary(materials, stockRows, storeRows, locationRows).map(store => {
+    const toolRows = toolRowsForStore(store, tools, storeRows)
+    const lowToolCount = toolRows.filter(row => Number(row.available || 0) <= Number(row.reorderLevel || 0)).length
+    return {
+      ...store,
+      itemCount: Number(store.itemCount || 0) + toolRows.length,
+      totalQuantity: Number(store.totalQuantity || 0) + sumBy(toolRows, 'balance'),
+      belowReorder: Number(store.belowReorder || 0) + lowToolCount
+    }
+  }), scopeUser || user, ['site'])
+  const stockReportRows = [...allStockRows(materials, stockRows, storeRows), ...allToolRows(tools, storeRows)]
   const lowStockRows = stockReportRows.filter(row => row.status !== 'Available')
   const totalBalance = sumBy(stockReportRows, 'balance')
   const totalReserved = sumBy(stockReportRows, 'reserved')
@@ -143,6 +176,11 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
   const close = () => {
     setSelected(null)
     window.history.pushState({}, '', '/stores')
+  }
+  const openInventoryRow = row => {
+    const basePath = row.type === 'Tool' ? '/tools' : '/materials'
+    window.history.pushState({}, '', `${basePath}/${encodeURIComponent(row.itemNumber)}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
   }
   const openNew = () => {
     setForm(emptyStore)
@@ -167,7 +205,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
 
   if (selected) {
     const materialRows = storeStockRows(selected.code, materials, stockRows).map(row => ({ ...row, type: 'Material' }))
-    const rows = [...materialRows, ...toolRowsForStore(selected, tools)]
+    const rows = [...materialRows, ...toolRowsForStore(selected, tools, storeRows)]
     const location = storeLocation(selected.code, storeRows, locationRows)
     return (
       <>
@@ -187,6 +225,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
             <DataTable
               rows={rows}
               rowKey="itemNumber"
+              onRowClick={openInventoryRow}
               pagination
               columns={[
                 { key: 'type', label: 'Type' },
@@ -223,7 +262,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
       <ImportNotice fileName={imported} subject="stores" onClear={() => setImported('')} />
       <section className="mt-6 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Widget icon={Warehouse} label="Stores" value={summary.length} note={`${summary.filter(store => store.status === 'Active').length} active`} tone="blue" />
-        <Widget icon={Package} label="Stocked Items" value={stockReportRows.length} note={`${materials.length} material masters`} />
+        <Widget icon={Package} label="Stocked Items" value={stockReportRows.length} note={`${materials.length} material / ${tools.length} tool masters`} />
         <Widget icon={BarChart3} label="Balance" value={totalBalance} note="Total on hand" tone="green" />
         <Widget icon={ClipboardList} label="Reserved" value={totalReserved} note="Committed to work" tone="orange" />
         <Widget icon={PackageCheck} label="Available" value={totalAvailable} note="Ready to issue" tone="green" />
@@ -263,10 +302,10 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
             rowKey="code"
             showFooter={false}
             columns={[
-              { key: 'code', label: 'Store', render: value => <strong className="mono">{value}</strong> },
-              { key: 'name', label: 'Name' },
-              { key: 'itemCount', label: 'Items' },
-              { key: 'totalQuantity', label: 'Balance' }
+              { key: 'code', label: 'Warehouse', render: value => <strong className="mono">{value}</strong> },
+              { key: 'name', label: 'Warehouse Name' },
+              { key: 'itemCount', label: 'Items Held' },
+              { key: 'totalQuantity', label: 'On Hand' }
             ]}
           />
         </div>
@@ -278,15 +317,14 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
           onRowClick={open}
           pagination
           columns={[
-            { key: 'code', label: 'Store', render: value => <strong className="mono">{value}</strong> },
-            { key: 'name', label: 'Store Name' },
-            { key: 'location', label: 'Location', render: (value, row) => (
+            { key: 'code', label: 'Warehouse', render: value => <strong className="mono">{value}</strong> },
+            { key: 'name', label: 'Warehouse Name' },
+            { key: 'location', label: 'Storage Location', render: (value, row) => (
               <span><strong className="mono">{value}</strong><small className="mt-1 block text-[9px] text-[var(--app-muted)]">{row.locationDescription}</small></span>
             ) },
-            { key: 'department', label: 'Department' },
-            { key: 'itemCount', label: 'Items' },
-            { key: 'totalQuantity', label: 'Total Quantity' },
-            { key: 'belowReorder', label: 'Below Reorder', render: value => (
+            { key: 'itemCount', label: 'Items Held' },
+            { key: 'totalQuantity', label: 'On-Hand Quantity' },
+            { key: 'belowReorder', label: 'Low Stock Items', render: value => (
               <Badge tone={value ? 'orange' : 'green'}>{value}</Badge>
             ) },
             { key: 'open', label: '', render: () => <ChevronRight size={17} /> }

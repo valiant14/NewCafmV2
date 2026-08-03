@@ -1,8 +1,13 @@
 const clean = value => String(value ?? '').trim().toUpperCase()
+const isUsableStore = store => {
+  const code = String(store?.code || '').trim()
+  const name = String(store?.name || '').trim()
+  return code && !/^\d+$/.test(code) && name && !/^\d+$/.test(name)
+}
 
 export const stores = []
 
-export const storeByCode = (code, storeRows = []) => storeRows.find(store => clean(store.code) === clean(code)) || null
+export const storeByCode = (code, storeRows = []) => storeRows.filter(isUsableStore).find(store => clean(store.code) === clean(code)) || null
 
 export const storeLocation = (code, storeRows = [], locations = []) => {
   const store = storeByCode(code, storeRows)
@@ -55,7 +60,7 @@ export const materialStatusTone = status => ({
 export const materialStatusFor = (itemNumber, materials = []) =>
   materials.find(item => clean(item.itemNumber) === clean(itemNumber))?.status || ''
 
-export const storeSummary = (materials = [], rows = [], storeRows = [], locations = []) => storeRows.map(store => {
+export const storeSummary = (materials = [], rows = [], storeRows = [], locations = []) => storeRows.filter(isUsableStore).map(store => {
   const stock = stockForStore(store.code, rows)
   return {
     ...store,

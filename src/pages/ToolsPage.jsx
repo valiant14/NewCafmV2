@@ -70,9 +70,25 @@ const activeAllocationsFor = (tool, allocations = []) => allocations.filter(allo
   return matchesTool(tool, allocation.itemCode || allocation.item, allocation.item)
 })
 
+const storeCodeFor = (value, storeRows = []) => {
+  const raw = String(value || '').trim()
+  const matched = storeRows
+    .filter(store => !/^\d+$/.test(String(store.code || '').trim()) && !/^\d+$/.test(String(store.name || '').trim()))
+    .find(store => [store.code, store.name].some(item => cleanCode(item) === cleanCode(raw)))
+  return matched?.code || ''
+}
+
 const defaultToolLocation = (storeRows = []) => {
-  const store = storeRows.find(row => row.status !== 'Inactive') || storeRows[0]
-  return store?.name || store?.code || 'Tool Store'
+  const validStores = storeRows.filter(store => !/^\d+$/.test(String(store.code || '').trim()) && !/^\d+$/.test(String(store.name || '').trim()))
+  const store = validStores.find(row => row.status !== 'Inactive') || validStores[0]
+  return store?.code || store?.name || 'DIWAN-MAIN'
+}
+
+const normalizedToolLocation = (value, storeRows = [], activeAllocations = []) => {
+  const raw = String(value || '').trim()
+  const allocationSource = String(activeAllocations.find(allocation => allocation.source)?.source || '').trim()
+  const candidate = raw && !/^\d+$/.test(raw) ? raw : allocationSource
+  return storeCodeFor(candidate, storeRows) || (candidate && !/^\d+$/.test(candidate) ? candidate : defaultToolLocation(storeRows))
 }
 
 const withToolUsage = (row, workOrders, allocations = [], storeRows = []) => {
@@ -85,7 +101,7 @@ const withToolUsage = (row, workOrders, allocations = [], storeRows = []) => {
   const status = row.status === 'Maintenance' ? 'Maintenance' : allocatedQuantity > 0 ? 'Allocated' : reservedQuantity > 0 ? 'Reserved' : availableQuantity <= 0 ? 'Allocated' : 'Available'
   const lowLevel = Number(row.lowLevel || 0)
   const availability = status === 'Maintenance' ? 'Maintenance' : availableQuantity <= 0 ? 'No Stock' : availableQuantity <= lowLevel ? 'Low Stock' : 'Available'
-  const location = row.location || activeAllocations.find(allocation => allocation.source)?.source || defaultToolLocation(storeRows)
+  const location = normalizedToolLocation(row.location, storeRows, activeAllocations)
   return {
     ...row,
     unit: row.unit || 'EA',
