@@ -132,6 +132,15 @@ const uniquePermissions = permissions => Object.fromEntries(
     [...new Set((Array.isArray(modules) ? modules : String(modules || '').split(/[,;|]+/)).map(item => String(item || '').trim()).filter(Boolean))]
   ])
 )
+const persistenceQueues = new Map()
+const queuePersistence = (queueKey, task) => {
+  const previous = persistenceQueues.get(queueKey) || Promise.resolve()
+  const next = previous.catch(() => {}).then(task)
+  persistenceQueues.set(queueKey, next.finally(() => {
+    if (persistenceQueues.get(queueKey) === next) persistenceQueues.delete(queueKey)
+  }))
+  return next
+}
 const uniqueCodeOptions = (rows = [], codeKey, descriptionKey) => [
   ...new Map(rows
     .filter(row => cleanText(row?.[codeKey]))
@@ -173,7 +182,7 @@ const backendSetter = (setState, config) => update => {
   let persistence = Promise.resolve()
   setState(current => {
     const next = typeof update === 'function' ? update(current) : update
-    persistence = persistRowsToBackend({ before: current, after: Array.isArray(next) ? next : [], ...config })
+    persistence = queuePersistence(config.endpoint, () => persistRowsToBackend({ before: current, after: Array.isArray(next) ? next : [], ...config }))
     return next
   })
   return persistence
@@ -1146,7 +1155,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
 }
 
 export default function App() {
-  const { isAuthenticated, user, logout, applySessionUpdate } = useAuth()
+  const { isAuthenticated, user, logout, refreshSession, applySessionUpdate } = useAuth()
   const [active, setActive] = useState(()=>routeToPage(window.location.pathname))
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -1174,7 +1183,17 @@ export default function App() {
   const [failureCodeRecords,setFailureCodeRecords]=useState(failureCodes)
   const [workspaceLoading,setWorkspaceLoading]=useState(false)
   const [workspaceError,setWorkspaceError]=useState('')
+  const [toast,setToast]=useState(null)
   const [projectName]=useState(readProjectName)
+  const notify = useCallback((message, tone = 'info') => {
+    if (!message) return
+    setToast({ id: Date.now(), message, tone })
+  }, [])
+  useEffect(() => {
+    if (!toast) return undefined
+    const timer = setTimeout(() => setToast(null), 3600)
+    return () => clearTimeout(timer)
+  }, [toast])
   const applyWorkspaceData = useCallback(data => {
     setAssetRecords(data.assets)
     setLocationRecords(data.locations)
@@ -1205,6 +1224,7 @@ export default function App() {
     setWorkspaceError('')
     try {
       applyWorkspaceData(await loadWorkspace())
+      await refreshSession()
     } catch (error) {
       if (error.status === 401) {
         logout()
@@ -1214,7 +1234,7 @@ export default function App() {
     } finally {
       if (!silent) setWorkspaceLoading(false)
     }
-  }, [applyWorkspaceData, isAuthenticated, logout])
+  }, [applyWorkspaceData, isAuthenticated, logout, refreshSession])
   useEffect(() => {
     refreshWorkspace()
   }, [refreshWorkspace])
@@ -1300,11 +1320,19 @@ export default function App() {
     const nextCount = Array.isArray(nextRows) ? nextRows.length : 0
     const action = nextCount > beforeCount ? 'create' : nextCount < beforeCount ? 'edit' : 'edit'
     if (!canDo(moduleName, action)) {
-      setWorkspaceError(`No ${action} access for ${moduleName}. Ask an administrator to update your role permissions.`)
+      notify(`No ${action} access for ${moduleName}. Ask an administrator to update your role permissions.`, 'error')
       return Promise.resolve()
     }
     return saveFn(nextRows)
-  }, [assetRecords, locationRecords, laborRecords, materialRecords, storeRecords, toolRecords, failureCodeRecords, meterRecords, allWorkOrders, serviceRequests, incidents, pmScheduleRecords, purchaseRequests, purchaseOrders, reservations, siteRecords, departmentRecords, jobPlanRecords, userRecords, rolePermissionRecords, canDo])
+      .then(result => {
+        if (moduleName === 'Roles & Permissions') notify('Role permissions saved.', 'success')
+        return result
+      })
+      .catch(error => {
+        notify(error.message || `Unable to save ${moduleName}.`, 'error')
+        refreshWorkspace({ silent: true })
+      })
+  }, [assetRecords, locationRecords, laborRecords, materialRecords, storeRecords, toolRecords, failureCodeRecords, meterRecords, allWorkOrders, serviceRequests, incidents, pmScheduleRecords, purchaseRequests, purchaseOrders, reservations, siteRecords, departmentRecords, jobPlanRecords, userRecords, rolePermissionRecords, canDo, notify, refreshWorkspace])
   const rawSaveAssets = useMemo(() => backendSetter(setAssetRecords, apiMappers.assets), [])
   const rawSaveLocations = useMemo(() => backendSetter(setLocationRecords, apiMappers.locations), [])
   const rawSaveLabor = useMemo(() => backendSetter(setLaborRecords, apiMappers.labor), [])
@@ -1528,7 +1556,7 @@ export default function App() {
     const request=existing
       ? api.put(`/inventory-stock/${encodedStore}/${encodedItem}`, payload)
       : api.post('/inventory-stock', { store_code: storeCode, item_code: itemCode, ...payload })
-    request.catch(error=>setWorkspaceError(error.message||'Unable to update inventory stock.'))
+    request.catch(error=>notify(error.message||'Unable to update inventory stock.','error'))
   }
   const receivePurchaseOrderStock=order=>{
     const quantity=Number(order.quantity||0)
@@ -1565,7 +1593,7 @@ export default function App() {
     }))
   }
   const createPurchaseRequest=record=>{
-    if(!canDo('Purchase Requisitions','create')){setWorkspaceError('No create access for Purchase Requisitions.');return null}
+    if(!canDo('Purchase Requisitions','create')){notify('No create access for Purchase Requisitions.','error');return null}
     // Dedupe only the same planned resource line. Separate lines for the same item are
     // allowed because each line can represent a different shortage/request.
     const existing=record.resourceRequestId?purchaseRequests.find(row=>String(row.resourceRequestId||'')===String(record.resourceRequestId)&&!['CAN'].includes(row.status)):null
@@ -1576,7 +1604,7 @@ export default function App() {
     return created
   }
   const createPurchaseOrderFromRequest=request=>{
-    if(!canDo('Purchase Orders','create')||!canDo('Purchase Requisitions','approve')){setWorkspaceError('No approve/create access for this purchase workflow.');return null}
+    if(!canDo('Purchase Orders','create')||!canDo('Purchase Requisitions','approve')){notify('No approve/create access for this purchase workflow.','error');return null}
     const existing=purchaseOrders.find(order=>order.purchaseRequest===request.purchaseRequest)
     if(existing) return existing
     const created={purchaseOrder:`PO-2026-${String(purchaseOrders.length+1).padStart(4,'0')}`,purchaseRequest:request.purchaseRequest,resourceRequestId:request.resourceRequestId,workOrder:request.workOrder,type:request.type,item:request.item,itemCode:itemCodeFor(request.type,request.itemCode||request.item),quantity:request.quantity,source:request.type==='Material'?preferredStoreFor(request):request.source,site:request.site,department:request.department,status:'WAPPR',statusDescription:statusDescription('purchaseOrder','WAPPR'),createdAt:todayStamp()}
@@ -1604,7 +1632,7 @@ export default function App() {
     if(form['JOB TASK DESCRIPTION']) setJobTaskRecords(rows=>[...rows,{...form,JPNUM:jpnum,JOBTASKID:form.JOBTASKID||`${jpnum}-${form['JOB TASK SEQUENCE']||rows.filter(row=>row.JPNUM===jpnum).length+1}`}])
   }
   const createReservation=record=>{
-    if(!canDo('Reservations','create')){setWorkspaceError('No create access for Reservations.');return null}
+    if(!canDo('Reservations','create')){notify('No create access for Reservations.','error');return null}
     const existing=record.resourceRequestId
       ? reservations.find(row=>String(row.resourceRequestId||'')===String(record.resourceRequestId)&&!['CANCELLED'].includes(row.status))
       : null
@@ -1625,7 +1653,7 @@ export default function App() {
         balance: Number(stockRow.balance||0),
         reserved_quantity: Number(stockRow.reserved||0)+reservedQuantity,
         reorder_point: stockRow.reorderLevel ?? null
-      }).catch(error=>setWorkspaceError(error.message||'Unable to update inventory stock.'))
+      }).catch(error=>notify(error.message||'Unable to update inventory stock.','error'))
     }
     saveReservations(rows=>rows.some(row=>row.reservation===created.reservation)?rows:[created,...rows])
     linkWorkOrderResourceTransaction(created, { requestStatus: created.status, transactionRef: created.reservation, reservation: created.reservation, purchaseRequest: created.purchaseRequest, purchaseOrder: created.purchaseOrder, supplyChainStatus: 'Reservation entered' })
@@ -1682,14 +1710,14 @@ export default function App() {
           balance: Math.max(0,Number(stockRow?.balance||0)-releaseDelta),
           reserved_quantity: Math.max(0,Number(stockRow?.reserved||0)-releaseDelta),
           reorder_point: stockRow?.reorderLevel ?? null
-        }).catch(error=>setWorkspaceError(error.message||'Unable to update inventory stock.'))
+        }).catch(error=>notify(error.message||'Unable to update inventory stock.','error'))
       }
     }
     saveReservations(rows=>rows.map(row=>row.reservation===reference?{...row,...patch}:row))
     if(updated) linkWorkOrderResourceTransaction(updated, { requestStatus: updated.status, transactionRef: updated.reservation, reservation: updated.reservation, purchaseRequest: updated.purchaseRequest, purchaseOrder: updated.purchaseOrder, supplyChainStatus: `Reservation ${statusDescription('inventoryUsage', updated.status)}` })
   }
   const updateWorkOrder=(number,patch)=>saveWorkOrders(rows=>rows.map(order=>String(order.WORKORDER)===String(number)?{...order,...patch}:order))
-  const createWorkOrder=form=>{if(!canDo('Work Orders','create')){setWorkspaceError('No create access for Work Orders.');return null}const next=Math.max(...allWorkOrders.map(order=>Number(order.WORKORDER)||0),56545134)+1;const created={'WORKORDER':String(next),'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':toLocationPriority(form.priority),'ASSET':form.asset,'STATUS':'WAPPR','WORK TYPE ':form.type,'STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':form.department||'','SUB DEPARTMENT  NAME':form.subDepartment||'','ASSIGNED DEPARTMENT':form.department||'','ASSET DESCRIPTION':assetDescriptionFromMaster(form.asset, assetRecords),'SYSTEM':assetFromMaster(form.asset, assetRecords)?.system||'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':nowLocalDateTime(),'PTW REQUIRED':true};saveWorkOrders(rows=>[...rows,created]);return created}
+  const createWorkOrder=form=>{if(!canDo('Work Orders','create')){notify('No create access for Work Orders.','error');return null}const next=Math.max(...allWorkOrders.map(order=>Number(order.WORKORDER)||0),56545134)+1;const created={'WORKORDER':String(next),'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':toLocationPriority(form.priority),'ASSET':form.asset,'STATUS':'WAPPR','WORK TYPE ':form.type,'STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':form.department||'','SUB DEPARTMENT  NAME':form.subDepartment||'','ASSIGNED DEPARTMENT':form.department||'','ASSET DESCRIPTION':assetDescriptionFromMaster(form.asset, assetRecords),'SYSTEM':assetFromMaster(form.asset, assetRecords)?.system||'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':nowLocalDateTime(),'PTW REQUIRED':true};saveWorkOrders(rows=>[...rows,created]);return created}
   const generatePmWorkOrder=(pm,tasks)=>saveWorkOrders(rows=>{
     if(rows.some(order=>order['PM NUMBER']===pm.pmNumber&&order['PM CYCLE']===pm.cycle)) return rows
     const assetRecord=assetFromMaster(pm.asset, assetRecords)
@@ -1767,22 +1795,36 @@ export default function App() {
   if (!activePage) return <LoginPage />
 
   return (
-    <AppShell
-      active={activePage}
-      navigation={allowedNavigation}
-      projectName={projectName}
-      counters={{ workOrders: scopedWorkOrders.length }}
-      overdueCount={workOrderNotifications.filter(item => item.type === 'overdue').length}
-      notifications={workOrderNotifications}
-      statusRuleCount={statusMatrix.length}
-      mobileOpen={mobileOpen}
-      onMobileOpen={() => setMobileOpen(true)}
-      onMobileClose={() => setMobileOpen(false)}
-      onNavigate={navigate}
-      onOpenWorkOrders={() => navigate('Work Orders')}
-    >
-      {activePage === 'Overview' ? <OverviewPage onNavigate={navigate} onOpenWorkOrderTab={openWorkOrderTab} currentUser={effectiveUser} projectName={projectName} assets={scopedAssets} incidents={scopedIncidents} workOrders={scopedWorkOrders} pmRecords={pmScheduleRecords} failureCodes={failureCodeRecords} meters={meterRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} reservations={scopedReservations} /> : pages[activePage]}
-    </AppShell>
+    <>
+      <AppShell
+        active={activePage}
+        navigation={allowedNavigation}
+        projectName={projectName}
+        counters={{ workOrders: scopedWorkOrders.length }}
+        overdueCount={workOrderNotifications.filter(item => item.type === 'overdue').length}
+        notifications={workOrderNotifications}
+        statusRuleCount={statusMatrix.length}
+        mobileOpen={mobileOpen}
+        onMobileOpen={() => setMobileOpen(true)}
+        onMobileClose={() => setMobileOpen(false)}
+        onNavigate={navigate}
+        onOpenWorkOrders={() => navigate('Work Orders')}
+      >
+        {activePage === 'Overview' ? <OverviewPage onNavigate={navigate} onOpenWorkOrderTab={openWorkOrderTab} currentUser={effectiveUser} projectName={projectName} assets={scopedAssets} incidents={scopedIncidents} workOrders={scopedWorkOrders} pmRecords={pmScheduleRecords} failureCodes={failureCodeRecords} meters={meterRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} reservations={scopedReservations} /> : pages[activePage]}
+      </AppShell>
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-[100] max-w-sm rounded-2xl border border-[var(--app-line)] bg-white p-4 text-sm shadow-[0_18px_50px_rgba(20,35,29,.18)]">
+          <div className="flex items-start gap-3">
+            <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${toast.tone === 'error' ? 'bg-red-500' : toast.tone === 'success' ? 'bg-emerald-600' : 'bg-[var(--app-primary)]'}`} />
+            <div className="min-w-0">
+              <strong className="block text-xs uppercase tracking-[.12em] text-[var(--app-muted)]">{toast.tone === 'error' ? 'Action failed' : toast.tone === 'success' ? 'Saved' : 'Notice'}</strong>
+              <p className="mt-1 font-semibold text-[var(--app-ink)]">{toast.message}</p>
+            </div>
+            <button type="button" className="ml-2 text-lg leading-none text-[var(--app-muted)] hover:text-[var(--app-ink)]" onClick={() => setToast(null)} aria-label="Dismiss notification">×</button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 

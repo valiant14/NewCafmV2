@@ -63,6 +63,18 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  const refreshSession = useCallback(async () => {
+    if (!getAuthToken()) return null
+    const result = await api.me()
+    const sessionUser = {
+      ...result.user,
+      initials: String(result.user?.name || result.user?.username || '').split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase()
+    }
+    localStorage.setItem(storageKey, JSON.stringify(sessionUser))
+    setUser(sessionUser)
+    return sessionUser
+  }, [])
+
   const logout = useCallback(() => {
     setAuthToken('')
     localStorage.removeItem(storageKey)
@@ -78,9 +90,10 @@ export function AuthProvider({ children }) {
     authError,
     login,
     logout,
+    refreshSession,
     applySessionUpdate,
     isAuthenticated: Boolean(user && token)
-  }), [user, token, authError, login, logout, applySessionUpdate])
+  }), [user, token, authError, login, logout, refreshSession, applySessionUpdate])
 
   return (
     <AuthContext.Provider value={value}>
