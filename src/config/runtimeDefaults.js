@@ -41,6 +41,9 @@ export const permissionModules = [
   'Roles & Permissions',
   'Sites',
   'Departments',
+  // Grants access to Notifications, SMTP & SMS and PM Schedule Rules. Only the modules
+  // seeded in dbo.permission_modules can be saved against a role, so the three pages share
+  // this one rather than listing names the database would silently discard.
   'Settings'
 ]
 export const pmRecords = []

@@ -16,6 +16,7 @@ import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMat
 import { useAuth } from '../providers/AuthProvider'
 import { parseLocal, toLocalDateInput } from '../lib/datetime'
 import { countPmDueState, pmDueState } from '../lib/pmSchedule'
+import { generatePmWorkOrders } from '../lib/pmGeneration'
 import { filterRows } from '../lib/tableSearch'
 import { scopeRowsForUser } from '../lib/accessControl'
 
@@ -81,18 +82,6 @@ const mapPmImportRows = rows => rows.map(row => ({
   pmStatus: normalizeStatus('preventiveMaintenance', row['PM Status'] || row.PMSTATUS, 'ACTIVE'),
   lastGeneratedCycle: ''
 })).filter(plan => plan.pmNumber && plan.description)
-
-const cycleKey = plan => `${plan.pmNumber}-${plan.startDate}`
-
-const addFrequency = plan => {
-  const date = parseLocal(plan.startDate) || new Date()
-  const amount = Number(plan.frequency) || 1
-  if (plan.freqUnit === 'DAYS') date.setDate(date.getDate() + amount)
-  if (plan.freqUnit === 'WEEKS') date.setDate(date.getDate() + amount * 7)
-  if (plan.freqUnit === 'MONTHS') date.setMonth(date.getMonth() + amount)
-  if (plan.freqUnit === 'YEARS') date.setFullYear(date.getFullYear() + amount)
-  return toLocalDateInput(date)
-}
 
 export default function PreventiveMaintenancePage({ rows = [], setRows, assets = [], jobTasks = [], workOrders = [], departmentRecords = [], scopeUser, onGenerate, onOpenWorkOrder }) {
   const { user } = useAuth()
@@ -167,17 +156,7 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, assets =
   const updatePlan = (pmNumber, patch) => {
     setRows?.(rows => rows.map(plan => plan.pmNumber === pmNumber ? { ...plan, ...patch } : plan))
   }
-  const generate = () => {
-    const cutoff = new Date('2026-08-31')
-    const due = plans.filter(plan => plan.pmStatus === 'ACTIVE' && new Date(plan.startDate) <= cutoff && plan.lastGeneratedCycle !== cycleKey(plan))
-    const made = due.map((plan, index) => ({ ...plan, workOrder: `PMWO-${20260801 + index}`, cycle: cycleKey(plan), nextDue: addFrequency(plan) }))
-    setRows?.(rows => rows.map(plan => {
-      const generated = made.find(item => item.pmNumber === plan.pmNumber)
-      return generated ? { ...plan, startDate: generated.nextDue, lastGeneratedCycle: generated.cycle, pmCounter: Number(plan.pmCounter) + 1 } : plan
-    }))
-    made.forEach(plan => onGenerate?.(plan, jobTasks.filter(task => task.JPNUM === plan.jobPlan)))
-    setGeneration(made)
-  }
+  const generate = () => setGeneration(generatePmWorkOrders({ plans, jobTasks, setRows, onGenerate }))
 
   if (selected) {
     return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} onUpdate={updatePlan} />

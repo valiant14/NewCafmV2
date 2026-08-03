@@ -3,8 +3,7 @@ import { ChevronDown, ChevronRight, Filter, RotateCcw } from 'lucide-react'
 import Combobox from './Combobox'
 import { emptyStandardFilters } from '../../lib/standardFilters'
 
-const storageKey = 'facility-command-filters-open'
-const shellClass = 'mb-4 rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-3 shadow-[0_8px_24px_rgba(32,55,45,.04)]'
+const shellClass ='mb-4 rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-3 shadow-[0_8px_24px_rgba(32,55,45,.04)]'
 const gridClass = 'grid gap-3 md:grid-cols-2 xl:grid-cols-5'
 const fieldClass = 'grid gap-1'
 const labelClass = 'text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]'
@@ -19,12 +18,6 @@ const summaryLabels = [
   ['from', 'From'],
   ['to', 'To']
 ]
-
-const readStoredOpen = fallback => {
-  if (typeof window === 'undefined') return fallback
-  const stored = window.localStorage.getItem(storageKey)
-  return stored === null ? fallback : stored === 'open'
-}
 
 // A searchable picker rather than a native select: these lists grow with the data, and the
 // browser menu could not be filtered or styled. Typing narrows the list; only a real option
@@ -55,15 +48,13 @@ export default function StandardFilters({
   title = 'Standard Filters',
   defaultOpen = false
 }) {
-  const [open, setOpen] = useState(() => readStoredOpen(defaultOpen))
+  // Starts collapsed on every visit. The open state used to be remembered in localStorage,
+  // which meant expanding it once left the panel open on every page from then on.
+  const [open, setOpen] = useState(defaultOpen)
   const update = key => value => setFilters(current => ({ ...current, [key]: value }))
   const reset = () => setFilters(emptyStandardFilters)
   const active = summaryLabels.filter(([key]) => String(filters?.[key] ?? '').trim() !== '')
-  const toggle = () => setOpen(current => {
-    const next = !current
-    if (typeof window !== 'undefined') window.localStorage.setItem(storageKey, next ? 'open' : 'closed')
-    return next
-  })
+  const toggle = () => setOpen(current => !current)
 
   return (
     <section className={shellClass}>

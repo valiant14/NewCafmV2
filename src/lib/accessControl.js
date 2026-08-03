@@ -22,7 +22,12 @@ const pagePermissionAliases = {
   'Roles & Permissions': ['Roles & Permissions', 'Administration'],
   Sites: ['Sites', 'Administration'],
   Departments: ['Departments', 'Administration'],
-  Settings: ['Settings', 'Administration']
+  // These three replaced the old Settings page. The permission modules are seeded in the
+  // database, which has no row for them, so they inherit the Settings grant a role already
+  // holds - anyone who could open Settings can open its replacements.
+  Notifications: ['Notifications', 'Settings', 'Administration'],
+  'SMTP & SMS': ['SMTP & SMS', 'Settings', 'Administration'],
+  'PM Schedule Rules': ['PM Schedule Rules', 'Settings', 'Administration']
 }
 
 export const siteCodeFromScope = value => {
