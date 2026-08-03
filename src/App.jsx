@@ -761,6 +761,16 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const resourceRequests=plannedResources.filter(resource=>['Material','Tool','Equipment'].includes(resource.type))
   const hasSupplyChainTransaction=resource=>Boolean(resource.transactionRef||resource.purchaseRequest||resource.purchaseOrder||resource.reservation)
   const materialBlocked=materialRequests.some(resource=>resourceAvailability(resource).availability==='Purchase Required'&&!hasSupplyChainTransaction(resource))
+  const liveReservationStatus=resource=>{
+    const reservation=resource.reservation
+      ? reservationRecords.find(row=>String(row.reservation)===String(resource.reservation))
+      : null
+    return cleanText(reservation?.status || resource.requestStatus).toUpperCase()
+  }
+  const resourceSupplyReady=resource=>Boolean(resource.item&&Number(resource.quantity)>0&&resource.reservation&&liveReservationStatus(resource)==='COMPLETE')
+  const supplyChainMissing=resourceRequests
+    .filter(resource=>resource.item&&Number(resource.quantity)>0&&!resourceSupplyReady(resource))
+    .map(resource=>`Material Requests: ${resource.quantity || 0} x ${resource.item} must be issued by Store`)
   const ptwBlocked=ptwRequired&&ptwFiles.length===0
   const targetOutOfOrder=Boolean(targetStart&&targetFinish&&new Date(targetFinish)<new Date(targetStart))
   const overviewReady=Boolean(description.trim()&&siteValue&&locationValue&&department&&assignedDepartment&&targetStart&&targetFinish&&!targetOutOfOrder)
@@ -820,9 +830,9 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   // header select can disable a transition rather than warn about it afterwards.
   const missingFor=target=>target==='APPR'?[...overviewMissing]
     :target==='WSCH'||target==='SCHED'?[...overviewMissing,...planMissing,...holdMissing]
-    :target==='INPRG'?[...overviewMissing,...planMissing,...holdMissing]
-    :target==='COMP'?[...failureMissing]
-    :target==='CLOSE'?[...actualMissing,...failureMissing]
+    :target==='INPRG'?[...overviewMissing,...planMissing,...holdMissing,...supplyChainMissing]
+    :target==='COMP'?[...actualMissing,...failureMissing,...supplyChainMissing]
+    :target==='CLOSE'?[...actualMissing,...failureMissing,...supplyChainMissing]
     :[]
   // The banner reports what blocks the NEXT step, not the current one. Asking about the
   // current status always reads "nothing missing" - the work order is already there - which
@@ -841,11 +851,11 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     WAPPR: overviewReady?'Approving automatically':'Complete Work Order overview fields',
     APPR: preparationReady?'Scheduling automatically':'Complete planning to move into the schedule',
     WSCH: preparationReady?'Scheduling automatically':'Complete overview and plan requirements',
-    SCHED: preparationReady?'Start work from the Actual tab':'Complete planning before starting work',
+    SCHED: preparationReady&&!supplyChainMissing.length?'Start work from the Actual tab':'Complete material requests before starting work',
     HOLD: 'Resolve material or permit hold before continuing',
     [HOLD_MATERIAL]: 'SLA is paused. Resume once the material is available',
-    INPRG: failureReady?'Resolve / complete from the Actual tab':'Complete failure classification before completion',
-    COMP: actualReady?'Close the work order from the Actual tab':'Complete Actual tab before closeout',
+    INPRG: failureReady&&!supplyChainMissing.length?'Resolve / complete from the Actual tab':'Complete Store issue and failure classification before completion',
+    COMP: actualReady&&!supplyChainMissing.length?'Close the work order from the Actual tab':'Complete Store issue and Actual tab before closeout',
     CLOSE: 'Workflow complete'
   }[status] || 'Review the work order'
 
@@ -866,6 +876,13 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     const timer=setTimeout(()=>changeStatus(autoAdvanceTo),0)
     return ()=>clearTimeout(timer)
   },[autoAdvanceTo])
+  useEffect(()=>{
+    if(status!=='COMP'&&!['COMPLETED'].includes(status)) return
+    if(!supplyChainMissing.length&&!actualMissing.length&&!failureMissing.length) return
+    setSelectedStatus('INPRG')
+    setWorkCompleted(false)
+    setWorkClosed(false)
+  },[status,supplyChainMissing.length,actualMissing.length,failureMissing.length])
   const closeWork=()=>changeStatus('CLOSE')
   const actualsEditable = true
   const number = order.WORKORDER || 'AUTO'
@@ -1210,6 +1227,18 @@ export default function App() {
   const saveJobPlans = useMemo(() => backendSetter(setJobPlanRecords, apiMappers.jobPlans), [])
   const saveUsers = useMemo(() => backendSetter(setUserRecords, apiMappers.users), [])
   const saveRoles = useMemo(() => backendSetter(setRolePermissionRecords, apiMappers.roles), [])
+  useEffect(() => {
+    const nextStatuses = new Map()
+    serviceRequests.forEach(request => {
+      if (!request.convertedWorkOrder || ['CLOSED', 'CAN'].includes(String(request.status || '').toUpperCase())) return
+      const linkedWorkOrder = allWorkOrders.find(order => String(order.WORKORDER) === String(request.convertedWorkOrder))
+      if (!linkedWorkOrder) return
+      const nextStatus = String(linkedWorkOrder.STATUS || '').toUpperCase() === 'CLOSE' ? 'RESOLVED' : 'CONVERTED'
+      if (request.status !== nextStatus) nextStatuses.set(request.sr, nextStatus)
+    })
+    if (!nextStatuses.size) return
+    saveServiceRequests(rows => rows.map(request => nextStatuses.has(request.sr) ? { ...request, status: nextStatuses.get(request.sr) } : request))
+  }, [serviceRequests, allWorkOrders, saveServiceRequests])
   const siteScopeOptions = useMemo(() => ['All Sites', ...siteRecords.filter(site => site.status !== 'Inactive').map(site => site.name ? `${site.name} / ${site.code}` : site.code)], [siteRecords])
   const departmentScopeOptions = useMemo(() => {
     const activeRows = departmentRecords.filter(department => department.status !== 'Inactive')
@@ -1317,7 +1346,7 @@ export default function App() {
   const nextCorrectiveWorkOrderNumber = () => String(
     Math.max(56545134, ...allWorkOrders.map(order => Number(order.WORKORDER) || 0)) + 1
   )
-  const convertRequest = request => {
+  const convertRequest = async request => {
     const existing = allWorkOrders.find(order =>
       String(order['SOURCE SR']) === String(request.sr) ||
       (request.convertedWorkOrder && String(order.WORKORDER) === String(request.convertedWorkOrder))
@@ -1331,12 +1360,12 @@ export default function App() {
         'SUB DEPARTMENT  NAME': request.subDepartment || existing['SUB DEPARTMENT  NAME'] || '',
         'ASSIGNED DEPARTMENT': request.assignedDepartment || request.department || existing['ASSIGNED DEPARTMENT'] || ''
       }
-      saveWorkOrders(rows => rows.map(order => String(order.WORKORDER) === String(existing.WORKORDER) ? updated : order))
+      await saveWorkOrders(rows => rows.map(order => String(order.WORKORDER) === String(existing.WORKORDER) ? updated : order))
       return updated
     }
     const number=nextCorrectiveWorkOrderNumber()
     const cm={'WORKORDER':number,'DESCRIPITION ':request.description,'LOCATION ':request.location,'LOCATION PRIORTY':toLocationPriority(request.priority),'ASSET':request.asset||'Unassigned','STATUS':'WAPPR','WORK TYPE ':'CM','STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':request.assignedDepartment||request.department,'SUB DEPARTMENT  NAME':request.subDepartment||'','PRIORTY':request.priority==='Emergency'?1:request.priority==='High'?2:3,'SITE':request.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':request.reportedDate||nowLocalDateTime(),'SOURCE SR':request.sr,'REPORTED BY':request.reportedBy||'','SOURCE SR PRIORITY':request.priority||'','SOURCE SR TYPE':request.requestType||'',...failureFieldsFromRequest(request)}
-    saveWorkOrders(rows=>[...rows,cm])
+    await saveWorkOrders(rows=>[...rows,cm])
     return cm
   }
   const openConvertedWorkOrder=(number, sourceRequest)=>{if(!canNavigate('Work Orders')) return navigate(fallbackPage);syncWorkOrderFailureFromRequest(number, sourceRequest);setActive('Work Orders');setSearch('');window.history.pushState({},'',`/work-orders/${number}`)}
@@ -1540,7 +1569,7 @@ export default function App() {
     return [...rows,{'WORKORDER':pm.workOrder,'DESCRIPITION ':pm.description,'LOCATION ':inheritedLocation,'LOCATION PRIORTY':3,'ASSET':pm.asset,'ASSET DESCRIPTION':assetRecord?.description?.trim() || '','STATUS':pm.woStatus||'WSCH','WORK TYPE ':'PM','STATUS DESCRIPITION':maximoWorkOrderStatusDescriptions[pm.woStatus||'WSCH']||'Waiting for Schedule','DEPARTMENT ':pm.department,'SUB DEPARTMENT  NAME':pm.subDepartment,'ASSIGNED DEPARTMENT':pm.department,'PRIORTY':3,'SITE':inheritedSite,'TARGET START ':pm.startDate,'TARGET FINISH ':pm.startDate,'REPORTED DATE ':nowLocalDateTime(),'PM NUMBER':pm.pmNumber,'PM CYCLE':pm.cycle,'JOB PLAN':pm.jobPlan,'JOB PLAN TASKS':tasks,'ESTIMATED DURATION':tasks.reduce((sum,task)=>sum+Number(task['TASK DURATION IN HOUR']||0),0)*24,'ROUTE':pm.route,'LEAD TIME (DAYS)':pm.leadTime,'FREQUENCY':pm.frequency,'FREQUNIT':pm.freqUnit,'PMCOUNTER':pm.pmCounter,'STORELOC':pm.storeLocation,'SUPERVISOR':pm.supervisor,'LEAD':pm.lead,'PERSONGROUP':pm.personGroup,'PM STATUS':pm.pmStatus}]
   })
   const pages = {
-    'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions}/>,
+    'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} allRequests={serviceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions}/>,
     'Incidents': <IncidentsPage rows={scopedIncidents} setRows={saveIncidents}/>,
     'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={reservations} meterRecords={meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached}/>,
     'Assets': <AssetsPage rows={scopedAssets} setRows={saveAssets} workOrders={scopedWorkOrders} />,

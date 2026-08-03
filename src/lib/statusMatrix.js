@@ -3,6 +3,7 @@ export const STATUS_MATRIX = {
     NEW: 'New request created',
     QUEUED: 'Waiting for review',
     INPRG: 'In Progress',
+    CONVERTED: 'Converted to Work Order',
     RESOLVED: 'Resolved',
     CLOSED: 'Closed',
     CAN: 'Cancelled',
@@ -109,7 +110,7 @@ export const normalizeStatus = (application, value, fallback) => {
   const text = String(value || '').trim()
   const upper = text.toUpperCase()
   const aliases = {
-    serviceRequest: { CONVERTED: 'RESOLVED', APPROVED: 'RESOLVED' },
+    serviceRequest: { APPROVED: 'CONVERTED' },
     preventiveMaintenance: { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE', DRAFT: 'DRAFT', Active: 'ACTIVE', Inactive: 'INACTIVE', Draft: 'DRAFT' },
     incident: { OPEN: 'NEW', 'UNDER REVIEW': 'INPRG', CLOSED: 'CLOSED', RESOLVED: 'RESOLVED' },
     purchaseRequisition: { 'PURCHASE REQUESTED': 'WAPPR', REQUESTED: 'WAPPR', APPROVED: 'APPR', CLOSED: 'CLOSE', CANCELLED: 'CAN' },
@@ -122,7 +123,7 @@ export const normalizeStatus = (application, value, fallback) => {
 
 export const statusTone = status => {
   if (['ACTIVE', 'OPERATING', 'APPR', 'COMP', 'CLOSE', 'CLOSED', 'COMPLETE', 'RESOLVED'].includes(status)) return 'green'
-  if (['INPRG', 'SCHED', 'STAGED'].includes(status)) return 'blue'
+  if (['INPRG', 'SCHED', 'STAGED', 'CONVERTED'].includes(status)) return 'blue'
   if (['WSCH', 'DRAFT', 'PLANNED', 'ENTERED'].includes(status)) return 'purple'
   if (['WAPPR', 'HOLD', 'ON_HOLD_MATERIAL', 'CAN', 'CANCELLED', 'BROKEN', 'NOT READY', 'DECOMMISSIONED', 'RETIRED', 'INACTIVE'].includes(status)) return 'orange'
   return 'neutral'

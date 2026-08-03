@@ -53,7 +53,7 @@ const exportColumns = [
   { key: 'convertedWorkOrder', label: 'Converted Work Order' }
 ]
 
-export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions }) {
+export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, allRequests = requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions }) {
   const { user } = useAuth()
   const requestFromPath = () => {
     const id = decodeURIComponent((window.location.pathname.split('/job-requests/')[1] || window.location.pathname.split('/service-requests/')[1] || ''))
@@ -63,7 +63,8 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useScopedFilters(user, requests)
-  const tabRows = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? request.status === 'WAPPR' : request.status === 'RESOLVED')
+  const convertedStatuses = ['CONVERTED', 'RESOLVED']
+  const tabRows = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? request.status === 'WAPPR' : convertedStatuses.includes(request.status))
   const visible = applyStandardFilters(tabRows, filters, { department: ['department', 'assignedDepartment', 'subDepartment'], date: ['reportedDate'] })
 
   useEffect(() => {
@@ -81,18 +82,26 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     setSelected(null)
     window.history.pushState({}, '', '/job-requests')
   }
-  const submit = request => {
+  const nextRequestNumber = () => {
+    const next = Math.max(
+      41,
+      ...allRequests.map(item => Number(String(item.sr || '').match(/^SR-\d{4}-(\d+)$/)?.[1]) || 0)
+    ) + 1
+    return `SR-2026-${String(next).padStart(4, '0')}`
+  }
+  const submit = async request => {
     // blankRequest() stamps when the form is constructed - which is route-evaluation
     // time - so the reported time is taken again at the moment of submission.
-    const submitted = { ...request, reportedDate: nowLocalDateTime(), sr: `SR-2026-${String(requests.length + 42).padStart(4, '0')}`, status: 'WAPPR', requestType: 'Service' }
-    setRequests(list => [...list, submitted])
+    const submitted = { ...request, reportedDate: nowLocalDateTime(), sr: nextRequestNumber(), status: 'WAPPR', requestType: 'Service' }
+    await setRequests(list => [...list, submitted])
     setSelected(submitted)
     window.history.replaceState({}, '', `/job-requests/${submitted.sr}`)
+    return submitted
   }
-  const approve = request => {
-    const createdWorkOrder = onConvert(request)
-    const updated = { ...request, status: 'RESOLVED', convertedWorkOrder: createdWorkOrder.WORKORDER }
-    setRequests(list => list.map(item => item.sr === updated.sr ? updated : item))
+  const approve = async request => {
+    const createdWorkOrder = await onConvert(request)
+    const updated = { ...request, status: 'CONVERTED', convertedWorkOrder: createdWorkOrder.WORKORDER }
+    await setRequests(list => list.map(item => item.sr === updated.sr ? updated : item))
     setSelected(updated)
     window.history.replaceState({}, '', `/job-requests/${updated.sr}`)
     return updated
@@ -113,7 +122,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
         tabs={[
           { key: 'All', label: 'All Job Requests', count: requests.length },
           { key: 'Awaiting Review', label: 'Awaiting Review', count: requests.filter(request => request.status === 'WAPPR').length },
-          { key: 'Converted', label: 'Resolved / Converted', count: requests.filter(request => request.status === 'RESOLVED').length }
+          { key: 'Converted', label: 'Converted / Resolved', count: requests.filter(request => convertedStatuses.includes(request.status)).length }
         ]}
       />
       <StandardFilters

@@ -70,15 +70,15 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
     assignedDepartment: form.assignedDepartment || event.target.value
   })
 
-  const handlePrimary = () => {
+  const handlePrimary = async () => {
     if (isNew && !canSubmit) return setSubmitError('Complete Description, Site, Location, and Reported By before submitting.')
     if (!isNew && !canConvert) {
       setActiveTab(form.asset?.trim() ? 'Department Review' : 'Request Details')
       return setSubmitError('Complete Asset, Department, Sub Department, Assigned Department, and Failure Code before converting to CM.')
     }
     setSubmitError('')
-    if (isNew) onSubmit(form)
-    else setForm(onApprove(form))
+    if (isNew) await onSubmit(form)
+    else setForm(await onApprove(form))
   }
 
   // ServiceRequestsPage renders this inside its own ModalOverlay, and only ever with
@@ -150,7 +150,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
             ) : (
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button variant="outline" onClick={() => printWithoutBrowserTitle()}><Printer size={15} /> Print</Button>
-                {form.status === 'RESOLVED' && form.convertedWorkOrder ? (
+                {form.convertedWorkOrder ? (
                   <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder, form)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>
                 ) : (
                   <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} /> Approve & convert to CM</Button>
@@ -175,7 +175,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
           </nav>
         )}
 
-        {!isNew && form.status !== 'RESOLVED' && !canConvert && (
+        {!isNew && !form.convertedWorkOrder && !canConvert && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-orange-800">
             <div className="flex items-center gap-3">
               <AlertTriangle size={18} />
