@@ -5,6 +5,19 @@ import { Check, ChevronDown, X } from 'lucide-react'
 const optionValue = item => String(item?.value ?? item ?? '')
 const optionLabel = item => String(item?.label ?? '')
 
+// Scope fields hold what the record stores - a bare site code like `1031` - while the
+// options are the readable `Riyadh / 1031`, and several accept a comma separated list.
+// Comparing the whole string against whole options flagged both of those as unknown.
+const codeOf = text => text.split('/').pop().trim().toLowerCase()
+const isKnownValue = (text, suggestions) => {
+  const parts = text.split(',').map(part => part.trim()).filter(Boolean)
+  if (!parts.length) return true
+  return parts.every(part => suggestions.some(item => {
+    const option = optionValue(item)
+    return option.toLowerCase() === part.toLowerCase() || codeOf(option) === codeOf(part)
+  }))
+}
+
 // Native datalist filters the list by the input's contents, so a field holding a complete
 // value shows an empty list and can only be changed by deleting first. This opens the
 // whole list on demand instead.
@@ -31,7 +44,7 @@ export default function Combobox({
   const items = typed
     ? suggestions.filter(item => `${optionValue(item)} ${optionLabel(item)}`.toLowerCase().includes(typed))
     : suggestions
-  const matchesKnown = !text || suggestions.some(item => optionValue(item).toLowerCase() === text.toLowerCase())
+  const matchesKnown = !text || isKnownValue(text, suggestions)
 
   // Consumers pass DOM-style handlers - event => setThing(event.target.value) - and some
   // cascade off the value, so the shape of this object is the compatibility contract.
@@ -116,7 +129,7 @@ export default function Combobox({
     >
       {items.map((item, index) => {
         const itemValue = optionValue(item)
-        const selected = itemValue.toLowerCase() === text.toLowerCase()
+        const selected = itemValue.toLowerCase() === text.toLowerCase() || codeOf(itemValue) === codeOf(text)
         return (
           <li
             key={itemValue}
