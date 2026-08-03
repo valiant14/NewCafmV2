@@ -23,8 +23,8 @@ function FileRow({ file, label, showBadge, onDownload, onRemove, removeLabel }) 
       </div>
       {showBadge && <Badge tone="green">Attached</Badge>}
       <div className={actionsClass}>
-        <button className={downloadButtonClass} onClick={onDownload}>Download</button>
-        <button className={removeButtonClass} aria-label={removeLabel} onClick={onRemove}><X size={14} /></button>
+        <button type="button" className={downloadButtonClass} onClick={onDownload}>Download</button>
+        <button type="button" className={removeButtonClass} aria-label={removeLabel} onClick={onRemove}><X size={14} /></button>
       </div>
     </div>
   )
@@ -51,8 +51,8 @@ export default function WorkOrderDocumentsTab({
           </div>
         </div>
         <div className="flex rounded-xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-1">
-          <button className={toggleButtonClass(!ptwRequired)} onClick={() => setPtwRequired(false)}>No</button>
-          <button className={toggleButtonClass(ptwRequired)} onClick={() => setPtwRequired(true)}>Yes</button>
+          <button type="button" className={toggleButtonClass(!ptwRequired)} onClick={() => setPtwRequired(false)}>No</button>
+          <button type="button" className={toggleButtonClass(ptwRequired)} onClick={() => setPtwRequired(true)}>Yes</button>
         </div>
       </section>
 
