@@ -383,7 +383,7 @@ const apiMappers = {
     endpoint: '/tools-equipment',
     key: 'toolNumber',
     apiKey: 'tool_code',
-    toApi: row => ({ tool_code: toText(row.toolNumber), description: toText(row.description), category: row.category || '', status: statusText(row.status, 'Available') })
+    toApi: row => ({ tool_code: toText(row.toolNumber), description: toText(row.description), category: row.category || '', location_code: row.location || null, quantity: toNumberOrNull(row.quantity) || 1, status: statusText(row.status, 'Available'), inspection_due: toDateOrNull(row.inspectionDue) })
   },
   failureCodes: {
     endpoint: '/failure-library',

@@ -34,13 +34,15 @@ const withStock = (row, stockRows, storeRows) => {
   const itemStock = stockForItem(row.itemNumber, stockRows)
   const reorderLevel = Math.max(0, ...itemStock.map(stock => Number(stock.reorderLevel) || 0), Number(row.reorderLevel) || 0)
   const enriched = { ...row, reorderLevel }
+  const availability = availabilityFor(enriched, stockRows)
   return {
     ...enriched,
     balance: totalBalance(row.itemNumber, stockRows) || Number(row.balance) || 0,
     reserved: totalReserved(row.itemNumber, stockRows) || Number(row.reserved) || 0,
     available: totalAvailable(row.itemNumber, stockRows),
     stores: storesHolding(row.itemNumber, stockRows).map(code => storeLabel(code, storeRows)).join(', ') || row.storeroom || '',
-    availability: availabilityFor(enriched, stockRows)
+    availability,
+    status: availability
   }
 }
 
@@ -161,6 +163,7 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
         tabs={[
           { key: 'All', label: 'All Materials', count: stockedRows.length },
           { key: 'Available', label: 'Available', count: stockedRows.filter(row => row.availability === 'Available').length },
+          { key: 'Low Stock', label: 'Low Stock', count: stockedRows.filter(row => row.availability === 'Low Stock').length },
           { key: 'Purchase Required', label: 'Purchase Required', count: stockedRows.filter(row => row.availability === 'Purchase Required').length }
         ]}
       />
@@ -169,7 +172,7 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
         setFilters={setFilters}
         siteOptions={optionsFromRows(rows, ['site', 'storeroom'])}
         departmentOptions={optionsFromRows(rows, ['department', 'category'])}
-        statusOptions={optionsFromRows(rows, ['availability'])}
+        statusOptions={optionsFromRows(stockedRows, ['availability'])}
       />
 
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
@@ -186,9 +189,9 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
             { key: 'stores', label: 'Stores' },
             { key: 'balance', label: 'Balance' },
             { key: 'reserved', label: 'Reserved' },
-            { key: 'available', label: 'Available', render: (value, row) => <Badge tone={value > row.reorderLevel ? 'green' : 'orange'}>{value}</Badge> },
+            { key: 'available', label: 'Available', render: (value, row) => <Badge tone={row.availability === 'Available' ? 'green' : 'orange'}>{value}</Badge> },
             { key: 'reorderLevel', label: 'Reorder level' },
-            { key: 'availability', label: 'Availability', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> },
+            { key: 'availability', label: 'Availability', render: value => <Badge tone={materialStatusTone(value)}>{value}</Badge> },
             { key: 'status', label: 'Material Status', render: value => value ? <Badge tone={materialStatusTone(value)}>{value}</Badge> : '—' }
           ]}
         />

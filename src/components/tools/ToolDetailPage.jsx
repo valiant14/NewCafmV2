@@ -17,7 +17,8 @@ const toolStatuses = ['Available', 'Allocated', 'Maintenance']
 
 function daysUntil(dateValue) {
   if (!dateValue) return null
-  const today = new Date('2026-07-12T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
   const target = new Date(`${dateValue}T00:00:00`)
   return Math.ceil((target - today) / 86400000)
 }
@@ -35,7 +36,7 @@ export default function ToolDetailPage({ tool, usageRows = [], onBack, onUpdate 
   const [tab, setTab] = useState('Tool Details')
   const inspection = inspectionState(tool)
   const tone = statusTone[tool.status] || 'green'
-  const availableUnits = tool.status === 'Available' ? Number(tool.quantity || 0) : Math.max(0, Number(tool.quantity || 0) - 1)
+  const availableUnits = Number(tool.availableQuantity ?? (tool.status === 'Available' ? tool.quantity : 0)) || 0
   const changeStatus = event => onUpdate?.(tool.toolNumber, { status: event.target.value })
 
   return (

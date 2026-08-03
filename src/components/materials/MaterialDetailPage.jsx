@@ -10,10 +10,11 @@ import { statusTone } from '../../lib/statusMatrix'
 
 const materialStatusTone = {
   Available: 'green',
+  'Low Stock': 'orange',
   'Purchase Required': 'orange'
 }
 
-const materialStatuses = ['Available', 'Purchase Required']
+const materialStatuses = ['Available', 'Low Stock', 'Purchase Required']
 
 function stockState(material) {
   const available = Math.max(0, Number(material.balance || 0) - Number(material.reserved || 0))

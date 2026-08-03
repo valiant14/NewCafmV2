@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import AddToolModal from '../components/tools/AddToolModal'
 import ToolDetailPage from '../components/tools/ToolDetailPage'
@@ -7,6 +7,7 @@ import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
+import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
@@ -23,6 +24,19 @@ const empty = {
   inspectionDue: ''
 }
 const templateHeaders = Object.keys(empty)
+const exportColumns = [
+  { key: 'toolNumber', label: 'Tool Number' },
+  { key: 'description', label: 'Description' },
+  { key: 'category', label: 'Category' },
+  { key: 'location', label: 'Location' },
+  { key: 'quantity', label: 'Quantity' },
+  { key: 'allocatedQuantity', label: 'Allocated' },
+  { key: 'availableQuantity', label: 'Available' },
+  { key: 'status', label: 'Status' },
+  { key: 'inspectionDue', label: 'Inspection Due' }
+]
+const sameTool = (row, id) => String(row.toolNumber || '').trim().toLowerCase() === String(id || '').trim().toLowerCase()
+
 const toolUsage = (tool, workOrders) => workOrders.flatMap(order => {
   const resources = Array.isArray(order['PLANNED RESOURCES']) ? order['PLANNED RESOURCES'] : []
   return resources
@@ -40,6 +54,22 @@ const toolUsage = (tool, workOrders) => workOrders.flatMap(order => {
       source: resource.transactionRef || resource.supplyChainStatus || resource.requestStatus || 'Planned resource'
     }))
 })
+const withToolUsage = (row, workOrders) => {
+  const usage = toolUsage(row, workOrders)
+  const quantity = Number(row.quantity) || 1
+  const allocatedQuantity = row.status === 'Maintenance' ? 0 : usage.reduce((total, usageRow) => total + (Number(usageRow.quantity) || 0), 0)
+  const availableQuantity = row.status === 'Maintenance' ? 0 : Math.max(0, quantity - allocatedQuantity)
+  const status = row.status === 'Maintenance' ? 'Maintenance' : allocatedQuantity > 0 || availableQuantity <= 0 ? 'Allocated' : 'Available'
+  return {
+    ...row,
+    location: row.location || '',
+    quantity,
+    allocatedQuantity,
+    availableQuantity,
+    status,
+    inspectionDue: row.inspectionDue || ''
+  }
+}
 
 export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
   const [adding, setAdding] = useState(false)
@@ -48,13 +78,18 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const routeId = decodeURIComponent(window.location.pathname.split('/tools/')[1] || '')
-  const [selected, setSelected] = useState(rows.find(row => row.toolNumber === routeId) || null)
+  const [selected, setSelected] = useState(rows.find(row => sameTool(row, routeId)) || null)
+  const enrichedRows = useMemo(() => rows.map(row => withToolUsage(row, workOrders)), [rows, workOrders])
+  const selectedTool = selected ? withToolUsage(rows.find(row => sameTool(row, selected.toolNumber)) || selected, workOrders) : null
   useEffect(() => {
-    if (!routeId) return
-    const latest = rows.find(row => row.toolNumber === routeId)
+    if (!routeId) {
+      setSelected(null)
+      return
+    }
+    const latest = rows.find(row => sameTool(row, routeId))
     if (latest) setSelected(latest)
   }, [rows, routeId])
-  const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
+  const tabRows = tab === 'All' ? enrichedRows : enrichedRows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
     site: ['site', 'location'],
     department: ['department', 'category'],
@@ -64,7 +99,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
 
   const open = row => {
     setSelected(row)
-    window.history.pushState({}, '', `/tools/${row.toolNumber}`)
+    window.history.pushState({}, '', `/tools/${encodeURIComponent(row.toolNumber)}`)
   }
 
   const close = () => {
@@ -73,8 +108,8 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
   }
 
   const updateTool = (toolNumber, patch) => {
-    setRows?.(current => current.map(row => row.toolNumber === toolNumber ? { ...row, ...patch } : row))
-    setSelected(current => current?.toolNumber === toolNumber ? { ...current, ...patch } : current)
+    setRows?.(current => current.map(row => sameTool(row, toolNumber) ? { ...row, ...patch } : row))
+    setSelected(current => sameTool(current || {}, toolNumber) ? { ...current, ...patch } : current)
   }
 
   const save = () => {
@@ -86,8 +121,8 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
     open(row)
   }
 
-  if (selected) {
-    return <ToolDetailPage tool={selected} usageRows={toolUsage(selected, workOrders)} onBack={close} onUpdate={updateTool} />
+  if (selectedTool) {
+    return <ToolDetailPage tool={selectedTool} usageRows={toolUsage(selectedTool, workOrders)} onBack={close} onUpdate={updateTool} />
   }
 
   return (
@@ -99,6 +134,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Tools_Equipment_Template.xlsx" />
+            <ExportExcelButton module="Tools_Equipment" rows={visibleRows} columns={exportColumns} />
             <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(rows)} />
             <Button onClick={() => setAdding(true)}><Plus size={17} />Add tool or equipment</Button>
           </div>
@@ -112,9 +148,9 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
         onChange={value => { setTab(value); setFilters(emptyStandardFilters) }}
         tabs={[
           { key: 'All', label: 'All Tools', count: rows.length },
-          { key: 'Available', label: 'Available', count: rows.filter(row => row.status === 'Available').length },
-          { key: 'Allocated', label: 'Allocated', count: rows.filter(row => row.status === 'Allocated').length },
-          { key: 'Maintenance', label: 'Maintenance', count: rows.filter(row => row.status === 'Maintenance').length }
+          { key: 'Available', label: 'Available', count: enrichedRows.filter(row => row.status === 'Available').length },
+          { key: 'Allocated', label: 'Allocated', count: enrichedRows.filter(row => row.status === 'Allocated').length },
+          { key: 'Maintenance', label: 'Maintenance', count: enrichedRows.filter(row => row.status === 'Maintenance').length }
         ]}
       />
       <StandardFilters
@@ -122,7 +158,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
         setFilters={setFilters}
         siteOptions={optionsFromRows(rows, ['site', 'location'])}
         departmentOptions={optionsFromRows(rows, ['department', 'category'])}
-        statusOptions={optionsFromRows(rows, ['status'])}
+        statusOptions={optionsFromRows(enrichedRows, ['status'])}
       />
 
       <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
@@ -137,6 +173,8 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [] }) {
             { key: 'category', label: 'Category' },
             { key: 'location', label: 'Location' },
             { key: 'quantity', label: 'Quantity' },
+            { key: 'allocatedQuantity', label: 'Allocated' },
+            { key: 'availableQuantity', label: 'Available' },
             { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> },
             { key: 'inspectionDue', label: 'Inspection due' }
           ]}
