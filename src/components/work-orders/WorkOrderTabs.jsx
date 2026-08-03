@@ -4,13 +4,14 @@ const tabClass = active => [
   active ? 'font-bold text-[var(--app-ink)] after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-0.5 after:bg-[var(--app-primary)]' : ''
 ].join(' ')
 
-export default function WorkOrderTabs({ tabs, active, onChange, showFailureDot }) {
+export default function WorkOrderTabs({ tabs, active, onChange, alertTabs = [] }) {
+  const alerts = new Set(alertTabs)
   return (
     <div className={tabsClass}>
       {tabs.map(name => (
         <button key={name} className={tabClass(active === name)} onClick={() => onChange(name)}>
           {name}
-          {name === 'Failure' && showFailureDot && <i className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--orange)]" />}
+          {alerts.has(name) && <i className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--orange)]" />}
         </button>
       ))}
     </div>
