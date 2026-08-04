@@ -1758,14 +1758,39 @@ export default function App() {
     // The create modal collects no JOBTASKID, but the tasks table keys rows on it.
     if(form['JOB TASK DESCRIPTION']) setJobTaskRecords(rows=>[...rows,{...form,JPNUM:jpnum,JOBTASKID:form.JOBTASKID||`${jpnum}-${form['JOB TASK SEQUENCE']||rows.filter(row=>row.JPNUM===jpnum).length+1}`}])
   }
+  const reservationOpenFor = record => reservation => {
+    const status = String(reservation.status || '').toUpperCase()
+    if (['CANCELLED', 'COMPLETE'].includes(status)) return false
+    if (String(reservation.workOrder || '') !== String(record.workOrder || '')) return false
+    if (record.resourceRequestId && String(reservation.resourceRequestId || '') === String(record.resourceRequestId)) return true
+    const reservationType = String(reservation.type || 'Material').toLowerCase()
+    const recordType = String(record.type || 'Material').toLowerCase()
+    const reservationItem = cleanText(reservation.itemCode || reservation.item)
+    const recordItem = cleanText(record.itemCode || record.item)
+    return reservationType === recordType && reservationItem && recordItem && reservationItem === recordItem
+  }
   const createReservation=record=>{
     if(!canDo('Reservations','create')){notify('No create access for Reservations.','error');return null}
-    const existing=record.resourceRequestId
-      ? reservations.find(row=>String(row.resourceRequestId||'')===String(record.resourceRequestId)&&!['CANCELLED'].includes(row.status))
-      : null
-    if(existing){notify(`${existing.reservation} already exists.`,'info');return existing}
+    const itemCode=itemCodeFor(record.type,record.itemCode||record.item)
+    const existing=reservations.find(reservationOpenFor({ ...record, itemCode }))
+    if(existing){
+      const updated={
+        ...existing,
+        resourceRequestId: existing.resourceRequestId || record.resourceRequestId,
+        purchaseRequest: existing.purchaseRequest || record.purchaseRequest,
+        purchaseOrder: existing.purchaseOrder || record.purchaseOrder,
+        source: record.source || existing.source,
+        availableQuantity: Number(record.availableQuantity || existing.availableQuantity || record.quantity || existing.quantity || 0),
+        quantity: Number(existing.quantity || record.quantity || 0),
+        itemCode: existing.itemCode || itemCode,
+        item: existing.item || record.item
+      }
+      saveReservations(rows=>rows.map(row=>row.reservation===existing.reservation?updated:row))
+      linkWorkOrderResourceTransaction(updated, { requestStatus: updated.status, transactionRef: updated.reservation, reservation: updated.reservation, purchaseRequest: updated.purchaseRequest, purchaseOrder: updated.purchaseOrder, supplyChainStatus: 'Received against existing reservation' })
+      notify(`${existing.reservation} updated from purchase order.`, 'success')
+      return updated
+    }
     const prefix=record.type==='Material'?'RSV':'ALC'
-      const itemCode=itemCodeFor(record.type,record.itemCode||record.item)
     const created={reservation:`${prefix}-2026-${String(reservations.length+1).padStart(4,'0')}`,status:'ENTERED',statusDescription:statusDescription('inventoryUsage','ENTERED'),createdAt:todayStamp(),arrangedQuantity:0,releasedQuantity:0,deliveredQuantity:0,...record,itemCode}
     const stockStore=storeCodeFor(created.source)
     const stockItem=itemCodeFor(created.type,created.itemCode||created.item)
