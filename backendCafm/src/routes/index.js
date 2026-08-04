@@ -4,13 +4,31 @@ import rolesRouter from './roles.js'
 import usersRouter from './users.js'
 import { crudRouter } from './crudFactory.js'
 import inventoryStockRouter from './inventoryStock.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, requirePermission } from '../middleware/auth.js'
+import { getPmSchedulerStatus, runPmSchedulerOnce } from '../services/pmScheduler.js'
 
 const router = Router()
 
 router.get('/health', (req, res) => res.json({ ok: true, service: 'backendCafm', realtime: Boolean(req.app.locals.io) }))
 router.use('/auth', authRouter)
 router.use(requireAuth)
+
+router.get('/pm-scheduler/status', requirePermission('Preventive Maintenance', 'edit'), async (req, res, next) => {
+  try {
+    res.json(await getPmSchedulerStatus())
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/pm-scheduler/run', requirePermission('Preventive Maintenance', 'edit'), async (req, res, next) => {
+  try {
+    const generated = await runPmSchedulerOnce()
+    res.json({ generatedCount: generated.length, generated })
+  } catch (error) {
+    next(error)
+  }
+})
 
 router.use('/sites', crudRouter({
   moduleName: 'Sites',

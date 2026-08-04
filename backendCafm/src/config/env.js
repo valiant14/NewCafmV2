@@ -12,6 +12,7 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
   pmSchedulerEnabled: !['false', '0', 'no'].includes(String(process.env.PM_SCHEDULER_ENABLED ?? 'true').toLowerCase()),
   pmSchedulerIntervalMs: Number(process.env.PM_SCHEDULER_INTERVAL_MS || 20000),
+  pmSchedulerDebug: ['true', '1', 'yes'].includes(String(process.env.PM_SCHEDULER_DEBUG || '').toLowerCase()),
   db: {
     server: process.env.MSSQL_SERVER || 'localhost',
     port: Number(process.env.MSSQL_PORT || 1433),

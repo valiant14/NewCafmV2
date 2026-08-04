@@ -189,6 +189,7 @@ export const runPmSchedulerOnce = async () => {
   try {
     const pool = await getPool()
     const due = await pool.request().query(duePlansSql)
+    if (env.pmSchedulerDebug) console.log(`PM scheduler checked ${due.recordset.length} due plan(s).`)
     const generated = []
     for (const plan of due.recordset) {
       const result = await generatePlan(pool, plan)
@@ -215,6 +216,28 @@ export const runPmSchedulerOnce = async () => {
     return []
   } finally {
     running = false
+  }
+}
+
+export const getPmSchedulerStatus = async () => {
+  const pool = await getPool()
+  const due = await pool.request().query(duePlansSql)
+  return {
+    enabled: env.pmSchedulerEnabled,
+    running,
+    intervalMs: Math.max(10000, env.pmSchedulerIntervalMs),
+    dueCount: due.recordset.length,
+    duePlans: due.recordset.map(plan => ({
+      pmNum: plan.pm_num,
+      description: plan.description,
+      nextDate: plan.next_date,
+      frequency: plan.effective_frequency,
+      frequencyUnit: plan.effective_frequency_unit,
+      rule: plan.schedule_rule_name || '',
+      cycle: plan.pm_cycle,
+      site: plan.site_code,
+      department: plan.department_name || ''
+    }))
   }
 }
 

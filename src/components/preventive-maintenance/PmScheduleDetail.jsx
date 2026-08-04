@@ -6,6 +6,7 @@ import { DetailHeader, DetailTabs } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import { scheduleForPlan } from '../../lib/pmGeneration'
+import { nowLocalDateTime } from '../../lib/datetime'
 
 const normalize = value => String(value || '').trim()
 
@@ -74,7 +75,8 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
         leadTime: Number(rule.leadTimeDays) || 0,
         frequency: Number(rule.frequency) || 1,
         freqUnit: rule.freqUnit || 'MONTHS',
-        woStatus: rule.defaultWoStatus || 'WSCH'
+        woStatus: rule.defaultWoStatus || 'WSCH',
+        ...(['MINUTES', 'HOURS'].includes(rule.freqUnit) ? { startDate: nowLocalDateTime(), lastGeneratedCycle: '' } : {})
       } : {})
     })
   }
