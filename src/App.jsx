@@ -51,6 +51,7 @@ import { describeOutstanding, markReturned, outstandingReturns } from './lib/res
 import { canUseAction, canViewPage, filterNavigationForUser, firstAllowedPage, scopeRowsForUser } from './lib/accessControl'
 import { failureClassOptions, jobPlanOptions } from './lib/masterOptions'
 import { deriveDepartmentOptions, deriveSiteOptions } from './lib/referenceFallbacks'
+import { readNotificationRules } from './lib/settingsStore'
 import { api, loadWorkspace } from './services/api'
 import { subscribeWorkspaceChanges } from './services/realtime'
 
@@ -102,6 +103,15 @@ const toLocationPriority = value => {
   return 3
 }
 const maximoWorkOrderStatusDescriptions = new Proxy({}, { get: (_, status) => statusDescription('workOrder', status) })
+const splitNotificationRecipients = value => {
+  const source = Array.isArray(value) ? value.join(',') : String(value || '')
+  return source.split(/[,;\n]+/).map(item => item.trim()).filter(Boolean)
+}
+const notificationEventForWorkOrderStatus = status => {
+  const code = String(status || '').toUpperCase()
+  if (code === 'HOLD' || code === HOLD_MATERIAL) return 'Work order on hold'
+  return ''
+}
 const cleanText = value => String(value ?? '').replace(/\s+/g, ' ').trim()
 const toNumberOrNull = value => value === '' || value === null || value === undefined ? null : Number(value)
 const toDateOrNull = value => {
@@ -660,7 +670,7 @@ function WorkOrderWorkflowNotice({ status, missing = [], nextStep }) {
   )
 }
 
-function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, siteRecords = [], departmentRecords = [], assetRecords = [], workOrderRows = [], laborRecords = [], materialRecords = [], stockRecords = [], storeRecords = [], toolRecords = [], jobTaskRecords = [], failureCodeRecords = [], reservationRecords = [], purchaseRequestRecords = [], purchaseOrderRecords = [], meterRecords = [], onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder }) {
+function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, siteRecords = [], departmentRecords = [], assetRecords = [], workOrderRows = [], laborRecords = [], materialRecords = [], stockRecords = [], storeRecords = [], toolRecords = [], jobTaskRecords = [], failureCodeRecords = [], reservationRecords = [], purchaseRequestRecords = [], purchaseOrderRecords = [], meterRecords = [], onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder, onNotifyWorkOrderStatus }) {
   const { user } = useAuth()
   // Pausing the SLA clock is an administrative decision, so the hold controls belong to
   // the Facility Manager rather than to whoever is executing the job.
@@ -881,11 +891,21 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const actualReady=Boolean(technicianRemarks.trim()&&completionNotes.trim()&&actualLabor.trim()&&Number(actualHours)>0&&actualMaterialsReady&&actualToolsReady&&returnsSettledNow&&failureReady)
   const preparationReady=overviewReady&&planReady
   const status = selectedStatus
+  const notifyStatusChange=next=>{
+    if(String(selectedStatus||'').toUpperCase()===String(next||'').toUpperCase()) return
+    onNotifyWorkOrderStatus?.({
+      ...order,
+      ...currentWorkOrderSnapshot(),
+      STATUS: next,
+      'STATUS DESCRIPITION': maximoWorkOrderStatusDescriptions[next] || next
+    })
+  }
   const changeStatus=value=>{
     const next=normalizeWoStatus(value)
     // The select disables invalid options, but guard here too so no other caller can
     // drive the work order off the workflow.
     if(!canTransitionWorkOrder(selectedStatus,next,heldFrom)) return
+    notifyStatusChange(next)
     const wasHold=['HOLD',HOLD_MATERIAL].includes(selectedStatus)
     if(['HOLD',HOLD_MATERIAL].includes(next)) setHeldFrom(selectedStatus)
     else if(wasHold) setHeldFrom('')
@@ -996,6 +1016,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     :(slaBreachedNow?'No – SLA Breached':'Pending – Within SLA')
   const putOnMaterialHold=()=>{
     const periods=startHold({holdPeriods})
+    notifyStatusChange(HOLD_MATERIAL)
     setHoldPeriods(periods); setHeldFrom(status); setSelectedStatus(HOLD_MATERIAL)
     // Pushed straight to the shared list so the badge updates without waiting for Save.
     onUpdateWorkOrder?.(number,{STATUS:HOLD_MATERIAL,'STATUS DESCRIPITION':statusDescription('workOrder',HOLD_MATERIAL),'HELD FROM':status,holdPeriods:periods})
@@ -1003,6 +1024,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const resumeFromMaterialHold=()=>{
     const periods=endHold({holdPeriods})
     const resume=workOrderTransitions(HOLD_MATERIAL,heldFrom)[0]||'WAPPR'
+    notifyStatusChange(resume)
     setHoldPeriods(periods); setHeldFrom(''); setSelectedStatus(resume)
     onUpdateWorkOrder?.(number,{STATUS:resume,'STATUS DESCRIPITION':statusDescription('workOrder',resume),'HELD FROM':'',holdPeriods:periods})
   }
@@ -1247,6 +1269,39 @@ export default function App() {
     if (!message) return
     setToast({ id: Date.now(), message, tone })
   }, [])
+  const sendWorkOrderStatusNotification = useCallback(order => {
+    const eventName = notificationEventForWorkOrderStatus(order.STATUS)
+    if (!eventName) return
+    const emailRules = readNotificationRules()
+      .filter(rule => String(rule.status || 'Active').toLowerCase() === 'active')
+      .filter(rule => String(rule.channel || '').toLowerCase() === 'email')
+      .filter(rule => String(rule.event || '').toLowerCase() === eventName.toLowerCase())
+    const recipients = [...new Set(emailRules.flatMap(rule => splitNotificationRecipients(rule.recipients)).map(item => item.trim()).filter(Boolean))]
+    if (!recipients.length) {
+      notify(`${eventName}: no email recipients configured.`, 'info')
+      return
+    }
+    const statusLabel = `${order.STATUS} - ${statusDescription('workOrder', order.STATUS) || order['STATUS DESCRIPITION'] || ''}`.trim()
+    api.post('/notifications/send-email', {
+      recipients,
+      subject: `${eventName}: Work order #${order.WORKORDER}`,
+      text: [
+        `${eventName}`,
+        '',
+        `Work order: #${order.WORKORDER}`,
+        `Status: ${statusLabel}`,
+        `Description: ${order['DESCRIPITION '] || order.DESCRIPTION || '-'}`,
+        `Site: ${order.SITE || '-'}`,
+        `Department: ${order['DEPARTMENT '] || '-'}`,
+        `Location: ${order['LOCATION '] || '-'}`,
+        `Asset: ${order.ASSET || '-'}`,
+        '',
+        `Sent from ${projectName || 'CAFM'}.`
+      ].join('\n')
+    })
+      .then(result => notify(`${eventName} email sent to ${result.sentCount || recipients.length} recipient(s).`, 'success'))
+      .catch(error => notify(error.message || `${eventName} email failed.`, 'error'))
+  }, [notify, projectName])
   useEffect(() => {
     if (!toast) return undefined
     const timer = setTimeout(() => setToast(null), 3600)
@@ -1804,7 +1859,7 @@ export default function App() {
   const pages = {
     'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} allRequests={serviceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions} access={accessFor('Job Requests')}/>,
     'Incidents': <IncidentsPage rows={scopedIncidents} setRows={saveIncidents} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} laborRows={laborRecords}/>,
-    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={reservations} purchaseRequestRecords={purchaseRequests} purchaseOrderRecords={purchaseOrders} meterRecords={meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} />} excelDate={excelDate} slaBreached={slaBreached} access={accessFor('Work Orders')}/>,
+    'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} EditorComponent={props => <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={reservations} purchaseRequestRecords={purchaseRequests} purchaseOrderRecords={purchaseOrders} meterRecords={meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} onNotifyWorkOrderStatus={sendWorkOrderStatusNotification} />} excelDate={excelDate} slaBreached={slaBreached} access={accessFor('Work Orders')}/>,
     'Assets': <AssetsPage rows={scopedAssets} setRows={saveAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} />,
     'Preventive Maintenance': <PreventiveMaintenancePage rows={pmScheduleRecords} setRows={savePmSchedules} pmRules={pmRuleRecords} assets={scopedAssets} jobTasks={jobTaskRecords} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} locationRows={scopedLocations} storeRows={storeRecords} laborRows={laborRecords} scopeUser={effectiveUser} onGenerate={generatePmWorkOrder} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Meters': <MetersPage rows={meterRecords} setRows={saveMeters} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} />,
@@ -1843,7 +1898,7 @@ export default function App() {
     'Sites': <SitesSettingsPage rows={siteRecords} setRows={saveSites}/>,
     'Departments': <DepartmentsSettingsPage rows={departmentRecords} setRows={saveDepartments}/>,
     'Notifications': <NotificationsSettingsPage/>,
-    'SMTP & SMS': <ConnectorsSettingsPage rows={connectorRecords} setRows={saveConnectors}/>,
+    'SMTP & SMS': <ConnectorsSettingsPage rows={connectorRecords} setRows={saveConnectors} notify={notify}/>,
     'PM Schedule Rules': <PmRulesSettingsPage rows={pmRuleRecords} setRows={savePmRules} pmSchedules={pmScheduleRecords} workOrders={scopedWorkOrders}/>
   }
   if (!isAuthenticated) return <LoginPage />

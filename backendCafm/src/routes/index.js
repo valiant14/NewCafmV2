@@ -1,13 +1,58 @@
 import { Router } from 'express'
+import http from 'node:http'
+import https from 'node:https'
+import net from 'node:net'
+import tls from 'node:tls'
 import authRouter from './auth.js'
 import rolesRouter from './roles.js'
 import usersRouter from './users.js'
 import { crudRouter } from './crudFactory.js'
 import inventoryStockRouter from './inventoryStock.js'
 import { requireAuth, requirePermission } from '../middleware/auth.js'
+import { getPool } from '../db/pool.js'
 import { getPmSchedulerStatus, runPmSchedulerOnce } from '../services/pmScheduler.js'
+import { sendEmailNotification } from '../services/emailSender.js'
+import { asyncHandler } from '../utils/asyncHandler.js'
 
 const router = Router()
+
+const testTcpConnection = ({ host, port, secure }) => new Promise((resolve, reject) => {
+  const socket = secure ? tls.connect({ host, port, servername: host }) : net.connect({ host, port })
+  const done = (error, result) => {
+    socket.removeAllListeners()
+    socket.destroy()
+    error ? reject(error) : resolve(result)
+  }
+  socket.setTimeout(8000)
+  if (secure) {
+    socket.once('secureConnect', () => done(null, { ok: true, message: `TLS connected to ${host}:${port}.` }))
+  } else {
+    socket.once('connect', () => done(null, { ok: true, message: `Connected to ${host}:${port}.` }))
+  }
+  socket.once('timeout', () => done(new Error(`Connection to ${host}:${port} timed out.`)))
+  socket.once('error', error => done(error))
+})
+
+const testHttpEndpoint = endpoint => new Promise((resolve, reject) => {
+  const target = new URL(/^https?:\/\//i.test(endpoint) ? endpoint : `https://${endpoint}`)
+  const client = target.protocol === 'http:' ? http : https
+  const request = client.request(target, { method: 'GET', timeout: 8000 }, response => {
+    response.resume()
+    resolve({ ok: response.statusCode < 500, message: `Endpoint responded with HTTP ${response.statusCode}.` })
+  })
+  request.once('timeout', () => {
+    request.destroy(new Error(`Connection to ${target.host} timed out.`))
+  })
+  request.once('error', reject)
+  request.end()
+})
+
+const normalizeSmtpHost = value => {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) return new URL(text).hostname
+  return text.split('/')[0].split(':')[0].trim()
+}
 
 router.get('/health', (req, res) => res.json({ ok: true, service: 'backendCafm', realtime: Boolean(req.app.locals.io) }))
 router.use('/auth', authRouter)
@@ -29,6 +74,16 @@ router.post('/pm-scheduler/run', requirePermission('Preventive Maintenance', 'ed
     next(error)
   }
 })
+
+router.post('/notifications/send-email', requirePermission('Work Orders', 'edit'), asyncHandler(async (req, res) => {
+  const result = await sendEmailNotification({
+    connectorName: req.body.connectorName,
+    recipients: req.body.recipients,
+    subject: req.body.subject,
+    text: req.body.text
+  })
+  res.json({ ok: true, ...result })
+}))
 
 router.use('/sites', crudRouter({
   moduleName: 'Sites',
@@ -181,6 +236,53 @@ router.use('/pm-schedule-rules', crudRouter({
   table: 'dbo.pm_schedule_rules',
   key: 'rule_name',
   columns: ['rule_name', 'frequency', 'frequency_unit', 'lead_time_days', 'horizon_days', 'trigger_hour', 'wo_prefix', 'default_wo_status', 'notes', 'status', 'created_at', 'updated_at']
+}))
+
+router.post('/smtp-sms-connectors/:id/test', requirePermission('SMTP & SMS', 'edit'), asyncHandler(async (req, res) => {
+  const pool = await getPool()
+  const result = await pool.request()
+    .input('id', req.params.id)
+    .query(`
+      select top 1 connector_name, connector_type, host_endpoint, port, encryption, username_value, sender_value, status
+      from dbo.smtp_sms_connectors
+      where connector_name = @id
+    `)
+  const connector = result.recordset[0]
+  if (!connector) return res.status(404).json({ error: 'NotFound', message: 'Connector not found' })
+  if (String(connector.status || '').toLowerCase() === 'inactive') {
+    return res.status(400).json({ error: 'InactiveConnector', message: 'Connector is inactive.' })
+  }
+
+  const rawHost = String(connector.host_endpoint || '').trim()
+  if (!rawHost) return res.status(400).json({ error: 'MissingHost', message: 'Host / Endpoint is required before testing.' })
+
+  const type = String(connector.connector_type || '').toUpperCase()
+  const isSmtp = type === 'SMTP' || type === 'EMAIL'
+  const host = isSmtp ? normalizeSmtpHost(rawHost) : rawHost
+  const port = Number(connector.port) || (String(connector.encryption || '').toUpperCase() === 'SSL' ? 465 : 587)
+  const startedAt = Date.now()
+  let test
+  try {
+    test = isSmtp
+      ? await testTcpConnection({ host, port, secure: String(connector.encryption || '').toUpperCase() === 'SSL' })
+      : await testHttpEndpoint(host)
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: 'ConnectionTestFailed',
+      message: error.message || 'Connection test failed.',
+      connectorName: connector.connector_name,
+      connectorType: connector.connector_type,
+      elapsedMs: Date.now() - startedAt
+    })
+  }
+
+  res.json({
+    ...test,
+    connectorName: connector.connector_name,
+    connectorType: connector.connector_type,
+    elapsedMs: Date.now() - startedAt
+  })
 }))
 
 router.use('/smtp-sms-connectors', crudRouter({

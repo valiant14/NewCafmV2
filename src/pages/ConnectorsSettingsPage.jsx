@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mail, Plus } from 'lucide-react'
+import { Mail, Plus, Wifi } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -11,6 +11,7 @@ import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
+import { api } from '../services/api'
 
 const connectorTypes = ['SMTP', 'SMS']
 const encryptionModes = ['None', 'SSL', 'TLS']
@@ -55,13 +56,14 @@ const exportColumns = [
   { key: 'createdDate', header: 'Created' }
 ]
 
-export default function ConnectorsSettingsPage({ rows = [], setRows }) {
+export default function ConnectorsSettingsPage({ rows = [], setRows, notify }) {
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyConnector)
   const [error, setError] = useState('')
+  const [testing, setTesting] = useState('')
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.type === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, { status: ['status'], date: ['createdDate'] })
 
@@ -89,6 +91,19 @@ export default function ConnectorsSettingsPage({ rows = [], setRows }) {
       : [record, ...current]
     )
     setModalOpen(false)
+  }
+
+  const testConnector = async (event, row) => {
+    event.stopPropagation()
+    setTesting(row.name)
+    try {
+      const result = await api.post(`/smtp-sms-connectors/${encodeURIComponent(row.name)}/test`, {})
+      notify?.(`${row.name}: ${result.message || 'Connection test passed.'}`, 'success')
+    } catch (testError) {
+      notify?.(`${row.name}: ${testError.message || 'Connection test failed.'}`, 'error')
+    } finally {
+      setTesting('')
+    }
   }
 
   return (
@@ -138,7 +153,24 @@ export default function ConnectorsSettingsPage({ rows = [], setRows }) {
               { key: 'encryption', label: 'Encryption' },
               { key: 'sender', label: 'Sender', render: value => value || 'Not set' },
               { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> },
-              { key: 'createdDate', label: 'Created', render: value => value || '-' }
+              { key: 'createdDate', label: 'Created', render: value => value || '-' },
+              {
+                key: 'actions',
+                label: 'Action',
+                sortable: false,
+                render: (_, row) => (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-8 px-3 text-xs"
+                    disabled={testing === row.name}
+                    onClick={event => testConnector(event, row)}
+                  >
+                    <Wifi size={14} />
+                    {testing === row.name ? 'Testing' : 'Test'}
+                  </Button>
+                )
+              }
             ]}
           />
         ) : (
