@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Plus, Sparkles, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import PmScheduleDetail from '../components/preventive-maintenance/PmScheduleDetail'
 import PmScheduleForm from '../components/preventive-maintenance/PmScheduleForm'
 import PmScheduleTable from '../components/preventive-maintenance/PmScheduleTable'
 import Button from '../components/ui/Button'
-import Alert from '../components/ui/Alert'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import IndexTabs from '../components/ui/IndexTabs'
@@ -17,7 +16,6 @@ import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMat
 import { useAuth } from '../providers/AuthProvider'
 import { parseLocal, toLocalDateTimeInput } from '../lib/datetime'
 import { countPmDueState, pmDueState } from '../lib/pmSchedule'
-import { generatePmWorkOrders } from '../lib/pmGeneration'
 import { filterRows } from '../lib/tableSearch'
 import { scopeRowsForUser } from '../lib/accessControl'
 
@@ -92,7 +90,7 @@ const mapPmImportRows = (rows, rules = []) => rows.map(row => {
   }
 }).filter(plan => plan.pmNumber && plan.description)
 
-export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules = [], assets = [], jobTasks = [], workOrders = [], departmentRecords = [], locationRows = [], storeRows = [], laborRows = [], scopeUser, onGenerate, onOpenWorkOrder }) {
+export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules = [], assets = [], jobTasks = [], workOrders = [], departmentRecords = [], locationRows = [], storeRows = [], laborRows = [], scopeUser, onOpenWorkOrder }) {
   const { user } = useAuth()
   const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
   const plans = rows.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') }))
@@ -100,7 +98,6 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
   const [mode, setMode] = useState('list')
   const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
   const [form, setForm] = useState(emptyPlan)
-  const [generation, setGeneration] = useState(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [pmTab, setPmTab] = useState('All')
@@ -165,8 +162,6 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
   const updatePlan = (pmNumber, patch) => {
     setRows?.(rows => rows.map(plan => plan.pmNumber === pmNumber ? { ...plan, ...patch } : plan))
   }
-  const generate = () => setGeneration(generatePmWorkOrders({ plans, rules: pmRules, jobTasks, setRows, onGenerate }))
-
   if (selected) {
     return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} pmRules={pmRules} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} onUpdate={updatePlan} />
   }
@@ -177,19 +172,8 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
         eyebrow="PREVENTIVE MAINTENANCE"
         title="PM Schedule"
         description="Maximo-aligned PM masters and automatic work-order generation."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" /><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows, pmRules); if (imported.length) setRows?.(imported) }} /><Button variant="outline" onClick={generate}><Sparkles size={16} />Generate WOs</Button><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" /><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows, pmRules); if (imported.length) setRows?.(imported) }} /><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
       />
-
-      {generation && (
-        <Alert
-          className="mb-4"
-          tone={generation.length ? 'success' : 'warning'}
-          title={generation.length ? `${generation.length} work orders generated` : 'No eligible PM plans'}
-          actions={<button className="app-icon-button" onClick={() => setGeneration(null)} aria-label="Dismiss generation result"><X size={16} /></button>}
-        >
-          Duplicate generation is prevented by PM number and NEXTDATE cycle.
-        </Alert>
-      )}
 
       <IndexTabs
         active={pmTab}
