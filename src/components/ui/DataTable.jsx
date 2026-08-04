@@ -60,14 +60,14 @@ export default function DataTable({
 
   return (
     <>
-      <div className="overflow-auto">
-        <table className="w-full border-collapse text-left text-[length:var(--app-table-font-size)]">
+      <div className="data-table-wrap overflow-auto">
+        <table className="data-table w-full border-separate border-spacing-0 text-left text-[length:var(--app-table-font-size)]">
           <thead>
             <tr>
               {columns.map(column => (
                 <th
                   key={column.key}
-                  className="whitespace-nowrap border-y border-[var(--app-line)] bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]"
+                  className="whitespace-nowrap border-y border-[var(--app-line)] bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)] first:rounded-tl-2xl last:rounded-tr-2xl"
                 >
                   <button
                     type="button"
@@ -94,8 +94,8 @@ export default function DataTable({
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
                 {columns.map(column => (
-                  <td key={column.key} className="max-w-[320px] px-4 py-3.5 text-[var(--app-table-text)] first:font-semibold">
-                    {column.render ? column.render(row[column.key], row) : fallback(row[column.key])}
+                  <td key={column.key} data-label={column.label || ''} className="max-w-[320px] px-4 py-3.5 text-[var(--app-table-text)] first:font-semibold">
+                    <span className="data-table-value">{column.render ? column.render(row[column.key], row) : fallback(row[column.key])}</span>
                   </td>
                 ))}
               </tr>
@@ -105,9 +105,9 @@ export default function DataTable({
       </div>
 
       {showFooter && pagination && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--app-line)] px-4 py-3 text-[length:var(--app-table-footer-font-size)] text-[var(--app-muted)]">
+        <div className="flex flex-col gap-3 border-t border-[var(--app-line)] bg-[var(--app-table-footer-bg)] px-4 py-3 text-[length:var(--app-table-footer-font-size)] text-[var(--app-muted)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div>Showing <strong className="text-[var(--app-ink)]">{filtered.length ? start + 1 : 0}-{Math.min(end, filtered.length)}</strong> of <strong className="text-[var(--app-ink)]">{filtered.length}</strong></div>
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+          <div className="flex flex-wrap items-center gap-3 sm:ml-auto sm:justify-end">
             <label className="flex items-center gap-2">
               Rows
               <select className="h-8 rounded-lg border border-[var(--app-line)] bg-[var(--app-table-bg)] px-2 text-[length:var(--app-table-footer-font-size)] text-[var(--app-table-text)]" value={size} onChange={event => setSize(Number(event.target.value))}>
@@ -124,7 +124,7 @@ export default function DataTable({
       )}
 
       {showFooter && !pagination && (
-        <div className="flex justify-between border-t border-[var(--app-line)] px-4 py-3 text-[length:var(--app-table-footer-font-size)] text-[var(--app-muted)]">
+        <div className="flex flex-col gap-1 border-t border-[var(--app-line)] bg-[var(--app-table-footer-bg)] px-4 py-3 text-[length:var(--app-table-footer-font-size)] text-[var(--app-muted)] sm:flex-row sm:justify-between">
           <span>Showing {Math.min(pageSize, filtered.length)} of {filtered.length.toLocaleString()} records</span>
           <span>{sourceLabel}</span>
         </div>
