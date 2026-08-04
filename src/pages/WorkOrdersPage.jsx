@@ -163,6 +163,13 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
           active={typeFilter}
           onChange={type => { setTypeFilter(type); setPage(1) }}
           tabs={['All', 'PM', 'CM', 'Incident'].map(type => ({ key: type, label: type === 'All' ? 'All Work Orders' : type, count: count(type) }))}
+          search={(
+            <TableSearch
+              value={search}
+              onChange={value => { setSearch(value); setPage(1) }}
+              placeholder="Search work order, asset, location, status"
+            />
+          )}
         />
         <StandardFilters
           filters={filters}
@@ -170,13 +177,6 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
           siteOptions={optionsFromRows(rows, ['SITE'])}
           departmentOptions={optionsFromRows(rows, ['DEPARTMENT ', 'ASSIGNED DEPARTMENT', 'SUB DEPARTMENT  NAME'])}
           statusOptions={optionsFromRows(rows, ['STATUS'])}
-        />
-        <TableSearch
-          value={search}
-          onChange={value => { setSearch(value); setPage(1) }}
-          placeholder="Search work order, asset, location, status"
-          resultCount={filtered.length}
-          totalCount={typedRows.length}
         />
         <WorkOrdersTable
           rows={paginated}

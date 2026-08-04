@@ -552,6 +552,11 @@ main,
   .app-field-control--textarea { height: auto; line-height: 1.55; min-height: 92px; padding-bottom: 10px; padding-top: 10px; resize: vertical; }
 
   .app-table-toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; margin-bottom: 12px; }
+  /* One row holding the index tabs and the list search, so every list page places them the
+     same way. The tabs take the space that is left and the search takes half. */
+  .app-list-controls { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: var(--app-page-gap); }
+  .app-list-controls > .app-index-tabs { flex: 1 1 auto; margin-bottom: 0; min-width: 0; }
+  .app-list-controls > .app-search-field { flex: 0 1 50%; max-width: none; }
   .app-search-field { align-items: center; display: flex; margin-left: auto; max-width: 340px; position: relative; width: 100%; }
   .app-search-input { padding-left: 36px; padding-right: 36px; }
   .app-search-clear { align-items: center; background: transparent; border: 0; border-radius: 6px; color: var(--app-muted); display: flex; height: 26px; justify-content: center; position: absolute; right: 7px; width: 26px; }
@@ -779,6 +784,7 @@ main,
   .app-footer { padding: 12px 14px; }
   .app-table-toolbar { align-items: stretch; flex-direction: column; }
   .app-search-field { margin-left: 0; max-width: none; }
+  .app-list-controls > .app-search-field { flex-basis: 100%; }
   .app-toast { bottom: 12px; left: 12px; max-width: none; right: 12px; width: auto; }
   .app-modal-overlay { align-items: flex-end; padding: 10px; }
   .app-modal-panel { max-height: 94vh; }

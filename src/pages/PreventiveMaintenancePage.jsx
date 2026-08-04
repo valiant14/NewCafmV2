@@ -202,6 +202,13 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
           { key: 'INACTIVE', label: 'Inactive', count: scopedPlans.filter(plan => plan.pmStatus === 'INACTIVE').length },
           { key: 'DRAFT', label: 'Draft', count: scopedPlans.filter(plan => plan.pmStatus === 'DRAFT').length }
         ]}
+        search={(
+          <TableSearch
+            value={search}
+            onChange={value => { setSearch(value); setPage(1) }}
+            placeholder="Search PM plan, job plan, asset, location"
+          />
+        )}
       />
 
       <StandardFilters
@@ -210,14 +217,6 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
         siteOptions={optionsFromRows(scopedPlans, ['site'])}
         departmentOptions={optionsFromRows(scopedPlans, ['department', 'personGroup'])}
         statusOptions={optionsFromRows(scopedPlans, ['pmStatus', 'woStatus'])}
-      />
-
-      <TableSearch
-        value={search}
-        onChange={value => { setSearch(value); setPage(1) }}
-        placeholder="Search PM plan, job plan, asset, location"
-        resultCount={visible.length}
-        totalCount={tabRows.length}
       />
 
       <PmScheduleTable
