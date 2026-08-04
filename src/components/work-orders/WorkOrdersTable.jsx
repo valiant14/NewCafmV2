@@ -1,7 +1,8 @@
 import { ChevronRight } from 'lucide-react'
 import Badge from '../ui/Badge'
+import PriorityBadge from '../ui/PriorityBadge'
+import StatusBadge from '../ui/StatusBadge'
 import TablePanel from '../ui/TablePanel'
-import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import { isOnHold } from '../../lib/holdPeriods'
 
 const cellClass = 'px-4 py-3.5 align-middle text-[var(--app-table-text)]'
@@ -13,7 +14,7 @@ const columns = [
   { key: 'description', label: 'Description', sortKey: 'DESCRIPITION', className: cellClass, render: order => textValue(order['DESCRIPITION ']) },
   { key: 'location', label: 'Location', sortKey: 'LOCATION', className: cellClass, render: order => textValue(order['LOCATION ']) },
   { key: 'asset', label: 'Asset', sortKey: 'ASSET', className: compactClass, render: order => <strong>{textValue(order.ASSET)}</strong> },
-  { key: 'status', label: 'Status', sortKey: 'STATUS', className: compactClass, render: order => <Badge tone={statusTone(order.STATUS)}>{order.STATUS} · {statusDescription('workOrder', order.STATUS) || textValue(order.STATUS)}</Badge> },
+  { key: 'status', label: 'Status', sortKey: 'STATUS', className: compactClass, render: order => <StatusBadge application="workOrder" value={order.STATUS} /> },
   { key: 'type', label: 'Type', sortKey: 'WORK TYPE', className: compactClass, render: (order, { orderType }) => <Badge tone="blue">{orderType(order)}</Badge> },
   { key: 'department', label: 'Department', sortKey: 'DEPARTMENT', className: compactClass, render: order => textValue(order['DEPARTMENT ']) },
   { key: 'assignedDepartment', label: 'Assigned Department', sortKey: 'ASSIGNED DEPARTMENT', className: compactClass, render: order => textValue(order['ASSIGNED DEPARTMENT']) },
@@ -23,7 +24,7 @@ const columns = [
   { key: 'actualStart', label: 'Actual Start', sortKey: 'ACTUAL START', className: compactClass, render: (order, { excelDate }) => excelDate(order['ACTUAL START ']) },
   { key: 'actualFinish', label: 'Actual Finish', sortKey: 'ACTUAL FINISH', className: compactClass, render: (order, { excelDate }) => excelDate(order['ACTUAL FINISH ']) },
   { key: 'reportedDate', label: 'Reported Date', sortKey: 'REPORTED DATE', className: compactClass, render: (order, { excelDate }) => excelDate(order['REPORTED DATE ']) },
-  { key: 'priority', label: 'Priority', sortKey: 'PRIORTY', className: compactClass, render: order => textValue(order.PRIORTY) },
+  { key: 'priority', label: 'Priority', sortKey: 'PRIORTY', className: compactClass, render: order => <PriorityBadge value={order.PRIORTY} /> },
   { key: 'site', label: 'Site', sortKey: 'SITE', className: compactClass, render: order => textValue(order.SITE) },
   { key: 'sourceSr', label: 'Source SR', sortKey: 'SOURCE SR', className: compactClass, render: order => textValue(order['SOURCE SR']) },
   { key: 'open', label: '', className: compactClass, render: () => <ChevronRight size={17} /> }

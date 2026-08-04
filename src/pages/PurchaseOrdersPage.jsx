@@ -6,10 +6,10 @@ import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import StatusBadge from '../components/ui/StatusBadge'
 import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
-import { statusDescription, statusTone } from '../lib/statusMatrix'
 import { nowLocalDate } from '../lib/datetime'
 
 const todayStamp = () => nowLocalDate()
@@ -112,7 +112,7 @@ export default function PurchaseOrdersPage({
               { key: 'source', label: 'Supplier / Store' },
               { key: 'site', label: 'Site' },
               { key: 'department', label: 'Department' },
-              { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} · {statusDescription('purchaseOrder', value)}</Badge> },
+              { key: 'status', label: 'Status', render: value => <StatusBadge application="purchaseOrder" value={value} /> },
               { key: 'createdAt', label: 'Created' },
               { key: 'action', label: 'Next Step', sortable: false, render: (_, row) => rowAction(row) }
             ]}

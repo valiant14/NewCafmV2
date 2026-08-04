@@ -11,10 +11,12 @@ import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import PriorityBadge from '../components/ui/PriorityBadge'
+import StatusBadge from '../components/ui/StatusBadge'
 import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
-import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
+import { normalizeStatus } from '../lib/statusMatrix'
 import { conformsToAssetCode, validateAssetCode } from '../lib/coding'
 import { useAuth } from '../providers/AuthProvider'
 
@@ -165,7 +167,8 @@ export default function AssetsPage({ rows: controlledRows, setRows: setControlle
             { key: 'department', label: 'Department' },
             { key: 'system', label: 'System' },
             { key: 'modelnum', label: 'Model' },
-            { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value || 'UNKNOWN'}{value ? ` · ${statusDescription('asset', value)}` : ''}</Badge> }
+            { key: 'prioity', label: 'Priority', render: value => <PriorityBadge value={value} /> },
+            { key: 'status', label: 'Status', render: value => <StatusBadge application="asset" value={value} /> }
           ]}
         />
       </TablePanel>

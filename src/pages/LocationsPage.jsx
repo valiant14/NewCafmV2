@@ -12,10 +12,12 @@ import IndexTabs from '../components/ui/IndexTabs'
 import LocationDetailPage from '../components/locations/LocationDetailPage'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import PriorityBadge from '../components/ui/PriorityBadge'
+import StatusBadge from '../components/ui/StatusBadge'
 import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
-import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
+import { normalizeStatus } from '../lib/statusMatrix'
 import { conformsToLocationCode, nextLocationCode, validateLocationCode } from '../lib/coding'
 import { useAuth } from '../providers/AuthProvider'
 import Badge from '../components/ui/Badge'
@@ -223,8 +225,8 @@ export default function LocationsPage({ rows: controlledRows, setRows: setContro
               ) },
               { key: 'description', label: 'Description' },
               { key: 'type', label: 'Type' },
-              { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} · {statusDescription('location', value)}</Badge> },
-              { key: 'priority', label: 'Priority' },
+              { key: 'status', label: 'Status', render: value => <StatusBadge application="location" value={value} /> },
+              { key: 'priority', label: 'Priority', render: value => <PriorityBadge value={value} /> },
               { key: 'priority  description', label: 'Priority Description' },
               { key: 'site', label: 'Site' },
               { key: 'builiding', label: 'Building' },

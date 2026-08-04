@@ -10,12 +10,13 @@ import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import StatusBadge from '../components/ui/StatusBadge'
 import TablePanel from '../components/ui/TablePanel'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
 import { departmentOptions, laborNameOptions, locationOptions, siteOptions } from '../lib/masterOptions'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
-import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
+import { normalizeStatus } from '../lib/statusMatrix'
 import { nowLocalDateTime } from '../lib/datetime'
 import { useAuth } from '../providers/AuthProvider'
 
@@ -148,7 +149,7 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
             { key: 'department', label: 'Department' },
             { key: 'location', label: 'Location' },
             { key: 'severity', label: 'Severity', render: value => <Badge tone={value === 'Critical' || value === 'High' ? 'orange' : 'blue'}>{value}</Badge> },
-            { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} · {statusDescription('incident', value)}</Badge> },
+            { key: 'status', label: 'Status', render: value => <StatusBadge application="incident" value={value} /> },
             { key: 'reportedBy', label: 'Reported By' },
             { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
           ]}

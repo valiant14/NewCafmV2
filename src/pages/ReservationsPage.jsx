@@ -4,12 +4,13 @@ import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import StatusBadge from '../components/ui/StatusBadge'
 import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { ClipboardCheck, ClipboardList, PackageOpen, Truck, X } from 'lucide-react'
 import { useState } from 'react'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
-import { statusDescription, statusTone } from '../lib/statusMatrix'
+import { statusDescription } from '../lib/statusMatrix'
 
 const nextQuantity = row => {
   const requested = Number(row.quantity || 0)
@@ -193,8 +194,8 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
               { key: 'deliveredQuantity', label: 'Delivered', render: value => value || 0 },
               { key: 'source', label: 'Store / Source' },
               { key: 'status', label: 'Status', render: (value, row) => isCancelled(row)
-                ? <Badge tone="orange">CANCELLED - Work order cancelled</Badge>
-                : <Badge tone={statusTone(value)}>{value} - {statusDescription('inventoryUsage', value)}</Badge> },
+                ? <StatusBadge application="inventoryUsage" value="CANCELLED" />
+                : <StatusBadge application="inventoryUsage" value={value} /> },
               { key: 'action', label: 'Next Step', sortable: false, render: (_, row) => actionFor(row) }
             ]}
           />

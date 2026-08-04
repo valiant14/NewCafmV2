@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ChevronRight, Plus } from 'lucide-react'
 import ServiceRequestDetail from '../components/service-requests/ServiceRequestDetail'
-import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
@@ -11,11 +10,13 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
+import PriorityBadge from '../components/ui/PriorityBadge'
+import StatusBadge from '../components/ui/StatusBadge'
 import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { nowLocalDateTime } from '../lib/datetime'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
-import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
+import { normalizeStatus } from '../lib/statusMatrix'
 import { useAuth } from '../providers/AuthProvider'
 
 const blankRequest = () => ({
@@ -147,8 +148,8 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
             { key: 'site', label: 'Site / Location', render: (value, request) => <>{value}<small className="mt-1 block text-[9px] text-[var(--app-muted)]">{request.location}</small></> },
             { key: 'department', label: 'Department', render: value => value || 'Pending review' },
             { key: 'reportedBy', label: 'Reported by' },
-            { key: 'priority', label: 'Priority', render: value => <Badge tone={value === 'High' ? 'orange' : 'neutral'}>{value}</Badge> },
-            { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} · {statusDescription('serviceRequest', value)}</Badge> },
+            { key: 'priority', label: 'Priority', render: value => <PriorityBadge value={value} showCode={false} /> },
+            { key: 'status', label: 'Status', render: value => <StatusBadge application="serviceRequest" value={value} /> },
             { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
           ]}
         />
