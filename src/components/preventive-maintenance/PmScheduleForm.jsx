@@ -4,7 +4,7 @@ import { Field } from '../ui/FormControls'
 import { ModalFooter, ModalHeader, ModalPanel } from '../ui/ModalFrame'
 import { sameDepartment } from '../../lib/departments'
 
-export default function PmScheduleForm({ form, setForm, assets, jobPlans, departments, onCancel, onSave, modal = false }) {
+export default function PmScheduleForm({ form, setForm, assets, jobPlans, departments, pmRules = [], onCancel, onSave, modal = false }) {
   const departmentOptions = [...new Map(departments
     .filter(department => department.status !== 'Inactive' && department.department)
     .map(department => [department.department, department.department])
@@ -13,7 +13,22 @@ export default function PmScheduleForm({ form, setForm, assets, jobPlans, depart
     .filter(department => department.status !== 'Inactive' && sameDepartment(department.department, form.department))
     .map(department => ({ value: department.description, label: department.subDepartmentCode }))
   const valid = Boolean(form.pmNumber && form.description && (form.asset || form.location) && form.jobPlan && form.startDate && form.frequency && form.freqUnit)
+  const ruleLocked = Boolean(form.scheduleRule)
   const set = (key, value) => setForm(current => ({ ...current, [key]: value }))
+  const chooseRule = event => {
+    const value = event.target.value
+    const rule = pmRules.find(item => String(item.name || '').trim().toLowerCase() === String(value || '').trim().toLowerCase())
+    setForm(current => ({
+      ...current,
+      scheduleRule: value,
+      ...(rule ? {
+        leadTime: Number(rule.leadTimeDays) || 0,
+        frequency: Number(rule.frequency) || 1,
+        freqUnit: rule.freqUnit || 'MONTHS',
+        woStatus: rule.defaultWoStatus || 'WSCH'
+      } : {})
+    }))
+  }
   const chooseAsset = event => {
     const value = event.target.value
     const asset = assets.find(item => item.assetnum === value)
@@ -50,13 +65,14 @@ export default function PmScheduleForm({ form, setForm, assets, jobPlans, depart
           <Field label="LOCATION" value={form.location} onChange={event => set('location', event.target.value)} placeholder="Use when PM is location-based" />
           <Field label="ROUTE" value={form.route} onChange={event => set('route', event.target.value)} />
           <Field label="JPNUM" value={form.jobPlan} required onChange={event => set('jobPlan', event.target.value)} suggestions={jobPlans.map(job => ({ value: job.number, label: job.description }))} />
+          <Field label="PM Rule" value={form.scheduleRule || ''} onChange={chooseRule} suggestions={pmRules.filter(rule => rule.status === 'Active').map(rule => ({ value: rule.name, label: `${rule.frequency} ${rule.freqUnit} @ ${String(rule.triggerHour || 0).padStart(2, '0')}:00` }))} placeholder="Select generation rule" />
           <Field label="NEXTDATE" type="date" value={form.startDate} required onChange={event => set('startDate', event.target.value)} />
-          <Field label="LEAD TIME (DAYS)" type="number" value={form.leadTime} onChange={event => set('leadTime', Number(event.target.value))} />
-          <Field label="FREQUENCY" type="number" value={form.frequency} required onChange={event => set('frequency', Number(event.target.value))} />
-          <Field label="FREQUNIT" value={form.freqUnit} required options={['DAYS', 'WEEKS', 'MONTHS', 'YEARS']} onChange={event => set('freqUnit', event.target.value)} />
+          <Field label="LEAD TIME (DAYS)" type="number" value={form.leadTime} disabled={ruleLocked} onChange={event => set('leadTime', Number(event.target.value))} />
+          <Field label="FREQUENCY" type="number" value={form.frequency} required disabled={ruleLocked} onChange={event => set('frequency', Number(event.target.value))} />
+          <Field label="FREQUNIT" value={form.freqUnit} required disabled={ruleLocked} options={['HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'YEARS']} onChange={event => set('freqUnit', event.target.value)} />
           <Field label="PMCOUNTER" type="number" value={form.pmCounter} onChange={event => set('pmCounter', Number(event.target.value))} />
           <Field label="WORKTYPE" value="PM" onChange={() => {}} />
-          <Field label="WOSTATUS" value={form.woStatus} options={['WSCH', 'WAPPR']} onChange={event => set('woStatus', event.target.value)} />
+          <Field label="WOSTATUS" value={form.woStatus} disabled={ruleLocked} options={['WSCH', 'WAPPR']} onChange={event => set('woStatus', event.target.value)} />
           <Field label="STORELOC" value={form.storeLocation} onChange={event => set('storeLocation', event.target.value)} />
           <Field label="SUPERVISOR" value={form.supervisor} onChange={event => set('supervisor', event.target.value)} />
           <Field label="LEAD" value={form.lead} onChange={event => set('lead', event.target.value)} />

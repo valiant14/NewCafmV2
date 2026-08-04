@@ -22,9 +22,8 @@ export const pagePermissionAliases = {
   'Roles & Permissions': ['Roles & Permissions', 'Administration'],
   Sites: ['Sites', 'Administration'],
   Departments: ['Departments', 'Administration'],
-  // These three replaced the old Settings page. The permission modules are seeded in the
-  // database, which has no row for them, so they inherit the Settings grant a role already
-  // holds - anyone who could open Settings can open its replacements.
+  // Notifications and SMTP & SMS are settings sub-pages. PM Schedule Rules has its own
+  // module but keeps Settings as a fallback for existing roles until migrations are run.
   Notifications: ['Notifications', 'Settings', 'Administration'],
   'SMTP & SMS': ['SMTP & SMS', 'Settings', 'Administration'],
   'PM Schedule Rules': ['PM Schedule Rules', 'Settings', 'Administration']

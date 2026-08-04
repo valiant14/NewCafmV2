@@ -2,7 +2,7 @@ set nocount on;
 go
 
 merge dbo.permission_modules as target
-using (values ('Work Order Planning')) as source(module_name)
+using (values ('Work Order Planning'), ('PM Schedule Rules')) as source(module_name)
 on target.module_name = source.module_name
 when not matched then insert(module_name) values(source.module_name);
 go
@@ -24,11 +24,11 @@ from dbo.roles r
 join dbo.permission_modules m on m.module_name in (
   'Overview', 'Job Requests', 'Work Orders', 'Work Order Planning', 'Assets', 'Labor', 'Locations',
   'Failure Library', 'Meters', 'Materials', 'Stores', 'Tools & Equipment',
-  'Reservations', 'Purchase Requisitions', 'Purchase Orders'
+  'Reservations', 'Purchase Requisitions', 'Purchase Orders', 'PM Schedule Rules'
 )
 join dbo.permission_actions a on (
   a.action_name = 'view'
-  or (a.action_name in ('create', 'edit', 'approve', 'import') and m.module_name in ('Job Requests', 'Work Orders', 'Work Order Planning', 'Meters', 'Materials', 'Stores', 'Tools & Equipment', 'Reservations', 'Purchase Requisitions', 'Purchase Orders'))
+  or (a.action_name in ('create', 'edit', 'approve', 'import') and m.module_name in ('Job Requests', 'Work Orders', 'Work Order Planning', 'Meters', 'Materials', 'Stores', 'Tools & Equipment', 'Reservations', 'Purchase Requisitions', 'Purchase Orders', 'PM Schedule Rules'))
   or (a.action_name = 'close' and m.module_name in ('Work Orders', 'Reservations', 'Purchase Requisitions', 'Purchase Orders'))
 )
 where r.role_code = 'HVAC_SUPERVISOR'
