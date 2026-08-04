@@ -32,6 +32,7 @@ const emptyPlan = {
   leadTime: 0,
   frequency: 1,
   freqUnit: 'MONTHS',
+  scheduleRule: '',
   pmCounter: 0,
   workType: 'PM',
   woStatus: 'WSCH',
@@ -46,7 +47,7 @@ const emptyPlan = {
 }
 const searchKeys = ['pmNumber', 'description', 'jobPlan', 'asset', 'location', 'route', 'department', 'subDepartment', 'supervisor', 'personGroup', 'storeLocation', 'workType']
 
-const pmTemplateHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'ROUTE', 'LOCATION', 'JPNUM', 'NEXTDATE', 'LEAD TIME (DAYS)', 'FREQUENCY', 'FREQUNIT', 'PMCOUNTER', 'WORKTYPE', 'WOSTATUS', 'STORELOC', 'SUPERVISOR', 'LEAD', 'PERSONGROUP', 'department', 'sub department']
+const pmTemplateHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'ROUTE', 'LOCATION', 'JPNUM', 'PM RULE', 'NEXTDATE', 'PMCOUNTER', 'WORKTYPE', 'STORELOC', 'SUPERVISOR', 'LEAD', 'PERSONGROUP', 'department', 'sub department']
 
 const normalizeDate = value => {
   if (!value) return ''
@@ -58,32 +59,39 @@ const normalizeDate = value => {
   return toLocalDateInput(new Date(year, months[match[2]] ?? 0, Number(match[1])))
 }
 
-const mapPmImportRows = rows => rows.map(row => ({
-  pmNumber: row.PMNUM || '',
-  description: row['PM DESCRIPTION'] || '',
-  asset: row.ASSETNUM || '',
-  route: row.ROUTE || '',
-  location: row.LOCATION || '',
-  site: row.SITE || '1031',
-  jobPlan: row.JPNUM || '',
-  startDate: normalizeDate(row.NEXTDATE),
-  leadTime: Number(row['LEAD TIME (DAYS)'] || 0),
-  frequency: Number(row.FREQUENCY || 1),
-  freqUnit: row.FREQUNIT || 'MONTHS',
-  pmCounter: Number(row.PMCOUNTER || 0),
-  workType: row.WORKTYPE || 'PM',
-  woStatus: row.WOSTATUS || 'WSCH',
-  storeLocation: row.STORELOC || '',
-  supervisor: row.SUPERVISOR || '',
-  lead: row.LEAD || '',
-  personGroup: row.PERSONGROUP || '',
-  department: row.department || row.DEPARTMENT || '',
-  subDepartment: row['sub department'] || row['SUB DEPARTMENT'] || '',
-  pmStatus: normalizeStatus('preventiveMaintenance', row['PM Status'] || row.PMSTATUS, 'ACTIVE'),
-  lastGeneratedCycle: ''
-})).filter(plan => plan.pmNumber && plan.description)
+const findPmRule = (rules = [], name = '') => rules.find(rule => String(rule.name || '').trim().toLowerCase() === String(name || '').trim().toLowerCase())
 
-export default function PreventiveMaintenancePage({ rows = [], setRows, assets = [], jobTasks = [], workOrders = [], departmentRecords = [], scopeUser, onGenerate, onOpenWorkOrder }) {
+const mapPmImportRows = (rows, rules = []) => rows.map(row => {
+  const scheduleRule = row['PM RULE'] || row.SCHEDULE_RULE || ''
+  const rule = findPmRule(rules, scheduleRule)
+  return {
+    pmNumber: row.PMNUM || '',
+    description: row['PM DESCRIPTION'] || '',
+    asset: row.ASSETNUM || '',
+    route: row.ROUTE || '',
+    location: row.LOCATION || '',
+    site: row.SITE || '1031',
+    jobPlan: row.JPNUM || '',
+    startDate: normalizeDate(row.NEXTDATE),
+    leadTime: Number(rule?.leadTimeDays ?? row['LEAD TIME (DAYS)'] ?? 0),
+    frequency: Number(rule?.frequency ?? row.FREQUENCY ?? 1),
+    freqUnit: rule?.freqUnit || row.FREQUNIT || 'MONTHS',
+    scheduleRule,
+    pmCounter: Number(row.PMCOUNTER || 0),
+    workType: row.WORKTYPE || 'PM',
+    woStatus: rule?.defaultWoStatus || row.WOSTATUS || 'WSCH',
+    storeLocation: row.STORELOC || '',
+    supervisor: row.SUPERVISOR || '',
+    lead: row.LEAD || '',
+    personGroup: row.PERSONGROUP || '',
+    department: row.department || row.DEPARTMENT || '',
+    subDepartment: row['sub department'] || row['SUB DEPARTMENT'] || '',
+    pmStatus: normalizeStatus('preventiveMaintenance', row['PM Status'] || row.PMSTATUS, 'ACTIVE'),
+    lastGeneratedCycle: ''
+  }
+}).filter(plan => plan.pmNumber && plan.description)
+
+export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules = [], assets = [], jobTasks = [], workOrders = [], departmentRecords = [], scopeUser, onGenerate, onOpenWorkOrder }) {
   const { user } = useAuth()
   const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
   const plans = rows.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') }))
@@ -113,7 +121,7 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, assets =
   const selected = scopedPlans.find(plan => plan.pmNumber === selectedId)
   const matchesTab = plan => {
     if (pmTab === 'All') return true
-    if (pmTab === 'OVERDUE' || pmTab === 'DUE_SOON') return pmDueState(plan) === pmTab
+    if (pmTab === 'OVERDUE' || pmTab === 'DUE_SOON') return pmDueState(plan, new Date(), pmRules) === pmTab
     return plan.pmStatus === pmTab
   }
   const tabRows = scopedPlans.filter(matchesTab)
@@ -156,10 +164,10 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, assets =
   const updatePlan = (pmNumber, patch) => {
     setRows?.(rows => rows.map(plan => plan.pmNumber === pmNumber ? { ...plan, ...patch } : plan))
   }
-  const generate = () => setGeneration(generatePmWorkOrders({ plans, jobTasks, setRows, onGenerate }))
+  const generate = () => setGeneration(generatePmWorkOrders({ plans, rules: pmRules, jobTasks, setRows, onGenerate }))
 
   if (selected) {
-    return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} onUpdate={updatePlan} />
+    return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} pmRules={pmRules} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} onUpdate={updatePlan} />
   }
 
   return (
@@ -168,7 +176,7 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, assets =
         eyebrow="PREVENTIVE MAINTENANCE"
         title="PM Schedule"
         description="Maximo-aligned PM masters and automatic work-order generation."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" /><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows); if (imported.length) setRows?.(imported) }} /><Button variant="outline" onClick={generate}><Sparkles size={16} />Generate WOs</Button><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" /><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows, pmRules); if (imported.length) setRows?.(imported) }} /><Button variant="outline" onClick={generate}><Sparkles size={16} />Generate WOs</Button><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
       />
 
       {generation && (
@@ -183,8 +191,8 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, assets =
         onChange={value => { setPmTab(value); setFilters(scopedStandardFilters(user, plans, ['site'])); setPage(1) }}
         tabs={[
           { key: 'All', label: 'All PM Schedules', count: scopedPlans.length },
-          { key: 'OVERDUE', label: 'Overdue', count: countPmDueState(scopedPlans, 'OVERDUE') },
-          { key: 'DUE_SOON', label: 'Due Soon', count: countPmDueState(scopedPlans, 'DUE_SOON') },
+          { key: 'OVERDUE', label: 'Overdue', count: countPmDueState(scopedPlans, 'OVERDUE', pmRules) },
+          { key: 'DUE_SOON', label: 'Due Soon', count: countPmDueState(scopedPlans, 'DUE_SOON', pmRules) },
           { key: 'ACTIVE', label: 'Active', count: scopedPlans.filter(plan => plan.pmStatus === 'ACTIVE').length },
           { key: 'INACTIVE', label: 'Inactive', count: scopedPlans.filter(plan => plan.pmStatus === 'INACTIVE').length },
           { key: 'DRAFT', label: 'Draft', count: scopedPlans.filter(plan => plan.pmStatus === 'DRAFT').length }
@@ -218,10 +226,11 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, assets =
         onPageSizeChange={value => { setPageSize(value); setPage(1) }}
         sort={sort}
         onSort={toggleSort}
+        pmRules={pmRules}
       />
       {mode === 'new' && (
         <ModalOverlay>
-          <PmScheduleForm modal form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departmentRecords} onCancel={() => setMode('list')} onSave={save} />
+          <PmScheduleForm modal form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departmentRecords} pmRules={pmRules} onCancel={() => setMode('list')} onSave={save} />
         </ModalOverlay>
       )}
     </section>

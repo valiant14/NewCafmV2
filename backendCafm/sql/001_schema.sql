@@ -454,6 +454,7 @@ create table dbo.preventive_maintenance (
   lead_time_days int not null constraint df_pm_lead default 0,
   frequency int not null,
   frequency_unit nvarchar(40) not null,
+  schedule_rule_name nvarchar(160) null,
   pm_counter int not null constraint df_pm_counter default 0,
   work_type nvarchar(40) not null constraint df_pm_work_type default 'PM',
   wo_status nvarchar(40) not null constraint df_pm_wo_status default 'WSCH',
@@ -473,6 +474,22 @@ create table dbo.preventive_maintenance (
   constraint fk_pm_job_plan foreign key (job_plan_num) references dbo.job_plans(job_plan_num),
   constraint fk_pm_site foreign key (site_code) references dbo.sites(site_code),
   constraint fk_pm_sub_department foreign key (sub_department_code) references dbo.departments(sub_department_code)
+);
+go
+
+create table dbo.pm_schedule_rules (
+  rule_name nvarchar(160) not null primary key,
+  frequency int not null constraint df_pm_rule_frequency default 1,
+  frequency_unit nvarchar(40) not null constraint df_pm_rule_frequency_unit default 'MONTHS',
+  lead_time_days int not null constraint df_pm_rule_lead default 0,
+  horizon_days int not null constraint df_pm_rule_horizon default 30,
+  trigger_hour int not null constraint df_pm_rule_trigger_hour default 0,
+  wo_prefix nvarchar(40) not null constraint df_pm_rule_wo_prefix default 'PMWO-',
+  default_wo_status nvarchar(40) not null constraint df_pm_rule_wo_status default 'WSCH',
+  notes nvarchar(500) null,
+  status nvarchar(40) not null constraint df_pm_rule_status default 'Active',
+  created_at datetime2 not null constraint df_pm_rule_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_pm_rule_updated default sysutcdatetime()
 );
 go
 

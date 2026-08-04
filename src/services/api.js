@@ -381,6 +381,7 @@ const mapPm = row => ({
   leadTime: row.lead_time_days || 0,
   frequency: row.frequency || 1,
   freqUnit: row.frequency_unit || 'MONTHS',
+  scheduleRule: row.schedule_rule_name || '',
   pmCounter: row.pm_counter || 0,
   workType: row.work_type || 'PM',
   woStatus: row.wo_status || 'WSCH',
@@ -392,6 +393,20 @@ const mapPm = row => ({
   subDepartment: row.sub_department_code || '',
   pmStatus: row.pm_status || 'ACTIVE',
   lastGeneratedCycle: row.last_generated_cycle || ''
+})
+
+const mapPmRule = row => ({
+  name: row.rule_name,
+  frequency: numberValue(row.frequency) || 1,
+  freqUnit: row.frequency_unit || 'MONTHS',
+  leadTimeDays: numberValue(row.lead_time_days) || 0,
+  horizonDays: numberValue(row.horizon_days) || 30,
+  triggerHour: numberValue(row.trigger_hour) || 0,
+  woPrefix: row.wo_prefix || 'PMWO-',
+  defaultWoStatus: row.default_wo_status || 'WSCH',
+  notes: row.notes || '',
+  status: row.status || 'Active',
+  createdDate: row.created_at || ''
 })
 
 const mapIncident = row => ({
@@ -452,6 +467,7 @@ export async function loadWorkspace() {
     purchaseOrders,
     reservations,
     pmSchedules,
+    pmRules,
     jobPlans,
     jobPlanTasks,
     incidents,
@@ -478,6 +494,7 @@ export async function loadWorkspace() {
     safeGet('/purchase-orders'),
     safeGet('/reservations'),
     safeGet('/preventive-maintenance'),
+    safeGet('/pm-schedule-rules'),
     safeGet('/job-plans'),
     safeGet('/job-plan-tasks'),
     safeGet('/incidents'),
@@ -508,6 +525,7 @@ export async function loadWorkspace() {
     purchaseOrders: purchaseOrders.map(mapPurchaseOrder),
     reservations: reservations.map(mapReservation),
     pmSchedules: pmSchedules.map(mapPm),
+    pmRules: pmRules.map(mapPmRule),
     jobPlans: jobPlans.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status })),
     jobTasks: jobPlanTasks.map(mapJobTask),
     incidents: incidents.map(mapIncident),

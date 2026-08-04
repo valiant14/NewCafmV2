@@ -154,8 +154,15 @@ router.use('/preventive-maintenance', crudRouter({
   moduleName: 'Preventive Maintenance',
   table: 'dbo.preventive_maintenance',
   key: 'pm_num',
-  columns: ['pm_num', 'description', 'asset_num', 'route_code', 'location_code', 'job_plan_num', 'next_date', 'lead_time_days', 'frequency', 'frequency_unit', 'pm_counter', 'work_type', 'wo_status', 'store_code', 'supervisor', 'lead_person', 'person_group', 'site_code', 'department_name', 'sub_department_code', 'pm_status', 'last_generated_cycle', 'created_at', 'updated_at'],
+  columns: ['pm_num', 'description', 'asset_num', 'route_code', 'location_code', 'job_plan_num', 'next_date', 'lead_time_days', 'frequency', 'frequency_unit', 'schedule_rule_name', 'pm_counter', 'work_type', 'wo_status', 'store_code', 'supervisor', 'lead_person', 'person_group', 'site_code', 'department_name', 'sub_department_code', 'pm_status', 'last_generated_cycle', 'created_at', 'updated_at'],
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
+}))
+
+router.use('/pm-schedule-rules', crudRouter({
+  moduleName: 'PM Schedule Rules',
+  table: 'dbo.pm_schedule_rules',
+  key: 'rule_name',
+  columns: ['rule_name', 'frequency', 'frequency_unit', 'lead_time_days', 'horizon_days', 'trigger_hour', 'wo_prefix', 'default_wo_status', 'notes', 'status', 'created_at', 'updated_at']
 }))
 
 router.use('/job-plans', crudRouter({

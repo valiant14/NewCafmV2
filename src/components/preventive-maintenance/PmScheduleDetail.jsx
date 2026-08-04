@@ -5,6 +5,7 @@ import Button from '../ui/Button'
 import { DetailHeader, DetailTabs } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
+import { scheduleForPlan } from '../../lib/pmGeneration'
 
 const normalize = value => String(value || '').trim()
 
@@ -46,7 +47,7 @@ function FieldGrid({ rows }) {
   )
 }
 
-export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, workOrders, onBack, onOpenWorkOrder, onUpdate }) {
+export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmRules = [], workOrders, onBack, onOpenWorkOrder, onUpdate }) {
   const generatedTab = 'Generated Work Orders'
   const [activeTab, setActiveTab] = useState('PM Details')
   const asset = assets.find(item => normalize(item.assetnum) === normalize(plan.asset))
@@ -55,6 +56,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, wor
   const history = workOrders.filter(order => normalize(order['PM NUMBER']) === normalize(plan.pmNumber))
   const location = plan.location || asset?.location || 'From asset'
   const inactive = plan.pmStatus === 'INACTIVE'
+  const schedule = scheduleForPlan(plan, pmRules)
   const changePmStatus = status => onUpdate?.(plan.pmNumber, { pmStatus: status })
 
   return (
@@ -70,7 +72,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, wor
           backLabel="All PM Schedules"
           printLabel="Print PM"
           stats={[
-            { label: 'Generation Rule', value: `${plan.frequency} ${plan.freqUnit}`, note: `Next ${plan.startDate} · Lead ${plan.leadTime}d · ${plan.woStatus}` },
+            { label: 'Generation Rule', value: plan.scheduleRule || `Every ${schedule.frequency} ${schedule.freqUnit}`, note: `Next ${plan.startDate} - Lead ${schedule.leadTime}d - ${String(schedule.triggerHour || 0).padStart(2, '0')}:00 - ${schedule.woStatus}` },
             { label: 'Generated', value: history.length || plan.pmCounter, note: 'WO history' },
             { label: 'Job Plan', value: plan.jobPlan, note: linkedPlan?.description || 'Excel reference' },
             { label: 'Asset / Location', value: plan.asset || 'Location PM', note: location }
@@ -102,7 +104,8 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, wor
                 <p>Generated Work Orders inherit asset, location, site, department, job plan, and all job tasks from this PM and the linked asset master.</p>
                 <div className="grid gap-2 rounded-2xl bg-[var(--app-soft-bg)] p-4">
                   <strong className="text-[var(--app-ink)]">Next output</strong>
-                  <span>Work Type: {plan.workType || 'PM'} ? Initial Status: {plan.woStatus || 'WSCH'} ? Job Tasks: {tasks.length}</span>
+                  <span>Work Type: {plan.workType || 'PM'} - Initial Status: {schedule.woStatus || 'WSCH'} - Job Tasks: {tasks.length}</span>
+                  <span>Frequency: every {schedule.frequency} {schedule.freqUnit} at {String(schedule.triggerHour || 0).padStart(2, '0')}:00</span>
                 </div>
                 <div className="grid gap-2 rounded-2xl bg-[var(--app-soft-bg)] p-4">
                   <strong className="text-[var(--app-ink)]">Last generated cycle</strong>
@@ -179,9 +182,9 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, wor
         number={plan.pmNumber}
         status={plan.pmStatus}
         description={plan.description}
-        summary={[['Frequency', `${plan.frequency} ${plan.freqUnit}`], ['Job Plan', plan.jobPlan], ['Next Date', plan.startDate]]}
+        summary={[['Frequency', `${schedule.frequency} ${schedule.freqUnit}`], ['Rule', plan.scheduleRule || 'Direct PM values'], ['Job Plan', plan.jobPlan], ['Next Date', plan.startDate]]}
         sections={[
-          { title: 'Schedule and Generation', rows: [[['PM Number', plan.pmNumber], ['Next Date', plan.startDate], ['Frequency', `${plan.frequency} ${plan.freqUnit}`], ['Lead Time', `${plan.leadTime} days`]], [['Work Type', plan.workType], ['WO Status', plan.woStatus], ['PM Counter', plan.pmCounter], ['Last Generated Cycle', plan.lastGeneratedCycle || 'Not generated']]] },
+          { title: 'Schedule and Generation', rows: [[['PM Number', plan.pmNumber], ['Rule', plan.scheduleRule || 'Direct PM values'], ['Next Date', plan.startDate], ['Frequency', `${schedule.frequency} ${schedule.freqUnit}`], ['Lead Time', `${schedule.leadTime} days`]], [['Trigger Hour', `${String(schedule.triggerHour || 0).padStart(2, '0')}:00`], ['Work Type', plan.workType], ['WO Status', schedule.woStatus], ['PM Counter', plan.pmCounter], ['Last Generated Cycle', plan.lastGeneratedCycle || 'Not generated']]] },
           { title: 'Asset and Location', rows: [[['Asset', plan.asset || 'Location-based PM'], ['Asset Description', asset?.description], ['Location', location], ['Route', plan.route || 'No route']]] },
           { title: 'Responsibility', rows: [[['Person Group', plan.personGroup], ['Department', plan.department], ['Sub Department', plan.subDepartment], ['Supervisor', plan.supervisor || 'Assigned after generation']]] }
         ]}

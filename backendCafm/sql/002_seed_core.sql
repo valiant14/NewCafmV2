@@ -13,7 +13,7 @@ using (values
   ('Job Plans'), ('Assets'), ('Labor'), ('Locations'), ('Failure Library'), ('Meters'),
   ('Materials'), ('Stores'), ('Tools & Equipment'), ('Reservations'),
   ('Purchase Requisitions'), ('Purchase Orders'), ('Users'), ('Roles & Permissions'),
-  ('Sites'), ('Departments'), ('Settings')
+  ('Sites'), ('Departments'), ('PM Schedule Rules'), ('Settings')
 ) as source(module_name)
 on target.module_name = source.module_name
 when not matched then insert(module_name) values(source.module_name);
@@ -62,17 +62,37 @@ when matched then update set role_name = source.role_name, scope_description = s
 when not matched then insert(role_code, role_name, scope_description, status) values(source.role_code, source.role_name, source.scope_description, source.status);
 go
 
+merge dbo.pm_schedule_rules as target
+using (values
+  ('Default Monthly PM', 1, 'MONTHS', 7, 30, 6, 'PMWO-', 'WSCH', 'Default monthly preventive maintenance generation rule.', 'Active')
+) as source(rule_name, frequency, frequency_unit, lead_time_days, horizon_days, trigger_hour, wo_prefix, default_wo_status, notes, status)
+on target.rule_name = source.rule_name
+when matched then update set
+  frequency = source.frequency,
+  frequency_unit = source.frequency_unit,
+  lead_time_days = source.lead_time_days,
+  horizon_days = source.horizon_days,
+  trigger_hour = source.trigger_hour,
+  wo_prefix = source.wo_prefix,
+  default_wo_status = source.default_wo_status,
+  notes = source.notes,
+  status = source.status,
+  updated_at = sysutcdatetime()
+when not matched then insert(rule_name, frequency, frequency_unit, lead_time_days, horizon_days, trigger_hour, wo_prefix, default_wo_status, notes, status)
+  values(source.rule_name, source.frequency, source.frequency_unit, source.lead_time_days, source.horizon_days, source.trigger_hour, source.wo_prefix, source.default_wo_status, source.notes, source.status);
+go
+
 insert into dbo.role_permissions(role_id, module_name, action_name, allowed)
 select r.role_id, m.module_name, a.action_name, 1
 from dbo.roles r
 join dbo.permission_modules m on m.module_name in (
   'Overview', 'Job Requests', 'Work Orders', 'Work Order Planning', 'Assets', 'Labor', 'Locations',
   'Failure Library', 'Meters', 'Materials', 'Stores', 'Tools & Equipment',
-  'Reservations', 'Purchase Requisitions', 'Purchase Orders'
+  'Reservations', 'Purchase Requisitions', 'Purchase Orders', 'PM Schedule Rules'
 )
 join dbo.permission_actions a on (
   a.action_name = 'view'
-  or (a.action_name in ('create', 'edit', 'approve', 'import') and m.module_name in ('Job Requests', 'Work Orders', 'Work Order Planning', 'Meters', 'Materials', 'Stores', 'Tools & Equipment', 'Reservations', 'Purchase Requisitions', 'Purchase Orders'))
+  or (a.action_name in ('create', 'edit', 'approve', 'import') and m.module_name in ('Job Requests', 'Work Orders', 'Work Order Planning', 'Meters', 'Materials', 'Stores', 'Tools & Equipment', 'Reservations', 'Purchase Requisitions', 'Purchase Orders', 'PM Schedule Rules'))
   or (a.action_name = 'close' and m.module_name in ('Work Orders', 'Reservations', 'Purchase Requisitions', 'Purchase Orders'))
 )
 where r.role_code = 'HVAC_SUPERVISOR'
