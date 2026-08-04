@@ -50,9 +50,13 @@ export default function CreateWorkOrderModal({ rows, assets, locationRows = [], 
     !form.department && 'Department'
   ].filter(Boolean)
 
-  const submit = () => {
+  const submit = async () => {
     if (missing.length) return setError(`Complete ${missing.join(', ')} before creating the work order.`)
-    onCreate(form)
+    try {
+      await onCreate(form)
+    } catch (error) {
+      setError(error.message || 'Unable to create work order.')
+    }
   }
 
   return (

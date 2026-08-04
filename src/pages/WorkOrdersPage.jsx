@@ -139,9 +139,9 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
     setCreating(false)
     window.history.pushState({}, '', '/work-orders')
   }
-  const create = form => {
+  const create = async form => {
     if (!access.create) return
-    const created = onCreate(form)
+    const created = await onCreate(form)
     if (!created) return
     setCreating(false)
     setSelected(created)
