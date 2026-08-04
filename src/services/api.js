@@ -1,3 +1,5 @@
+import { toLocalDateTimeInput } from '../lib/datetime'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api'
 const tokenKey = 'seder-cafm-auth-token'
 
@@ -377,7 +379,7 @@ const mapPm = row => ({
   location: row.location_code || '',
   site: row.site_code,
   jobPlan: row.job_plan_num,
-  startDate: row.next_date || '',
+  startDate: toLocalDateTimeInput(row.next_date) || '',
   leadTime: row.lead_time_days || 0,
   frequency: row.frequency || 1,
   freqUnit: row.frequency_unit || 'MONTHS',

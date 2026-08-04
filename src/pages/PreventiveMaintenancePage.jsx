@@ -14,7 +14,7 @@ import TableSearch from '../components/ui/TableSearch'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 import { useAuth } from '../providers/AuthProvider'
-import { parseLocal, toLocalDateInput } from '../lib/datetime'
+import { parseLocal, toLocalDateTimeInput } from '../lib/datetime'
 import { countPmDueState, pmDueState } from '../lib/pmSchedule'
 import { generatePmWorkOrders } from '../lib/pmGeneration'
 import { filterRows } from '../lib/tableSearch'
@@ -51,12 +51,12 @@ const pmTemplateHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'ROUTE', 'LOCA
 
 const normalizeDate = value => {
   if (!value) return ''
-  if (parseLocal(value)) return toLocalDateInput(value)
+  if (parseLocal(value)) return toLocalDateTimeInput(value)
   const match = String(value).match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/)
   if (!match) return String(value)
   const months = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 }
   const year = Number(match[3].length === 2 ? `20${match[3]}` : match[3])
-  return toLocalDateInput(new Date(year, months[match[2]] ?? 0, Number(match[1])))
+  return toLocalDateTimeInput(new Date(year, months[match[2]] ?? 0, Number(match[1])))
 }
 
 const findPmRule = (rules = [], name = '') => rules.find(rule => String(rule.name || '').trim().toLowerCase() === String(name || '').trim().toLowerCase())

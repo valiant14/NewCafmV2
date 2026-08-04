@@ -66,10 +66,10 @@ export default function PmScheduleForm({ form, setForm, assets, jobPlans, depart
           <Field label="ROUTE" value={form.route} onChange={event => set('route', event.target.value)} />
           <Field label="JPNUM" value={form.jobPlan} required onChange={event => set('jobPlan', event.target.value)} suggestions={jobPlans.map(job => ({ value: job.number, label: job.description }))} />
           <Field label="PM Rule" value={form.scheduleRule || ''} onChange={chooseRule} suggestions={pmRules.filter(rule => rule.status === 'Active').map(rule => ({ value: rule.name, label: `${rule.frequency} ${rule.freqUnit} @ ${String(rule.triggerHour || 0).padStart(2, '0')}:00` }))} placeholder="Select generation rule" />
-          <Field label="NEXTDATE" type="date" value={form.startDate} required onChange={event => set('startDate', event.target.value)} />
+          <Field label="NEXTDATE" type="datetime-local" value={form.startDate} required onChange={event => set('startDate', event.target.value)} />
           <Field label="LEAD TIME (DAYS)" type="number" value={form.leadTime} disabled={ruleLocked} onChange={event => set('leadTime', Number(event.target.value))} />
           <Field label="FREQUENCY" type="number" value={form.frequency} required disabled={ruleLocked} onChange={event => set('frequency', Number(event.target.value))} />
-          <Field label="FREQUNIT" value={form.freqUnit} required disabled={ruleLocked} options={['HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'YEARS']} onChange={event => set('freqUnit', event.target.value)} />
+          <Field label="FREQUNIT" value={form.freqUnit} required disabled={ruleLocked} options={['MINUTES', 'HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'YEARS']} onChange={event => set('freqUnit', event.target.value)} />
           <Field label="PMCOUNTER" type="number" value={form.pmCounter} onChange={event => set('pmCounter', Number(event.target.value))} />
           <Field label="WORKTYPE" value="PM" onChange={() => {}} />
           <Field label="WOSTATUS" value={form.woStatus} disabled={ruleLocked} options={['WSCH', 'WAPPR']} onChange={event => set('woStatus', event.target.value)} />

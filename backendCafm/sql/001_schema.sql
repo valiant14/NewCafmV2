@@ -450,7 +450,7 @@ create table dbo.preventive_maintenance (
   route_code nvarchar(80) null,
   location_code nvarchar(80) null,
   job_plan_num nvarchar(80) not null,
-  next_date date not null,
+  next_date datetime2 not null,
   lead_time_days int not null constraint df_pm_lead default 0,
   frequency int not null,
   frequency_unit nvarchar(40) not null,

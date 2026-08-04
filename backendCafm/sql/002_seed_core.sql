@@ -64,7 +64,8 @@ go
 
 merge dbo.pm_schedule_rules as target
 using (values
-  ('Default Monthly PM', 1, 'MONTHS', 7, 30, 6, 'PMWO-', 'WSCH', 'Default monthly preventive maintenance generation rule.', 'Active')
+  ('Default Monthly PM', 1, 'MONTHS', 7, 30, 6, 'PMWO-', 'WSCH', 'Default monthly preventive maintenance generation rule.', 'Active'),
+  ('Every 1 Minute Test', 1, 'MINUTES', 0, 1, 0, 'PMT-', 'WSCH', 'Fast testing rule. Use only for PM generation testing.', 'Active')
 ) as source(rule_name, frequency, frequency_unit, lead_time_days, horizon_days, trigger_hour, wo_prefix, default_wo_status, notes, status)
 on target.rule_name = source.rule_name
 when matched then update set

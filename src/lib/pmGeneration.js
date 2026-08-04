@@ -1,4 +1,4 @@
-import { parseLocal, toLocalDateInput } from './datetime'
+import { parseLocal, toLocalDateTimeInput } from './datetime'
 
 // Shared by the PM Schedule page and the PM Schedule Rules page so both raise work orders
 // the same way. Duplicate generation is prevented by PM number plus NEXTDATE cycle.
@@ -31,12 +31,13 @@ export const addFrequency = (plan, rules = []) => {
   const date = parseLocal(plan.startDate) || new Date()
   const schedule = scheduleForPlan(plan, rules)
   const amount = schedule.frequency
+  if (schedule.freqUnit === 'MINUTES') date.setMinutes(date.getMinutes() + amount)
   if (schedule.freqUnit === 'HOURS') date.setHours(date.getHours() + amount)
   if (schedule.freqUnit === 'DAYS') date.setDate(date.getDate() + amount)
   if (schedule.freqUnit === 'WEEKS') date.setDate(date.getDate() + amount * 7)
   if (schedule.freqUnit === 'MONTHS') date.setMonth(date.getMonth() + amount)
   if (schedule.freqUnit === 'YEARS') date.setFullYear(date.getFullYear() + amount)
-  return toLocalDateInput(date)
+  return toLocalDateTimeInput(date)
 }
 
 export const generationCutoff = (plan, rules = [], now = new Date()) => {
@@ -47,6 +48,7 @@ export const generationCutoff = (plan, rules = [], now = new Date()) => {
 
 const generationAllowedNow = (plan, rules, now) => {
   const schedule = scheduleForPlan(plan, rules)
+  if (['MINUTES', 'HOURS'].includes(schedule.freqUnit)) return true
   return now.getHours() >= schedule.triggerHour
 }
 
