@@ -44,22 +44,24 @@ const storeStatusTone = status => String(status || 'Active') === 'Inactive' ? 'o
 const emptyStore = {
   code: '',
   name: '',
-  site: '1031',
+  site: '',
   status: 'Active'
 }
-const storeFields = [
+// Site was a free text box defaulted to 1031, so every store created here landed on that one
+// site however many were configured. The options come from the site master instead.
+const storeFieldsFor = siteOptions => [
   { key: 'code', label: 'Store Code', required: true, placeholder: 'DIWAN-MAIN' },
   { key: 'name', label: 'Store Name', required: true, placeholder: 'Diwan Main Store' },
-  { key: 'site', label: 'Site', required: true, placeholder: '1031' },
+  { key: 'site', label: 'Site', required: true, suggestions: siteOptions, placeholder: 'Search or select a site' },
   { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
 ]
 const templateHeaders = Object.keys(emptyStore)
 
-const normalizeImportRows = rows => rows.map(row => ({
+const normalizeImportRows = (rows, fallbackSite = '') => rows.map(row => ({
   ...emptyStore,
   code: String(row.code || row.Code || row['Store Code'] || row.store_code || '').trim(),
   name: row.name || row.Name || row['Store Name'] || row.store_name || '',
-  site: row.site || row.Site || row['Site Code'] || row.site_code || '1031',
+  site: row.site || row.Site || row['Site Code'] || row.site_code || fallbackSite,
   status: row.status || row.Status || 'Active'
 })).filter(row => row.code && row.name)
 
@@ -85,10 +87,14 @@ const allStockRows = (materials, stockRows, storeRows) => stockRows.map(row => {
   }
 })
 const cleanKey = value => String(value || '').trim().toLowerCase()
+// Placeholder rows carry a bare number in both fields. A number on its own is a legitimate
+// store code though - a warehouse is often numbered after its site - so only a row whose code
+// AND name are both numbers is discarded. Rejecting any numeric code hid real stores.
 const isUsableStore = store => {
   const code = String(store?.code || '').trim()
   const name = String(store?.name || '').trim()
-  return code && !/^\d+$/.test(code) && name && !/^\d+$/.test(name)
+  if (!code || !name) return false
+  return !(/^\d+$/.test(code) && /^\d+$/.test(name))
 }
 const defaultStoreCode = (storeRows = []) => {
   const validStores = storeRows.filter(isUsableStore)
@@ -184,7 +190,7 @@ function Widget({ icon: Icon, label, value, note, tone = 'neutral', onClick }) {
   )
 }
 
-export default function StoresPage({ materials = [], tools = [], stockRows = [], storeRows = [], setStoreRows, locationRows = [], scopeUser }) {
+export default function StoresPage({ materials = [], tools = [], stockRows = [], storeRows = [], setStoreRows, locationRows = [], siteRecords = [], scopeUser }) {
   const { user } = useAuth()
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -192,6 +198,9 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
   const [form, setForm] = useState(emptyStore)
   const [error, setError] = useState('')
   const routeId = decodeURIComponent(window.location.pathname.split('/stores/')[1] || '')
+  const activeSites = siteRecords.filter(site => site.status !== 'Inactive')
+  const siteOptions = activeSites.map(site => ({ value: site.code, label: site.name || '' }))
+  const defaultSite = activeSites[0]?.code || ''
   const summary = scopeRowsForUser(storeSummary(materials, stockRows, storeRows, locationRows).map(store => {
     const toolRows = toolRowsForStore(store, tools, storeRows)
     const lowToolCount = toolRows.filter(row => Number(row.available || 0) <= Number(row.reorderLevel || 0)).length
@@ -249,7 +258,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
     onRowClick: store => { setDrill(null); open(store) }
   })
   const openNew = () => {
-    setForm(emptyStore)
+    setForm({ ...emptyStore, site: defaultSite })
     setError('')
     setModalOpen(true)
   }
@@ -268,7 +277,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
     setSelected(current => current?.code === code ? { ...current, ...patch } : current)
   }
   const importRows = async rows => {
-    const normalized = normalizeImportRows(rows)
+    const normalized = normalizeImportRows(rows, defaultSite)
     await setStoreRows?.(current => [
       ...normalized,
       ...current.filter(store => !normalized.some(row => row.code === store.code))
@@ -516,7 +525,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
         <MasterRecordModal
           title="Add store"
           note="Create an approved storeroom for material stock and purchase requests."
-          fields={storeFields}
+          fields={storeFieldsFor(siteOptions)}
           form={form}
           setForm={setForm}
           error={error}

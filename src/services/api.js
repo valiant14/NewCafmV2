@@ -73,7 +73,9 @@ const mapUser = (row, roles = []) => ({
   password: '',
   name: row.display_name,
   email: row.email || '',
-  role: roles.find(role => role.roleId === row.role_id)?.role || '',
+  // The role master is only readable by roles that can open Roles & Permissions. Without the
+  // row's own role_name as a fallback, every user mapped to a blank role for everyone else.
+  role: roles.find(role => role.roleId === row.role_id)?.role || row.role_name || '',
   roleId: row.role_id,
   laborId: row.labor_id || '',
   site: row.site_scope || 'All Sites',
