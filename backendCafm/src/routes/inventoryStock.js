@@ -8,6 +8,7 @@ const router = Router()
 const emitChange = (req, payload) => req.app.locals.broadcastWorkspaceChange?.({
   actor: req.user?.userId || req.user?.username || '',
   moduleName: 'Stores',
+  relatedModules: ['Materials', 'Tools & Equipment', 'Reservations', 'Work Orders'],
   table: 'dbo.inventory_stock',
   ...payload
 })

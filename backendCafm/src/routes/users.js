@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
-import { getPool } from '../db/pool.js'
-import { requirePermission } from '../middleware/auth.js'
+import { getPool, sql } from '../db/pool.js'
+import { clearPermissionCache, requirePermission } from '../middleware/auth.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 
 const router = Router()
@@ -23,24 +23,37 @@ const resolveRoleId = async (pool, value) => {
 }
 
 const syncScopes = async (pool, userId, sites, departments) => {
-  await pool.request().input('userId', userId).query('delete from dbo.user_site_access where user_id = @userId')
-  await pool.request().input('userId', userId).query('delete from dbo.user_department_access where user_id = @userId')
+  const siteCodes = [...new Set(parseList(sites).filter(value => value !== 'All Sites').map(siteCode).filter(Boolean))]
+  const departmentNames = [...new Set(parseList(departments).filter(value => value !== 'All Departments'))]
+  const transaction = new sql.Transaction(pool)
+  await transaction.begin()
+  try {
+    await new sql.Request(transaction)
+      .input('userId', sql.NVarChar(50), userId)
+      .input('sitesJson', sql.NVarChar(sql.MAX), JSON.stringify(siteCodes))
+      .input('departmentsJson', sql.NVarChar(sql.MAX), JSON.stringify(departmentNames))
+      .query(`
+        set xact_abort on;
 
-  for (const item of parseList(sites).filter(value => value !== 'All Sites')) {
-    const code = siteCode(item)
-    if (!code) continue
-    await pool.request()
-      .input('userId', userId)
-      .input('siteCode', code)
-      .query('insert into dbo.user_site_access(user_id, site_code) values(@userId, @siteCode)')
-  }
+        delete from dbo.user_site_access where user_id = @userId;
+        delete from dbo.user_department_access where user_id = @userId;
 
-  for (const department of parseList(departments).filter(value => value !== 'All Departments')) {
-    await pool.request()
-      .input('userId', userId)
-      .input('department', department)
-      .query('insert into dbo.user_department_access(user_id, department_name, sub_department_code) values(@userId, @department, null)')
+        insert into dbo.user_site_access(user_id, site_code)
+        select @userId, value
+        from openjson(@sitesJson)
+        where nullif(ltrim(rtrim(value)), '') is not null;
+
+        insert into dbo.user_department_access(user_id, department_name, sub_department_code)
+        select @userId, value, null
+        from openjson(@departmentsJson)
+        where nullif(ltrim(rtrim(value)), '') is not null;
+      `)
+    await transaction.commit()
+  } catch (error) {
+    await transaction.rollback().catch(() => {})
+    throw error
   }
+  clearPermissionCache(userId)
 }
 
 router.get('/', requirePermission('Users', 'view'), asyncHandler(async (req, res) => {
@@ -77,6 +90,7 @@ router.post('/', requirePermission('Users', 'create'), asyncHandler(async (req, 
       values(@user_id, @username, @password_hash, @display_name, @email, @role_id, @labor_id, @status)
   `)
   await syncScopes(pool, req.body.user_id, req.body.site, req.body.department)
+  clearPermissionCache(req.body.user_id)
   emitChange(req, { action: 'create', id: result.recordset[0]?.user_id })
   res.status(201).json(result.recordset[0])
 }))
@@ -106,6 +120,7 @@ router.put('/:id', requirePermission('Users', 'edit'), asyncHandler(async (req, 
   if (req.body.site !== undefined || req.body.department !== undefined) {
     await syncScopes(pool, req.params.id, req.body.site, req.body.department)
   }
+  clearPermissionCache(req.params.id)
   emitChange(req, { action: 'edit', id: result.recordset[0]?.user_id })
   res.json(result.recordset[0])
 }))

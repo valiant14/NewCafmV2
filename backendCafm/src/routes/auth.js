@@ -16,32 +16,31 @@ const sessionPayloadForAccount = async (pool, account) => {
       select u.user_id, u.username, u.password_hash, u.display_name, u.email, u.status, r.role_id, r.role_code, r.role_name
       from dbo.users u
       left join dbo.roles r on r.role_id = u.role_id
-      where u.user_id = @userId
+      where u.user_id = @userId;
+
+      select p.module_name, p.action_name
+      from dbo.role_permissions p
+      join dbo.users u on u.role_id = p.role_id
+      where u.user_id = @userId and p.allowed = 1;
+
+      select site_code
+      from dbo.user_site_access
+      where user_id = @userId;
+
+      select department_name, sub_department_code
+      from dbo.user_department_access
+      where user_id = @userId;
     `)
-  const liveAccount = result.recordset[0]
+  const liveAccount = result.recordsets[0]?.[0]
   if (!liveAccount || !isActive(liveAccount.status) || !liveAccount.role_id) return null
 
-  const permissionRows = await pool.request()
-    .input('roleId', liveAccount.role_id)
-    .query(`
-      select module_name, action_name
-      from dbo.role_permissions
-      where role_id = @roleId and allowed = 1
-    `)
-
-  const permissions = permissionRows.recordset.reduce((map, row) => {
+  const permissions = (result.recordsets[1] || []).reduce((map, row) => {
     map[row.action_name] = [...(map[row.action_name] || []), row.module_name]
     return map
   }, {})
 
-  const siteRows = await pool.request()
-    .input('userId', liveAccount.user_id)
-    .query('select site_code from dbo.user_site_access where user_id = @userId')
-  const departmentRows = await pool.request()
-    .input('userId', liveAccount.user_id)
-    .query('select department_name, sub_department_code from dbo.user_department_access where user_id = @userId')
-  const siteCodes = siteRows.recordset.map(row => row.site_code)
-  const departments = [...new Set(departmentRows.recordset.flatMap(row => [row.department_name, row.sub_department_code]).filter(Boolean))]
+  const siteCodes = (result.recordsets[2] || []).map(row => row.site_code)
+  const departments = [...new Set((result.recordsets[3] || []).flatMap(row => [row.department_name, row.sub_department_code]).filter(Boolean))]
 
   return {
     userId: liveAccount.user_id,
@@ -71,7 +70,7 @@ router.post('/login', asyncHandler(async (req, res) => {
       select u.user_id, u.username, u.password_hash, u.display_name, u.email, u.status, r.role_id
       from dbo.users u
       left join dbo.roles r on r.role_id = u.role_id
-      where lower(ltrim(rtrim(u.username))) = lower(ltrim(rtrim(@username)))
+      where u.username = ltrim(rtrim(@username))
     `)
   const account = result.recordset[0]
   if (!account) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' })

@@ -1,11 +1,18 @@
 import { Router } from 'express'
-import { getPool } from '../db/pool.js'
+import { getPool, sql } from '../db/pool.js'
+import { env } from '../config/env.js'
 import { requirePermission } from '../middleware/auth.js'
 import { addScopeWhere } from '../middleware/scope.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { bindParams } from '../utils/sqlParams.js'
 
 const dateColumnPattern = /(^|_)(date|at)$|_date$|_at$/
+const generatedColumns = new Set(['created_at', 'updated_at'])
+const boundedInteger = (value, fallback, max = Number.MAX_SAFE_INTEGER) => {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? Math.min(max, Math.max(0, parsed)) : fallback
+}
+const quoteColumn = column => `[${String(column).replaceAll(']', ']]')}]`
 
 const assertKnownColumn = (columns, key) => {
   if (!columns.includes(key)) {
@@ -212,20 +219,67 @@ const normalizeGeneratedKeys = async (pool, payload, { table, key }) => {
 const emitChange = (req, payload) => {
   req.app.locals.broadcastWorkspaceChange?.({
     actor: req.user?.userId || req.user?.username || '',
+    siteCode: req.body?.site_code || null,
+    department: req.body?.department_name || null,
     ...payload
   })
 }
 
-export function crudRouter({ table, key, columns, defaultOrder = key, moduleName, scope }) {
+export function crudRouter({ table, key, columns, defaultOrder = key, moduleName, relatedModules = [], scope }) {
   const router = Router()
-  const editable = columns.filter(column => column !== key)
+  const insertable = columns.filter(column => !generatedColumns.has(column))
+  const editable = insertable.filter(column => column !== key)
+  const selectColumns = columns.map(quoteColumn).join(', ')
   const permit = action => moduleName ? requirePermission(moduleName, action) : (req, res, next) => next()
 
   router.get('/', permit('view'), asyncHandler(async (req, res) => {
     const pool = await getPool()
     const scoped = scope ? addScopeWhere({ user: req.user, ...scope }) : { where: '', params: {} }
-    const request = bindParams(pool.request(), scoped.params)
-    const result = await request.query(`select * from ${table} where 1 = 1${scoped.where} order by ${defaultOrder}`)
+    const filterClauses = []
+    const filterParams = {}
+    columns.forEach((column, index) => {
+      const value = Array.isArray(req.query[column]) ? req.query[column][0] : req.query[column]
+      if (value === undefined || value === '') return
+      filterClauses.push(`${quoteColumn(column)} = @listFilter${index}`)
+      filterParams[`listFilter${index}`] = value
+    })
+    if (columns.includes('updated_at') && req.query.updatedAfter) {
+      const updatedAfter = new Date(req.query.updatedAfter)
+      if (Number.isNaN(updatedAfter.getTime())) {
+        return res.status(400).json({ error: 'BadRequest', message: 'updatedAfter must be a valid date' })
+      }
+      filterClauses.push('[updated_at] > @updatedAfter')
+      filterParams.updatedAfter = updatedAfter
+    }
+
+    const requestedLimit = req.query.limit ?? req.query.pageSize
+    const paged = requestedLimit !== undefined
+    const limit = boundedInteger(requestedLimit, 100, env.listMaxPageSize) || 1
+    const page = boundedInteger(req.query.page, 1) || 1
+    const offset = req.query.offset === undefined
+      ? (page - 1) * limit
+      : boundedInteger(req.query.offset, 0)
+    const includeTotal = ['1', 'true', 'yes'].includes(String(req.query.includeTotal || '').toLowerCase())
+    const where = `${scoped.where}${filterClauses.length ? ` and ${filterClauses.join(' and ')}` : ''}`
+    const request = bindParams(pool.request(), { ...scoped.params, ...filterParams })
+    if (paged) {
+      request.input('listOffset', sql.Int, offset)
+      request.input('listLimit', sql.Int, limit)
+    }
+    const result = await request.query(`
+      select ${selectColumns}
+      from ${table}
+      where 1 = 1${where}
+      order by ${defaultOrder}
+      ${paged ? 'offset @listOffset rows fetch next @listLimit rows only' : ''};
+      ${includeTotal ? `select count_big(1) as total from ${table} where 1 = 1${where};` : ''}
+    `)
+    res.set('Accept-Ranges', 'records')
+    if (paged) {
+      res.set('X-Page-Size', String(limit))
+      res.set('X-Page-Offset', String(offset))
+    }
+    if (includeTotal) res.set('X-Total-Count', String(result.recordsets[1]?.[0]?.total || 0))
     res.json(result.recordset)
   }))
 
@@ -235,7 +289,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     const request = bindParams(pool.request(), scoped.params)
     const result = await request
       .input('id', req.params.id)
-      .query(`select * from ${table} where ${key} = @id${scoped.where}`)
+      .query(`select ${selectColumns} from ${table} where ${quoteColumn(key)} = @id${scoped.where}`)
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
     res.json(result.recordset[0])
   }))
@@ -246,14 +300,15 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     const pool = await getPool()
     payload = await normalizeGeneratedKeys(pool, payload, { table, key })
     payload = await normalizeForeignKeys(pool, payload, { table })
-    const insertColumns = columns.filter(column => payload[column] !== undefined)
+    const insertColumns = insertable.filter(column => payload[column] !== undefined)
+    if (!insertColumns.length) return res.status(400).json({ error: 'BadRequest', message: 'No fields supplied' })
     const request = bindParams(pool.request(), Object.fromEntries(insertColumns.map(column => [column, payload[column]])))
     const result = await request.query(`
       insert into ${table} (${insertColumns.join(', ')})
       output inserted.*
       values (${insertColumns.map(column => `@${column}`).join(', ')})
     `)
-    emitChange(req, { moduleName, table, action: 'create', key, id: result.recordset[0]?.[key] })
+    emitChange(req, { moduleName, relatedModules, table, action: 'create', key, id: result.recordset[0]?.[key] })
     res.status(201).json(result.recordset[0])
   }))
 
@@ -274,7 +329,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
       where ${key} = @id
     `)
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
-    emitChange(req, { moduleName, table, action: 'edit', key, id: result.recordset[0]?.[key] })
+    emitChange(req, { moduleName, relatedModules, table, action: 'edit', key, id: result.recordset[0]?.[key] })
     res.json(result.recordset[0])
   }))
 
@@ -284,7 +339,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
       .input('id', req.params.id)
       .query(`delete from ${table} output deleted.* where ${key} = @id`)
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
-    emitChange(req, { moduleName, table, action: 'delete', key, id: result.recordset[0]?.[key] })
+    emitChange(req, { moduleName, relatedModules, table, action: 'delete', key, id: result.recordset[0]?.[key] })
     res.json({ deleted: result.recordset[0] })
   }))
 

@@ -2,6 +2,42 @@ import jwt from 'jsonwebtoken'
 import { env } from '../config/env.js'
 import { getPool } from '../db/pool.js'
 
+const permissionCache = new Map()
+const permissionKey = (userId, moduleName, action) => `${userId}\u0000${moduleName}\u0000${action}`
+
+const cachedPermission = key => {
+  const entry = permissionCache.get(key)
+  if (!entry) return undefined
+  if (entry.expiresAt <= Date.now()) {
+    permissionCache.delete(key)
+    return undefined
+  }
+  return entry.allowed
+}
+
+const cachePermission = (key, allowed) => {
+  if (!env.permissionCacheTtlMs) return
+  permissionCache.delete(key)
+  permissionCache.set(key, { allowed, expiresAt: Date.now() + env.permissionCacheTtlMs })
+  while (permissionCache.size > env.permissionCacheMaxEntries) {
+    permissionCache.delete(permissionCache.keys().next().value)
+  }
+}
+
+export const clearPermissionCache = userId => {
+  if (!userId) return permissionCache.clear()
+  const prefix = `${userId}\u0000`
+  for (const key of permissionCache.keys()) {
+    if (key.startsWith(prefix)) permissionCache.delete(key)
+  }
+}
+
+export const getPermissionCacheStats = () => ({
+  entries: permissionCache.size,
+  maxEntries: env.permissionCacheMaxEntries,
+  ttlMs: env.permissionCacheTtlMs
+})
+
 export const requireAuth = (req, res, next) => {
   const header = req.headers.authorization || ''
   const token = header.startsWith('Bearer ') ? header.slice(7) : ''
@@ -17,9 +53,15 @@ export const requireAuth = (req, res, next) => {
 
 export const requirePermission = (moduleName, action = 'view') => async (req, res, next) => {
   try {
+    const userId = req.user?.userId || ''
+    const key = permissionKey(userId, moduleName, action)
+    const cached = cachedPermission(key)
+    if (cached === true) return next()
+    if (cached === false) return res.status(403).json({ error: 'Forbidden', message: `Missing ${action} permission for ${moduleName}` })
+
     const pool = await getPool()
     const result = await pool.request()
-      .input('userId', req.user?.userId || '')
+      .input('userId', userId)
       .input('moduleName', moduleName)
       .input('actionName', action)
       .query(`
@@ -33,7 +75,9 @@ export const requirePermission = (moduleName, action = 'view') => async (req, re
           and p.module_name = @moduleName
           and p.action_name = @actionName
       `)
-    if (result.recordset[0]) return next()
+    const allowed = Boolean(result.recordset[0])
+    cachePermission(key, allowed)
+    if (allowed) return next()
     res.status(403).json({ error: 'Forbidden', message: `Missing ${action} permission for ${moduleName}` })
   } catch (error) {
     next(error)

@@ -13,6 +13,8 @@
     "db:schema": "npm --prefix backendCafm run db:schema",
     "db:seed-core": "npm --prefix backendCafm run db:seed-core",
     "db:create-admin": "npm --prefix backendCafm run db:create-admin",
+    "db:optimize": "npm --prefix backendCafm run db:optimize",
+    "backend:performance": "npm --prefix backendCafm run performance:check",
     "db:setup": "npm --prefix backendCafm run db:setup"
   },
   "dependencies": {

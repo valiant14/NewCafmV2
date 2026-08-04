@@ -30,27 +30,43 @@ const normalizeHost = value => {
 
 const readSmtpResponse = socket => new Promise((resolve, reject) => {
   let buffer = ''
+  const cleanup = () => {
+    socket.off('data', onData)
+    socket.off('error', onError)
+    socket.off('close', onClose)
+  }
   const onData = chunk => {
     buffer += chunk.toString('utf8')
+    if (buffer.length > 65536) {
+      cleanup()
+      reject(new Error('SMTP response exceeded 64 KB.'))
+      return
+    }
     const lines = buffer.split(/\r?\n/).filter(Boolean)
     const last = lines[lines.length - 1] || ''
     if (/^\d{3} /.test(last)) {
-      socket.off('data', onData)
+      cleanup()
       const code = Number(last.slice(0, 3))
       resolve({ code, text: lines.join('\n') })
     }
   }
   const onError = error => {
-    socket.off('data', onData)
+    cleanup()
     reject(error)
   }
+  const onClose = () => {
+    cleanup()
+    reject(new Error('SMTP connection closed before a complete response was received.'))
+  }
   socket.once('error', onError)
+  socket.once('close', onClose)
   socket.on('data', onData)
 })
 
 const writeSmtp = async (socket, command, expected = [250]) => {
+  const responsePromise = readSmtpResponse(socket)
   socket.write(`${command}${CRLF}`)
-  const response = await readSmtpResponse(socket)
+  const response = await responsePromise
   if (!expected.includes(response.code)) {
     throw new Error(`SMTP command failed (${response.code}): ${response.text}`)
   }
@@ -59,18 +75,43 @@ const writeSmtp = async (socket, command, expected = [250]) => {
 
 const connectSocket = ({ host, port, secure }) => new Promise((resolve, reject) => {
   const socket = secure ? tls.connect({ host, port, servername: host, rejectUnauthorized: false }) : net.connect({ host, port })
+  const event = secure ? 'secureConnect' : 'connect'
+  const cleanup = () => {
+    socket.off(event, onConnect)
+    socket.off('error', onError)
+  }
+  const onConnect = () => {
+    cleanup()
+    resolve(socket)
+  }
+  const onError = error => {
+    cleanup()
+    reject(error)
+  }
   socket.setTimeout(15000)
-  socket.once(secure ? 'secureConnect' : 'connect', () => resolve(socket))
+  socket.once(event, onConnect)
   socket.once('timeout', () => {
     socket.destroy(new Error(`Connection to ${host}:${port} timed out.`))
   })
-  socket.once('error', reject)
+  socket.once('error', onError)
 })
 
 const upgradeToTls = (socket, host) => new Promise((resolve, reject) => {
   const secureSocket = tls.connect({ socket, servername: host, rejectUnauthorized: false })
-  secureSocket.once('secureConnect', () => resolve(secureSocket))
-  secureSocket.once('error', reject)
+  const cleanup = () => {
+    secureSocket.off('secureConnect', onConnect)
+    secureSocket.off('error', onError)
+  }
+  const onConnect = () => {
+    cleanup()
+    resolve(secureSocket)
+  }
+  const onError = error => {
+    cleanup()
+    reject(error)
+  }
+  secureSocket.once('secureConnect', onConnect)
+  secureSocket.once('error', onError)
 })
 
 const buildMessage = ({ from, recipients, subject, text }) => [
