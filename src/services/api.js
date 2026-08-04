@@ -8,12 +8,13 @@ export const setAuthToken = token => token ? localStorage.setItem(tokenKey, toke
 
 const request = async (path, options = {}) => {
   const token = getAuthToken()
+  const method = String(options.method || 'GET').toUpperCase()
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    cache: 'no-store',
+    cache: method === 'GET' ? 'no-cache' : 'no-store',
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache',
+      Accept: 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     }
@@ -239,12 +240,12 @@ const mapWorkOrderTask = row => ({
   department: row.department_name || ''
 })
 
-const workOrderMeter = (row, meterRows = []) => meterRows
-  .filter(meter => String(meter.workOrder) === String(row.work_order_num))
-  .sort((left, right) => String(right.readingDate || '').localeCompare(String(left.readingDate || '')))[0] || null
+const latestMeter = (meterRows = []) => meterRows.reduce((latest, meter) => (
+  !latest || String(meter.readingDate || '').localeCompare(String(latest.readingDate || '')) > 0 ? meter : latest
+), null)
 
 const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTasks = [], meterRows = []) => {
-  const meter = workOrderMeter(row, meterRows)
+  const meter = latestMeter(meterRows)
   return {
   WORKORDER: row.work_order_num,
   'DESCRIPITION ': row.description,
@@ -286,12 +287,12 @@ const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTa
   'METER READING UNIT': meter?.unit || '',
   'METER READING DATE': meter?.readingDate || '',
   'PLANNED LABOR': plannedLabor
-    .filter(labor => String(labor.workOrder) === String(row.work_order_num))
+    .slice()
     .sort((left, right) => Number(left.lineOrder || 0) - Number(right.lineOrder || 0)),
   'JOB PLAN TASKS': workOrderTasks
-    .filter(task => String(task.workOrder) === String(row.work_order_num))
+    .slice()
     .sort((left, right) => Number(left.sequence || 0) - Number(right.sequence || 0)),
-  'PLANNED RESOURCES': resourceRequests.filter(resource => String(resource.workOrder) === String(row.work_order_num))
+  'PLANNED RESOURCES': resourceRequests
   }
 }
 
@@ -528,6 +529,18 @@ export async function loadWorkspace() {
   const mappedWorkOrderPlannedLabor = workOrderPlannedLabor.map(mapPlannedLabor)
   const mappedWorkOrderTasks = workOrderTasks.map(mapWorkOrderTask)
   const mappedMeters = meters.map(mapMeter)
+  const groupByWorkOrder = rows => rows.reduce((map, row) => {
+    const key = String(row.workOrder || '')
+    if (!key) return map
+    const group = map.get(key)
+    if (group) group.push(row)
+    else map.set(key, [row])
+    return map
+  }, new Map())
+  const resourcesByWorkOrder = groupByWorkOrder(mappedWorkOrderResources)
+  const laborByWorkOrder = groupByWorkOrder(mappedWorkOrderPlannedLabor)
+  const tasksByWorkOrder = groupByWorkOrder(mappedWorkOrderTasks)
+  const metersByWorkOrder = groupByWorkOrder(mappedMeters)
   return {
     sites: sites.map(mapSite),
     departments: departments.map(mapDepartment),
@@ -541,7 +554,16 @@ export async function loadWorkspace() {
     inventoryStock: inventoryStock.map(mapInventoryStock),
     tools: tools.map(mapTool),
     failureCodes: failureLibrary.map(mapFailureCode),
-    workOrders: workOrders.map(row => mapWorkOrder(row, mappedWorkOrderResources, mappedWorkOrderPlannedLabor, mappedWorkOrderTasks, mappedMeters)),
+    workOrders: workOrders.map(row => {
+      const key = String(row.work_order_num)
+      return mapWorkOrder(
+        row,
+        resourcesByWorkOrder.get(key) || [],
+        laborByWorkOrder.get(key) || [],
+        tasksByWorkOrder.get(key) || [],
+        metersByWorkOrder.get(key) || []
+      )
+    }),
     serviceRequests: serviceRequests.map(mapServiceRequest),
     purchaseRequests: purchaseRequests.map(mapPurchaseRequest),
     purchaseOrders: purchaseOrders.map(mapPurchaseOrder),

@@ -11,9 +11,19 @@ export const workOrderPriorities = [
 ]
 
 export const priorityCode = value => {
-  const digit = String(value ?? '').trim().match(/\d/)?.[0]
-  return digit || ''
+  const text = String(value ?? '').trim()
+  const digit = text.match(/[1-4]/)?.[0]
+  if (digit) return digit
+  const named = workOrderPriorities.find(priority => priority.label.toLowerCase() === text.toLowerCase())
+  return named?.value || ''
 }
 
 export const priorityLabel = value =>
   workOrderPriorities.find(priority => priority.value === priorityCode(value))?.label || ''
+
+export const priorityTone = value => ({
+  1: 'red',
+  2: 'orange',
+  3: 'blue',
+  4: 'neutral'
+})[priorityCode(value)] || 'neutral'

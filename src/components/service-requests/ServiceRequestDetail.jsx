@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, ChevronRight, ClipboardCheck, FileText, Paperclip, Printer, Upload, X } from 'lucide-react'
 import Badge from '../ui/Badge'
+import StatusBadge from '../ui/StatusBadge'
 import Alert from '../ui/Alert'
 import Button from '../ui/Button'
 import { printWithoutBrowserTitle } from '../../lib/print'
@@ -8,7 +9,6 @@ import { Field, Section } from '../ui/FormControls'
 import { ModalFooter, ModalHeader, ModalPanel } from '../ui/ModalFrame'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { sameDepartment } from '../../lib/departments'
-import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import Surface, { SurfaceHeader } from '../ui/Surface'
 
 const tabs = [
@@ -145,7 +145,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
               {!isNew && <p className="text-[9px] font-extrabold uppercase tracking-[.18em] text-[var(--app-muted)]">Job request · {form.requestType?.toUpperCase() || 'SERVICE'}</p>}
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <h1 className="text-3xl font-extrabold text-[var(--app-ink)]">{form.sr === 'AUTO' ? 'New job request' : form.sr}</h1>
-                <Badge tone={statusTone(form.status)}>{form.status} · {statusDescription('serviceRequest', form.status)}</Badge>
+                <StatusBadge application="serviceRequest" value={form.status} />
               </div>
               <p className="mt-2 max-w-3xl text-sm text-[var(--app-muted)]">{isNew ? 'Tell us what happened and where.' : form.description}</p>
             </div>

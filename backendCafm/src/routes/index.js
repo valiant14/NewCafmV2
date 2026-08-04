@@ -8,11 +8,13 @@ import rolesRouter from './roles.js'
 import usersRouter from './users.js'
 import { crudRouter } from './crudFactory.js'
 import inventoryStockRouter from './inventoryStock.js'
-import { requireAuth, requirePermission } from '../middleware/auth.js'
-import { getPool } from '../db/pool.js'
-import { getPmSchedulerStatus, runPmSchedulerOnce } from '../services/pmScheduler.js'
+import { getPermissionCacheStats, requireAuth, requirePermission } from '../middleware/auth.js'
+import { getPool, getPoolStats } from '../db/pool.js'
+import { getPmSchedulerRuntime, getPmSchedulerStatus, runPmSchedulerOnce } from '../services/pmScheduler.js'
 import { sendEmailNotification } from '../services/emailSender.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
+import { getRealtimeStats } from '../realtime.js'
+import { getRuntimeMetrics } from '../services/runtimeMetrics.js'
 
 const router = Router()
 
@@ -54,7 +56,29 @@ const normalizeSmtpHost = value => {
   return text.split('/')[0].split(':')[0].trim()
 }
 
-router.get('/health', (req, res) => res.json({ ok: true, service: 'backendCafm', realtime: Boolean(req.app.locals.io) }))
+router.get('/health', asyncHandler(async (req, res) => {
+  let database = getPoolStats()
+  let databaseError = ''
+  if (String(req.query.deep || '') === '1') {
+    try {
+      const pool = await getPool()
+      await pool.request().query('select 1 as healthy')
+      database = getPoolStats()
+    } catch (error) {
+      databaseError = error.message
+    }
+  }
+  const ok = !databaseError
+  res.status(ok ? 200 : 503).json({
+    ok,
+    service: 'backendCafm',
+    database: { ...database, ...(databaseError ? { error: databaseError } : {}) },
+    realtime: getRealtimeStats(),
+    scheduler: getPmSchedulerRuntime(),
+    permissionCache: getPermissionCacheStats(),
+    runtime: getRuntimeMetrics()
+  })
+}))
 router.use('/auth', authRouter)
 router.use(requireAuth)
 
@@ -161,14 +185,17 @@ router.use('/inventory-stock', inventoryStockRouter)
 
 router.use('/work-orders', crudRouter({
   moduleName: 'Work Orders',
+  relatedModules: ['Overview', 'Job Requests', 'Preventive Maintenance', 'Meters'],
   table: 'dbo.work_orders',
   key: 'work_order_num',
   columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'ptw_files_json', 'general_files_json', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'created_at', 'updated_at'],
+  defaultOrder: 'reported_at desc, work_order_num desc',
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
 router.use('/work-order-resource-requests', crudRouter({
   moduleName: 'Work Orders',
+  relatedModules: ['Stores', 'Materials', 'Tools & Equipment', 'Purchase Requisitions', 'Reservations'],
   table: 'dbo.work_order_resource_requests',
   key: 'resource_request_id',
   columns: ['resource_request_id', 'work_order_num', 'resource_type', 'item_code', 'item_description', 'requested_quantity', 'available_quantity', 'store_code', 'site_code', 'department_name', 'source_type', 'availability_status', 'request_status', 'transaction_ref', 'purchase_request_num', 'purchase_order_num', 'reservation_num', 'supply_chain_status', 'created_at', 'updated_at'],
@@ -193,46 +220,57 @@ router.use('/work-order-tasks', crudRouter({
 
 router.use('/service-requests', crudRouter({
   moduleName: 'Job Requests',
+  relatedModules: ['Overview', 'Work Orders'],
   table: 'dbo.service_requests',
   key: 'sr_num',
   columns: ['sr_num', 'description', 'long_description', 'site_code', 'location_code', 'asset_num', 'department_name', 'sub_department_code', 'assigned_department_name', 'reported_by', 'reported_at', 'priority', 'request_type', 'failure_code', 'status', 'converted_work_order_num', 'created_at', 'updated_at'],
+  defaultOrder: 'reported_at desc, sr_num desc',
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
 router.use('/purchase-requisitions', crudRouter({
   moduleName: 'Purchase Requisitions',
+  relatedModules: ['Work Orders', 'Stores', 'Materials', 'Tools & Equipment', 'Purchase Orders'],
   table: 'dbo.purchase_requisitions',
   key: 'pr_num',
   columns: ['pr_num', 'work_order_num', 'resource_request_id', 'request_type', 'item_code', 'item_description', 'requested_quantity', 'planned_quantity', 'available_quantity', 'store_code', 'site_code', 'department_name', 'status', 'po_num', 'created_at', 'approved_at', 'closed_at', 'cancelled_at', 'updated_at'],
+  defaultOrder: 'created_at desc, pr_num desc',
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
 router.use('/purchase-orders', crudRouter({
   moduleName: 'Purchase Orders',
+  relatedModules: ['Work Orders', 'Stores', 'Materials', 'Tools & Equipment', 'Purchase Requisitions', 'Reservations'],
   table: 'dbo.purchase_orders',
   key: 'po_num',
   columns: ['po_num', 'pr_num', 'work_order_num', 'resource_request_id', 'request_type', 'item_code', 'item_description', 'ordered_quantity', 'store_code', 'site_code', 'department_name', 'status', 'created_at', 'approved_at', 'received_at', 'closed_at', 'cancelled_at', 'updated_at'],
+  defaultOrder: 'created_at desc, po_num desc',
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
 router.use('/reservations', crudRouter({
   moduleName: 'Reservations',
+  relatedModules: ['Work Orders', 'Stores', 'Materials', 'Tools & Equipment'],
   table: 'dbo.inventory_reservations',
   key: 'reservation_num',
   columns: ['reservation_num', 'work_order_num', 'resource_request_id', 'pr_num', 'po_num', 'item_code', 'item_description', 'reserved_quantity', 'arranged_quantity', 'released_quantity', 'delivered_quantity', 'store_code', 'site_code', 'department_name', 'status', 'created_at', 'updated_at'],
+  defaultOrder: 'created_at desc, reservation_num desc',
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
 router.use('/preventive-maintenance', crudRouter({
   moduleName: 'Preventive Maintenance',
+  relatedModules: ['Overview', 'PM Schedule Rules', 'Work Orders'],
   table: 'dbo.preventive_maintenance',
   key: 'pm_num',
   columns: ['pm_num', 'description', 'asset_num', 'route_code', 'location_code', 'job_plan_num', 'next_date', 'lead_time_days', 'frequency', 'frequency_unit', 'schedule_rule_name', 'pm_counter', 'work_type', 'wo_status', 'store_code', 'supervisor', 'lead_person', 'person_group', 'site_code', 'department_name', 'sub_department_code', 'pm_status', 'last_generated_cycle', 'created_at', 'updated_at'],
+  defaultOrder: 'next_date, pm_num',
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
 router.use('/pm-schedule-rules', crudRouter({
   moduleName: 'PM Schedule Rules',
+  relatedModules: ['Preventive Maintenance'],
   table: 'dbo.pm_schedule_rules',
   key: 'rule_name',
   columns: ['rule_name', 'frequency', 'frequency_unit', 'lead_time_days', 'horizon_days', 'trigger_hour', 'wo_prefix', 'default_wo_status', 'notes', 'status', 'created_at', 'updated_at']
@@ -308,17 +346,21 @@ router.use('/job-plan-tasks', crudRouter({
 
 router.use('/incidents', crudRouter({
   moduleName: 'Incidents',
+  relatedModules: ['Overview'],
   table: 'dbo.incidents',
   key: 'incident_num',
   columns: ['incident_num', 'description', 'site_code', 'location_code', 'asset_num', 'department_name', 'status', 'reported_at', 'created_at', 'updated_at'],
+  defaultOrder: 'reported_at desc, incident_num desc',
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
 router.use('/meter-readings', crudRouter({
   moduleName: 'Meters',
+  relatedModules: ['Work Orders', 'Assets'],
   table: 'dbo.meter_readings',
   key: 'meter_reading_id',
   columns: ['meter_reading_id', 'meter_id', 'asset_num', 'work_order_num', 'site_code', 'department_name', 'reading_value', 'reading_unit', 'reading_at', 'created_at'],
+  defaultOrder: 'reading_at desc, meter_reading_id desc',
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 

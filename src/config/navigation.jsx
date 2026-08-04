@@ -57,7 +57,7 @@ export const routeToPage = pathname => {
 
   return match?.name || 'Overview'
 }
-1
+
 export const pathForPage = pageName => (
   navigationItems.find(item => item.name === pageName)?.path || '/'
 )

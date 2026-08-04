@@ -1,6 +1,6 @@
 import { Printer } from 'lucide-react'
 import Badge from '../ui/Badge'
-import { statusTone } from '../../lib/statusMatrix'
+import StatusBadge from '../ui/StatusBadge'
 
 const headerClass = 'grid gap-3 border-b border-[var(--app-line)] bg-transparent pb-3'
 const headerTopClass = 'flex flex-wrap items-start justify-between gap-3'
@@ -17,7 +17,6 @@ export default function WorkOrderHeader({
   number,
   workType,
   status,
-  statusDescription,
   description,
   isPM,
   statusOptions = [],
@@ -35,7 +34,7 @@ export default function WorkOrderHeader({
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h2 className={titleClass}>{number === 'AUTO' ? 'New work order' : `Work order #${number}`}</h2>
             <Badge tone={isPM ? 'blue' : 'purple'}>{workType}</Badge>
-            <Badge tone={statusTone(status)}>{statusDescription || status}</Badge>
+            <StatusBadge application="workOrder" value={status} />
           </div>
           <p className={descriptionClass}>{description || 'Enter work order information'}</p>
         </div>

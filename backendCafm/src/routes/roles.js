@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import sql from 'mssql'
 import { getPool } from '../db/pool.js'
-import { requirePermission } from '../middleware/auth.js'
+import { clearPermissionCache, requirePermission } from '../middleware/auth.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 
 const router = Router()
@@ -69,6 +69,7 @@ const saveRole = async (pool, roleId, body = {}) => {
     `)
   if (!result.recordset[0]) return null
   await syncPermissions(pool, roleId, body.permissions)
+  clearPermissionCache()
   return readRole(pool, roleId)
 }
 
@@ -103,7 +104,9 @@ const syncPermissions = async (pool, roleId, permissions = {}) => {
     await new sql.Request(transaction)
       .input('roleId', roleId)
       .input('resource', `role-permissions-${roleId}`)
+      .input('permissionsJson', sql.NVarChar(sql.MAX), JSON.stringify(pairs))
       .query(`
+        set xact_abort on;
         declare @lockResult int;
         exec @lockResult = sp_getapplock
           @Resource = @resource,
@@ -115,31 +118,37 @@ const syncPermissions = async (pool, roleId, permissions = {}) => {
           throw 51000, 'Unable to lock role permissions for update.', 1;
 
         delete from dbo.role_permissions where role_id = @roleId;
+
+        select distinct module_name, action_name
+        into #desired_permissions
+        from openjson(@permissionsJson)
+        with (
+          module_name nvarchar(160) '$.moduleName',
+          action_name nvarchar(80) '$.action'
+        )
+        where nullif(module_name, '') is not null
+          and nullif(action_name, '') is not null;
+
+        insert into dbo.permission_modules(module_name)
+        select desired.module_name
+        from (select distinct module_name from #desired_permissions) desired
+        where not exists (
+          select 1 from dbo.permission_modules existing with (updlock, holdlock)
+          where existing.module_name = desired.module_name
+        );
+
+        insert into dbo.permission_actions(action_name)
+        select desired.action_name
+        from (select distinct action_name from #desired_permissions) desired
+        where not exists (
+          select 1 from dbo.permission_actions existing with (updlock, holdlock)
+          where existing.action_name = desired.action_name
+        );
+
+        insert into dbo.role_permissions(role_id, module_name, action_name, allowed)
+        select @roleId, module_name, action_name, 1
+        from #desired_permissions;
       `)
-
-    for (const pair of pairs) {
-      await new sql.Request(transaction)
-        .input('roleId', roleId)
-        .input('moduleName', pair.moduleName)
-        .input('actionName', pair.action)
-        .query(`
-          if not exists(select 1 from dbo.permission_modules with (updlock, holdlock) where module_name = @moduleName)
-            insert into dbo.permission_modules(module_name) values(@moduleName);
-
-          if not exists(select 1 from dbo.permission_actions with (updlock, holdlock) where action_name = @actionName)
-            insert into dbo.permission_actions(action_name) values(@actionName);
-
-          insert into dbo.role_permissions(role_id, module_name, action_name, allowed)
-          select @roleId, @moduleName, @actionName, 1
-          where not exists(
-              select 1
-              from dbo.role_permissions
-              where role_id = @roleId
-                and module_name = @moduleName
-                and action_name = @actionName
-            );
-        `)
-    }
     await transaction.commit()
   } catch (error) {
     await transaction.rollback()
@@ -181,6 +190,7 @@ router.post('/', requirePermission('Roles & Permissions', 'create'), asyncHandle
       values(@role_code, @role_name, @scope_description, @status)
   `)
   await syncPermissions(pool, result.recordset[0].role_id, req.body.permissions)
+  clearPermissionCache()
   emitChange(req, { action: 'create', id: result.recordset[0]?.role_id })
   res.status(201).json(await readRole(pool, result.recordset[0].role_id))
 }))

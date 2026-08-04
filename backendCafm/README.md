@@ -34,6 +34,12 @@ Then create the first login:
 npm run db:create-admin
 ```
 
+Apply the idempotent high-volume indexes after the schema migrations:
+
+```bash
+npm run db:optimize
+```
+
 Default development login:
 
 ```text
@@ -69,3 +75,26 @@ The frontend already exposes an `accessContextForUser()` shape. Backend enforcem
 - allowed departments/sub-departments from `user_department_access`
 
 Frontend route hiding is not security. SQL/API queries must apply the same scope before returning rows.
+
+## Performance Operations
+
+High-volume list endpoints support server pagination while preserving the existing array response:
+
+```text
+GET /api/work-orders?limit=100&offset=0&includeTotal=true
+GET /api/work-orders?limit=100&page=2&status=INPRG&site_code=SITE-CODE
+GET /api/work-orders?limit=100&updatedAfter=2026-08-01T00:00:00Z
+```
+
+Pagination metadata is returned through `X-Page-Size`, `X-Page-Offset`, and `X-Total-Count` headers. `LIST_MAX_PAGE_SIZE` caps individual response memory without changing legacy unpaged calls.
+
+Health and runtime metrics:
+
+```text
+GET /api/health
+GET /api/health?deep=1
+```
+
+The health response reports bounded permission-cache size, MSSQL pool use, connected Socket.IO clients, scheduler state, memory use, request latency, and event-loop delay. Use `deep=1` for readiness checks that must confirm a live MSSQL query.
+
+Recommended production settings are documented in `.env.example`. Size `MSSQL_POOL_MAX` below the SQL Server connection limit across all API instances, and keep `PM_SCHEDULER_CONCURRENCY` lower than the pool maximum.
