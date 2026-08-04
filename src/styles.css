@@ -666,7 +666,9 @@ main,
   .app-profile-stat strong { color: var(--app-ink); display: block; font-size: 14px; margin-top: 4px; }
 
   .app-detail-tabs { border-bottom: 1px solid var(--app-line); display: flex; gap: 4px; overflow-x: auto; }
-  .app-detail-tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--app-muted); flex: 0 0 auto; font-size: 11px; min-height: 42px; padding: 8px 11px; }
+  /* Sized from the theme's tab token rather than a fixed px, so tab size follows the chosen
+     font scale. `position: relative` anchors the alert dot a tab may carry. */
+  .app-detail-tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--app-muted); flex: 0 0 auto; font-size: var(--app-tab-font-size); min-height: 46px; padding: 9px 14px; position: relative; }
   .app-detail-tab:hover { color: var(--app-primary); }
   .app-detail-tab--active { border-bottom-color: var(--app-primary); color: var(--app-primary); font-weight: 750; }
 
@@ -698,6 +700,14 @@ main,
   .data-table-cell { border-bottom: 1px solid var(--app-table-border); color: var(--app-table-text); font-size: var(--app-table-font-size); max-width: 340px; padding: 13px 14px; }
   .data-table tbody tr:last-child .data-table-cell { border-bottom: 0; }
   .data-table-cell:first-child { font-weight: 650; }
+
+  /* Two related values stacked in one cell: the value, then a quieter line under it. Sized from
+     the table tokens so it follows the font scale, and available to any table that needs to fit
+     more columns without going wide. */
+  .app-cell-stack { display: grid; gap: 2px; min-width: 0; }
+  .app-cell-stack > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app-cell-note { color: var(--app-muted); display: block; font-size: var(--app-table-footer-font-size); }
+  .app-cell-label { color: var(--app-ink); font-weight: 700; }
   .data-table-footer { align-items: center; background: var(--app-table-footer-bg); border-top: 1px solid var(--app-table-border); color: var(--app-muted); display: flex; flex-wrap: wrap; font-size: var(--app-table-footer-font-size); gap: 10px; justify-content: space-between; min-height: 48px; padding: 9px 14px; }
   .data-table-page-size { font-size: var(--app-table-footer-font-size); height: 32px; padding: 0 8px; width: auto; }
 }

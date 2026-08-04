@@ -8,25 +8,55 @@ import { isOnHold } from '../../lib/holdPeriods'
 const cellClass = 'px-4 py-3.5 align-middle text-[var(--app-table-text)]'
 const compactClass = `${cellClass} whitespace-nowrap`
 const textValue = value => String(value ?? '').trim() || '-'
+// Two dates stacked in one cell need saying which is which, so each carries a bold label.
+const datePart = (label, value) => value
+  ? <><strong className="app-cell-label">{label}:</strong> {value}</>
+  : null
 
+// Eighteen single-value columns forced a 1650px sideways scroll and let the location code
+// wrap over four lines. Related values now share a cell as a primary line with a muted
+// secondary line - the same two-line pattern the Users and Incidents tables use - so the
+// list fits on screen. Every dropped column is still in the Excel export and the detail page.
 const columns = [
-  { key: 'WORKORDER', label: 'Work Order', sortKey: 'WORKORDER', className: compactClass, render: order => <strong className="mono text-[var(--app-ink)]">#{order.WORKORDER}</strong> },
-  { key: 'description', label: 'Description', sortKey: 'DESCRIPITION', className: cellClass, render: order => textValue(order['DESCRIPITION ']) },
-  { key: 'location', label: 'Location', sortKey: 'LOCATION', className: cellClass, render: order => textValue(order['LOCATION ']) },
-  { key: 'asset', label: 'Asset', sortKey: 'ASSET', className: compactClass, render: order => <strong>{textValue(order.ASSET)}</strong> },
+  { key: 'WORKORDER', label: 'Work Order', sortKey: 'WORKORDER', className: cellClass, render: order => (
+    <div className="app-cell-stack">
+      <strong className="mono text-[var(--app-ink)]">#{order.WORKORDER}</strong>
+      <span className="app-cell-note">{textValue(order['DESCRIPITION '])}</span>
+    </div>
+  ) },
+  { key: 'location', label: 'Location / Asset', sortKey: 'LOCATION', className: compactClass, render: order => (
+    <div className="app-cell-stack">
+      <span className="mono">{textValue(order['LOCATION '])}</span>
+      <span className="app-cell-note">{textValue(order.ASSET)}</span>
+    </div>
+  ) },
   { key: 'status', label: 'Status', sortKey: 'STATUS', className: compactClass, render: order => <StatusBadge application="workOrder" value={order.STATUS} /> },
   { key: 'type', label: 'Type', sortKey: 'WORK TYPE', className: compactClass, render: (order, { orderType }) => <Badge tone="blue">{orderType(order)}</Badge> },
-  { key: 'department', label: 'Department', sortKey: 'DEPARTMENT', className: compactClass, render: order => textValue(order['DEPARTMENT ']) },
-  { key: 'assignedDepartment', label: 'Assigned Department', sortKey: 'ASSIGNED DEPARTMENT', className: compactClass, render: order => textValue(order['ASSIGNED DEPARTMENT']) },
-  { key: 'subDepartment', label: 'Sub Department', sortKey: 'SUB DEPARTMENT NAME', className: compactClass, render: order => textValue(order['SUB DEPARTMENT  NAME']) },
-  { key: 'targetStart', label: 'Target Start', sortKey: 'TARGET START', className: compactClass, render: (order, { excelDate }) => excelDate(order['TARGET START ']) },
-  { key: 'targetFinish', label: 'Target Finish', sortKey: 'TARGET FINISH', className: compactClass, render: (order, { excelDate }) => isOnHold(order) ? <Badge tone="orange">SLA Paused</Badge> : excelDate(order['TARGET FINISH ']) },
-  { key: 'actualStart', label: 'Actual Start', sortKey: 'ACTUAL START', className: compactClass, render: (order, { excelDate }) => excelDate(order['ACTUAL START ']) },
-  { key: 'actualFinish', label: 'Actual Finish', sortKey: 'ACTUAL FINISH', className: compactClass, render: (order, { excelDate }) => excelDate(order['ACTUAL FINISH ']) },
-  { key: 'reportedDate', label: 'Reported Date', sortKey: 'REPORTED DATE', className: compactClass, render: (order, { excelDate }) => excelDate(order['REPORTED DATE ']) },
   { key: 'priority', label: 'Priority', sortKey: 'PRIORTY', className: compactClass, render: order => <PriorityBadge value={order.PRIORTY} /> },
+  { key: 'department', label: 'Department', sortKey: 'DEPARTMENT', className: compactClass, render: order => {
+    const department = textValue(order['DEPARTMENT '])
+    const assigned = textValue(order['ASSIGNED DEPARTMENT'])
+    const sub = String(order['SUB DEPARTMENT  NAME'] ?? '').trim()
+    return (
+      <div className="app-cell-stack">
+        <span>{department}{assigned !== '-' && assigned !== department ? ` → ${assigned}` : ''}</span>
+        <span className="app-cell-note">{sub || ' '}</span>
+      </div>
+    )
+  } },
   { key: 'site', label: 'Site', sortKey: 'SITE', className: compactClass, render: order => textValue(order.SITE) },
-  { key: 'sourceSr', label: 'Source SR', sortKey: 'SOURCE SR', className: compactClass, render: order => textValue(order['SOURCE SR']) },
+  { key: 'target', label: 'Target', sortKey: 'TARGET FINISH', className: compactClass, render: (order, { excelDate }) => (
+    <div className="app-cell-stack">
+      {isOnHold(order) ? <Badge tone="orange">SLA Paused</Badge> : <span>{datePart('Finish', excelDate(order['TARGET FINISH '])) || '-'}</span>}
+      <span className="app-cell-note">{datePart('Start', excelDate(order['TARGET START '])) || ' '}</span>
+    </div>
+  ) },
+  { key: 'actual', label: 'Actual', sortKey: 'ACTUAL FINISH', className: compactClass, render: (order, { excelDate }) => (
+    <div className="app-cell-stack">
+      <span>{datePart('Finish', excelDate(order['ACTUAL FINISH '])) || '-'}</span>
+      <span className="app-cell-note">{datePart('Start', excelDate(order['ACTUAL START '])) || ' '}</span>
+    </div>
+  ) },
   { key: 'open', label: '', className: compactClass, render: () => <ChevronRight size={17} /> }
 ]
 
@@ -38,7 +68,7 @@ export default function WorkOrdersTable({ rows, currentPage, pageSize, pageCount
   return (
     <TablePanel>
       <div className="overflow-auto">
-        <table className="data-table work-orders-table w-full min-w-[1650px] border-collapse text-left text-[length:var(--app-table-font-size)]">
+        <table className="data-table work-orders-table w-full min-w-[1080px] border-collapse text-left text-[length:var(--app-table-font-size)]">
           <thead>
             <tr>
               {columns.map(column => (
