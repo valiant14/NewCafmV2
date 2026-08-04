@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import Badge from '../components/ui/Badge'
+import Alert from '../components/ui/Alert'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
@@ -9,6 +10,7 @@ import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import RolePermissionDetailPage from '../components/roles/RolePermissionDetailPage'
 import StandardFilters from '../components/ui/StandardFilters'
 import Field from '../components/ui/Field'
@@ -121,7 +123,7 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]">
+      <TablePanel>
         <DataTable
           rows={visibleRows}
           rowKey={row => `${row.role}-${row.department}`}
@@ -136,7 +138,7 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
             { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> }
           ]}
         />
-      </section>
+      </TablePanel>
       {creating && (
         <ModalOverlay>
           <ModalPanel className="max-w-3xl" labelledBy="new-role-title">
@@ -148,7 +150,7 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
               onClose={() => setCreating(false)}
             />
             <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
-              {formError && <div className="md:col-span-2 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-800">{formError}</div>}
+              {formError && <Alert className="md:col-span-2" tone="danger">{formError}</Alert>}
               <Field label="Role name" value={form.role} required onChange={event => setForm({ ...form, role: event.target.value })} placeholder="Civil Supervisor" />
               <Field label="Status" value={form.status} options={['Draft', 'Active', 'Inactive']} onChange={event => setForm({ ...form, status: event.target.value })} />
               <Field label="Site Scope" value={form.site} suggestions={siteOptions} onChange={event => setForm({ ...form, site: event.target.value })} placeholder="All Sites" />

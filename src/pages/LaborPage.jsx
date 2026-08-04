@@ -10,6 +10,7 @@ import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
@@ -40,7 +41,7 @@ const laborPastWork = (labor, workOrders) => workOrders
     status: order.STATUS || 'COMP',
     workType: String(order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim(),
     department: workOrderDepartment(order) || labor.department,
-    site: order.SITE || '1031',
+    site: order.SITE || '',
     targetFinish: order['TARGET FINISH '] || order['TARGET START '] || '-'
   }))
 
@@ -127,7 +128,7 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], departm
         statusOptions={optionsFromRows(rows, ['availability'])}
       />
 
-      <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
+      <TablePanel>
         <DataTable
           rows={visibleRows}
           rowKey="personId"
@@ -144,7 +145,7 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], departm
             { key: 'availability', label: 'Availability', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> }
           ]}
         />
-      </section>
+      </TablePanel>
 
       {adding && <AddLaborModal form={form} setForm={setForm} departmentRecords={departmentRecords} laborRows={rows} onClose={() => setAdding(false)} onSave={save} />}
     </>

@@ -96,7 +96,7 @@ export default function LineChart({
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">{title}</p>
-          <strong className="mt-1 block text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{format(latest)} <span className="text-sm font-bold text-[var(--app-muted)]">{unit}</span></strong>
+          <strong className="mt-1 block text-2xl font-extrabold text-[var(--app-ink)]">{format(latest)} <span className="text-sm font-bold text-[var(--app-muted)]">{unit}</span></strong>
           {subtitle && <p className="mt-0.5 text-xs text-[var(--app-muted)]">{subtitle}</p>}
         </div>
         {change !== null && (

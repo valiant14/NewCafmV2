@@ -11,6 +11,7 @@ import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import MeterDetailPage from '../components/meters/MeterDetailPage'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { useAuth } from '../providers/AuthProvider'
@@ -21,7 +22,7 @@ const emptyMeter = {
   meterId: '',
   asset: '',
   location: '',
-  site: '1031',
+  site: '',
   department: '',
   meterType: 'General',
   reading: '',
@@ -35,7 +36,7 @@ const templateHeaders = Object.keys(emptyMeter)
 // past midnight does not file readings under yesterday.
 const blankMeter = () => ({ ...emptyMeter, readingDate: nowLocalDate() })
 const fields = [
-  { key: 'meterId', label: 'Meter ID', required: true, placeholder: 'MTR-0001' },
+  { key: 'meterId', label: 'Meter ID', required: true, placeholder: 'Enter meter ID' },
   { key: 'asset', label: 'Asset', required: true },
   { key: 'location', label: 'Location', required: true },
   { key: 'site', label: 'Site', required: true },
@@ -146,7 +147,7 @@ export default function MetersPage({ rows = [], setRows, assets = [], workOrders
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
+      <TablePanel>
         {visibleRows.length ? (
           <DataTable
             rows={visibleRows}
@@ -168,7 +169,7 @@ export default function MetersPage({ rows = [], setRows, assets = [], workOrders
         ) : (
           <EmptyState icon={Gauge} title="No meter readings found" description="Add a reading or reset the standard filters to continue testing the Meters module." />
         )}
-      </section>
+      </TablePanel>
 
       {modalOpen && (
         <MasterRecordModal

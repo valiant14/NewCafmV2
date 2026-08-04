@@ -8,7 +8,7 @@ export default function EmptyState({ icon: Icon, title, description }) {
           </span>
         )}
         <div className="grid gap-1">
-          <h3 className="text-base font-extrabold tracking-[-.02em] text-[var(--app-ink)]">{title}</h3>
+          <h3 className="text-base font-extrabold text-[var(--app-ink)]">{title}</h3>
           {description && <p className="text-sm leading-relaxed text-[var(--app-muted)]">{description}</p>}
         </div>
       </div>

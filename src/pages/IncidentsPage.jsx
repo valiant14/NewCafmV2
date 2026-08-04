@@ -10,6 +10,7 @@ import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
 import { departmentOptions, laborNameOptions, locationOptions, siteOptions } from '../lib/masterOptions'
@@ -135,7 +136,7 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
+      <TablePanel>
         <DataTable
           rows={filteredRows}
           rowKey="incidentNumber"
@@ -155,7 +156,7 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
           emptyTitle="No incidents yet"
           emptyDescription="Create standalone incident records here after the client confirms the final required fields."
         />
-      </section>
+      </TablePanel>
 
       {modalOpen && (
         <MasterRecordModal

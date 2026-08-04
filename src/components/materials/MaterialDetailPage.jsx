@@ -5,6 +5,9 @@ import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import DataTable from '../ui/DataTable'
+import StatCard from '../ui/StatCard'
+import TablePanel from '../ui/TablePanel'
+import { SurfaceHeader } from '../ui/Surface'
 import { stockForItem, storeLabel } from '../../lib/inventory'
 import EmptyState from '../ui/EmptyState'
 import GenericPrintReport from '../ui/GenericPrintReport'
@@ -66,7 +69,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
     setRequestForm({
       quantity,
       source,
-      site: storeRows.find(store => store.code === source)?.site || material.site || '1031',
+      site: storeRows.find(store => store.code === source)?.site || material.site || '',
       department: material.department || material.category || ''
     })
     setRequestError('')
@@ -83,7 +86,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
       plannedQuantity: quantity,
       availableQuantity: stock.available,
       source: requestForm.source || defaultSource(),
-      site: requestForm.site || material.site || '1031',
+      site: requestForm.site || material.site || '',
       department: requestForm.department || material.department || material.category || ''
     })
     setRequestModalOpen(false)
@@ -133,19 +136,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
               { icon: ClipboardList, label: 'Reserved', value: material.reserved || 0, note: 'Committed' },
               { icon: PackageCheck, label: 'Available', value: stock.available, note: `Ready ${material.unit}` },
               { icon: BarChart3, label: 'Low Level', value: material.reorderLevel, note: `${stock.coverage}% coverage` }
-            ].map(metric => {
-              const Icon = metric.icon
-              return (
-                <div key={metric.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{metric.label}</span>
-                    <Icon size={16} className="text-[var(--app-primary)]" />
-                  </div>
-                  <strong className="mt-2 block text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{metric.value}</strong>
-                  <small className="text-[11px] font-semibold text-[var(--app-muted)]">{metric.note}</small>
-                </div>
-              )
-            })}
+            ].map(metric => <StatCard key={metric.label} {...metric} detail={metric.note} tone="blue" />)}
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
@@ -175,11 +166,8 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
           />
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)] lg:col-span-2">
-            <header className="border-b border-[var(--app-line)] px-5 py-4">
-              <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">STORE INVENTORY</p>
-              <h2 className="text-base font-extrabold text-[var(--app-ink)]">Held in {storeStock.length} store{storeStock.length === 1 ? '' : 's'}</h2>
-            </header>
+          <TablePanel className="lg:col-span-2">
+            <SurfaceHeader eyebrow="Store inventory" title={`Held in ${storeStock.length} store${storeStock.length === 1 ? '' : 's'}`} />
             <DataTable
               rows={storeStock}
               rowKey="storeroom"
@@ -198,17 +186,17 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
                     onChange={event => updateReorderDraft(row, event.target.value)}
                     onBlur={() => saveReorderLevel(row)}
                     onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur() }}
-                    className="h-8 w-24 rounded-lg border border-[var(--app-field-border)] bg-white px-2 text-xs font-bold text-[var(--app-ink)] outline-none focus:border-[var(--app-primary)]"
+                    className="app-field-control h-8 w-24 text-xs font-bold"
                     aria-label={`Low level for ${row.storeName || row.storeroom}`}
                   />
                 ) }
               ]}
             />
-          </section>
+          </TablePanel>
         </main>}
 
         {tab === 'Work Order Usage' && (
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <TablePanel>
             {usageRows.length ? (
               <DataTable
                 rows={usageRows}
@@ -232,10 +220,10 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
                 description="Work Orders that consume, reserve, or request this material will appear here."
               />
             )}
-          </section>
+          </TablePanel>
         )}
         {tab === 'Procurement History' && (
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <TablePanel>
             {procurementRows.length ? (
               <DataTable
                 rows={procurementRows}
@@ -255,7 +243,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
             ) : (
               <EmptyState icon={ShoppingCart} title="No procurement history yet" description="Purchase requisitions and orders for this material will appear here." />
             )}
-          </section>
+          </TablePanel>
         )}
       </div>
       {requestModalOpen && (

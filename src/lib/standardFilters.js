@@ -27,8 +27,8 @@ export function optionsFromRows(rows = [], keys = []) {
   return [...new Set(rows.map(row => valueFromKeys(row, keys)).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
 }
 
-// User records store the site as a display label ("Riyadh / 1031") while data rows
-// carry the bare code ("1031"), so the code has to be pulled out before it can match.
+// User records may store a display label while data rows carry the bare site code,
+// so the code has to be pulled out before it can match.
 export function siteCodeFromUser(user) {
   const site = String(user?.site || '').trim()
   if (!site || /^all sites$/i.test(site)) return ''

@@ -11,6 +11,7 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import { ModalOverlay } from '../components/ui/ModalFrame'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { nowLocalDateTime } from '../lib/datetime'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
@@ -134,7 +135,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
         departmentOptions={optionsFromRows(requests, ['department', 'assignedDepartment', 'subDepartment'])}
         statusOptions={optionsFromRows(requests, ['status'])}
       />
-      <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
+      <TablePanel>
         <DataTable
           rows={visible}
           rowKey="sr"
@@ -151,7 +152,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
             { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
           ]}
         />
-      </section>
+      </TablePanel>
     </>
   )
 

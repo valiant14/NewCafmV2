@@ -10,6 +10,7 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { pick, upsertImportRows } from '../services/importRows'
@@ -136,7 +137,7 @@ export default function DepartmentsSettingsPage({ rows = [], setRows }) {
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]">
+      <TablePanel>
         <DataTable
           rows={visibleRows}
           rowKey="subDepartmentCode"
@@ -149,7 +150,7 @@ export default function DepartmentsSettingsPage({ rows = [], setRows }) {
             { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> }
           ]}
         />
-      </section>
+      </TablePanel>
       {modalOpen && (
         <MasterRecordModal
           title={editing ? 'Edit department' : 'Add department'}

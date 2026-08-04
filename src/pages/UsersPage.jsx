@@ -10,6 +10,7 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { scopeRowsForUser } from '../lib/accessControl'
@@ -22,7 +23,7 @@ const emptyUser = {
   email: '',
   role: 'Civil Technician',
   laborId: '',
-  site: 'Riyadh / 1031',
+  site: '',
   department: 'Civil',
   status: 'Active',
   lastLogin: ''
@@ -55,7 +56,7 @@ export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows
   const fields = baseFields.map(field => {
     if (field.key === 'role') return { ...field, options: roleRows.map(row => row.role) }
     if (field.key === 'laborId') return { ...field, options: ['', ...laborRows.map(row => row.personId).filter(Boolean)] }
-    if (field.key === 'site') return { ...field, suggestions: siteOptions, placeholder: 'All Sites or Riyadh / 1031, Jeddah / 1032' }
+    if (field.key === 'site') return { ...field, suggestions: siteOptions, placeholder: 'Select one or more sites' }
     if (field.key === 'department') return { ...field, suggestions: departmentOptions, placeholder: 'All Departments or HVAC, Civil' }
     return field
   })
@@ -153,7 +154,7 @@ export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows
         statusOptions={optionsFromRows(scopedRows, ['status'])}
       />
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]">
+      <TablePanel>
         <DataTable
           rows={visibleRows}
           rowKey="userId"
@@ -170,7 +171,7 @@ export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows
             { key: 'status', label: 'Status', render: value => <Badge tone={toneByStatus[value] || 'orange'}>{value}</Badge> }
           ]}
         />
-      </section>
+      </TablePanel>
 
       {modalOpen && (
         <MasterRecordModal

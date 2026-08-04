@@ -8,6 +8,7 @@ import ExportExcelButton from '../components/ui/ExportExcelButton'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
@@ -160,7 +161,7 @@ export default function NotificationsSettingsPage() {
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]">
+      <TablePanel>
         {rows.length ? (
           <DataTable
             rows={visibleRows}
@@ -179,7 +180,7 @@ export default function NotificationsSettingsPage() {
         ) : (
           <EmptyState icon={Bell} title="No notification rules yet" description="Add a rule to record which events should notify which people." />
         )}
-      </section>
+      </TablePanel>
 
       {modalOpen && (
         <MasterRecordModal

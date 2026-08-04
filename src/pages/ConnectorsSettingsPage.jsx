@@ -8,6 +8,7 @@ import ExportExcelButton from '../components/ui/ExportExcelButton'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
@@ -138,7 +139,7 @@ export default function ConnectorsSettingsPage({ rows = [], setRows, notify }) {
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]">
+      <TablePanel>
         {rows.length ? (
           <DataTable
             rows={visibleRows}
@@ -176,7 +177,7 @@ export default function ConnectorsSettingsPage({ rows = [], setRows, notify }) {
         ) : (
           <EmptyState icon={Mail} title="No connectors configured" description="Add the SMTP or SMS service details that notifications should be sent through." />
         )}
-      </section>
+      </TablePanel>
 
       {modalOpen && (
         <MasterRecordModal

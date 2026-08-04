@@ -5,8 +5,8 @@ import { Check, ChevronDown, X } from 'lucide-react'
 const optionValue = item => String(item?.value ?? item ?? '')
 const optionLabel = item => String(item?.label ?? '')
 
-// Scope fields hold what the record stores - a bare site code like `1031` - while the
-// options are the readable `Riyadh / 1031`, and several accept a comma separated list.
+// Scope fields hold the stored site code while options may use a readable display label,
+// and several controls accept a comma-separated list.
 // Comparing the whole string against whole options flagged both of those as unknown.
 const codeOf = text => text.split('/').pop().trim().toLowerCase()
 const isKnownValue = (text, suggestions) => {

@@ -5,7 +5,7 @@ const materialFields = [
   { label: 'Description', key: 'description', required: true, placeholder: 'Material or spare part description' },
   { label: 'Category', key: 'category', placeholder: 'e.g. HVAC Consumables' },
   { label: 'Unit', key: 'unit', options: ['EA', 'KG', 'M', 'L', 'SET'] },
-  { label: 'Storeroom', key: 'storeroom', placeholder: 'DIWAN-MAIN' },
+  { label: 'Storeroom', key: 'storeroom', placeholder: 'Select a storeroom' },
   { label: 'Balance', key: 'balance', type: 'number', min: 0 },
   { label: 'Reserved', key: 'reserved', type: 'number', min: 0 },
   { label: 'Low Level', key: 'reorderLevel', type: 'number', min: 0 },

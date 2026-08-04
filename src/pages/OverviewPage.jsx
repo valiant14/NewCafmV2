@@ -4,6 +4,9 @@ import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import LineChart from '../components/ui/LineChart'
+import PageHeader from '../components/ui/PageHeader'
+import StatCard from '../components/ui/StatCard'
+import Surface, { SurfaceHeader } from '../components/ui/Surface'
 import { excelDate, excelToDate } from '../config/runtimeDefaults'
 import { pmDueLabel, pmDueTone } from '../lib/pmSchedule'
 import { parseLocal } from '../lib/datetime'
@@ -11,42 +14,7 @@ import { effectiveTargetTime, isOnHold } from '../lib/holdPeriods'
 import { statusDescription, statusTone } from '../lib/statusMatrix'
 import { printWithoutBrowserTitle } from '../lib/print'
 
-const iconTone = {
-  orange: 'bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]',
-  green: 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]',
-  blue: 'bg-[var(--app-badge-blue-bg)] text-[var(--app-badge-blue-text)]',
-  purple: 'bg-[var(--app-badge-purple-bg)] text-[var(--app-badge-purple-text)]'
-}
-
-const metricCardClass = 'group rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 text-left shadow-[0_8px_24px_rgba(32,55,45,.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(32,55,45,.1)]'
-
-const Metric = ({ label, value, detail, icon: Icon, tone, onClick }) => {
-  const body = (
-    <div className="flex items-start gap-4">
-      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${iconTone[tone]}`}>
-        <Icon size={19} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">{label}</p>
-        <strong className="mt-1 block text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{value}</strong>
-        <small className="mt-1 block text-xs text-[var(--app-muted)]">{detail}</small>
-      </div>
-      {onClick && (
-        <span className="print-hide mt-1 text-[var(--app-muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--app-primary)]">
-          <ChevronRight size={18} />
-        </span>
-      )}
-    </div>
-  )
-
-  if (!onClick) return <article className={metricCardClass}>{body}</article>
-
-  return (
-    <button type="button" onClick={onClick} className={`${metricCardClass} w-full`} aria-label={`View ${label}`}>
-      {body}
-    </button>
-  )
-}
+const Metric = props => <StatCard {...props} />
 
 const Donut = ({ value, label }) => {
   const [drawn, setDrawn] = useState(false)
@@ -268,17 +236,18 @@ export default function OverviewPage({
       </header>
 
       <div>
-        <section className="print-hide mb-7 flex flex-col gap-5 rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-6 shadow-[0_14px_36px_rgba(32,55,45,.08)] lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <Badge tone="green">Live workspace</Badge>
-            <h1 className="mt-3 text-4xl font-extrabold tracking-[-.05em] text-[var(--app-ink)]">{greeting}, {displayName}.</h1>
-            <p className="mt-2 text-sm text-[var(--app-muted)]">Here is what needs attention across {projectName || 'your facilities'} today.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={printDashboard}><Printer size={16} /> Export dashboard</Button>
-            <Button onClick={() => onNavigate('Work Orders')}><Plus size={17} /> New work order</Button>
-          </div>
-        </section>
+        <PageHeader
+          className="print-hide"
+          eyebrow="Live workspace"
+          title={`${greeting}, ${displayName}.`}
+          description={`Here is what needs attention across ${projectName || 'your facilities'} today.`}
+          actions={(
+            <>
+              <Button variant="outline" onClick={printDashboard}><Printer size={16} /> Export dashboard</Button>
+              <Button onClick={() => onNavigate('Work Orders')}><Plus size={17} /> New work order</Button>
+            </>
+          )}
+        />
 
         <section className="print-grid-4 mb-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Metric label={`Logged in ${monthLabel}`} value={loggedThisMonth} detail="Work orders raised this month" icon={CalendarRange} tone="blue" onClick={() => onNavigate('Work Orders')} />
@@ -300,11 +269,8 @@ export default function OverviewPage({
           <Metric label="Meters" value={meters.length} detail="Utility and runtime meters tracked" icon={Gauge} tone="green" onClick={() => onNavigate('Meters')} />
         </section>
 
-        <section className="mb-7 rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-          <header className="mb-4">
-            <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">SLA BY SITE</p>
-            <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Service level performance</h2>
-          </header>
+        <Surface className="mb-7">
+          <SurfaceHeader inset eyebrow="SLA by site" title="Service level performance" />
 
           <div className="mb-5 grid gap-4 md:grid-cols-2">
             <Metric label="SLA compliance" value={`${slaCompliance}%`} detail="Based on target finish/start dates" icon={Gauge} tone="green" onClick={() => onNavigate('Work Orders')} />
@@ -325,7 +291,7 @@ export default function OverviewPage({
               Site-level SLA appears once work orders carry a site and target date.
             </div>
           )}
-        </section>
+        </Surface>
 
         <section className="print-grid-3 mb-7 grid gap-4 md:grid-cols-3">
           <Metric label="Open purchase requisitions" value={openPurchaseRequests.length} detail="Material shortages awaiting approval" icon={ShoppingCart} tone="orange" onClick={() => onNavigate('Purchase Requisitions')} />
@@ -333,15 +299,14 @@ export default function OverviewPage({
           <Metric label="Store fulfillment" value={activeReservations.length} detail="Reservations or allocations not yet delivered" icon={Truck} tone="green" onClick={() => onNavigate('Reservations')} />
         </section>
 
-        <section className="mb-7 rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-          <header className="mb-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">UTILITIES</p>
-              <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Consumption trend</h2>
-              <p className="mt-1 text-xs text-[var(--app-muted)]">Totalled across all metered assets, last six reading cycles.</p>
-            </div>
-            <Button className="print-hide" variant="ghost" onClick={() => onNavigate('Meters')}>Open meters <ChevronRight size={16} /></Button>
-          </header>
+        <Surface className="mb-7">
+          <SurfaceHeader
+            inset
+            eyebrow="Utilities"
+            title="Consumption trend"
+            description="Totalled across all metered assets, last six reading cycles."
+            actions={<Button className="print-hide" variant="ghost" onClick={() => onNavigate('Meters')}>Open meters <ChevronRight size={16} /></Button>}
+          />
           <div className="grid gap-4 lg:grid-cols-2">
             <LineChart
               title="Water"
@@ -372,17 +337,11 @@ export default function OverviewPage({
               </div>
             ))}
           </div>
-        </section>
+        </Surface>
 
         <section className="mb-7 grid gap-5 xl:grid-cols-[1fr_340px]">
-          <article className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-            <header className="flex items-center justify-between gap-4 border-b border-[var(--app-line)] px-5 py-4">
-              <div>
-                <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">OPERATIONS</p>
-                <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Active work orders</h2>
-              </div>
-              <Button className="print-hide" variant="ghost" onClick={() => onNavigate('Work Orders')}>View all <ChevronRight size={16} /></Button>
-            </header>
+          <Surface as="article" flush>
+            <SurfaceHeader eyebrow="Operations" title="Active work orders" actions={<Button className="print-hide" variant="ghost" onClick={() => onNavigate('Work Orders')}>View all <ChevronRight size={16} /></Button>} />
             <DataTable
               rows={workOrderRows}
               search=""
@@ -396,10 +355,10 @@ export default function OverviewPage({
                 { key: 'TARGET START ', label: 'Target', render: excelDate }
               ]}
             />
-          </article>
+          </Surface>
 
           <aside className="grid gap-5">
-            <article className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+            <Surface as="article">
               <header className="mb-5 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">PORTFOLIO</p>
@@ -417,7 +376,7 @@ export default function OverviewPage({
                   Criteria without data are excluded and the remaining weights are rebalanced, so the score is never inflated by missing records.
                 </p>
               )}
-            </article>
+            </Surface>
 
             <article className="print-hide flex gap-4 rounded-3xl border border-[var(--app-line)] bg-[var(--app-badge-green-bg)] p-5 text-[var(--app-badge-green-text)] shadow-[0_8px_24px_rgba(32,55,45,.05)]">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--app-panel)]"><Sparkles size={18} /></div>
@@ -430,12 +389,8 @@ export default function OverviewPage({
           </aside>
         </section>
 
-        <section className="mb-7 rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-          <header className="mb-4">
-            <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">COMPLIANCE</p>
-            <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Permits to work</h2>
-            <p className="mt-1 text-xs text-[var(--app-muted)]">Open a work order directly on its permit documentation.</p>
-          </header>
+        <Surface className="mb-7">
+          <SurfaceHeader inset eyebrow="Compliance" title="Permits to work" description="Open a work order directly on its permit documentation." />
           {permitOrders.length ? (
             <div className="grid gap-2">
               {permitOrders.slice(0, 6).map(order => {
@@ -462,17 +417,11 @@ export default function OverviewPage({
               No work order currently requires a permit to work.
             </div>
           )}
-        </section>
+        </Surface>
 
         {connectedOperations.length > 0 && (
-          <section className="print-hide mb-7 overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-            <header className="flex items-center justify-between gap-4 border-b border-[var(--app-line)] px-5 py-4">
-              <div>
-                <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">CONNECTED OPERATIONS</p>
-                <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Work order supply chain</h2>
-              </div>
-              <Button className="print-hide" variant="ghost" onClick={() => onNavigate('Purchase Requisitions')}>Open requisitions <ChevronRight size={16} /></Button>
-            </header>
+          <Surface className="print-hide mb-7" flush>
+            <SurfaceHeader eyebrow="Connected operations" title="Work order supply chain" actions={<Button className="print-hide" variant="ghost" onClick={() => onNavigate('Purchase Requisitions')}>Open requisitions <ChevronRight size={16} /></Button>} />
             <DataTable
               rows={connectedOperations}
               rowKey="reference"
@@ -487,17 +436,11 @@ export default function OverviewPage({
                 { key: 'next', label: 'Current Link' }
               ]}
             />
-          </section>
+          </Surface>
         )}
 
-        <section className="print-hide rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-          <header className="mb-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">MAINTENANCE</p>
-              <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Preventive maintenance</h2>
-            </div>
-            <Button className="print-hide" variant="ghost" onClick={() => onNavigate('Preventive Maintenance')}>Open schedule <ChevronRight size={16} /></Button>
-          </header>
+        <Surface className="print-hide">
+          <SurfaceHeader inset eyebrow="Maintenance" title="Preventive maintenance" actions={<Button className="print-hide" variant="ghost" onClick={() => onNavigate('Preventive Maintenance')}>Open schedule <ChevronRight size={16} /></Button>} />
           <div className="grid gap-3">
             {pmRecords.slice(0, 4).map((pm, index) => (
               <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4 md:grid-cols-[auto_1fr_auto] md:items-center" key={pm.PMNUM}>
@@ -513,7 +456,7 @@ export default function OverviewPage({
               </div>
             ))}
           </div>
-        </section>
+        </Surface>
       </div>
     </section>
   )

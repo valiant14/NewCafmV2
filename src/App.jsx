@@ -37,6 +37,9 @@ import WorkOrderOverviewTab from './components/work-orders/WorkOrderOverviewTab'
 import WorkOrderMetersTab from './components/work-orders/WorkOrderMetersTab'
 import WorkOrderHeader, { workOrderOutlineButtonClass, workOrderPrimaryButtonClass } from './components/work-orders/WorkOrderHeader'
 import WorkOrderTabs from './components/work-orders/WorkOrderTabs'
+import AppState from './components/ui/AppState'
+import Alert from './components/ui/Alert'
+import Toast from './components/ui/Toast'
 import { navigationItems, pathForPage, routeToPage } from './config/navigation'
 import { assets, departments, excelDate, failureCodes, incidentSeed, jobPlans as jobPlanSeed, jobTasks, labor as laborMaster, locations, materials as materialMaster, pmRecords, rolePermissionRows, serviceRequestSeed, slaBreached, statusMatrix, toDateTimeInput, tools as toolMaster, users as userSeed, workOrders, workOrderSeeds } from './config/runtimeDefaults'
 import { useAuth } from './providers/AuthProvider'
@@ -234,7 +237,7 @@ const comparableResourcePayload = row => ({
   requested_quantity: toNumberOrNull(row.requested_quantity) || 0,
   available_quantity: toNumberOrNull(row.available_quantity) || 0,
   store_code: row.store_code || null,
-  site_code: row.site_code || '1031',
+  site_code: row.site_code || null,
   department_name: row.department_name || '',
   source_type: row.source_type || '',
   availability_status: row.availability_status || '',
@@ -255,7 +258,7 @@ const workOrderResourcePayload = (order, resource) => ({
   requested_quantity: toNumberOrNull(resource.quantity || resource.requestedQuantity) || 0,
   available_quantity: toNumberOrNull(resource.availableQuantity) || 0,
   store_code: resource.source || resource.store || null,
-  site_code: order.SITE || resource.site || '1031',
+  site_code: order.SITE || resource.site || null,
   department_name: order['DEPARTMENT '] || resource.department || '',
   source_type: resource.sourceType || '',
   availability_status: resource.availabilityStatus || resource.availability || '',
@@ -273,7 +276,7 @@ const plannedLaborPayload = (order, labor, index) => ({
   craft_name: toText(labor.craft),
   estimated_hours: toNumberOrNull(labor.hours) || 0,
   assigned_crew: toText(labor.crew),
-  site_code: order.SITE || '1031',
+  site_code: order.SITE || null,
   department_name: order['DEPARTMENT '] || ''
 })
 const comparablePlannedLaborPayload = row => ({
@@ -282,7 +285,7 @@ const comparablePlannedLaborPayload = row => ({
   craft_name: toText(row.craft_name),
   estimated_hours: toNumberOrNull(row.estimated_hours) || 0,
   assigned_crew: toText(row.assigned_crew),
-  site_code: row.site_code || '1031',
+  site_code: row.site_code || null,
   department_name: row.department_name || ''
 })
 const samePlannedLaborPayload = (existing, payload) => rowFingerprint(comparablePlannedLaborPayload(existing)) === rowFingerprint(comparablePlannedLaborPayload(payload))
@@ -321,7 +324,7 @@ const workOrderTaskPayload = (order, task, index) => ({
   task_sequence: toNumberOrNull(task.sequence) || (index + 1) * 10,
   task_description: toText(task.description || task['JOB TASK DESCRIPTION'] || task.DESCRIPTION),
   duration_minutes: toNumberOrNull(task.duration || task['TASK DURATION IN HOUR']) || 0,
-  site_code: order.SITE || '1031',
+  site_code: order.SITE || null,
   department_name: order['DEPARTMENT '] || ''
 })
 const comparableWorkOrderTaskPayload = row => ({
@@ -329,7 +332,7 @@ const comparableWorkOrderTaskPayload = row => ({
   task_sequence: toNumberOrNull(row.task_sequence) || 0,
   task_description: toText(row.task_description),
   duration_minutes: toNumberOrNull(row.duration_minutes) || 0,
-  site_code: row.site_code || '1031',
+  site_code: row.site_code || null,
   department_name: row.department_name || ''
 })
 const sameWorkOrderTaskPayload = (existing, payload) => rowFingerprint(comparableWorkOrderTaskPayload(existing)) === rowFingerprint(comparableWorkOrderTaskPayload(payload))
@@ -397,7 +400,7 @@ const workOrderMeterPayloads = order => {
   return [{
     asset_num: order.ASSET || null,
     work_order_num: workOrderNum,
-    site_code: order.SITE || '1031',
+    site_code: order.SITE || null,
     department_name: order['DEPARTMENT '] || '',
     meter_id: toText(order['METER ID']),
     reading_value: toNumberOrNull(order['METER READING']),
@@ -409,7 +412,7 @@ const comparableMeterPayload = row => ({
   meter_id: toText(row.meter_id),
   asset_num: row.asset_num || null,
   work_order_num: toText(row.work_order_num),
-  site_code: row.site_code || '1031',
+  site_code: row.site_code || null,
   department_name: row.department_name || '',
   reading_value: toNumberOrNull(row.reading_value) || 0,
   reading_unit: row.reading_unit || '',
@@ -479,19 +482,19 @@ const apiMappers = {
     endpoint: '/assets',
     key: 'assetnum',
     apiKey: 'asset_num',
-    toApi: row => ({ asset_num: toText(row.assetnum), description: toText(row.description), location_code: row.location || '', parent_asset_num: row.parent || null, department_name: row.department || '', sub_department_code: row['sub department'] || row.subDepartment || '', priority: toNumberOrNull(row.prioity || row.priority), site_code: row.site || '1031', status: statusText(row.status, 'OPERATING'), model_num: row.modelnum || '', serial_num: row.serialnum || '', install_date: toDateOrNull(row.installdate), quantity: toNumberOrNull(row.quantity) || 1 })
+    toApi: row => ({ asset_num: toText(row.assetnum), description: toText(row.description), location_code: row.location || '', parent_asset_num: row.parent || null, department_name: row.department || '', sub_department_code: row['sub department'] || row.subDepartment || '', priority: toNumberOrNull(row.prioity || row.priority), site_code: row.site || null, status: statusText(row.status, 'OPERATING'), model_num: row.modelnum || '', serial_num: row.serialnum || '', install_date: toDateOrNull(row.installdate), quantity: toNumberOrNull(row.quantity) || 1 })
   },
   locations: {
     endpoint: '/locations',
     key: 'location',
     apiKey: 'location_code',
-    toApi: row => ({ location_code: toText(row.location), description: toText(row.description), location_type: row.type || '', status: statusText(row.status, 'OPERATING'), priority: toNumberOrNull(row.priority), priority_description: row.priorityDescription || row['priority  description'] || '', site_code: row.site || '1031', building: row.building || row.builiding || '', building_category: row.buildingCategory || row['builiding category'] || '', department_name: row.department || '' })
+    toApi: row => ({ location_code: toText(row.location), description: toText(row.description), location_type: row.type || '', status: statusText(row.status, 'OPERATING'), priority: toNumberOrNull(row.priority), priority_description: row.priorityDescription || row['priority  description'] || '', site_code: row.site || null, building: row.building || row.builiding || '', building_category: row.buildingCategory || row['builiding category'] || '', department_name: row.department || '' })
   },
   labor: {
     endpoint: '/labor',
     key: 'personId',
     apiKey: 'labor_id',
-    toApi: row => ({ labor_id: toText(row.personId), display_name: toText(row.name), craft_code: row.craftCode || '', craft_name: row.craft || '', department_name: row.department || '', sub_department_code: row.subDepartment || '', site_code: row.site || '1031', availability: row.availability || 'Available', status: statusText(row.status) })
+    toApi: row => ({ labor_id: toText(row.personId), display_name: toText(row.name), craft_code: row.craftCode || '', craft_name: row.craft || '', department_name: row.department || '', sub_department_code: row.subDepartment || '', site_code: row.site || null, availability: row.availability || 'Available', status: statusText(row.status) })
   },
   materials: {
     endpoint: '/materials',
@@ -503,7 +506,7 @@ const apiMappers = {
     endpoint: '/storerooms',
     key: 'code',
     apiKey: 'store_code',
-    toApi: row => ({ store_code: toText(row.code), store_name: toText(row.name), site_code: row.site || '1031', status: statusText(row.status) })
+    toApi: row => ({ store_code: toText(row.code), store_name: toText(row.name), site_code: row.site || null, status: statusText(row.status) })
   },
   tools: {
     endpoint: '/tools-equipment',
@@ -521,14 +524,14 @@ const apiMappers = {
     endpoint: '/work-orders',
     key: 'WORKORDER',
     apiKey: 'work_order_num',
-    toApi: row => ({ work_order_num: toText(row.WORKORDER), description: toText(row['DESCRIPITION '] || row.DESCRIPTION), long_description: row['LONG DESCRIPTION'] || '', location_code: row['LOCATION '] || '', asset_num: row.ASSET || null, status: statusText(row.STATUS, 'WAPPR'), work_type: row['WORK TYPE '] || row['WORK TYPE'] || 'CM', priority: toNumberOrNull(row.PRIORTY || row.priority), site_code: row.SITE || '1031', department_name: row['DEPARTMENT '] || '', sub_department_code: row['SUB DEPARTMENT  NAME'] || '', assigned_department_name: row['ASSIGNED DEPARTMENT'] || row['DEPARTMENT '] || '', target_start_at: toDateOrNull(row['TARGET START ']), target_finish_at: toDateOrNull(row['TARGET FINISH ']), actual_start_at: toDateOrNull(row['ACTUAL START ']), actual_finish_at: toDateOrNull(row['ACTUAL FINISH ']), reported_at: toDateOrNull(row['REPORTED DATE ']) || new Date(), source_sr_num: row['SOURCE SR'] || null, pm_num: row['PM NUMBER'] || null, pm_cycle: row['PM CYCLE'] || null, job_plan_num: row['JOB PLAN'] || null, schedule_rule_name: row['PM RULE'] || null, failure_code: row['FAILURE CODE'] || '', problem_code: row['PROBLEM CODE'] || '', cause_code: row['CAUSE CODE'] || '', remedy_code: row['REMEDY CODE'] || '', ptw_required: row['PTW REQUIRED'] === undefined ? true : Boolean(row['PTW REQUIRED']), ptw_files_json: JSON.stringify(fileMetadata(row['PTW FILES'])), general_files_json: JSON.stringify(fileMetadata(row['GENERAL FILES'])), technician_remarks: row['TECHNICIAN REMARKS'] || '', completion_notes: row['COMPLETION NOTES'] || '', actual_labor: row['ACTUAL LABOR'] || '', actual_hours: toNumberOrNull(row['ACTUAL HOURS']), actual_materials_json: JSON.stringify(actualResourceMetadata(row['ACTUAL MATERIALS'])), actual_tools_json: JSON.stringify(actualResourceMetadata(row['ACTUAL TOOLS'])) }),
+    toApi: row => ({ work_order_num: toText(row.WORKORDER), description: toText(row['DESCRIPITION '] || row.DESCRIPTION), long_description: row['LONG DESCRIPTION'] || '', location_code: row['LOCATION '] || '', asset_num: row.ASSET || null, status: statusText(row.STATUS, 'WAPPR'), work_type: row['WORK TYPE '] || row['WORK TYPE'] || 'CM', priority: toNumberOrNull(row.PRIORTY || row.priority), site_code: row.SITE || null, department_name: row['DEPARTMENT '] || '', sub_department_code: row['SUB DEPARTMENT  NAME'] || '', assigned_department_name: row['ASSIGNED DEPARTMENT'] || row['DEPARTMENT '] || '', target_start_at: toDateOrNull(row['TARGET START ']), target_finish_at: toDateOrNull(row['TARGET FINISH ']), actual_start_at: toDateOrNull(row['ACTUAL START ']), actual_finish_at: toDateOrNull(row['ACTUAL FINISH ']), reported_at: toDateOrNull(row['REPORTED DATE ']) || new Date(), source_sr_num: row['SOURCE SR'] || null, pm_num: row['PM NUMBER'] || null, pm_cycle: row['PM CYCLE'] || null, job_plan_num: row['JOB PLAN'] || null, schedule_rule_name: row['PM RULE'] || null, failure_code: row['FAILURE CODE'] || '', problem_code: row['PROBLEM CODE'] || '', cause_code: row['CAUSE CODE'] || '', remedy_code: row['REMEDY CODE'] || '', ptw_required: row['PTW REQUIRED'] === undefined ? true : Boolean(row['PTW REQUIRED']), ptw_files_json: JSON.stringify(fileMetadata(row['PTW FILES'])), general_files_json: JSON.stringify(fileMetadata(row['GENERAL FILES'])), technician_remarks: row['TECHNICIAN REMARKS'] || '', completion_notes: row['COMPLETION NOTES'] || '', actual_labor: row['ACTUAL LABOR'] || '', actual_hours: toNumberOrNull(row['ACTUAL HOURS']), actual_materials_json: JSON.stringify(actualResourceMetadata(row['ACTUAL MATERIALS'])), actual_tools_json: JSON.stringify(actualResourceMetadata(row['ACTUAL TOOLS'])) }),
     afterRow: persistWorkOrderChildren
   },
   serviceRequests: {
     endpoint: '/service-requests',
     key: 'sr',
     apiKey: 'sr_num',
-    toApi: row => ({ ...(row.__isNew ? { __forcePost: true } : {}), sr_num: row.__isNew ? 'AUTO' : toText(row.sr), description: toText(row.description), long_description: row.longDescription || '', site_code: row.site || '1031', location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', sub_department_code: row.subDepartment || '', assigned_department_name: row.assignedDepartment || '', reported_by: row.reportedBy || '', reported_at: toDateOrNull(row.reportedDate) || new Date(), priority: row.priority || '', request_type: row.requestType || 'Service', failure_code: row.failureCode || '', status: statusText(row.status, 'NEW'), converted_work_order_num: row.convertedWorkOrder || null }),
+    toApi: row => ({ ...(row.__isNew ? { __forcePost: true } : {}), sr_num: row.__isNew ? 'AUTO' : toText(row.sr), description: toText(row.description), long_description: row.longDescription || '', site_code: row.site || null, location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', sub_department_code: row.subDepartment || '', assigned_department_name: row.assignedDepartment || '', reported_by: row.reportedBy || '', reported_at: toDateOrNull(row.reportedDate) || new Date(), priority: row.priority || '', request_type: row.requestType || 'Service', failure_code: row.failureCode || '', status: statusText(row.status, 'NEW'), converted_work_order_num: row.convertedWorkOrder || null }),
     afterRow: (row, saved) => {
       if (!row.__isNew || !saved?.sr_num) return
       row.__isNew = false
@@ -539,13 +542,13 @@ const apiMappers = {
     endpoint: '/incidents',
     key: 'incidentNumber',
     apiKey: 'incident_num',
-    toApi: row => ({ incident_num: toText(row.incidentNumber || row.incident), description: toText(row.description), site_code: row.site || '1031', location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', status: statusText(row.status, 'NEW'), reported_at: toDateOrNull(row.reportedDate) || new Date() })
+    toApi: row => ({ incident_num: toText(row.incidentNumber || row.incident), description: toText(row.description), site_code: row.site || null, location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', status: statusText(row.status, 'NEW'), reported_at: toDateOrNull(row.reportedDate) || new Date() })
   },
   pm: {
     endpoint: '/preventive-maintenance',
     key: 'pmNumber',
     apiKey: 'pm_num',
-    toApi: row => ({ pm_num: toText(row.pmNumber), description: toText(row.description), asset_num: row.asset || null, route_code: row.route || '', location_code: row.location || '', job_plan_num: row.jobPlan || null, next_date: toDateOrNull(row.startDate), lead_time_days: toNumberOrNull(row.leadTime) || 0, frequency: toNumberOrNull(row.frequency) || 1, frequency_unit: row.freqUnit || 'MONTHS', schedule_rule_name: row.scheduleRule || null, pm_counter: toNumberOrNull(row.pmCounter) || 0, work_type: row.workType || 'PM', wo_status: row.woStatus || 'WSCH', store_code: row.storeLocation || null, supervisor: row.supervisor || '', lead_person: row.lead || '', person_group: row.personGroup || '', site_code: row.site || '1031', department_name: row.department || '', sub_department_code: row.subDepartment || '', pm_status: row.pmStatus || 'ACTIVE', last_generated_cycle: row.lastGeneratedCycle || '' })
+    toApi: row => ({ pm_num: toText(row.pmNumber), description: toText(row.description), asset_num: row.asset || null, route_code: row.route || '', location_code: row.location || '', job_plan_num: row.jobPlan || null, next_date: toDateOrNull(row.startDate), lead_time_days: toNumberOrNull(row.leadTime) || 0, frequency: toNumberOrNull(row.frequency) || 1, frequency_unit: row.freqUnit || 'MONTHS', schedule_rule_name: row.scheduleRule || null, pm_counter: toNumberOrNull(row.pmCounter) || 0, work_type: row.workType || 'PM', wo_status: row.woStatus || 'WSCH', store_code: row.storeLocation || null, supervisor: row.supervisor || '', lead_person: row.lead || '', person_group: row.personGroup || '', site_code: row.site || null, department_name: row.department || '', sub_department_code: row.subDepartment || '', pm_status: row.pmStatus || 'ACTIVE', last_generated_cycle: row.lastGeneratedCycle || '' })
   },
   pmRules: {
     endpoint: '/pm-schedule-rules',
@@ -563,25 +566,25 @@ const apiMappers = {
     endpoint: '/meter-readings',
     key: 'meterReadingId',
     apiKey: 'meter_reading_id',
-    toApi: row => ({ ...(row.meterReadingId ? { meter_reading_id: row.meterReadingId } : {}), meter_id: toText(row.meterId), asset_num: row.asset || null, work_order_num: row.workOrder || null, site_code: row.site || '1031', department_name: row.department || '', reading_value: toNumberOrNull(row.reading) || 0, reading_unit: row.unit || '', reading_at: toDateOrNull(row.readingDate) || new Date() })
+    toApi: row => ({ ...(row.meterReadingId ? { meter_reading_id: row.meterReadingId } : {}), meter_id: toText(row.meterId), asset_num: row.asset || null, work_order_num: row.workOrder || null, site_code: row.site || null, department_name: row.department || '', reading_value: toNumberOrNull(row.reading) || 0, reading_unit: row.unit || '', reading_at: toDateOrNull(row.readingDate) || new Date() })
   },
   purchaseRequests: {
     endpoint: '/purchase-requisitions',
     key: 'purchaseRequest',
     apiKey: 'pr_num',
-    toApi: row => ({ pr_num: toText(row.purchaseRequest), work_order_num: row.workOrder || null, resource_request_id: row.resourceRequestId || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', requested_quantity: toNumberOrNull(row.quantity) || 0, planned_quantity: toNumberOrNull(row.plannedQuantity), available_quantity: toNumberOrNull(row.availableQuantity), store_code: row.type === 'Material' ? row.source || null : null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'WAPPR'), po_num: row.purchaseOrder || null, created_at: toDateOrNull(row.createdAt) || new Date(), approved_at: toDateOrNull(row.approvedAt), closed_at: toDateOrNull(row.closedAt), cancelled_at: toDateOrNull(row.cancelledAt) })
+    toApi: row => ({ pr_num: toText(row.purchaseRequest), work_order_num: row.workOrder || null, resource_request_id: row.resourceRequestId || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', requested_quantity: toNumberOrNull(row.quantity) || 0, planned_quantity: toNumberOrNull(row.plannedQuantity), available_quantity: toNumberOrNull(row.availableQuantity), store_code: row.type === 'Material' ? row.source || null : null, site_code: row.site || null, department_name: row.department || '', status: statusText(row.status, 'WAPPR'), po_num: row.purchaseOrder || null, created_at: toDateOrNull(row.createdAt) || new Date(), approved_at: toDateOrNull(row.approvedAt), closed_at: toDateOrNull(row.closedAt), cancelled_at: toDateOrNull(row.cancelledAt) })
   },
   purchaseOrders: {
     endpoint: '/purchase-orders',
     key: 'purchaseOrder',
     apiKey: 'po_num',
-    toApi: row => ({ po_num: toText(row.purchaseOrder), pr_num: row.purchaseRequest || null, work_order_num: row.workOrder || null, resource_request_id: row.resourceRequestId || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', ordered_quantity: toNumberOrNull(row.quantity) || 0, store_code: row.type === 'Material' ? row.source || null : null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'WAPPR'), created_at: toDateOrNull(row.createdAt) || new Date(), approved_at: toDateOrNull(row.approvedAt), received_at: toDateOrNull(row.receivedAt), closed_at: toDateOrNull(row.closedAt), cancelled_at: toDateOrNull(row.cancelledAt) })
+    toApi: row => ({ po_num: toText(row.purchaseOrder), pr_num: row.purchaseRequest || null, work_order_num: row.workOrder || null, resource_request_id: row.resourceRequestId || null, request_type: row.type || 'Material', item_code: row.itemCode || row.item || '', item_description: row.item || '', ordered_quantity: toNumberOrNull(row.quantity) || 0, store_code: row.type === 'Material' ? row.source || null : null, site_code: row.site || null, department_name: row.department || '', status: statusText(row.status, 'WAPPR'), created_at: toDateOrNull(row.createdAt) || new Date(), approved_at: toDateOrNull(row.approvedAt), received_at: toDateOrNull(row.receivedAt), closed_at: toDateOrNull(row.closedAt), cancelled_at: toDateOrNull(row.cancelledAt) })
   },
   reservations: {
     endpoint: '/reservations',
     key: 'reservation',
     apiKey: 'reservation_num',
-    toApi: row => ({ reservation_num: toText(row.reservation), work_order_num: row.workOrder || null, resource_request_id: row.resourceRequestId || null, pr_num: row.purchaseRequest || null, po_num: row.purchaseOrder || null, item_code: row.itemCode || row.item || '', item_description: row.item || '', reserved_quantity: toNumberOrNull(row.quantity) || 0, arranged_quantity: toNumberOrNull(row.arrangedQuantity) || 0, released_quantity: toNumberOrNull(row.releasedQuantity) || 0, delivered_quantity: toNumberOrNull(row.deliveredQuantity) || 0, store_code: row.type === 'Material' ? row.source || null : null, site_code: row.site || '1031', department_name: row.department || '', status: statusText(row.status, 'ENTERED'), created_at: toDateOrNull(row.createdAt) || new Date() })
+    toApi: row => ({ reservation_num: toText(row.reservation), work_order_num: row.workOrder || null, resource_request_id: row.resourceRequestId || null, pr_num: row.purchaseRequest || null, po_num: row.purchaseOrder || null, item_code: row.itemCode || row.item || '', item_description: row.item || '', reserved_quantity: toNumberOrNull(row.quantity) || 0, arranged_quantity: toNumberOrNull(row.arrangedQuantity) || 0, released_quantity: toNumberOrNull(row.releasedQuantity) || 0, delivered_quantity: toNumberOrNull(row.deliveredQuantity) || 0, store_code: row.type === 'Material' ? row.source || null : null, site_code: row.site || null, department_name: row.department || '', status: statusText(row.status, 'ENTERED'), created_at: toDateOrNull(row.createdAt) || new Date() })
   },
   jobPlans: {
     endpoint: '/job-plans',
@@ -628,9 +631,9 @@ const initialSiteRecords = () => [...new Set([
   ...workOrders.map(order => order.SITE)
 ].filter(Boolean).map(site => String(site).trim()))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(code => ({
   code,
-  name: code === '1031' ? 'Riyadh' : `Site ${code}`,
-  region: code === '1031' ? 'Central' : '',
-  city: code === '1031' ? 'Riyadh' : '',
+  name: `Site ${code}`,
+  region: '',
+  city: '',
   status: 'Active'
 }))
 const initialDepartmentRecords = () => {
@@ -646,27 +649,26 @@ const initialDepartmentRecords = () => {
 function WorkOrderWorkflowNotice({ status, missing = [], nextStep }) {
   const clear = missing.length === 0
   return (
-    <section className={`rounded-2xl border px-4 py-3 ${clear ? 'border-[var(--app-line)] bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'border-[var(--app-badge-orange-text)]/20 bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]'}`}>
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <p className="text-[9px] font-extrabold uppercase tracking-[.16em] opacity-80">Workflow guidance</p>
-          <h3 className="mt-1 text-sm font-extrabold">{clear ? 'Ready for the next workflow action' : 'Update needed before the next workflow action'}</h3>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {clear ? (
-              <span className="rounded-full bg-[color-mix(in_srgb,var(--app-panel)_70%,transparent)] px-2.5 py-1 text-[10px] font-bold">No blocking fields</span>
-            ) : missing.map(item => (
-              <span className="rounded-full bg-[color-mix(in_srgb,var(--app-panel)_70%,transparent)] px-2.5 py-1 text-[10px] font-bold" key={item}>{item}</span>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-xl bg-[color-mix(in_srgb,var(--app-panel)_70%,transparent)] px-3 py-2 text-xs">
+    <Alert
+      tone={clear ? 'success' : 'warning'}
+      title={clear ? 'Ready for the next workflow action' : 'Update needed before the next workflow action'}
+      actions={(
+        <div className="rounded-lg bg-[color-mix(in_srgb,var(--app-panel)_70%,transparent)] px-3 py-2 text-xs">
           <span className="block text-[9px] font-extrabold uppercase tracking-[.14em] opacity-70">Current status</span>
           <strong>{status}</strong>
           <span className="mx-2 opacity-50">·</span>
           <span>{nextStep}</span>
         </div>
+      )}
+    >
+      <div className="mt-2 flex flex-wrap gap-2">
+        {clear ? (
+          <span className="rounded-full bg-[color-mix(in_srgb,var(--app-panel)_70%,transparent)] px-2.5 py-1 text-[10px] font-bold">No blocking fields</span>
+        ) : missing.map(item => (
+          <span className="rounded-full bg-[color-mix(in_srgb,var(--app-panel)_70%,transparent)] px-2.5 py-1 text-[10px] font-bold" key={item}>{item}</span>
+        ))}
       </div>
-    </section>
+    </Alert>
   )
 }
 
@@ -715,7 +717,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const [workGroup,setWorkGroup]=useState(isPM?'C1-HVAC':'')
   const [supervisor,setSupervisor]=useState('')
   const [laborCraft,setLaborCraft]=useState(isPM?'HVAC-TECH':'')
-  const [siteValue,setSiteValue]=useState(String(order.SITE||'1031'))
+  const [siteValue,setSiteValue]=useState(String(order.SITE || ''))
   const [assetValue,setAssetValue]=useState(order.ASSET||'')
   const [assetDescription,setAssetDescription]=useState(assetDescriptionFromMaster(order.ASSET, assetRecords) || order['ASSET DESCRIPTION'] || order['ASSET DESCRIPTION '] || '')
   const [locationValue,setLocationValue]=useState(order['LOCATION '] || assetFromMaster(order.ASSET, assetRecords)?.location || '')
@@ -1942,7 +1944,7 @@ export default function App() {
     if(rows.some(order=>order['PM NUMBER']===pm.pmNumber&&order['PM CYCLE']===pm.cycle)){notify(`PM work order for ${pm.pmNumber} already exists.`,'info');return rows}
     const assetRecord=assetFromMaster(pm.asset, assetRecords)
     const inheritedLocation=pm.location || assetRecord?.location || ''
-    const inheritedSite=pm.site || assetRecord?.site || '1031'
+    const inheritedSite=pm.site || assetRecord?.site || ''
     notify(`PM work order ${pm.workOrder} generated.`,'success')
     return [...rows,{'WORKORDER':pm.workOrder,'DESCRIPITION ':pm.description,'LOCATION ':inheritedLocation,'LOCATION PRIORTY':3,'ASSET':pm.asset,'ASSET DESCRIPTION':assetRecord?.description?.trim() || '','STATUS':pm.woStatus||'WSCH','WORK TYPE ':'PM','STATUS DESCRIPITION':maximoWorkOrderStatusDescriptions[pm.woStatus||'WSCH']||'Waiting for Schedule','DEPARTMENT ':pm.department,'SUB DEPARTMENT  NAME':pm.subDepartment,'ASSIGNED DEPARTMENT':pm.department,'PRIORTY':3,'SITE':inheritedSite,'TARGET START ':pm.startDate,'TARGET FINISH ':pm.startDate,'REPORTED DATE ':nowLocalDateTime(),'PM NUMBER':pm.pmNumber,'PM CYCLE':pm.cycle,'JOB PLAN':pm.jobPlan,'PM RULE':pm.scheduleRule||'','JOB PLAN TASKS':tasks,'ESTIMATED DURATION':tasks.reduce((sum,task)=>sum+Number(task['TASK DURATION IN HOUR']||0),0)*24,'ROUTE':pm.route,'LEAD TIME (DAYS)':pm.leadTime,'FREQUENCY':pm.frequency,'FREQUNIT':pm.freqUnit,'PMCOUNTER':pm.pmCounter,'STORELOC':pm.storeLocation,'SUPERVISOR':pm.supervisor,'LEAD':pm.lead,'PERSONGROUP':pm.personGroup,'PM STATUS':pm.pmStatus}]
   })
@@ -1993,25 +1995,10 @@ export default function App() {
   }
   if (!isAuthenticated) return <LoginPage />
   if (workspaceLoading) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-[var(--app-bg)] p-6 text-[var(--app-ink)]">
-        <section className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-6 text-center shadow-[0_18px_50px_rgba(20,35,29,.12)]">
-          <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">Backend</p>
-          <h1 className="mt-2 text-xl font-extrabold">Loading CAFM data</h1>
-        </section>
-      </main>
-    )
+    return <AppState eyebrow="Backend" title="Loading CAFM data" />
   }
   if (workspaceError) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-[var(--app-bg)] p-6 text-[var(--app-ink)]">
-        <section className="max-w-md rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-6 shadow-[0_18px_50px_rgba(20,35,29,.12)]">
-          <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">Backend connection</p>
-          <h1 className="mt-2 text-xl font-extrabold">Unable to load data</h1>
-          <p className="mt-2 text-sm text-[var(--app-muted)]">{workspaceError}</p>
-        </section>
-      </main>
-    )
+    return <AppState eyebrow="Backend connection" title="Unable to load data" description={workspaceError} tone="error" />
   }
   if (!activePage) return <LoginPage />
 
@@ -2033,18 +2020,7 @@ export default function App() {
       >
         {activePage === 'Overview' ? <OverviewPage onNavigate={navigate} onOpenWorkOrderTab={openWorkOrderTab} currentUser={effectiveUser} projectName={projectName} assets={scopedAssets} incidents={scopedIncidents} workOrders={scopedWorkOrders} pmRecords={pmScheduleRecords} failureCodes={failureCodeRecords} meters={meterRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} reservations={scopedReservations} /> : pages[activePage]}
       </AppShell>
-      {toast && (
-        <div className="fixed bottom-5 right-5 z-[9999] max-w-sm rounded-2xl border border-[var(--app-line)] bg-white p-4 text-sm shadow-[0_18px_50px_rgba(20,35,29,.18)]">
-          <div className="flex items-start gap-3">
-            <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${toast.tone === 'error' ? 'bg-red-500' : toast.tone === 'success' ? 'bg-emerald-600' : 'bg-[var(--app-primary)]'}`} />
-            <div className="min-w-0">
-              <strong className="block text-xs uppercase tracking-[.12em] text-[var(--app-muted)]">{toast.tone === 'error' ? 'Action failed' : toast.tone === 'success' ? 'Saved' : 'Notice'}</strong>
-              <p className="mt-1 font-semibold text-[var(--app-ink)]">{toast.message}</p>
-            </div>
-            <button type="button" className="ml-2 text-lg leading-none text-[var(--app-muted)] hover:text-[var(--app-ink)]" onClick={() => setToast(null)} aria-label="Dismiss notification">×</button>
-          </div>
-        </div>
-      )}
+      <Toast message={toast?.message} tone={toast?.tone} onDismiss={() => setToast(null)} />
     </>
   )
 }

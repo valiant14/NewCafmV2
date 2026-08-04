@@ -1,4 +1,4 @@
-import { Printer } from 'lucide-react'
+import { ArrowLeft, Printer } from 'lucide-react'
 import Badge from './Badge'
 import Button from './Button'
 import { cn } from '../../lib/cn'
@@ -6,20 +6,21 @@ import { printWithoutBrowserTitle } from '../../lib/print'
 
 export function DetailHeader({ eyebrow, id, title, status, statusTone = 'green', onBack, backLabel = 'Back', printLabel = 'Print record', stats = [], actions }) {
   return (
-    <header className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_14px_36px_rgba(15,23,42,.08)] sm:p-6">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+    <header className="app-detail-header">
+      <div className="app-detail-heading">
         <div className="min-w-0">
-          <button className="mb-4 inline-flex items-center text-xs font-bold text-[var(--app-muted)] transition hover:text-[var(--app-primary)]" onClick={onBack}>
-            ← {backLabel}
+          <button className="app-detail-back" onClick={onBack}>
+            <ArrowLeft size={14} />
+            {backLabel}
           </button>
-          <p className="text-[9px] font-extrabold uppercase tracking-[.18em] text-[var(--app-muted)]">{eyebrow}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-extrabold leading-tight tracking-[-.045em] text-[var(--app-ink)]">{id}</h1>
+          <p className="app-eyebrow">{eyebrow}</p>
+          <div className="app-detail-title-row">
+            <h1 className="app-detail-title">{id}</h1>
             {status && <Badge tone={statusTone}>{status}</Badge>}
           </div>
-          {title && <p className="mt-2 max-w-3xl text-sm text-[var(--app-muted)]">{title}</p>}
+          {title && <p className="app-page-description">{title}</p>}
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="app-page-actions">
           {actions}
           <Button variant="outline" onClick={() => printWithoutBrowserTitle()}>
             <Printer size={15} />
@@ -28,12 +29,12 @@ export function DetailHeader({ eyebrow, id, title, status, statusTone = 'green',
         </div>
       </div>
       {stats.length > 0 && (
-        <div className="mt-5 grid gap-3 border-t border-[var(--app-line)] pt-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="app-detail-stats">
           {stats.map(stat => (
-            <div key={stat.label} className="rounded-2xl bg-[var(--app-soft-bg)] px-3 py-2.5">
-              <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{stat.label}</span>
-              <strong className="mt-1 block truncate text-sm text-[var(--app-ink)]">{stat.value || '-'}</strong>
-              {stat.note && <small className="mt-0.5 block truncate text-[11px] text-[var(--app-muted)]">{stat.note}</small>}
+            <div key={stat.label} className="app-detail-stat">
+              <span className="app-stat-label">{stat.label}</span>
+              <strong>{stat.value || '-'}</strong>
+              {stat.note && <small>{stat.note}</small>}
             </div>
           ))}
         </div>
@@ -50,19 +51,17 @@ export function ProfileStrip({ icon: Icon, tone = 'default', eyebrow, title, des
   }[tone] || 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]'
 
   return (
-    <section className="grid gap-4 rounded-3xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.05)] md:grid-cols-[auto_1fr_repeat(2,minmax(150px,auto))] md:items-center">
-      <div className={cn('flex h-14 w-14 items-center justify-center rounded-2xl', iconTone)}>
-        {Icon ? <Icon size={25} /> : null}
-      </div>
+    <section className="app-profile-strip">
+      <div className={cn('app-profile-icon', iconTone)}>{Icon ? <Icon size={24} /> : null}</div>
       <div className="min-w-0">
-        <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">{eyebrow}</span>
-        <strong className="mt-1 block text-lg font-extrabold text-[var(--app-ink)]">{title}</strong>
-        <p className="mt-1 text-sm text-[var(--app-muted)]">{description}</p>
+        <span className="app-eyebrow">{eyebrow}</span>
+        <strong className="app-profile-title">{title}</strong>
+        <p className="app-profile-description">{description}</p>
       </div>
       {stats.map(stat => (
-        <div key={stat.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4">
-          <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{stat.label}</span>
-          <strong className="mt-1 block text-base text-[var(--app-ink)]">{stat.value || '-'}</strong>
+        <div key={stat.label} className="app-profile-stat">
+          <span className="app-stat-label">{stat.label}</span>
+          <strong>{stat.value || '-'}</strong>
         </div>
       ))}
     </section>
@@ -71,16 +70,15 @@ export function ProfileStrip({ icon: Icon, tone = 'default', eyebrow, title, des
 
 export function DetailTabs({ tabs = ['Details'], active = tabs[0], onChange }) {
   return (
-    <nav className="flex gap-1 border-b border-[var(--app-line)]">
+    <nav className="app-detail-tabs" role="tablist">
       {tabs.map(tab => (
         <button
           key={tab}
           type="button"
           onClick={() => onChange?.(tab)}
-          className={cn(
-            'relative px-3 py-3 text-[11px] text-[var(--app-muted)] transition hover:text-[var(--app-primary)]',
-            active === tab && 'font-bold text-[var(--app-primary)] after:absolute after:bottom-[-1px] after:left-2 after:right-2 after:h-0.5 after:bg-[var(--app-primary)]'
-          )}
+          className={cn('app-detail-tab', active === tab && 'app-detail-tab--active')}
+          role="tab"
+          aria-selected={active === tab}
         >
           {tab}
         </button>
@@ -91,22 +89,20 @@ export function DetailTabs({ tabs = ['Details'], active = tabs[0], onChange }) {
 
 export function FocusCard({ icon: Icon, eyebrow, title, description, progress = 100, warning = false, metrics = [] }) {
   return (
-    <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(15,23,42,.06)] lg:col-span-2">
+    <section className="app-surface lg:col-span-2">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">{eyebrow}</span>
-          <h2 className="mt-1 text-xl font-extrabold tracking-[-.03em] text-[var(--app-ink)]">{title}</h2>
-          <p className="mt-1 text-sm text-[var(--app-muted)]">{description}</p>
+          <span className="app-eyebrow">{eyebrow}</span>
+          <h2 className="mt-1 text-xl font-bold text-[var(--app-ink)]">{title}</h2>
+          <p className="app-page-description">{description}</p>
         </div>
-        {Icon && <Icon className={warning ? 'text-[var(--warning)]' : 'text-[var(--success)]'} size={30} />}
+        {Icon && <Icon className={warning ? 'text-[var(--warning)]' : 'text-[var(--success)]'} size={28} />}
       </div>
       <div className="mt-5 h-2 overflow-hidden rounded-full bg-[var(--app-soft-bg)]">
         <span className={cn('block h-full rounded-full', warning ? 'bg-[var(--warning)]' : 'bg-[var(--success)]')} style={{ width: `${progress}%` }} />
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-3">
-        {metrics.map(metric => (
-          <MetricCard key={metric.label} {...metric} />
-        ))}
+        {metrics.map(metric => <MetricCard key={metric.label} {...metric} />)}
       </div>
     </section>
   )
@@ -114,13 +110,13 @@ export function FocusCard({ icon: Icon, eyebrow, title, description, progress = 
 
 export function MetricCard({ icon: Icon, label, value, note }) {
   return (
-    <article className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
+    <article className="app-metric-card">
       <div className="flex items-start gap-3">
         {Icon && <Icon className="mt-0.5 text-[var(--app-muted)]" size={17} />}
         <div>
-          <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{label}</span>
-          <strong className="mt-1 block text-lg text-[var(--app-ink)]">{value || '-'}</strong>
-          <small className="mt-1 block text-[11px] text-[var(--app-muted)]">{note}</small>
+          <span className="app-stat-label">{label}</span>
+          <strong>{value || '-'}</strong>
+          {note && <small>{note}</small>}
         </div>
       </div>
     </article>
@@ -129,19 +125,19 @@ export function MetricCard({ icon: Icon, label, value, note }) {
 
 export function InfoCard({ icon: Icon, kicker, title, items = [], wide = false }) {
   return (
-    <section className={cn('rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(15,23,42,.06)]', wide && 'lg:col-span-2')}>
-      <header className="mb-4 flex items-center gap-3 border-b border-[var(--app-line)] pb-4">
+    <section className={cn('app-surface', wide && 'lg:col-span-2')}>
+      <header className="app-info-card-header">
         {Icon && <Icon className="text-[var(--app-muted)]" size={18} />}
         <div>
-          <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">{kicker}</span>
-          <h2 className="text-base font-extrabold text-[var(--app-ink)]">{title}</h2>
+          <span className="app-eyebrow">{kicker}</span>
+          <h2>{title}</h2>
         </div>
       </header>
       <dl className="grid gap-3 sm:grid-cols-2">
         {items.map(([label, value]) => (
-          <div key={label} className="rounded-2xl bg-[var(--app-soft-bg)] p-3">
-            <dt className="text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">{label}</dt>
-            <dd className="mt-1 text-sm font-bold text-[var(--app-ink)]">{value || '-'}</dd>
+          <div key={label} className="app-info-field">
+            <dt className="app-stat-label">{label}</dt>
+            <dd>{value || '-'}</dd>
           </div>
         ))}
       </dl>
@@ -151,17 +147,17 @@ export function InfoCard({ icon: Icon, kicker, title, items = [], wide = false }
 
 export function TimelineCard({ icon: Icon, kicker, title, rows = [] }) {
   return (
-    <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(15,23,42,.06)] lg:col-span-2">
-      <header className="mb-4 flex items-center gap-3 border-b border-[var(--app-line)] pb-4">
+    <section className="app-surface lg:col-span-2">
+      <header className="app-info-card-header">
         {Icon && <Icon className="text-[var(--app-muted)]" size={18} />}
         <div>
-          <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">{kicker}</span>
-          <h2 className="text-base font-extrabold text-[var(--app-ink)]">{title}</h2>
+          <span className="app-eyebrow">{kicker}</span>
+          <h2>{title}</h2>
         </div>
       </header>
       <div className="grid gap-3">
         {rows.map(row => (
-          <div key={row.text} className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4 md:grid-cols-[auto_1fr_auto] md:items-center">
+          <div key={row.text} className="app-timeline-row">
             {row.icon ? <row.icon className="text-[var(--success)]" size={15} /> : <span className="h-2 w-2 rounded-full bg-[var(--success)]" />}
             <span className="text-sm text-[var(--app-muted)]">{row.text}</span>
             <strong className="text-sm text-[var(--app-ink)]">{row.value || '-'}</strong>

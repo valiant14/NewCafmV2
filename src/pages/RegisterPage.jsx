@@ -9,6 +9,7 @@ import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
@@ -72,9 +73,9 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
         statusOptions={optionsFromRows(records, ['status', 'STATUS'])}
       />
 
-      <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
+      <TablePanel>
         <DataTable rows={visibleRecords} columns={columns} rowKey={rowKey} onRowClick={onRowClick} search={search} pagination />
-      </section>
+      </TablePanel>
 
       {modalOpen && (
         <MasterRecordModal

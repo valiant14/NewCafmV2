@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { LogIn } from 'lucide-react'
 import Button from '../components/ui/Button'
+import Field from '../components/ui/Field'
 import sederLogo from '../Assets/seder-logo.png'
 import { useAuth } from '../providers/AuthProvider'
-
-const inputClass = 'h-11 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-field-bg)] px-3 text-sm text-[var(--app-ink)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-[var(--app-primary)]'
 
 export default function LoginPage() {
   const { login, authError } = useAuth()
@@ -19,27 +18,21 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[var(--app-bg)] p-4 text-[var(--app-ink)]">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-[28px] border border-[var(--app-line)] bg-[var(--app-panel)] p-6 shadow-[0_24px_70px_rgba(20,35,29,.12)]">
-        <div className="mb-6 text-center">
+    <main className="app-login-page">
+      <form onSubmit={submit} className="app-login-panel">
+        <div className="app-login-brand">
           <img src={sederLogo} alt="Seder" className="mx-auto h-20 w-20 object-contain" />
-          <p className="mt-4 text-[9px] font-extrabold uppercase tracking-[.18em] text-[var(--app-muted)]">Secure workspace</p>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">Login</h1>
+          <p className="app-eyebrow">Secure workspace</p>
+          <h1>Sign in to CAFM</h1>
         </div>
 
         <div className="grid gap-4">
-          <label className="grid gap-1.5">
-            <span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">Username</span>
-            <input className={inputClass} value={form.username} onChange={event => setForm({ ...form, username: event.target.value })} autoComplete="username" placeholder="Username" />
-          </label>
-          <label className="grid gap-1.5">
-            <span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">Password</span>
-            <input className={inputClass} value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} autoComplete="current-password" type="password" placeholder="Password" />
-          </label>
+          <Field label="Username" name="username" autoComplete="username" value={form.username} onChange={event => setForm({ ...form, username: event.target.value })} placeholder="Username" />
+          <Field label="Password" name="password" autoComplete="current-password" value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} type="password" placeholder="Password" />
         </div>
 
         {authError && (
-          <div className="mt-4 rounded-2xl border border-[var(--app-badge-orange-bg)] bg-[var(--app-badge-orange-bg)] p-3 text-sm font-bold text-[var(--app-badge-orange-text)]">
+          <div className="app-login-error">
             {authError}
           </div>
         )}

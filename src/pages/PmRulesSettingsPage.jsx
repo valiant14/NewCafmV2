@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ExternalLink, Plus, Repeat, Save } from 'lucide-react'
 import Badge from '../components/ui/Badge'
+import Alert from '../components/ui/Alert'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
@@ -10,8 +11,10 @@ import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import IndexTabs from '../components/ui/IndexTabs'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
-import { Field } from '../components/ui/FormControls'
+import { Field, Section } from '../components/ui/FormControls'
+import { SurfaceHeader } from '../components/ui/Surface'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
 
@@ -118,13 +121,9 @@ function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], 
         actions={<div className="flex items-center gap-2"><Button variant="outline" onClick={onBack}>Back to rules</Button><Button onClick={save}><Save size={16} />Save rule</Button></div>}
       />
 
-      {error && <div className="rounded-2xl border border-[#f2c5ba] bg-[#fff4f1] px-4 py-3 text-sm font-bold text-[#9b3f2d]">{error}</div>}
+      {error && <Alert tone="danger">{error}</Alert>}
 
-      <section className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
-        <header className="mb-4 border-b border-[var(--app-line)] pb-4">
-          <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">Edit Area</span>
-          <h2 className="text-base font-extrabold text-[var(--app-ink)]">Schedule Control</h2>
-        </header>
+      <Section title="Schedule Control" note="Edit the work order generation interval and defaults.">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Field label="Rule Name" value={form.name} disabled onChange={() => {}} />
           <Field label="Every" type="number" value={form.frequency} required onChange={event => set('frequency', event.target.value)} />
@@ -137,13 +136,10 @@ function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], 
           <Field label="Status" value={form.status} options={['Active', 'Inactive']} onChange={event => set('status', event.target.value)} />
           <div className="xl:col-span-3"><Field label="Notes" type="textarea" value={form.notes} onChange={event => set('notes', event.target.value)} /></div>
         </div>
-      </section>
+      </Section>
 
-      <section className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
-        <header className="mb-4 flex items-center justify-between border-b border-[var(--app-line)] pb-4">
-          <div><span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">PM Related Link</span><h2 className="text-base font-extrabold text-[var(--app-ink)]">Preventive Maintenance Using This Rule</h2></div>
-          <Badge tone={relatedPm.length ? 'blue' : 'neutral'}>{relatedPm.length} PM</Badge>
-        </header>
+      <TablePanel>
+        <SurfaceHeader eyebrow="PM related link" title="Preventive Maintenance Using This Rule" actions={<Badge tone={relatedPm.length ? 'blue' : 'neutral'}>{relatedPm.length} PM</Badge>} />
         {relatedPm.length ? (
           <DataTable
             rows={relatedPm}
@@ -163,13 +159,10 @@ function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], 
         ) : (
           <EmptyState icon={Repeat} title="No linked PM schedules" description="Select this rule in a PM schedule or import PM records with this PM RULE name." />
         )}
-      </section>
+      </TablePanel>
 
-      <section className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
-        <header className="mb-4 flex items-center justify-between border-b border-[var(--app-line)] pb-4">
-          <div><span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">History Logs</span><h2 className="text-base font-extrabold text-[var(--app-ink)]">Generated Work Orders</h2></div>
-          <Badge tone={historyRows.length ? 'green' : 'neutral'}>{historyRows.length} WO</Badge>
-        </header>
+      <TablePanel>
+        <SurfaceHeader eyebrow="History logs" title="Generated Work Orders" actions={<Badge tone={historyRows.length ? 'green' : 'neutral'}>{historyRows.length} WO</Badge>} />
         {historyRows.length ? (
           <DataTable
             rows={historyRows}
@@ -189,7 +182,7 @@ function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], 
         ) : (
           <EmptyState icon={Repeat} title="No generated history yet" description="When PM generation creates work orders from this rule, the history will appear here." />
         )}
-      </section>
+      </TablePanel>
     </section>
   )
 }
@@ -278,7 +271,7 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.05)]">
+      <TablePanel>
         {rows.length ? (
           <DataTable
             rows={visibleRows}
@@ -301,7 +294,7 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
         ) : (
           <EmptyState icon={Repeat} title="No PM rules yet" description="Add a rule to record the generation defaults for a group of PM schedules." />
         )}
-      </section>
+      </TablePanel>
 
       {modalOpen && (
         <MasterRecordModal

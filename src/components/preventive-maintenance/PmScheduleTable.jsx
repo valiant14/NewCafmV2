@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, CalendarClock, ChevronRight, Repeat } from 'lucide-react'
 import Badge from '../ui/Badge'
+import TablePanel from '../ui/TablePanel'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import { pmDueLabel, pmDueTone } from '../../lib/pmSchedule'
 import { scheduleForPlan } from '../../lib/pmGeneration'
@@ -38,19 +39,19 @@ export default function PmScheduleTable({ rows, currentPage, pageSize, pageCount
   const to = Math.min(currentPage * pageSize, total)
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-      <div className="grid grid-cols-[1.15fr_1fr_.8fr_1.1fr_1fr_.95fr_.95fr_28px] bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]">
+    <TablePanel>
+      <div className="pm-schedule-table-header grid grid-cols-[1.15fr_1fr_.8fr_1.1fr_1fr_.95fr_.95fr_28px] bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]">
         {columns.map(column => <span key={column.key || 'open'}>{column.label && <button className="inline-flex items-center gap-1 uppercase hover:text-[var(--app-primary)]" onClick={() => onSort?.(column.key)}>{column.label}{sortIcon(sort, column.key)}</button>}</span>)}
       </div>
       {rows.map(plan => {
         const schedule = scheduleForPlan(plan, pmRules)
         return (
-          <button className="grid w-full grid-cols-[1.15fr_1fr_.8fr_1.1fr_1fr_.95fr_.95fr_28px] items-center gap-3 border-t border-[var(--app-line)] px-4 py-3 text-left text-[length:var(--app-table-font-size)] text-[var(--app-table-text)] transition hover:bg-[var(--app-table-hover-bg)]" key={plan.pmNumber} onClick={() => onOpen(plan.pmNumber)}>
+          <button className="pm-schedule-table-row grid w-full grid-cols-[1.15fr_1fr_.8fr_1.1fr_1fr_.95fr_.95fr_28px] items-center gap-3 border-t border-[var(--app-line)] px-4 py-3 text-left text-[length:var(--app-table-font-size)] text-[var(--app-table-text)] transition hover:bg-[var(--app-table-hover-bg)]" key={plan.pmNumber} onClick={() => onOpen(plan.pmNumber)}>
             <div className="min-w-0"><strong className="mono block truncate text-sm text-[var(--app-ink)]">{plan.pmNumber}</strong><span className="mt-1 block truncate text-[var(--app-muted)]">{plan.description || '-'}</span></div>
             <div className="min-w-0"><strong className="block truncate text-[var(--app-ink)]">{plan.asset || plan.location}</strong><span className="block truncate text-[var(--app-muted)]">{plan.route || plan.location || 'Asset-based PM'}</span></div>
             <div className="min-w-0"><strong className="block truncate text-[var(--app-ink)]">{plan.jobPlan}</strong><span className="block truncate text-[var(--app-muted)]">Job plan</span></div>
             <div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#eef6ff] px-2.5 py-1 text-[11px] font-extrabold text-[#165c96]"><Repeat size={12} />Every {schedule.frequency} {schedule.freqUnit}</span>
+              <Badge tone="blue"><Repeat size={12} />Every {schedule.frequency} {schedule.freqUnit}</Badge>
               <span className="mt-1 block truncate text-[var(--app-muted)]">{plan.scheduleRule || 'Direct PM schedule'}</span>
             </div>
             <div>
@@ -78,6 +79,6 @@ export default function PmScheduleTable({ rows, currentPage, pageSize, pageCount
           </div>
         </div>
       </div>
-    </section>
+    </TablePanel>
   )
 }

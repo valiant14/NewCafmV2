@@ -11,6 +11,8 @@ import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import StatCard from '../components/ui/StatCard'
+import Surface, { SurfaceHeader } from '../components/ui/Surface'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../components/ui/ModalFrame'
 // Shared with the summary builder - this page used to keep its own copy of the rule, so a
 // store could pass one check and be dropped by the other.
@@ -49,11 +51,10 @@ const emptyStore = {
   site: '',
   status: 'Active'
 }
-// Site was a free text box defaulted to 1031, so every store created here landed on that one
-// site however many were configured. The options come from the site master instead.
+// Site options come from the site master and preserve the selected site code.
 const storeFieldsFor = siteOptions => [
-  { key: 'code', label: 'Store Code', required: true, placeholder: 'DIWAN-MAIN' },
-  { key: 'name', label: 'Store Name', required: true, placeholder: 'Diwan Main Store' },
+  { key: 'code', label: 'Store Code', required: true, placeholder: 'Enter warehouse code' },
+  { key: 'name', label: 'Store Name', required: true, placeholder: 'Enter warehouse name' },
   { key: 'site', label: 'Site', required: true, suggestions: siteOptions, placeholder: 'Search or select a site' },
   { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
 ]
@@ -92,7 +93,7 @@ const cleanKey = value => String(value || '').trim().toLowerCase()
 const defaultStoreCode = (storeRows = []) => {
   const validStores = storeRows.filter(isUsableStore)
   const store = validStores.find(row => row.status !== 'Inactive') || validStores[0]
-  return store?.code || store?.name || 'DIWAN-MAIN'
+  return store?.code || store?.name || ''
 }
 const normalizedStoreCode = (value, storeRows = []) => {
   const raw = String(value || '').trim()
@@ -148,39 +149,7 @@ const storeDrillColumns = [
 ]
 
 function Widget({ icon: Icon, label, value, note, tone = 'neutral', onClick }) {
-  const toneClass = {
-    green: 'bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]',
-    orange: 'bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]',
-    blue: 'bg-[var(--app-badge-blue-bg)] text-[var(--app-badge-blue-text)]',
-    neutral: 'bg-[var(--app-soft-bg)] text-[var(--app-muted)]'
-  }[tone] || 'bg-[var(--app-soft-bg)] text-[var(--app-muted)]'
-  const body = (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{label}</span>
-        <span className={`grid h-8 w-8 place-items-center rounded-xl ${toneClass}`}><Icon size={16} /></span>
-      </div>
-      <div className="mt-1.5 flex items-center justify-between gap-2">
-        <strong className="text-2xl font-extrabold text-[var(--app-ink)]">{value}</strong>
-        {onClick && <ChevronRight size={16} className="shrink-0 text-[var(--app-muted)]" />}
-      </div>
-      <small className="block text-[11px] font-semibold text-[var(--app-muted)]">{note}</small>
-    </>
-  )
-  const cardClass = 'rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-3.5 text-left shadow-[0_8px_24px_rgba(32,55,45,.05)]'
-
-  if (!onClick) return <div className={cardClass}>{body}</div>
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`View ${label}`}
-      className={`${cardClass} w-full transition hover:border-[var(--app-primary)] hover:shadow-[0_12px_28px_rgba(32,55,45,.12)] focus:outline-none focus:ring-4 focus:ring-[var(--app-field-focus-ring)]`}
-    >
-      {body}
-    </button>
-  )
+  return <StatCard icon={Icon} label={label} value={value} detail={note} tone={tone} onClick={onClick} />
 }
 
 export default function StoresPage({ materials = [], tools = [], stockRows = [], storeRows = [], setStoreRows, locationRows = [], siteRecords = [], scopeUser }) {
@@ -304,7 +273,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
             </div>
           )}
         />
-        <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
+        <Surface flush>
           {rows.length ? (
             <DataTable
               rows={rows}
@@ -323,7 +292,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
           ) : (
             <EmptyState icon={Package} title="No stock held" description="This store has no material records yet." />
           )}
-        </section>
+        </Surface>
       </>
     )
   }
@@ -419,11 +388,8 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
         />
       </section>
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_.9fr]">
-        <div className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
-          <header className="border-b border-[var(--app-line)] px-4 py-3">
-            <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">STOCK REPORT</p>
-            <h2 className="text-base font-extrabold text-[var(--app-ink)]">Low and no stock items</h2>
-          </header>
+        <Surface as="div" flush>
+          <SurfaceHeader eyebrow="Stock report" title="Low and no stock items" />
           {lowStockRows.length ? (
             <DataTable
               rows={lowStockRows.slice(0, 8)}
@@ -441,12 +407,9 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
           ) : (
             <EmptyState icon={PackageCheck} title="Stock levels look healthy" description="No material is below its configured low level." />
           )}
-        </div>
-        <div className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
-          <header className="border-b border-[var(--app-line)] px-4 py-3">
-            <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">STORE REPORT</p>
-            <h2 className="text-base font-extrabold text-[var(--app-ink)]">Largest stores by balance</h2>
-          </header>
+        </Surface>
+        <Surface as="div" flush>
+          <SurfaceHeader eyebrow="Store report" title="Largest stores by balance" />
           <DataTable
             rows={topStores}
             rowKey="code"
@@ -458,9 +421,9 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
               { key: 'totalQuantity', label: 'On Hand' }
             ]}
           />
-        </div>
+        </Surface>
       </section>
-      <section className="mt-4 overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
+      <Surface className="mt-4" flush>
         <DataTable
           rows={visibleRows}
           rowKey="code"
@@ -481,7 +444,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
             { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
           ]}
         />
-      </section>
+      </Surface>
       {drill && (
         <ModalOverlay>
           <ModalPanel className="max-w-6xl" labelledBy="stores-drilldown-title">

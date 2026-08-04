@@ -4,7 +4,8 @@ import { Activity, CalendarClock, Gauge, MapPin, RadioTower } from 'lucide-react
 import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
 import EmptyState from '../ui/EmptyState'
-import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
+import { DetailHeader, DetailTabs, InfoCard, MetricCard } from '../ui/DetailScaffold'
+import TablePanel from '../ui/TablePanel'
 import GenericPrintReport from '../ui/GenericPrintReport'
 
 const meterStatuses = ['Active', 'Inactive', 'Needs Review']
@@ -61,19 +62,7 @@ export default function MeterDetailPage({ meter, pastReadings = [], onBack, onUp
                 { icon: RadioTower, label: 'Meter Type', value: meter.meterType, note: meter.unit || 'No unit' },
                 { icon: MapPin, label: 'Site', value: meter.site, note: meter.location || 'No location' },
                 { icon: Activity, label: 'Status', value: meter.status, note: 'Control state' }
-              ].map(metric => {
-                const Icon = metric.icon
-                return (
-                  <div key={metric.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{metric.label}</span>
-                      <Icon size={16} className="text-[var(--app-primary)]" />
-                    </div>
-                    <strong className="mt-2 block text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{metric.value || '-'}</strong>
-                    <small className="text-[11px] font-semibold text-[var(--app-muted)]">{metric.note}</small>
-                  </div>
-                )
-              })}
+              ].map(metric => <MetricCard key={metric.label} {...metric} />)}
             </section>
 
             <section className="grid gap-4 lg:grid-cols-2">
@@ -107,7 +96,7 @@ export default function MeterDetailPage({ meter, pastReadings = [], onBack, onUp
         )}
 
         {tab === 'Past Readings' && (
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <TablePanel>
             {pastReadings.length ? (
               <DataTable
                 rows={pastReadings}
@@ -128,7 +117,7 @@ export default function MeterDetailPage({ meter, pastReadings = [], onBack, onUp
                 description="Previous meter readings for this asset or meter will appear here."
               />
             )}
-          </section>
+          </TablePanel>
         )}
       </div>
 

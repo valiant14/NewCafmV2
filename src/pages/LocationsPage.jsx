@@ -12,6 +12,7 @@ import IndexTabs from '../components/ui/IndexTabs'
 import LocationDetailPage from '../components/locations/LocationDetailPage'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
@@ -29,7 +30,7 @@ const locationFields = [
   { key: 'status', label: 'Status', options: ['OPERATING', 'PLANNED', 'DECOMMISSIONED'] },
   { key: 'priority', label: 'Priority', options: ['1', '2', '3'], placeholder: 'Select priority' },
   { key: 'priority  description', label: 'Priority Description', placeholder: 'VIP / Royal / Standard' },
-  { key: 'site', label: 'Site', required: true, placeholder: '1031' },
+  { key: 'site', label: 'Site', required: true, placeholder: 'Select a site' },
   { key: 'builiding', label: 'Building', placeholder: 'Building code' },
   { key: 'builiding category', label: 'Building Category', placeholder: 'Building category' }
 ]
@@ -206,7 +207,7 @@ export default function LocationsPage({ rows: controlledRows, setRows: setContro
         departmentOptions={optionsFromRows(locations, ['department'])}
         statusOptions={optionsFromRows(locations, ['status'])}
       />
-      <section className="rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+      <TablePanel>
         {visibleLocations.length ? (
           <DataTable
             rows={visibleLocations}
@@ -238,7 +239,7 @@ export default function LocationsPage({ rows: controlledRows, setRows: setContro
             description={locations.length ? 'Reset the standard filters to view all location records.' : 'Create your first site, building, floor, room, or zone using the Add location button.'}
           />
         )}
-      </section>
+      </TablePanel>
 
       {modalOpen && (
         <MasterRecordModal

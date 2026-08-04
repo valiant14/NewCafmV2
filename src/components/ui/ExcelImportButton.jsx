@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
-import { AlertTriangle, CheckCircle2, FileSpreadsheet } from 'lucide-react'
+import { FileSpreadsheet } from 'lucide-react'
 import Button from './Button'
+import Alert from './Alert'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from './ModalFrame'
 
 const parseCsv = text => {
@@ -116,13 +117,7 @@ export default function ExcelImportButton({ fileName, onFile, onImport, label = 
               onClose={() => setResult(null)}
             />
             <div className="grid gap-4 px-6 py-5">
-              <div className={`flex items-start gap-3 rounded-2xl border p-4 ${result.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-orange-200 bg-orange-50 text-orange-800'}`}>
-                {result.type === 'success' ? <CheckCircle2 size={22} /> : <AlertTriangle size={22} />}
-                <div className="grid gap-1">
-                  <strong className="text-sm">{result.fileName}</strong>
-                  <span className="text-sm leading-relaxed">{result.message}</span>
-                </div>
-              </div>
+              <Alert tone={result.type === 'success' ? 'success' : 'danger'} title={result.fileName}>{result.message}</Alert>
             </div>
             <ModalFooter>
               <Button onClick={() => setResult(null)}>{result.type === 'success' ? 'Done' : 'Try again'}</Button>

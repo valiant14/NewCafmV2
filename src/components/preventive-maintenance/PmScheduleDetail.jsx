@@ -2,36 +2,26 @@ import { useState } from 'react'
 import { CalendarClock, ChevronRight, ExternalLink, FileSpreadsheet, Settings2, Sparkles, UserRoundCheck } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
-import { DetailHeader, DetailTabs } from '../ui/DetailScaffold'
+import { DetailHeader, DetailTabs, MetricCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import { scheduleForPlan } from '../../lib/pmGeneration'
 import { nowLocalDateTime } from '../../lib/datetime'
+import Surface, { SurfaceHeader } from '../ui/Surface'
+import Field from '../ui/Field'
 
 const normalize = value => String(value || '').trim()
 
 function MiniMetric({ label, value, note }) {
-  return (
-    <article className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4">
-      <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{label}</span>
-      <strong className="mt-1 block text-base text-[var(--app-ink)]">{value || '-'}</strong>
-      {note && <small className="mt-1 block text-[11px] text-[var(--app-muted)]">{note}</small>}
-    </article>
-  )
+  return <MetricCard label={label} value={value} note={note} />
 }
 
 function DetailCard({ icon: Icon, eyebrow, title, children }) {
   return (
-    <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-      <header className="mb-4 flex items-center gap-3 border-b border-[var(--app-line)] pb-4">
-        {Icon && <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[var(--app-soft-bg)] text-[var(--app-primary)]"><Icon size={18} /></span>}
-        <div>
-          <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">{eyebrow}</span>
-          <h2 className="text-base font-extrabold text-[var(--app-ink)]">{title}</h2>
-        </div>
-      </header>
+    <Surface>
+      <SurfaceHeader eyebrow={eyebrow} title={title} actions={Icon ? <span className="app-record-icon"><Icon size={18} /></span> : null} />
       {children}
-    </section>
+    </Surface>
   )
 }
 
@@ -39,9 +29,9 @@ function FieldGrid({ rows }) {
   return (
     <dl className="grid gap-3 md:grid-cols-2">
       {rows.map(([label, value]) => (
-        <div key={label} className="rounded-2xl bg-[var(--app-soft-bg)] p-3">
-          <dt className="text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">{label}</dt>
-          <dd className="mt-1 text-sm font-bold text-[var(--app-ink)]">{value || '-'}</dd>
+        <div key={label} className="app-info-field">
+          <dt className="app-stat-label">{label}</dt>
+          <dd>{value || '-'}</dd>
         </div>
       ))}
     </dl>
@@ -90,10 +80,10 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
     <section className="printable-record">
       <div className="print-report-screen space-y-5">
         <DetailHeader
-          eyebrow={`PREVENTIVE MAINTENANCE · ${plan.workType}`}
+          eyebrow={`PREVENTIVE MAINTENANCE - ${plan.workType}`}
           id={plan.pmNumber}
           title={plan.description}
-          status={`${plan.pmStatus} · ${statusDescription('preventiveMaintenance', plan.pmStatus)}`}
+          status={`${plan.pmStatus} - ${statusDescription('preventiveMaintenance', plan.pmStatus)}`}
           statusTone={statusTone(plan.pmStatus)}
           onBack={onBack}
           backLabel="All PM Schedules"
@@ -131,12 +121,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                 <p>Generated Work Orders inherit asset, location, site, department, job plan, and all job tasks from this PM and the linked asset master.</p>
                 <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4">
                   <div className="flex items-end gap-2">
-                    <div className="grid min-w-0 flex-1 gap-2">
-                      <label className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]" htmlFor="pm-rule-select">PM Schedule Rule</label>
-                      <select id="pm-rule-select" className="h-11 w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none transition focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]" value={plan.scheduleRule || ''} onChange={changeRule}>
-                        {ruleOptions.map(option => <option key={option.value || 'direct'} value={option.value}>{option.label}</option>)}
-                      </select>
-                    </div>
+                    <div className="min-w-0 flex-1"><Field label="PM Schedule Rule" value={plan.scheduleRule || ''} options={ruleOptions} onChange={changeRule} /></div>
                     <Button variant="outline" disabled={!plan.scheduleRule} onClick={openRule}><ExternalLink size={15} />Open rule</Button>
                   </div>
                   <div className="grid gap-2 md:grid-cols-4">

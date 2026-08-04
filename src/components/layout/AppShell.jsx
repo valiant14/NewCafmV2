@@ -188,7 +188,7 @@ export default function AppShell({
                   className="grid gap-2 rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] p-4 text-left transition hover:bg-[var(--app-table-hover-bg)] md:grid-cols-[140px_1fr_auto] md:items-center"
                   onClick={() => { setNotificationsOpen(false); onOpenWorkOrders?.() }}
                 >
-                  <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.1em] ${item.type === 'overdue' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'}`}>
+                  <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.1em] ${item.type === 'overdue' ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--info-soft)] text-[var(--info)]'}`}>
                     {item.type === 'overdue' ? 'Overdue' : 'Upcoming'}
                   </span>
                   <span className="grid gap-1">

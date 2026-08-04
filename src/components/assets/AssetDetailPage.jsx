@@ -4,6 +4,8 @@ import { BadgeCheck, Boxes, CalendarClock, ClipboardList, Factory, Tag } from 'l
 import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
 import { DetailHeader, DetailTabs, InfoCard, TimelineCard } from '../ui/DetailScaffold'
+import TablePanel from '../ui/TablePanel'
+import { SurfaceHeader } from '../ui/Surface'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { systemLabel } from '../../lib/departments'
 import { statusDescription, statusOptions, statusTone as matrixStatusTone } from '../../lib/statusMatrix'
@@ -26,7 +28,7 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpda
           eyebrow="ASSET MASTER"
           id={asset.assetnum}
           title={asset.description}
-          status={`${status} · ${statusDescription('asset', status)}`}
+          status={`${status} - ${statusDescription('asset', status)}`}
           statusTone={statusTone}
           onBack={onBack}
           backLabel="Back to assets"
@@ -92,14 +94,8 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpda
 
         </main>}
 
-        {activeTab === 'Work Orders' && <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-            <header className="flex items-center justify-between gap-3 border-b border-[var(--app-line)] px-5 py-4">
-              <div>
-                <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">LINKED WORK</p>
-                <h2 className="text-base font-extrabold text-[var(--app-ink)]">Work Orders</h2>
-              </div>
-              <Badge tone={openOrders.length ? 'orange' : 'green'}>{openOrders.length} open</Badge>
-            </header>
+        {activeTab === 'Work Orders' && <TablePanel>
+            <SurfaceHeader eyebrow="Linked work" title="Work Orders" actions={<Badge tone={openOrders.length ? 'orange' : 'green'}>{openOrders.length} open</Badge>} />
             <DataTable
               rows={assetWorkOrders}
               rowKey="WORKORDER"
@@ -112,7 +108,7 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpda
                 { key: 'WORK TYPE ', label: 'Type' }
               ]}
             />
-          </section>}
+          </TablePanel>}
       </div>
 
       <GenericPrintReport

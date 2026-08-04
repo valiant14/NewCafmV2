@@ -6,6 +6,7 @@ import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { statusDescription, statusTone } from '../lib/statusMatrix'
@@ -96,7 +97,7 @@ export default function PurchaseOrdersPage({
         departmentOptions={optionsFromRows(rows, ['department'])}
         statusOptions={purchaseOrderStatuses}
       />
-      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+      <TablePanel>
         {visibleRows.length ? (
           <DataTable
             rows={visibleRows}
@@ -123,7 +124,7 @@ export default function PurchaseOrdersPage({
             description="Approve a purchase requisition to create the linked purchase order record."
           />
         )}
-      </section>
+      </TablePanel>
     </section>
   )
 }

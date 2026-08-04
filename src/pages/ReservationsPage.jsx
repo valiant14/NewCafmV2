@@ -4,6 +4,7 @@ import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { ClipboardCheck, ClipboardList, PackageOpen, Truck, X } from 'lucide-react'
 import { useState } from 'react'
@@ -164,7 +165,7 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
         departmentOptions={optionsFromRows(rows, ['department'])}
         statusOptions={reservationStatuses}
       />
-      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+      <TablePanel>
         {visibleRows.length ? (
           <DataTable
             rows={visibleRows}
@@ -204,7 +205,7 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
             description="Click Reserve or Allocate in a Work Order Material Requests tab to create a fulfillment record."
           />
         )}
-      </section>
+      </TablePanel>
       {releaseRow && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_68%,transparent)] p-4 backdrop-blur-sm">
           <section className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-2xl">
@@ -240,7 +241,7 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
                   max={releaseMax}
                   value={releaseQuantity}
                   onChange={event => setReleaseQuantity(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-[var(--app-line)] bg-white px-3 py-2 text-sm font-bold text-[var(--app-ink)] outline-none focus:border-[var(--app-primary)]"
+                  className="app-field-control mt-2"
                 />
               </label>
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">

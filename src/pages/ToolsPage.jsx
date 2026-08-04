@@ -11,6 +11,7 @@ import ExportExcelButton from '../components/ui/ExportExcelButton'
 import ImportNotice from '../components/ui/ImportNotice'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
@@ -81,7 +82,7 @@ const storeCodeFor = (value, storeRows = []) => {
 const defaultToolLocation = (storeRows = []) => {
   const validStores = storeRows.filter(store => !/^\d+$/.test(String(store.code || '').trim()) && !/^\d+$/.test(String(store.name || '').trim()))
   const store = validStores.find(row => row.status !== 'Inactive') || validStores[0]
-  return store?.code || store?.name || 'DIWAN-MAIN'
+  return store?.code || store?.name || ''
 }
 
 const normalizedToolLocation = (value, storeRows = [], activeAllocations = []) => {
@@ -211,7 +212,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [], allocat
         statusOptions={optionsFromRows(enrichedRows, ['status'])}
       />
 
-      <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
+      <TablePanel>
         <DataTable
           rows={visibleRows}
           rowKey="toolNumber"
@@ -231,7 +232,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [], allocat
             { key: 'toolStatus', label: 'Tool Status', render: value => <Badge tone={toolStatusTone(value)}>{value}</Badge> }
           ]}
         />
-      </section>
+      </TablePanel>
 
       {adding && <AddToolModal form={form} setForm={setForm} onClose={() => setAdding(false)} onSave={save} />}
     </>

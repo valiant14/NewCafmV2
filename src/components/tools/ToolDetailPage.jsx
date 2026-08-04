@@ -5,6 +5,10 @@ import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import DataTable from '../ui/DataTable'
+import Alert from '../ui/Alert'
+import StatCard from '../ui/StatCard'
+import TablePanel from '../ui/TablePanel'
+import { SurfaceHeader } from '../ui/Surface'
 import EmptyState from '../ui/EmptyState'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import MasterRecordModal from '../master-data/MasterRecordModal'
@@ -61,7 +65,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
     setRequestForm({
       quantity,
       source: tool.location || '',
-      site: tool.site || '1031',
+      site: tool.site || '',
       department: tool.department || tool.category || ''
     })
     setRequestError('')
@@ -78,7 +82,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
       plannedQuantity: quantity,
       availableQuantity: Number(tool.availableQuantity || 0),
       source: requestForm.source || tool.location || '',
-      site: requestForm.site || tool.site || '1031',
+      site: requestForm.site || tool.site || '',
       department: requestForm.department || tool.department || tool.category || ''
     })
     setRequestModalOpen(false)
@@ -128,19 +132,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
               { icon: ClipboardCheck, label: 'Reserved', value: tool.reservedQuantity || 0, note: 'Committed' },
               { icon: ShieldCheck, label: 'Available', value: availableUnits, note: `Ready ${tool.unit || 'EA'}` },
               { icon: BarChart3, label: 'Low Level', value: tool.lowLevel || 0, note: 'Restock trigger' }
-            ].map(metric => {
-              const Icon = metric.icon
-              return (
-                <div key={metric.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{metric.label}</span>
-                    <Icon size={16} className="text-[var(--app-primary)]" />
-                  </div>
-                  <strong className="mt-2 block text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{metric.value}</strong>
-                  <small className="text-[11px] font-semibold text-[var(--app-muted)]">{metric.note}</small>
-                </div>
-              )
-            })}
+            ].map(metric => <StatCard key={metric.label} {...metric} detail={metric.note} tone="blue" />)}
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
@@ -170,11 +162,8 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
             />
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)] lg:col-span-2">
-            <header className="border-b border-[var(--app-line)] px-5 py-4">
-              <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">STORE INVENTORY</p>
-              <h2 className="text-base font-extrabold text-[var(--app-ink)]">Held in {tool.stores || tool.location || 'Tool Store'}</h2>
-            </header>
+          <TablePanel className="lg:col-span-2">
+            <SurfaceHeader eyebrow="Store inventory" title={`Held in ${tool.stores || tool.location || 'Tool Store'}`} />
             <DataTable
               rows={[tool]}
               rowKey="toolNumber"
@@ -193,27 +182,21 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
                     onChange={event => setLowLevelDraft(event.target.value)}
                     onBlur={saveLowLevel}
                     onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur() }}
-                    className="h-8 w-24 rounded-lg border border-[var(--app-field-border)] bg-white px-2 text-xs font-bold text-[var(--app-ink)] outline-none focus:border-[var(--app-primary)]"
+                    className="app-field-control h-8 w-24 text-xs font-bold"
                     aria-label={`Low level for ${tool.description}`}
                   />
                 ) }
               ]}
             />
-          </section>
+          </TablePanel>
 
           {inspection.dueSoon && tool.inspectionDue && (
-            <section className="flex items-start gap-3 rounded-2xl border border-[var(--app-badge-orange-text)]/20 bg-[var(--app-badge-orange-bg)] p-4 text-[var(--app-badge-orange-text)]">
-              <ShieldCheck size={18} />
-              <div>
-                <h3 className="text-sm font-extrabold">{inspection.label}</h3>
-                <p className="mt-1 text-xs font-semibold opacity-80">Review inspection before assigning this tool or equipment to a Work Order.</p>
-              </div>
-            </section>
+            <Alert tone="warning" icon={ShieldCheck} title={inspection.label}>Review inspection before assigning this tool or equipment to a Work Order.</Alert>
           )}
         </main>}
 
         {tab === 'Work Order Usage' && (
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <TablePanel>
             {usageRows.length ? (
               <DataTable
                 rows={usageRows}
@@ -237,10 +220,10 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
                 description="Work Orders that request, allocate, or use this tool/equipment will appear here."
               />
             )}
-          </section>
+          </TablePanel>
         )}
         {tab === 'Procurement History' && (
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <TablePanel>
             {procurementRows.length ? (
               <DataTable
                 rows={procurementRows}
@@ -260,7 +243,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
             ) : (
               <EmptyState icon={ShoppingCart} title="No procurement history yet" description="Purchase requisitions and orders for this tool or equipment will appear here." />
             )}
-          </section>
+          </TablePanel>
         )}
       </div>
       {requestModalOpen && (

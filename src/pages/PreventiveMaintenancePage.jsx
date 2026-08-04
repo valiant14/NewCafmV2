@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Check, Plus, Sparkles, X } from 'lucide-react'
+import { Plus, Sparkles, X } from 'lucide-react'
 import PmScheduleDetail from '../components/preventive-maintenance/PmScheduleDetail'
 import PmScheduleForm from '../components/preventive-maintenance/PmScheduleForm'
 import PmScheduleTable from '../components/preventive-maintenance/PmScheduleTable'
 import Button from '../components/ui/Button'
+import Alert from '../components/ui/Alert'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
 import IndexTabs from '../components/ui/IndexTabs'
@@ -26,7 +27,7 @@ const emptyPlan = {
   asset: '',
   route: '',
   location: '',
-  site: '1031',
+  site: '',
   jobPlan: '',
   startDate: '',
   leadTime: 0,
@@ -70,7 +71,7 @@ const mapPmImportRows = (rows, rules = []) => rows.map(row => {
     asset: row.ASSETNUM || '',
     route: row.ROUTE || '',
     location: row.LOCATION || '',
-    site: row.SITE || '1031',
+    site: row.SITE || '',
     jobPlan: row.JPNUM || '',
     startDate: normalizeDate(row.NEXTDATE),
     leadTime: Number(rule?.leadTimeDays ?? row['LEAD TIME (DAYS)'] ?? 0),
@@ -180,10 +181,14 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
       />
 
       {generation && (
-        <div className={`mb-4 flex items-center justify-between gap-3 rounded-2xl border p-4 ${generation.length ? 'border-[#dce8df] bg-[#f1f8f3] text-[#315a47]' : 'border-[#f0d4bd] bg-[#fff7ef] text-[#9a5a2f]'}`}>
-          <div className="flex items-center gap-3">{generation.length ? <Check /> : <AlertTriangle />}<div><strong>{generation.length ? `${generation.length} work orders generated` : 'No eligible PM plans'}</strong><span className="block text-xs">Duplicate generation is prevented by PM number and NEXTDATE cycle.</span></div></div>
-          <button onClick={() => setGeneration(null)}><X /></button>
-        </div>
+        <Alert
+          className="mb-4"
+          tone={generation.length ? 'success' : 'warning'}
+          title={generation.length ? `${generation.length} work orders generated` : 'No eligible PM plans'}
+          actions={<button className="app-icon-button" onClick={() => setGeneration(null)} aria-label="Dismiss generation result"><X size={16} /></button>}
+        >
+          Duplicate generation is prevented by PM number and NEXTDATE cycle.
+        </Alert>
       )}
 
       <IndexTabs

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { AlertTriangle, Check, ChevronRight, ClipboardCheck, FileText, Paperclip, Printer, Upload, X } from 'lucide-react'
+import { Check, ChevronRight, ClipboardCheck, FileText, Paperclip, Printer, Upload, X } from 'lucide-react'
 import Badge from '../ui/Badge'
+import Alert from '../ui/Alert'
 import Button from '../ui/Button'
 import { printWithoutBrowserTitle } from '../../lib/print'
 import { Field, Section } from '../ui/FormControls'
@@ -8,6 +9,7 @@ import { ModalFooter, ModalHeader, ModalPanel } from '../ui/ModalFrame'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { sameDepartment } from '../../lib/departments'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
+import Surface, { SurfaceHeader } from '../ui/Surface'
 
 const tabs = [
   ['Request Details', FileText],
@@ -102,10 +104,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
 
       <div className="overflow-auto px-6 py-5">
         {submitError && (
-          <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-orange-800">
-            <div className="flex items-center gap-2"><AlertTriangle size={17} /><span>{submitError}</span></div>
-            <button onClick={() => setSubmitError('')} aria-label="Dismiss"><X size={14} /></button>
-          </div>
+          <Alert className="mb-5" tone="danger" actions={<button className="app-icon-button" onClick={() => setSubmitError('')} aria-label="Dismiss"><X size={14} /></button>}>{submitError}</Alert>
         )}
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -145,7 +144,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
               {!isNew && <button className="mb-4 text-xs font-bold text-[var(--app-muted)] transition hover:text-[var(--app-primary)]" onClick={onBack}>← All Job Requests</button>}
               {!isNew && <p className="text-[9px] font-extrabold uppercase tracking-[.18em] text-[var(--app-muted)]">Job request · {form.requestType?.toUpperCase() || 'SERVICE'}</p>}
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl font-extrabold tracking-[-.045em] text-[var(--app-ink)]">{form.sr === 'AUTO' ? 'New job request' : form.sr}</h1>
+                <h1 className="text-3xl font-extrabold text-[var(--app-ink)]">{form.sr === 'AUTO' ? 'New job request' : form.sr}</h1>
                 <Badge tone={statusTone(form.status)}>{form.status} · {statusDescription('serviceRequest', form.status)}</Badge>
               </div>
               <p className="mt-2 max-w-3xl text-sm text-[var(--app-muted)]">{isNew ? 'Tell us what happened and where.' : form.description}</p>
@@ -182,37 +181,23 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
         )}
 
         {!isNew && !form.convertedWorkOrder && !canConvert && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-orange-800">
-            <div className="flex items-center gap-3">
-              <AlertTriangle size={18} />
-              <div>
-                <strong>Complete required information before CM conversion</strong>
-                <span className="block text-xs">Missing: {missingConversionFields.join(', ')}</span>
-              </div>
-            </div>
-            <Button variant="outline" onClick={() => setActiveTab(form.asset?.trim() ? 'Department Review' : 'Request Details')}>Complete fields <ChevronRight size={14} /></Button>
-          </div>
+          <Alert
+            tone="warning"
+            title="Complete required information before CM conversion"
+            actions={<Button variant="outline" onClick={() => setActiveTab(form.asset?.trim() ? 'Department Review' : 'Request Details')}>Complete fields <ChevronRight size={14} /></Button>}
+          >
+            Missing: {missingConversionFields.join(', ')}
+          </Alert>
         )}
 
         <main className={`${modal ? 'overflow-auto' : ''} space-y-5 p-0`}>
           {submitError && (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-orange-800">
-              <div className="flex items-center gap-2"><AlertTriangle size={17} /><span>{submitError}</span></div>
-              <button onClick={() => setSubmitError('')}><X size={14} /></button>
-            </div>
+            <Alert tone="danger" actions={<button className="app-icon-button" onClick={() => setSubmitError('')} aria-label="Dismiss error"><X size={14} /></button>}>{submitError}</Alert>
           )}
 
           {!isNew && activeTab === 'Request Details' && (
-            <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-              <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-[var(--app-line)] pb-4">
-                <div>
-                  <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Request details</h2>
-                  <p className="mt-1 text-sm text-[var(--app-muted)]">Issue, location, requester, and linked asset in one clean view.</p>
-                </div>
-                <div className="rounded-2xl bg-[var(--app-table-hover-bg)] px-3 py-2 text-xs font-bold text-[var(--app-muted)]">
-                  Reported: <span className="text-[var(--app-ink)]">{form.reportedDate?.replace('T', ' · ') || 'Not defined'}</span>
-                </div>
-              </div>
+            <Surface>
+              <SurfaceHeader eyebrow="Request" title="Request details" description="Issue, location, requester, and linked asset." actions={<Badge tone="neutral">Reported {form.reportedDate?.replace('T', ' ') || 'Not defined'}</Badge>} />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Priority" value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} />
@@ -225,15 +210,12 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
                   <Field label="Long Description" value={form.longDescription} type="textarea" onChange={update('longDescription')} />
                 </div>
               </div>
-            </section>
+            </Surface>
           )}
 
           {!isNew && activeTab === 'Department Review' && (
-            <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-              <div className="mb-5 border-b border-[var(--app-line)] pb-4">
-                <h2 className="text-lg font-extrabold text-[var(--app-ink)]">Review and CM conversion</h2>
-                <p className="mt-1 text-sm text-[var(--app-muted)]">Complete routing, asset, and failure classification before creating the corrective work order.</p>
-              </div>
+            <Surface>
+              <SurfaceHeader eyebrow="Department review" title="Review and CM conversion" description="Complete routing, asset, and failure classification before creating the corrective work order." />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Department" value={form.department} required onChange={updateDepartment} suggestions={departmentOptions} placeholder="Search or select a department" />
@@ -241,7 +223,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
                 <Field label="Assigned Department" value={form.assignedDepartment || form.department} required onChange={update('assignedDepartment')} suggestions={departmentOptions} placeholder="Search or select an assigned department" />
                 <Field label="Failure Code" value={form.failureCode} required onChange={update('failureCode')} suggestions={failureOptions} placeholder="Search code or description" />
               </div>
-            </section>
+            </Surface>
           )}
 
           {activeTab === 'Attachments' && (

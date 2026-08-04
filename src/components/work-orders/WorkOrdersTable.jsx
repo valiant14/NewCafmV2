@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import Badge from '../ui/Badge'
+import TablePanel from '../ui/TablePanel'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import { isOnHold } from '../../lib/holdPeriods'
 
@@ -34,9 +35,9 @@ export default function WorkOrdersTable({ rows, currentPage, pageSize, pageCount
   const context = { orderType, excelDate }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+    <TablePanel>
       <div className="overflow-auto">
-        <table className="w-full min-w-[1650px] border-collapse text-left text-[length:var(--app-table-font-size)]">
+        <table className="data-table work-orders-table w-full min-w-[1650px] border-collapse text-left text-[length:var(--app-table-font-size)]">
           <thead>
             <tr>
               {columns.map(column => (
@@ -55,7 +56,7 @@ export default function WorkOrdersTable({ rows, currentPage, pageSize, pageCount
             {rows.map(order => (
               <tr key={order.WORKORDER} className="cursor-pointer border-b border-[var(--app-line)] text-[var(--app-table-text)] transition hover:bg-[var(--app-table-hover-bg)]" onClick={() => onOpen(order)}>
                 {columns.map(column => (
-                  <td key={column.key} className={column.className}>{column.render(order, context)}</td>
+                  <td key={column.key} data-label={column.label || ''} className={column.className}>{column.render(order, context)}</td>
                 ))}
               </tr>
             ))}
@@ -79,6 +80,6 @@ export default function WorkOrdersTable({ rows, currentPage, pageSize, pageCount
           </div>
         </div>
       </div>
-    </section>
+    </TablePanel>
   )
 }

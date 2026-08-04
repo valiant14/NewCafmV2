@@ -32,9 +32,9 @@ export default function Surface({
   )
 }
 
-export function SurfaceHeader({ eyebrow, title, description, actions, className }) {
+export function SurfaceHeader({ eyebrow, title, description, actions, inset = false, className }) {
   return (
-    <header className={cn('app-surface-header', className)}>
+    <header className={cn('app-surface-header', inset && 'app-surface-header--inset', className)}>
       <div className="min-w-0">
         {eyebrow && <p className="app-eyebrow">{eyebrow}</p>}
         {title && <h2 className="app-surface-title">{title}</h2>}

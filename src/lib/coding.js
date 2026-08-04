@@ -92,13 +92,12 @@ export const nextAssetCode = (rows = [], { type, series, parentCode = '' } = {})
 
 export const conformsToLocationCode = code => locationPattern.test(clean(code))
 
-// Also checks the code agrees with the record's own site and building fields - the exact
-// mismatch in RC-1031-RD-01-00-ES01, whose building field says RD-001.
+// Also checks the code agrees with the record's own site and building fields.
 export const validateLocationCode = (code, { rows = [], site = '', building = '', ignore = '' } = {}) => {
   const value = clean(code)
   if (!value) return { valid: false, reason: 'Location code is required.' }
   if (!locationPattern.test(value)) {
-    return { valid: false, reason: `Location must follow ${coding.location.pattern} (for example RC-1031-RD-001-00-054).` }
+    return { valid: false, reason: `Location must follow ${coding.location.pattern}.` }
   }
   const parts = value.split('-')
   if (clean(site) && parts[1] !== clean(site)) {

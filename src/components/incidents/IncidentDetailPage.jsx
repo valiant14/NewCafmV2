@@ -4,14 +4,13 @@ import { AlertTriangle, CalendarClock, ClipboardList, Download, FileText, Shield
 import { DetailHeader, DetailTabs, InfoCard, TimelineCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusOptions, statusTone } from '../../lib/statusMatrix'
+import Alert from '../ui/Alert'
+import Surface, { SurfaceHeader } from '../ui/Surface'
 
 export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
   const [status, setStatus] = useState(incident.status || 'NEW')
   const [activeTab, setActiveTab] = useState('Incident Details')
-  const [attachments, setAttachments] = useState(incident.attachments || [
-    { name: 'incident-photo.jpg', type: 'Image', size: '1.2 MB' },
-    { name: 'initial-hse-note.pdf', type: 'PDF', size: '420 KB' }
-  ])
+  const [attachments, setAttachments] = useState(Array.isArray(incident.attachments) ? incident.attachments : [])
   const open = !['RESOLVED', 'CLOSED'].includes(status)
   const reportedDate = incident.reportedDate ? new Date(incident.reportedDate).toLocaleString() : 'Not recorded'
   const changeStatus = value => {
@@ -26,7 +25,7 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
           eyebrow="INCIDENT RECORD"
           id={incident.incidentNumber}
           title={incident.description}
-          status={`${status} · ${statusDescription('incident', status)}`}
+          status={`${status} - ${statusDescription('incident', status)}`}
           statusTone={statusTone(status)}
           onBack={onBack}
           backLabel="Back to incidents"
@@ -83,23 +82,20 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
 
         {activeTab === 'Review' && (
           <main className="grid gap-5 lg:grid-cols-[420px_1fr]">
-            <section className={`rounded-3xl border p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)] ${open ? 'border-[var(--app-badge-orange-text)]/20 bg-[var(--app-badge-orange-bg)] text-[var(--app-badge-orange-text)]' : 'border-[var(--app-line)] bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]'}`}>
-              <div className="flex items-start gap-3">
-                {open ? <AlertTriangle size={22} /> : <ShieldCheck size={22} />}
-                <div>
-                  <p className="text-[9px] font-extrabold uppercase tracking-[.16em] opacity-80">Review state</p>
-                  <h2 className="mt-1 text-base font-extrabold">{open ? 'Follow-up required' : 'Review completed'}</h2>
-                  <p className="mt-2 text-sm opacity-80">{open ? 'Use the header status dropdown when investigation moves forward.' : 'This incident is resolved or closed.'}</p>
-                </div>
-              </div>
-            </section>
+            <Alert
+              tone={open ? 'warning' : 'success'}
+              icon={open ? AlertTriangle : ShieldCheck}
+              eyebrow="Review state"
+              title={open ? 'Follow-up required' : 'Review completed'}
+              description={open ? 'Use the header status control when the investigation moves forward.' : 'This incident is resolved or closed.'}
+            />
             <TimelineCard
               icon={CalendarClock}
               kicker="ACTIVITY"
               title="Incident Timeline"
               rows={[
                 { icon: AlertTriangle, text: 'Incident was reported and registered.', value: reportedDate },
-                { icon: ClipboardList, text: 'Current review status.', value: `${status} · ${statusDescription('incident', status)}` },
+                { icon: ClipboardList, text: 'Current review status.', value: `${status} - ${statusDescription('incident', status)}` },
                 { icon: ShieldCheck, text: 'Corrective action relationship.', value: 'Standalone module' }
               ]}
             />
@@ -107,13 +103,12 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
         )}
 
         {activeTab === 'Attachments' && (
-          <main className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-            <header className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--app-line)] pb-4">
-              <div>
-                <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">FILES</p>
-                <h2 className="text-base font-extrabold text-[var(--app-ink)]">Incident Attachments</h2>
-                <p className="text-xs text-[var(--app-muted)]">Photos, reports, and supporting documents.</p>
-              </div>
+          <Surface as="main">
+            <SurfaceHeader
+              eyebrow="Files"
+              title="Incident Attachments"
+              description="Photos, reports, and supporting documents."
+              actions={(
               <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-4 text-xs font-bold text-[var(--app-muted)] transition hover:bg-[var(--app-soft-bg-hover)]">
                 <FileText size={15} />Add files
                 <input
@@ -127,15 +122,16 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
                   }}
                 />
               </label>
-            </header>
-            <div className="grid gap-2">
+              )}
+            />
+            <div className="app-record-list">
               {attachments.map((file, index) => (
-                <article className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4" key={`${file.name}-${index}`}>
+                <article className="app-record-row" key={`${file.name}-${index}`}>
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--app-badge-blue-bg)] text-[var(--app-badge-blue-text)]"><FileText size={17} /></span>
+                    <span className="app-record-icon"><FileText size={17} /></span>
                     <div className="min-w-0">
                       <strong className="block truncate text-sm text-[var(--app-ink)]">{file.name}</strong>
-                      <span className="text-xs text-[var(--app-muted)]">{file.type} · {file.size}</span>
+                      <span className="text-xs text-[var(--app-muted)]">{file.type} - {file.size}</span>
                     </div>
                   </div>
                   <button className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-bold text-[var(--app-muted)]">
@@ -143,8 +139,9 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
                   </button>
                 </article>
               ))}
+              {!attachments.length && <p className="app-record-empty">No attachments stored for this incident.</p>}
             </div>
-          </main>
+          </Surface>
         )}
       </div>
 
@@ -152,7 +149,7 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
         reportTitle="Incident Report"
         reportSubtitle="Standalone incident report"
         number={incident.incidentNumber}
-        status={`${status} · ${statusDescription('incident', status)}`}
+        status={`${status} - ${statusDescription('incident', status)}`}
         description={incident.description}
         summary={[['Severity', incident.severity], ['Site', incident.site], ['Department', incident.department]]}
         sections={[

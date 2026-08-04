@@ -7,6 +7,8 @@ import EmptyState from '../ui/EmptyState'
 import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import Field from '../ui/Field'
+import Surface, { SurfaceHeader } from '../ui/Surface'
+import TablePanel from '../ui/TablePanel'
 
 const userStatuses = ['Active', 'Inactive', 'Locked']
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
@@ -15,18 +17,18 @@ const everyDepartment = value => !String(value || '').trim() || /^all department
 
 // Keeps the summary tiles at their original size and weight while making the value itself
 // the control, so the page reads the same but every tile is editable where it is shown.
-const tileControl = 'mt-1.5 w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xl font-extrabold tracking-[-.04em] text-[var(--app-ink)] outline-none transition hover:border-[var(--app-line)] hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-field-focus)] focus:bg-[var(--app-panel)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]'
+const tileControl = 'mt-1.5 w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xl font-extrabold text-[var(--app-ink)] outline-none transition hover:border-[var(--app-line)] hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-field-focus)] focus:bg-[var(--app-panel)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]'
 
 function AccessTile({ icon: Icon, label, note, children }) {
   return (
-    <div className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
+    <Surface as="div" className="min-w-0">
       <div className="flex items-center justify-between gap-3">
         <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{label}</span>
         <Icon size={16} className="text-[var(--app-primary)]" />
       </div>
       {children}
       <small className="mt-1 block truncate text-[11px] font-semibold text-[var(--app-muted)]">{note}</small>
-    </div>
+    </Surface>
   )
 }
 
@@ -126,18 +128,12 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
               </AccessTile>
 
               <AccessTile icon={BriefcaseBusiness} label="Labor" note={labor?.craft || 'No labor link'}>
-                <strong className="mt-2 block truncate text-xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{user.laborId || '-'}</strong>
+                <strong className="mt-2 block truncate text-xl font-extrabold text-[var(--app-ink)]">{user.laborId || '-'}</strong>
               </AccessTile>
             </section>
 
-            <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_12px_32px_rgba(15,23,42,.06)]">
-              <header className="mb-4 flex items-center gap-3 border-b border-[var(--app-line)] pb-4">
-                <UserRound className="text-[var(--app-muted)]" size={18} />
-                <div>
-                  <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">ACCOUNT</span>
-                  <h2 className="text-base font-extrabold text-[var(--app-ink)]">User Information</h2>
-                </div>
-              </header>
+            <Surface>
+              <SurfaceHeader eyebrow="Account" title="User Information" actions={<UserRound className="text-[var(--app-muted)]" size={18} />} />
               <div className="grid gap-3 md:grid-cols-3">
                 <Field label="User ID" value={user.userId} locked />
                 <EditableField label="Username" value={user.username || ''} onCommit={commitField('username')} />
@@ -147,12 +143,12 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
                 <EditableField label="New Password" value="" type="password" placeholder="Leave blank to keep current" clearOnCommit onCommit={commitField('password')} />
                 <Field label="Last Login" value={user.lastLogin || '-'} locked />
               </div>
-            </section>
+            </Surface>
           </main>
         )}
 
         {tab === 'Role Permissions' && (
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <TablePanel>
             {role ? (
               <DataTable
                 rows={permissionRows}
@@ -167,7 +163,7 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
             ) : (
               <EmptyState icon={ShieldCheck} title="No role assigned" description="Assign a valid role to show permission scope." />
             )}
-          </section>
+          </TablePanel>
         )}
 
         {tab === 'Labor Link' && (

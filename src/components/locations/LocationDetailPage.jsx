@@ -4,7 +4,8 @@ import { Boxes, Building2, ClipboardList, Layers, MapPin } from 'lucide-react'
 import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
 import EmptyState from '../ui/EmptyState'
-import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
+import { DetailHeader, DetailTabs, InfoCard, MetricCard } from '../ui/DetailScaffold'
+import TablePanel from '../ui/TablePanel'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 
@@ -55,19 +56,7 @@ export default function LocationDetailPage({ location, assets = [], workOrders =
                 { icon: Building2, label: 'Building', value: location.builiding, note: location['builiding category'] || 'No category' },
                 { icon: Boxes, label: 'Assets', value: assets.length, note: 'Installed assets' },
                 { icon: ClipboardList, label: 'Work Orders', value: workOrders.length, note: 'Related records' }
-              ].map(metric => {
-                const Icon = metric.icon
-                return (
-                  <div key={metric.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{metric.label}</span>
-                      <Icon size={16} className="text-[var(--app-primary)]" />
-                    </div>
-                    <strong className="mt-2 block text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{metric.value || '-'}</strong>
-                    <small className="text-[11px] font-semibold text-[var(--app-muted)]">{metric.note}</small>
-                  </div>
-                )
-              })}
+              ].map(metric => <MetricCard key={metric.label} {...metric} />)}
             </section>
 
             <section className="grid gap-4 lg:grid-cols-2">
@@ -101,7 +90,7 @@ export default function LocationDetailPage({ location, assets = [], workOrders =
         )}
 
         {tab === 'Assets' && (
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <TablePanel>
             {assets.length ? (
               <DataTable
                 rows={assets}
@@ -118,11 +107,11 @@ export default function LocationDetailPage({ location, assets = [], workOrders =
             ) : (
               <EmptyState icon={Boxes} title="No assets at this location" description="Assets installed at this location will appear here." />
             )}
-          </section>
+          </TablePanel>
         )}
 
         {tab === 'Work Orders' && (
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <TablePanel>
             {workOrders.length ? (
               <DataTable
                 rows={workOrders}
@@ -140,7 +129,7 @@ export default function LocationDetailPage({ location, assets = [], workOrders =
             ) : (
               <EmptyState icon={ClipboardList} title="No work orders at this location" description="Corrective or preventive work orders for this location will appear here." />
             )}
-          </section>
+          </TablePanel>
         )}
       </div>
 

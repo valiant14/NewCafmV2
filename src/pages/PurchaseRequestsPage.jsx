@@ -6,6 +6,7 @@ import DataTable from '../components/ui/DataTable'
 import EmptyState from '../components/ui/EmptyState'
 import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
+import TablePanel from '../components/ui/TablePanel'
 import ExportExcelButton from '../components/ui/ExportExcelButton'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
@@ -16,14 +17,14 @@ import { nowLocalDate } from '../lib/datetime'
 const todayStamp = () => nowLocalDate()
 const purchaseRequisitionStatuses = ['WAPPR', 'APPR', 'CLOSE', 'CAN']
 
-const emptyRequest = { type: 'Material', item: '', quantity: 1, source: '', site: '1031', department: '', workOrder: '' }
+const emptyRequest = { type: 'Material', item: '', quantity: 1, source: '', site: '', department: '', workOrder: '' }
 
 const buildRequestFields = ({ siteRecords = [], departmentRecords = [], materials = [], tools = [], storeRows = [] }) => [
   { key: 'type', label: 'Type', options: ['Material', 'Tool', 'Equipment'] },
   { key: 'item', label: 'Item', required: true, options: ['', ...materials.map(material => material.description || material.itemNumber).filter(Boolean), ...tools.map(tool => tool.description || tool.toolNumber).filter(Boolean)] },
   { key: 'quantity', label: 'Quantity', required: true, type: 'number', min: 1 },
   { key: 'source', label: 'Store', options: ['', ...storeRows.map(store => store.code).filter(Boolean)] },
-  { key: 'site', label: 'Site', required: true, suggestions: siteRecords.filter(site => site.status !== 'Inactive').map(site => ({ value: site.code, label: site.name })), placeholder: '1031' },
+  { key: 'site', label: 'Site', required: true, suggestions: siteRecords.filter(site => site.status !== 'Inactive').map(site => ({ value: site.code, label: site.name })), placeholder: 'Select a site' },
   { key: 'department', label: 'Department', suggestions: [...new Map(departmentRecords.filter(department => department.status !== 'Inactive' && department.department).map(department => [department.department, department.department])).values()], placeholder: 'Search department' },
   { key: 'workOrder', label: 'Work Order (optional)', placeholder: 'Leave blank for a store restock' }
 ]
@@ -139,7 +140,7 @@ export default function PurchaseRequestsPage({
         departmentOptions={optionsFromRows(rowsWithPo, ['department'])}
         statusOptions={purchaseRequisitionStatuses}
       />
-      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+      <TablePanel>
         {visibleRows.length ? (
           <DataTable
             rows={visibleRows}
@@ -172,7 +173,7 @@ export default function PurchaseRequestsPage({
             description="When a Work Order resource is not available, click Create purchase request in Material Requests."
           />
         )}
-      </section>
+      </TablePanel>
       {modalOpen && (
         <MasterRecordModal
           title="New purchase request"

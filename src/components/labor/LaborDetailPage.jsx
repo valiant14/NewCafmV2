@@ -1,18 +1,13 @@
 import { useState } from 'react'
 import Combobox from '../ui/Combobox'
-import { Activity, BriefcaseBusiness, Clock3, ShieldCheck, UserRound, Wrench } from 'lucide-react'
-import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
+import { BriefcaseBusiness, CheckCircle2, Clock3, ShieldCheck, UserRound, Wrench } from 'lucide-react'
+import { DetailHeader, DetailTabs, InfoCard, MetricCard } from '../ui/DetailScaffold'
+import TablePanel from '../ui/TablePanel'
 import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
 import EmptyState from '../ui/EmptyState'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusTone } from '../../lib/statusMatrix'
-
-const workloadByStatus = {
-  Available: { openWork: 1, weekHours: 14, utilization: 42, nextAssignment: 'Ready for dispatch' },
-  Assigned: { openWork: 3, weekHours: 31, utilization: 78, nextAssignment: 'Active work queue' },
-  'On Leave': { openWork: 0, weekHours: 0, utilization: 0, nextAssignment: 'Unavailable' }
-}
 
 const toneByStatus = {
   Available: 'green',
@@ -24,7 +19,18 @@ const laborStatuses = ['Available', 'Assigned', 'On Leave']
 
 export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate }) {
   const [tab, setTab] = useState('Labor Details')
-  const workload = workloadByStatus[labor.availability] || workloadByStatus.Available
+  const closedStatuses = new Set(['COMP', 'COMPLETED', 'CLOSE', 'CLOSED', 'CAN', 'CANCELLED'])
+  const completedWork = pastWork.filter(row => closedStatuses.has(String(row.status || '').toUpperCase()))
+  const openWork = pastWork.length - completedWork.length
+  const recordedHours = pastWork.reduce((total, row) => {
+    const hours = Number(row['ACTUAL HOURS'] ?? row.actualHours ?? row.actual_hours ?? 0)
+    return total + (Number.isFinite(hours) ? hours : 0)
+  }, 0)
+  const nextAssignment = labor.availability === 'On Leave'
+    ? 'Unavailable'
+    : openWork > 0
+      ? 'Active work queue'
+      : 'Ready for dispatch'
   const availabilityTone = toneByStatus[labor.availability] || 'green'
   const changeStatus = event => onUpdate?.(labor.personId, { availability: event.target.value })
 
@@ -34,7 +40,7 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
         <DetailHeader
           eyebrow="LABOR RESOURCE"
           id={labor.personId}
-          title={`${labor.name} · ${labor.craft}`}
+          title={`${labor.name} - ${labor.craft}`}
           status={labor.availability}
           statusTone={availabilityTone}
           onBack={onBack}
@@ -43,7 +49,7 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
             { label: 'Craft Code', value: labor.craftCode },
             { label: 'Department', value: labor.department },
             { label: 'Shift', value: labor.shift },
-            { label: 'Next Action', value: workload.nextAssignment }
+            { label: 'Next Action', value: nextAssignment }
           ]}
           actions={(
             <div className="min-w-[150px]">
@@ -64,23 +70,11 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
         {tab === 'Labor Details' && <main className="space-y-4">
           <section className="grid gap-3 md:grid-cols-4">
             {[
-              { icon: BriefcaseBusiness, label: 'Open Work', value: workload.openWork, note: 'Current queue' },
-              { icon: Clock3, label: 'Week Hours', value: `${workload.weekHours}h`, note: 'Planned capacity' },
-              { icon: Activity, label: 'Utilization', value: `${workload.utilization}%`, note: 'Schedule load' },
-              { icon: ShieldCheck, label: 'Availability', value: labor.availability, note: workload.nextAssignment }
-            ].map(metric => {
-              const Icon = metric.icon
-              return (
-                <div key={metric.label} className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4 shadow-[0_8px_24px_rgba(32,55,45,.05)]">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[9px] font-extrabold uppercase tracking-[.14em] text-[var(--app-muted)]">{metric.label}</span>
-                    <Icon size={16} className="text-[var(--app-primary)]" />
-                  </div>
-                  <strong className="mt-2 block text-2xl font-extrabold tracking-[-.04em] text-[var(--app-ink)]">{metric.value}</strong>
-                  <small className="text-[11px] font-semibold text-[var(--app-muted)]">{metric.note}</small>
-                </div>
-              )
-            })}
+              { icon: BriefcaseBusiness, label: 'Open Work', value: openWork, note: 'Current queue' },
+              { icon: Clock3, label: 'Recorded Hours', value: recordedHours, note: 'From work orders' },
+              { icon: CheckCircle2, label: 'Completed Work', value: completedWork.length, note: 'Work-order history' },
+              { icon: ShieldCheck, label: 'Availability', value: labor.availability, note: nextAssignment }
+            ].map(metric => <MetricCard key={metric.label} {...metric} />)}
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
@@ -111,7 +105,7 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
         </main>}
 
         {tab === 'Past Work' && (
-          <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <TablePanel>
             {pastWork.length ? (
               <DataTable
                 rows={pastWork}
@@ -134,7 +128,7 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
                 description="Completed or attended Work Orders will appear here once this labor resource is assigned or recorded in actuals."
               />
             )}
-          </section>
+          </TablePanel>
         )}
       </div>
       <GenericPrintReport
@@ -147,7 +141,7 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
         sections={[
           { title: 'Labor Information', rows: [[['Name', labor.name], ['Person ID', labor.personId], ['Shift', labor.shift], ['Availability', labor.availability]]] },
           { title: 'Craft and Responsibility', rows: [[['Craft Code', labor.craftCode], ['Craft', labor.craft], ['Department', labor.department], ['Sub Department', labor.subDepartment]]] },
-          { title: 'Workload Context', rows: [[['Open Work', workload.openWork], ['Week Hours', `${workload.weekHours}h`], ['Utilization', `${workload.utilization}%`], ['Next Action', workload.nextAssignment]]] }
+          { title: 'Workload Context', rows: [[['Open Work', openWork], ['Recorded Hours', recordedHours], ['Completed Work', completedWork.length], ['Next Action', nextAssignment]]] }
         ]}
       />
     </section>
