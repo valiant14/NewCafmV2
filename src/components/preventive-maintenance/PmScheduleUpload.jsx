@@ -4,7 +4,7 @@ import Button from '../ui/Button'
 export default function PmScheduleUpload({ headers, upload, setUpload, onCancel, onImport, onDownloadTemplate }) {
   return (
     <section className="space-y-5">
-      <header className="rounded-3xl border border-[var(--app-line)] bg-white p-6 shadow-[0_12px_32px_rgba(32,55,45,.07)]">
+      <header className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-6 shadow-[0_14px_36px_rgba(15,23,42,.07)]">
         <button className="mb-4 text-xs font-bold text-[#577066]" onClick={onCancel}>← PM Schedule</button>
         <span className="text-[9px] font-extrabold uppercase tracking-[.18em] text-[#7a8780]">BULK MAXIMO MASTER DATA</span>
         <h1 className="mt-1 text-3xl font-extrabold tracking-[-.045em] text-[var(--app-ink)]">Upload PM schedules</h1>
@@ -12,7 +12,7 @@ export default function PmScheduleUpload({ headers, upload, setUpload, onCancel,
       </header>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
-        <section className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+        <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_12px_32px_rgba(15,23,42,.06)]">
           <div className="mb-5 grid gap-3 md:grid-cols-3">
             {['Download template', 'Upload & validate', 'Create schedules'].map((step, index) => (
               <div className="rounded-2xl bg-[#f8faf7] p-4" key={step}><b className="text-[#315a47]">{index + 1}</b><span className="ml-2 text-sm font-bold text-[var(--app-ink)]">{step}</span></div>
@@ -32,7 +32,7 @@ export default function PmScheduleUpload({ headers, upload, setUpload, onCancel,
           <Button className="mt-5 w-full" disabled={!upload} onClick={onImport}><Upload size={16} />Import PM schedules</Button>
         </section>
 
-        <aside className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+        <aside className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_12px_32px_rgba(15,23,42,.06)]">
           <h3 className="font-extrabold text-[var(--app-ink)]">Exact Excel columns</h3>
           <div className="mt-4 grid gap-2">
             {headers.map((header, index) => <div className="grid grid-cols-[32px_1fr_auto] items-center gap-2 rounded-xl bg-[#f8faf7] p-2 text-xs" key={header}><b>{index + 1}</b><span>{header}</span><Check size={14} /></div>)}
@@ -42,3 +42,4 @@ export default function PmScheduleUpload({ headers, upload, setUpload, onCancel,
     </section>
   )
 }
+

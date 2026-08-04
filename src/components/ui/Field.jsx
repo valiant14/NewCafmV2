@@ -6,17 +6,15 @@ export default function Field({ label, value = '', required, locked, disabled = 
   const listId=useId()
   const isDisabled = locked || disabled
   const controlClass = cn(
-    'w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none transition',
-    'placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]',
-    'read-only:bg-[var(--app-soft-bg)] read-only:text-[var(--app-muted)] disabled:bg-[var(--app-soft-bg)] disabled:text-[var(--app-muted)]',
-    type === 'textarea' ? 'min-h-[86px] py-3 leading-relaxed' : 'h-11'
+    'app-field-control',
+    type === 'textarea' && 'app-field-control--textarea'
   )
 
   return (
-    <label className="group grid min-w-0 content-start gap-2">
-      <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">
+    <label className="app-field">
+      <span className="app-field-label">
         {label}
-        {required && <b className="text-[var(--app-required)]">*</b>}
+        {required && <b className="app-field-required">*</b>}
       </span>
       {/* A fixed set of choices uses the same styled picker as a searchable list, so every
           dropdown looks and behaves alike instead of falling back to the browser's menu. */}

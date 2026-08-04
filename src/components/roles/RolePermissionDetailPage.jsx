@@ -114,7 +114,7 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
                 ['Status', role.status]
               ]}
             />
-            <section className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+            <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_12px_32px_rgba(15,23,42,.06)]">
               <header className="mb-4 border-b border-[var(--app-line)] pb-4">
                 <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">SCOPE DEFAULTS</span>
                 <h2 className="text-base font-extrabold text-[var(--app-ink)]">Role Site Access</h2>
@@ -207,3 +207,4 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
     </section>
   )
 }
+

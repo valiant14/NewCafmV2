@@ -135,7 +135,7 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+      <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
         <DataTable
           rows={filteredRows}
           rowKey="incidentNumber"
@@ -181,3 +181,4 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
     </div>
   )
 }
+

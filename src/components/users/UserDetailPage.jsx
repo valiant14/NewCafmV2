@@ -130,7 +130,7 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
               </AccessTile>
             </section>
 
-            <section className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+            <section className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_12px_32px_rgba(15,23,42,.06)]">
               <header className="mb-4 flex items-center gap-3 border-b border-[var(--app-line)] pb-4">
                 <UserRound className="text-[var(--app-muted)]" size={18} />
                 <div>
@@ -215,3 +215,4 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
     </section>
   )
 }
+

@@ -304,7 +304,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
             </div>
           )}
         />
-        <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+        <section className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
           {rows.length ? (
             <DataTable
               rows={rows}
@@ -419,7 +419,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
         />
       </section>
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_.9fr]">
-        <div className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+        <div className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
           <header className="border-b border-[var(--app-line)] px-4 py-3">
             <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">STOCK REPORT</p>
             <h2 className="text-base font-extrabold text-[var(--app-ink)]">Low and no stock items</h2>
@@ -442,7 +442,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
             <EmptyState icon={PackageCheck} title="Stock levels look healthy" description="No material is below its configured low level." />
           )}
         </div>
-        <div className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+        <div className="overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
           <header className="border-b border-[var(--app-line)] px-4 py-3">
             <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">STORE REPORT</p>
             <h2 className="text-base font-extrabold text-[var(--app-ink)]">Largest stores by balance</h2>
@@ -460,7 +460,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
           />
         </div>
       </section>
-      <section className="mt-4 overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+      <section className="mt-4 overflow-hidden rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] shadow-[0_12px_32px_rgba(15,23,42,.06)]">
         <DataTable
           rows={visibleRows}
           rowKey="code"
@@ -530,3 +530,4 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
     </>
   )
 }
+

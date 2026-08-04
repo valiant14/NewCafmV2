@@ -3,13 +3,13 @@ import { ChevronDown, ChevronRight, Filter, RotateCcw } from 'lucide-react'
 import Combobox from './Combobox'
 import { emptyStandardFilters } from '../../lib/standardFilters'
 
-const shellClass ='mb-4 rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-3 shadow-[0_8px_24px_rgba(32,55,45,.04)]'
-const gridClass = 'grid gap-3 md:grid-cols-2 xl:grid-cols-5'
-const fieldClass = 'grid gap-1'
-const labelClass = 'text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]'
-const controlClass = 'h-10 w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-field-bg)] px-3 text-[length:var(--app-field-font-size)] text-[var(--app-ink)] outline-none transition focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]'
-const chipClass = 'inline-flex items-center rounded-full border border-[var(--app-line)] bg-[var(--app-soft-bg)] px-2.5 py-1 text-[10px] font-bold text-[var(--app-ink)]'
-const countClass = 'inline-flex items-center rounded-full bg-[var(--app-badge-blue-bg)] px-2 py-0.5 text-[10px] font-extrabold text-[var(--app-badge-blue-text)]'
+const shellClass = 'app-filter-panel'
+const gridClass = 'app-filter-grid'
+const fieldClass = 'app-filter-field'
+const labelClass = 'app-field-label'
+const controlClass = 'app-field-control'
+const chipClass = 'app-filter-chip'
+const countClass = 'app-filter-count'
 
 const summaryLabels = [
   ['site', 'Site'],
@@ -58,12 +58,12 @@ export default function StandardFilters({
 
   return (
     <section className={shellClass}>
-      <div className={`flex flex-wrap items-center gap-3 ${open ? 'mb-3' : ''}`}>
+      <div className={`app-filter-summary ${open ? 'app-filter-summary--open' : ''}`}>
         <button
           type="button"
           onClick={toggle}
           aria-expanded={open}
-          className="flex items-center gap-2 text-left text-sm font-extrabold text-[var(--app-ink)]"
+          className="app-filter-toggle"
         >
           <Filter size={16} className="text-[var(--app-primary)]" />
           <span>{title}</span>
@@ -72,14 +72,14 @@ export default function StandardFilters({
         </button>
 
         {!open && active.length > 0 && (
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <div className="app-filter-chips">
             {active.map(([key, label]) => <span className={chipClass} key={key}>{label}: {filters[key]}</span>)}
           </div>
         )}
 
         <button
           type="button"
-          className="ml-auto inline-flex h-8 items-center gap-2 rounded-lg px-2 text-xs font-bold text-[var(--app-muted)] transition hover:bg-[var(--app-soft-bg-hover)] hover:text-[var(--app-ink)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="app-filter-reset"
           onClick={reset}
           disabled={active.length === 0}
         >

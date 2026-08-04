@@ -81,7 +81,7 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
           </div>
         )}
 
-        <div className="grid gap-5 overflow-auto px-6 py-5 md:grid-cols-2">
+        <div className="grid gap-4 overflow-auto px-4 py-4 sm:gap-5 sm:px-6 sm:py-5 md:grid-cols-2">
           {fields.map(field => (
             <MasterRecordField key={field.key} field={field} value={form[field.key]} onChange={updateField} />
           ))}
@@ -89,7 +89,7 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
 
         <ModalFooter className="justify-between">
           <span className="text-xs text-[var(--app-muted)]">{error ? 'Resolve the issue above' : valid ? 'Ready to create' : 'Complete the required fields'}</span>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row sm:items-center">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>

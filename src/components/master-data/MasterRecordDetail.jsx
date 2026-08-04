@@ -31,7 +31,7 @@ export default function MasterRecordDetail({ eyebrow, id, title, status, statusT
 
       <main className="grid gap-5 lg:grid-cols-2">
         {groups.map(group => (
-          <section key={group.title} className="rounded-3xl border border-[var(--app-line)] bg-white p-5 shadow-[0_8px_24px_rgba(32,55,45,.06)]">
+          <section key={group.title} className="rounded-3xl border border-[var(--app-line)] bg-[var(--app-panel)] p-5 shadow-[0_12px_32px_rgba(15,23,42,.06)]">
             <header className="mb-4 flex items-center justify-between gap-3 border-b border-[#edf0ec] pb-4">
               <div>
                 <span className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[#7b8780]">{group.kicker}</span>
@@ -66,3 +66,4 @@ export default function MasterRecordDetail({ eyebrow, id, title, status, statusT
     </section>
   )
 }
+

@@ -58,9 +58,10 @@ export default function AppShell({
   }
 
   return (
-    <div className="app-shell min-h-screen bg-[var(--app-bg)] text-[var(--app-ink)] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
-      <aside className={`sidebar fixed inset-y-0 left-0 z-40 flex w-[248px] -translate-x-full flex-col bg-[var(--app-sidebar-bg)] px-4 py-6 text-[var(--app-sidebar-text)] transition lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${mobileOpen ? 'open translate-x-0 shadow-2xl' : ''}`}>
-        <div className="brand mb-4 flex items-center gap-3 px-2">
+    <div className="app-shell">
+      {mobileOpen && <button type="button" className="app-sidebar-backdrop" onClick={onMobileClose} aria-label="Close menu overlay" />}
+      <aside className={`sidebar app-sidebar ${mobileOpen ? 'app-sidebar--open' : ''}`}>
+        <div className="brand app-brand">
           <img src={sederLogo} alt="Seder" className="h-12 w-auto max-w-[150px] object-contain" />
           <button className="mobile-close ml-auto text-white lg:hidden" onClick={onMobileClose} aria-label="Close menu">
             <X />
@@ -68,21 +69,21 @@ export default function AppShell({
         </div>
 
         {projectName && (
-          <div className="project-name mb-6 border-y border-[color-mix(in_srgb,var(--app-sidebar-muted)_25%,transparent)] px-2 py-3">
+          <div className="project-name app-project-switcher">
             <span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-sidebar-muted)]">Project</span>
             <strong className="mt-1 block truncate text-sm text-[var(--app-sidebar-text)]" title={projectName}>{projectName}</strong>
           </div>
         )}
 
-        <nav className="grid gap-1 overflow-y-auto pr-1">
+        <nav className="app-navigation">
           {sections.map(([section, items], index) => {
             const collapsed = collapsedSections[section]
             return (
-              <div key={section} className="grid gap-1">
+              <div key={section} className="app-navigation-section">
                 <button
                   type="button"
                   onClick={() => toggleSection(section)}
-                  className={`nav-label flex items-center justify-between rounded-lg px-3 pb-1 pt-3 text-left text-[length:var(--app-nav-label-font-size)] font-extrabold uppercase tracking-[0.18em] text-[var(--app-sidebar-muted)] transition hover:bg-[var(--app-sidebar-hover)] hover:text-[var(--app-sidebar-text)] ${index === 0 ? 'pt-0' : ''}`}
+                  className={`nav-label app-navigation-label ${index === 0 ? 'app-navigation-label--first' : ''}`}
                   aria-expanded={!collapsed}
                 >
                   <span>{section}</span>
@@ -95,7 +96,7 @@ export default function AppShell({
                     <button
                       key={item.name}
                       onClick={() => navigateFromSidebar(item)}
-                      className={`flex items-center gap-3 rounded-xl border-l-4 px-3 py-3 text-left text-[length:var(--app-nav-font-size)] transition ${selected ? 'active border-[var(--app-sidebar-accent)] bg-[var(--app-sidebar-active)] text-white' : 'border-transparent text-[var(--app-sidebar-muted)] hover:bg-[var(--app-sidebar-hover)] hover:text-[var(--app-sidebar-text)]'}`}
+                      className={`app-navigation-item ${selected ? 'active' : ''}`}
                     >
                       <Icon size={18} />
                       <span>{item.name}</span>
@@ -109,8 +110,8 @@ export default function AppShell({
 
       </aside>
 
-      <main className="flex min-h-screen min-w-0 flex-col">
-        <header className="topbar sticky top-0 z-30 flex h-[69px] items-center border-b border-[var(--app-line)] bg-[color:color-mix(in_srgb,var(--app-panel)_85%,transparent)] px-4 backdrop-blur lg:px-8">
+      <main className="app-main">
+        <header className="topbar app-topbar">
           <button className="menu-btn mr-3 text-[var(--app-muted)] lg:hidden" onClick={onMobileOpen} aria-label="Open menu">
             <Menu />
           </button>
@@ -120,7 +121,7 @@ export default function AppShell({
             <strong className="text-[var(--app-ink)]">{active}</strong>
           </div>
           <div className="top-actions ml-auto flex items-center gap-3">
-            <button className="icon-button sla-notification relative text-[var(--app-muted)]" title={`${overdueCount} overdue work orders`} onClick={() => setNotificationsOpen(true)}>
+            <button className="app-icon-button sla-notification relative" title={`${overdueCount} overdue work orders`} onClick={() => setNotificationsOpen(true)}>
               <Bell size={19} />
               {overdueCount > 0 && <b className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--danger)] px-1 text-[7px] text-white ring-2 ring-[var(--app-panel)]">{overdueCount}</b>}
             </button>
@@ -160,13 +161,13 @@ export default function AppShell({
           </div>
         </header>
 
-        <div className="content mx-auto w-full max-w-[1500px] flex-1 px-4 py-7 lg:px-10 lg:py-9">
+        <div className="content app-content">
           {children}
         </div>
 
-        <footer className="flex justify-between border-t border-[var(--app-line)] px-4 py-4 text-[9px] text-[var(--app-muted)] lg:px-10">
-          <span>Seder CAFM · Mock data generated from provided Excel files</span>
-          <span className="hidden sm:inline">{statusRuleCount} Maximo status rules loaded</span>
+        <footer className="app-footer">
+          <span>Seder CAFM · Live operational workspace</span>
+          <span className="hidden sm:inline">{statusRuleCount} workflow status rules loaded</span>
         </footer>
       </main>
 
