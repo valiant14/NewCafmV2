@@ -35,6 +35,26 @@ begin
   alter table dbo.preventive_maintenance alter column next_date datetime2 not null;
 end;
 
+if col_length('dbo.work_orders', 'pm_num') is null
+begin
+  alter table dbo.work_orders add pm_num nvarchar(80) null;
+end;
+
+if col_length('dbo.work_orders', 'pm_cycle') is null
+begin
+  alter table dbo.work_orders add pm_cycle nvarchar(120) null;
+end;
+
+if col_length('dbo.work_orders', 'job_plan_num') is null
+begin
+  alter table dbo.work_orders add job_plan_num nvarchar(80) null;
+end;
+
+if col_length('dbo.work_orders', 'schedule_rule_name') is null
+begin
+  alter table dbo.work_orders add schedule_rule_name nvarchar(160) null;
+end;
+
 merge dbo.permission_modules as target
 using (values ('PM Schedule Rules')) as source(module_name)
 on target.module_name = source.module_name
