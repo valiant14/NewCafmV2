@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
 import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import ExcelImportButton from '../components/ui/ExcelImportButton'
 import ExcelTemplateButton from '../components/ui/ExcelTemplateButton'
@@ -9,6 +11,8 @@ import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import RolePermissionDetailPage from '../components/roles/RolePermissionDetailPage'
 import StandardFilters from '../components/ui/StandardFilters'
+import Field from '../components/ui/Field'
+import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../components/ui/ModalFrame'
 import { permissionActions, rolePermissionRows } from '../config/runtimeDefaults'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 
@@ -23,11 +27,23 @@ const exportColumns = [
   ...['role', 'user', 'site', 'department', 'scope', 'status'].map(header => ({ key: header, label: header })),
   ...permissionActions.map(action => ({ key: action, label: action, exportValue: (_, row) => permissionText(row.permissions?.[action]) }))
 ]
+const blankRole = () => ({
+  role: '',
+  user: '',
+  site: 'All Sites',
+  department: 'All Departments',
+  scope: '',
+  status: 'Draft',
+  permissions: Object.fromEntries(permissionActions.map(action => [action, []]))
+})
 
 export default function RolesPermissionsPage({ rows = rolePermissionRows, setRows, siteOptions = [], departmentOptions = [] }) {
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [imported, setImported] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [form, setForm] = useState(blankRole)
+  const [formError, setFormError] = useState('')
   const routeId = decodeURIComponent(window.location.pathname.split('/roles-permissions/')[1] || '')
   const [selectedRole, setSelectedRole] = useState(rows.find(row => row.role === routeId) || null)
   useEffect(() => {
@@ -52,6 +68,18 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
     setRows?.(current => current.map(row => row.role === roleName ? { ...row, ...patch } : row))
     setSelectedRole(current => current?.role === roleName ? { ...current, ...patch } : current)
   }
+  const createRole = async () => {
+    const roleName = form.role.trim()
+    if (!roleName) return setFormError('Role name is required.')
+    if (rows.some(row => row.role.toLowerCase() === roleName.toLowerCase())) return setFormError('Role already exists.')
+    const created = { ...blankRole(), ...form, role: roleName, status: form.status || 'Draft' }
+    await setRows?.(current => [created, ...current])
+    setCreating(false)
+    setForm(blankRole())
+    setFormError('')
+    setSelectedRole(created)
+    window.history.pushState({}, '', `/roles-permissions/${encodeURIComponent(created.role)}`)
+  }
 
   if (selectedRole) {
     return <RolePermissionDetailPage role={selectedRole} siteOptions={siteOptions} departmentOptions={departmentOptions} onBack={close} onUpdate={updateRole} />
@@ -68,6 +96,7 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
             <ExcelTemplateButton headers={headers} fileName="Roles_Permissions_Template.xlsx" />
             <ExportExcelButton module="Roles Permissions" rows={visibleRows} columns={exportColumns} />
             <ExcelImportButton label="Import Excel" fileName={imported} onFile={setImported} onImport={importedRows => setRows?.(importedRows.map(roleFromImport))} />
+            <Button onClick={() => { setForm(blankRole()); setFormError(''); setCreating(true) }}><Plus size={15} />Add role</Button>
           </div>
         )}
       />
@@ -79,7 +108,8 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
         tabs={[
           { key: 'All', label: 'All Roles', count: rows.length },
           { key: 'Active', label: 'Active', count: rows.filter(row => row.status === 'Active').length },
-          { key: 'Draft', label: 'Draft', count: rows.filter(row => row.status === 'Draft').length }
+          { key: 'Draft', label: 'Draft', count: rows.filter(row => row.status === 'Draft').length },
+          { key: 'Inactive', label: 'Inactive', count: rows.filter(row => row.status === 'Inactive').length }
         ]}
       />
 
@@ -107,6 +137,31 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
           ]}
         />
       </section>
+      {creating && (
+        <ModalOverlay>
+          <ModalPanel className="max-w-3xl" labelledBy="new-role-title">
+            <ModalHeader
+              eyebrow="ADMINISTRATION"
+              title="Add role"
+              titleId="new-role-title"
+              description="Create a role first, then configure its permission matrix."
+              onClose={() => setCreating(false)}
+            />
+            <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
+              {formError && <div className="md:col-span-2 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-800">{formError}</div>}
+              <Field label="Role name" value={form.role} required onChange={event => setForm({ ...form, role: event.target.value })} placeholder="Civil Supervisor" />
+              <Field label="Status" value={form.status} options={['Draft', 'Active', 'Inactive']} onChange={event => setForm({ ...form, status: event.target.value })} />
+              <Field label="Site Scope" value={form.site} suggestions={siteOptions} onChange={event => setForm({ ...form, site: event.target.value })} placeholder="All Sites" />
+              <Field label="Department Scope" value={form.department} suggestions={departmentOptions} onChange={event => setForm({ ...form, department: event.target.value })} placeholder="All Departments" />
+              <div className="md:col-span-2"><Field label="Allowed Access" value={form.scope} onChange={event => setForm({ ...form, scope: event.target.value })} placeholder="Describe the purpose of this role" /></div>
+            </div>
+            <ModalFooter>
+              <Button variant="outline" onClick={() => setCreating(false)}>Cancel</Button>
+              <Button onClick={createRole}><Plus size={15} />Create role</Button>
+            </ModalFooter>
+          </ModalPanel>
+        </ModalOverlay>
+      )}
     </div>
   )
 }
