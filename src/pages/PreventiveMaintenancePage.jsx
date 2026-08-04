@@ -91,7 +91,7 @@ const mapPmImportRows = (rows, rules = []) => rows.map(row => {
   }
 }).filter(plan => plan.pmNumber && plan.description)
 
-export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules = [], assets = [], jobTasks = [], workOrders = [], departmentRecords = [], scopeUser, onGenerate, onOpenWorkOrder }) {
+export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules = [], assets = [], jobTasks = [], workOrders = [], departmentRecords = [], locationRows = [], storeRows = [], laborRows = [], scopeUser, onGenerate, onOpenWorkOrder }) {
   const { user } = useAuth()
   const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
   const plans = rows.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') }))
@@ -230,7 +230,7 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
       />
       {mode === 'new' && (
         <ModalOverlay>
-          <PmScheduleForm modal form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departmentRecords} pmRules={pmRules} onCancel={() => setMode('list')} onSave={save} />
+          <PmScheduleForm modal form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departmentRecords} pmRules={pmRules} locations={locationRows} stores={storeRows} labor={laborRows} onCancel={() => setMode('list')} onSave={save} />
         </ModalOverlay>
       )}
     </section>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Combobox from '../ui/Combobox'
 import { BarChart3, ClipboardCheck, MapPin, ShieldCheck, ShoppingCart, Wrench } from 'lucide-react'
 import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
 import Badge from '../ui/Badge'
@@ -104,14 +105,16 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
           actions={(
             <div className="flex flex-wrap items-center gap-2">
               {canRequestPr && <Button onClick={openRequestModal}><ShoppingCart size={15} />Request PR</Button>}
-              <select
+              <div className="min-w-[160px]">
+              <Combobox
+                picker
+                className="h-10 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
                 value={tool.status}
+                suggestions={toolStatuses}
                 onChange={changeStatus}
-                className="h-10 min-w-[160px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
-                aria-label="Change tool status"
-              >
-                {toolStatuses.map(status => <option key={status} value={status}>{status}</option>)}
-              </select>
+                placeholder="Status"
+              />
+            </div>
             </div>
           )}
         />

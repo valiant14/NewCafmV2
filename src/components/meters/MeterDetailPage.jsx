@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Combobox from '../ui/Combobox'
 import { Activity, CalendarClock, Gauge, MapPin, RadioTower } from 'lucide-react'
 import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
@@ -37,14 +38,16 @@ export default function MeterDetailPage({ meter, pastReadings = [], onBack, onUp
             { label: 'Reading Date', value: meter.readingDate }
           ]}
           actions={(
-            <select
-              value={meter.status}
-              onChange={changeStatus}
-              className="h-10 min-w-[160px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
-              aria-label="Change meter status"
-            >
-              {meterStatuses.map(status => <option key={status} value={status}>{status}</option>)}
-            </select>
+            <div className="min-w-[160px]">
+              <Combobox
+                picker
+                className="h-10 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+                value={meter.status}
+                suggestions={meterStatuses}
+                onChange={changeStatus}
+                placeholder="Status"
+              />
+            </div>
           )}
         />
 

@@ -146,7 +146,7 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], departm
         />
       </section>
 
-      {adding && <AddLaborModal form={form} setForm={setForm} departmentRecords={departmentRecords} onClose={() => setAdding(false)} onSave={save} />}
+      {adding && <AddLaborModal form={form} setForm={setForm} departmentRecords={departmentRecords} laborRows={rows} onClose={() => setAdding(false)} onSave={save} />}
     </>
   )
 }

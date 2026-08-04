@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Combobox from '../ui/Combobox'
 import { Archive, BarChart3, Boxes, ClipboardList, PackageCheck, ShoppingCart, Warehouse } from 'lucide-react'
 import { DetailHeader, DetailTabs, InfoCard } from '../ui/DetailScaffold'
 import Badge from '../ui/Badge'
@@ -109,14 +110,16 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
           actions={(
             <div className="flex flex-wrap items-center gap-2">
               {canRequestPr && <Button onClick={openRequestModal}><ShoppingCart size={15} />Request PR</Button>}
-              <select
+              <div className="min-w-[180px]">
+              <Combobox
+                picker
+                className="h-10 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
                 value={material.availability}
+                suggestions={materialStatuses}
                 onChange={changeStatus}
-                className="h-10 min-w-[180px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
-                aria-label="Change material status"
-              >
-                {materialStatuses.map(status => <option key={status} value={status}>{status}</option>)}
-              </select>
+                placeholder="Status"
+              />
+            </div>
             </div>
           )}
         />

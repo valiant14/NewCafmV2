@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Combobox from '../ui/Combobox'
 import { AlertTriangle, CalendarClock, ClipboardList, Download, FileText, ShieldCheck, UserRound } from 'lucide-react'
 import { DetailHeader, DetailTabs, InfoCard, TimelineCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
@@ -37,14 +38,16 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
             { label: 'Reported By', value: incident.reportedBy || '-', note: reportedDate }
           ]}
           actions={(
-            <select
-              className="h-10 min-w-[170px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
-              value={status}
-              onChange={event => changeStatus(event.target.value)}
-              aria-label="Change incident status"
-            >
-              {statusOptions('incident').map(option => <option value={option} key={option}>{option} · {statusDescription('incident', option)}</option>)}
-            </select>
+            <div className="min-w-[170px]">
+              <Combobox
+                picker
+                className="h-10 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+                value={status}
+                suggestions={statusOptions('incident').map(option => ({ value: option, label: statusDescription('incident', option) }))}
+                onChange={event => changeStatus(event.target.value)}
+                placeholder="Status"
+              />
+            </div>
           )}
         />
 
