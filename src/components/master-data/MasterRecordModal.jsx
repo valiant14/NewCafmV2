@@ -7,7 +7,7 @@ function MasterRecordField({ field, value, onChange }) {
   const inputId = `master-${field.key}`
 
   return (
-    <label className="grid gap-2" htmlFor={inputId}>
+    <label className={`grid gap-2 ${field.fullWidth ? 'md:col-span-2' : ''}`} htmlFor={inputId}>
       <span className="text-[9px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">
         {field.label}
         {field.required && <b className="ml-1 text-[var(--app-required)]">*</b>}
@@ -21,6 +21,16 @@ function MasterRecordField({ field, value, onChange }) {
             </option>
           ))}
         </select>
+      ) : field.type === 'textarea' ? (
+        <textarea
+          className={`${field.minRows === 'compact' ? 'min-h-20' : 'min-h-24'} rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 py-2 text-sm text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)] focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]`}
+          id={inputId}
+          value={value ?? ''}
+          onChange={event => onChange(field.key, event.target.value)}
+          placeholder={field.placeholder}
+          readOnly={field.locked}
+          disabled={field.locked}
+        />
       ) : field.suggestions ? (
         <Combobox
           inputId={inputId}

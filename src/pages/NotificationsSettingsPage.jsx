@@ -33,13 +33,51 @@ const emptyRule = {
   createdDate: ''
 }
 
+const splitRecipients = value => {
+  if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean)
+  return String(value || '')
+    .split(/[,;\n]+/)
+    .map(item => item.trim())
+    .filter(Boolean)
+}
+
+const normalizeRecipients = value => {
+  const seen = new Set()
+  return splitRecipients(value)
+    .filter(item => {
+      const key = item.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .join(', ')
+}
+
+const renderRecipients = value => {
+  const recipients = splitRecipients(value)
+  if (!recipients.length) return 'Not set'
+  const shown = recipients.slice(0, 3)
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {shown.map(recipient => (
+        <span key={recipient} className="rounded-full bg-[var(--app-soft)] px-2 py-1 text-[11px] font-bold text-[var(--app-ink)]">
+          {recipient}
+        </span>
+      ))}
+      {recipients.length > shown.length && (
+        <Badge tone="blue">+{recipients.length - shown.length}</Badge>
+      )}
+    </div>
+  )
+}
+
 const fields = [
   { key: 'id', label: 'Rule ID', required: true, placeholder: 'NOTIF-001' },
   { key: 'event', label: 'Event', required: true, options: events },
   { key: 'channel', label: 'Channel', required: true, options: channels },
-  { key: 'recipients', label: 'Recipients', placeholder: 'Facility Manager, ops@seder.com' },
-  { key: 'notes', label: 'Notes', placeholder: 'When and why this rule fires' },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
+  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] },
+  { key: 'recipients', label: 'Recipients', type: 'textarea', fullWidth: true, placeholder: 'ahmed@seder.com, ops@seder.com\nmanager@seder.com' },
+  { key: 'notes', label: 'Notes', type: 'textarea', minRows: 'compact', fullWidth: true, placeholder: 'When and why this rule fires' }
 ]
 
 const exportColumns = [
@@ -82,7 +120,7 @@ export default function NotificationsSettingsPage() {
     const id = String(form.id || '').trim()
     if (!id || !form.event || !form.channel) return
     if (rows.some(row => row.id === id && row.id !== editing)) return setError('Rule ID already exists.')
-    const record = { ...form, id, createdDate: form.createdDate || nowLocalDate() }
+    const record = { ...form, id, recipients: normalizeRecipients(form.recipients), createdDate: form.createdDate || nowLocalDate() }
     setRows(current => editing
       ? current.map(row => row.id === editing ? record : row)
       : [record, ...current]
@@ -133,7 +171,7 @@ export default function NotificationsSettingsPage() {
               { key: 'id', label: 'Rule ID', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
               { key: 'event', label: 'Event' },
               { key: 'channel', label: 'Channel', render: value => <Badge tone={value === 'SMS' ? 'orange' : 'blue'}>{value}</Badge> },
-              { key: 'recipients', label: 'Recipients', render: value => value || 'Not set' },
+              { key: 'recipients', label: 'Recipients', render: renderRecipients },
               { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> },
               { key: 'createdDate', label: 'Created', render: value => value || '-' }
             ]}
@@ -146,7 +184,7 @@ export default function NotificationsSettingsPage() {
       {modalOpen && (
         <MasterRecordModal
           title={editing ? 'Edit notification rule' : 'Add notification rule'}
-          note="Rules are stored in this browser until a delivery service is connected."
+          note="Use comma, semicolon, or a new line to add multiple recipients."
           fields={fields}
           form={form}
           setForm={setForm}
