@@ -13,7 +13,7 @@ using (values
   ('Job Plans'), ('Assets'), ('Labor'), ('Locations'), ('Failure Library'), ('Meters'),
   ('Materials'), ('Stores'), ('Tools & Equipment'), ('Reservations'),
   ('Purchase Requisitions'), ('Purchase Orders'), ('Users'), ('Roles & Permissions'),
-  ('Sites'), ('Departments'), ('PM Schedule Rules'), ('Settings')
+  ('Sites'), ('Departments'), ('PM Schedule Rules'), ('SMTP & SMS'), ('Settings')
 ) as source(module_name)
 on target.module_name = source.module_name
 when not matched then insert(module_name) values(source.module_name);

@@ -542,6 +542,12 @@ const apiMappers = {
     apiKey: 'rule_name',
     toApi: row => ({ rule_name: toText(row.name), frequency: toNumberOrNull(row.frequency) || 1, frequency_unit: row.freqUnit || 'MONTHS', lead_time_days: toNumberOrNull(row.leadTimeDays) || 0, horizon_days: toNumberOrNull(row.horizonDays) || 30, trigger_hour: ['MINUTES', 'HOURS'].includes(row.freqUnit) ? 0 : Math.max(0, Math.min(23, toNumberOrNull(row.triggerHour) || 0)), wo_prefix: row.woPrefix || 'PMWO-', default_wo_status: row.defaultWoStatus || 'WSCH', notes: row.notes || '', status: row.status || 'Active' })
   },
+  connectors: {
+    endpoint: '/smtp-sms-connectors',
+    key: 'name',
+    apiKey: 'connector_name',
+    toApi: row => ({ connector_name: toText(row.name), connector_type: row.type || 'SMTP', host_endpoint: toText(row.host), port: toNumberOrNull(row.port), encryption: row.encryption || 'TLS', username_value: row.username || '', secret_value: row.password || '', sender_value: row.sender || '', notes: row.notes || '', status: row.status || 'Active' })
+  },
   meters: {
     endpoint: '/meter-readings',
     key: 'meterReadingId',
@@ -1210,6 +1216,7 @@ export default function App() {
   const [jobPlanRecords,setJobPlanRecords]=useState(jobPlanSeed)
   const [pmScheduleRecords,setPmScheduleRecords]=useState([])
   const [pmRuleRecords,setPmRuleRecords]=useState([])
+  const [connectorRecords,setConnectorRecords]=useState([])
   const [purchaseRequests,setPurchaseRequests]=useState([])
   const [purchaseOrders,setPurchaseOrders]=useState([])
   const [reservations,setReservations]=useState([])
@@ -1246,6 +1253,7 @@ export default function App() {
     setJobPlanRecords(data.jobPlans)
     setPmScheduleRecords(data.pmSchedules)
     setPmRuleRecords(data.pmRules || [])
+    setConnectorRecords(data.connectors || [])
     setPurchaseRequests(data.purchaseRequests)
     setPurchaseOrders(data.purchaseOrders)
     setReservations(data.reservations)
@@ -1345,6 +1353,7 @@ export default function App() {
       : moduleName === 'Incidents' ? incidents
       : moduleName === 'Preventive Maintenance' ? pmScheduleRecords
       : moduleName === 'PM Schedule Rules' ? pmRuleRecords
+      : moduleName === 'SMTP & SMS' ? connectorRecords
       : moduleName === 'Purchase Requisitions' ? purchaseRequests
       : moduleName === 'Purchase Orders' ? purchaseOrders
       : moduleName === 'Reservations' ? reservations
@@ -1373,7 +1382,7 @@ export default function App() {
         refreshWorkspace({ silent: true })
         return { __saveError: true, error }
       })
-  }, [assetRecords, locationRecords, laborRecords, materialRecords, storeRecords, toolRecords, failureCodeRecords, meterRecords, allWorkOrders, serviceRequests, incidents, pmScheduleRecords, pmRuleRecords, purchaseRequests, purchaseOrders, reservations, siteRecords, departmentRecords, jobPlanRecords, userRecords, rolePermissionRecords, canDo, notify, refreshWorkspace])
+  }, [assetRecords, locationRecords, laborRecords, materialRecords, storeRecords, toolRecords, failureCodeRecords, meterRecords, allWorkOrders, serviceRequests, incidents, pmScheduleRecords, pmRuleRecords, connectorRecords, purchaseRequests, purchaseOrders, reservations, siteRecords, departmentRecords, jobPlanRecords, userRecords, rolePermissionRecords, canDo, notify, refreshWorkspace])
   const rawSaveAssets = useMemo(() => backendSetter(setAssetRecords, apiMappers.assets), [])
   const rawSaveLocations = useMemo(() => backendSetter(setLocationRecords, apiMappers.locations), [])
   const rawSaveLabor = useMemo(() => backendSetter(setLaborRecords, apiMappers.labor), [])
@@ -1387,6 +1396,7 @@ export default function App() {
   const rawSaveIncidents = useMemo(() => backendSetter(setIncidents, apiMappers.incidents), [])
   const rawSavePmSchedules = useMemo(() => backendSetter(setPmScheduleRecords, apiMappers.pm), [])
   const rawSavePmRules = useMemo(() => backendSetter(setPmRuleRecords, apiMappers.pmRules), [])
+  const rawSaveConnectors = useMemo(() => backendSetter(setConnectorRecords, apiMappers.connectors), [])
   const rawSavePurchaseRequests = useMemo(() => backendSetter(setPurchaseRequests, apiMappers.purchaseRequests), [])
   const rawSavePurchaseOrders = useMemo(() => backendSetter(setPurchaseOrders, apiMappers.purchaseOrders), [])
   const rawSaveReservations = useMemo(() => backendSetter(setReservations, apiMappers.reservations), [])
@@ -1408,6 +1418,7 @@ export default function App() {
   const saveIncidents = useMemo(() => guardSave('Incidents', rawSaveIncidents), [guardSave, rawSaveIncidents])
   const savePmSchedules = useMemo(() => guardSave('Preventive Maintenance', rawSavePmSchedules), [guardSave, rawSavePmSchedules])
   const savePmRules = useMemo(() => guardSave('PM Schedule Rules', rawSavePmRules), [guardSave, rawSavePmRules])
+  const saveConnectors = useMemo(() => guardSave('SMTP & SMS', rawSaveConnectors), [guardSave, rawSaveConnectors])
   const savePurchaseRequests = useMemo(() => guardSave('Purchase Requisitions', rawSavePurchaseRequests), [guardSave, rawSavePurchaseRequests])
   const savePurchaseOrders = useMemo(() => guardSave('Purchase Orders', rawSavePurchaseOrders), [guardSave, rawSavePurchaseOrders])
   const saveReservations = useMemo(() => guardSave('Reservations', rawSaveReservations), [guardSave, rawSaveReservations])
@@ -1818,7 +1829,7 @@ export default function App() {
     'Sites': <SitesSettingsPage rows={siteRecords} setRows={saveSites}/>,
     'Departments': <DepartmentsSettingsPage rows={departmentRecords} setRows={saveDepartments}/>,
     'Notifications': <NotificationsSettingsPage/>,
-    'SMTP & SMS': <ConnectorsSettingsPage/>,
+    'SMTP & SMS': <ConnectorsSettingsPage rows={connectorRecords} setRows={saveConnectors}/>,
     'PM Schedule Rules': <PmRulesSettingsPage rows={pmRuleRecords} setRows={savePmRules} pmSchedules={pmScheduleRecords} workOrders={scopedWorkOrders}/>
   }
   if (!isAuthenticated) return <LoginPage />

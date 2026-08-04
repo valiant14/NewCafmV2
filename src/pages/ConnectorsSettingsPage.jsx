@@ -11,7 +11,6 @@ import PageHeader from '../components/ui/PageHeader'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
-import { readConnectors, storedListSetter, writeConnectors } from '../lib/settingsStore'
 
 const connectorTypes = ['SMTP', 'SMS']
 const encryptionModes = ['None', 'SSL', 'TLS']
@@ -37,7 +36,7 @@ const fields = [
   { key: 'port', label: 'Port', type: 'number', placeholder: '587' },
   { key: 'encryption', label: 'Encryption', options: encryptionModes },
   { key: 'username', label: 'Username / API Key', placeholder: 'cafm@seder.com' },
-  { key: 'password', label: 'Password / Secret', type: 'password', placeholder: 'Stored in this browser only' },
+  { key: 'password', label: 'Password / Secret', type: 'password', placeholder: 'Stored in database' },
   { key: 'sender', label: 'From Address / Sender ID', placeholder: 'no-reply@seder.com or SEDER' },
   { key: 'notes', label: 'Notes', placeholder: 'Who owns this connector' },
   { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
@@ -56,9 +55,7 @@ const exportColumns = [
   { key: 'createdDate', header: 'Created' }
 ]
 
-export default function ConnectorsSettingsPage() {
-  const [rows, setRowsState] = useState(readConnectors)
-  const setRows = storedListSetter(setRowsState, writeConnectors)
+export default function ConnectorsSettingsPage({ rows = [], setRows }) {
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [modalOpen, setModalOpen] = useState(false)
@@ -152,7 +149,7 @@ export default function ConnectorsSettingsPage() {
       {modalOpen && (
         <MasterRecordModal
           title={editing ? 'Edit connector' : 'Add connector'}
-          note="Credentials are held in this browser only. Nothing is sent until a delivery service is connected."
+          note="Credentials are stored in the CAFM database. Nothing is sent until a delivery service is connected."
           fields={fields}
           form={form}
           setForm={setForm}

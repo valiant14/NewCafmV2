@@ -43,7 +43,8 @@ export const permissionModules = [
   'Sites',
   'Departments',
   'PM Schedule Rules',
-  // Grants access to Notifications and SMTP & SMS.
+  'SMTP & SMS',
+  // Grants access to Notifications.
   'Settings'
 ]
 export const pmRecords = []

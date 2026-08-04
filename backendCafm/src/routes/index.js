@@ -183,6 +183,13 @@ router.use('/pm-schedule-rules', crudRouter({
   columns: ['rule_name', 'frequency', 'frequency_unit', 'lead_time_days', 'horizon_days', 'trigger_hour', 'wo_prefix', 'default_wo_status', 'notes', 'status', 'created_at', 'updated_at']
 }))
 
+router.use('/smtp-sms-connectors', crudRouter({
+  moduleName: 'SMTP & SMS',
+  table: 'dbo.smtp_sms_connectors',
+  key: 'connector_name',
+  columns: ['connector_name', 'connector_type', 'host_endpoint', 'port', 'encryption', 'username_value', 'secret_value', 'sender_value', 'notes', 'status', 'created_at', 'updated_at']
+}))
+
 router.use('/job-plans', crudRouter({
   moduleName: 'Job Plans',
   table: 'dbo.job_plans',

@@ -22,10 +22,10 @@ export const pagePermissionAliases = {
   'Roles & Permissions': ['Roles & Permissions', 'Administration'],
   Sites: ['Sites', 'Administration'],
   Departments: ['Departments', 'Administration'],
-  // Notifications and SMTP & SMS are settings sub-pages. PM Schedule Rules has its own
-  // module but keeps Settings as a fallback for existing roles until migrations are run.
+  // Notifications is still a settings sub-page. SMTP & SMS and PM Schedule Rules now have
+  // their own backend modules, with Administration kept as the top-level bypass.
   Notifications: ['Notifications', 'Settings', 'Administration'],
-  'SMTP & SMS': ['SMTP & SMS', 'Settings', 'Administration'],
+  'SMTP & SMS': ['SMTP & SMS', 'Administration'],
   'PM Schedule Rules': ['PM Schedule Rules', 'Settings', 'Administration']
 }
 

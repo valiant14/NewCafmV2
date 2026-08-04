@@ -497,6 +497,22 @@ create table dbo.pm_schedule_rules (
 );
 go
 
+create table dbo.smtp_sms_connectors (
+  connector_name nvarchar(160) not null primary key,
+  connector_type nvarchar(40) not null,
+  host_endpoint nvarchar(300) not null,
+  port int null,
+  encryption nvarchar(40) null,
+  username_value nvarchar(300) null,
+  secret_value nvarchar(max) null,
+  sender_value nvarchar(160) null,
+  notes nvarchar(500) null,
+  status nvarchar(40) not null constraint df_smtp_sms_status default 'Active',
+  created_at datetime2 not null constraint df_smtp_sms_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_smtp_sms_updated default sysutcdatetime()
+);
+go
+
 create table dbo.incidents (
   incident_num nvarchar(80) not null primary key,
   description nvarchar(300) not null,

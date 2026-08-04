@@ -415,6 +415,20 @@ const mapPmRule = row => ({
   createdDate: row.created_at || ''
 })
 
+const mapConnector = row => ({
+  name: row.connector_name,
+  type: row.connector_type || 'SMTP',
+  host: row.host_endpoint || '',
+  port: row.port ?? '',
+  encryption: row.encryption || 'TLS',
+  username: row.username_value || '',
+  password: row.secret_value || '',
+  sender: row.sender_value || '',
+  notes: row.notes || '',
+  status: row.status || 'Active',
+  createdDate: row.created_at || ''
+})
+
 const mapIncident = row => ({
   incidentNumber: row.incident_num,
   description: row.description,
@@ -474,6 +488,7 @@ export async function loadWorkspace() {
     reservations,
     pmSchedules,
     pmRules,
+    connectors,
     jobPlans,
     jobPlanTasks,
     incidents,
@@ -501,6 +516,7 @@ export async function loadWorkspace() {
     safeGet('/reservations'),
     safeGet('/preventive-maintenance'),
     safeGet('/pm-schedule-rules'),
+    safeGet('/smtp-sms-connectors'),
     safeGet('/job-plans'),
     safeGet('/job-plan-tasks'),
     safeGet('/incidents'),
@@ -532,6 +548,7 @@ export async function loadWorkspace() {
     reservations: reservations.map(mapReservation),
     pmSchedules: pmSchedules.map(mapPm),
     pmRules: pmRules.map(mapPmRule),
+    connectors: connectors.map(mapConnector),
     jobPlans: jobPlans.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status })),
     jobTasks: jobPlanTasks.map(mapJobTask),
     incidents: incidents.map(mapIncident),
