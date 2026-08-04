@@ -268,6 +268,10 @@ create table dbo.work_orders (
   actual_finish_at datetime2 null,
   reported_at datetime2 not null constraint df_wo_reported default sysutcdatetime(),
   source_sr_num nvarchar(80) null,
+  pm_num nvarchar(80) null,
+  pm_cycle nvarchar(120) null,
+  job_plan_num nvarchar(80) null,
+  schedule_rule_name nvarchar(160) null,
   failure_code nvarchar(80) null,
   problem_code nvarchar(80) null,
   cause_code nvarchar(80) null,
@@ -450,7 +454,7 @@ create table dbo.preventive_maintenance (
   route_code nvarchar(80) null,
   location_code nvarchar(80) null,
   job_plan_num nvarchar(80) not null,
-  next_date date not null,
+  next_date datetime2 not null,
   lead_time_days int not null constraint df_pm_lead default 0,
   frequency int not null,
   frequency_unit nvarchar(40) not null,
@@ -490,6 +494,22 @@ create table dbo.pm_schedule_rules (
   status nvarchar(40) not null constraint df_pm_rule_status default 'Active',
   created_at datetime2 not null constraint df_pm_rule_created default sysutcdatetime(),
   updated_at datetime2 not null constraint df_pm_rule_updated default sysutcdatetime()
+);
+go
+
+create table dbo.smtp_sms_connectors (
+  connector_name nvarchar(160) not null primary key,
+  connector_type nvarchar(40) not null,
+  host_endpoint nvarchar(300) not null,
+  port int null,
+  encryption nvarchar(40) null,
+  username_value nvarchar(300) null,
+  secret_value nvarchar(max) null,
+  sender_value nvarchar(160) null,
+  notes nvarchar(500) null,
+  status nvarchar(40) not null constraint df_smtp_sms_status default 'Active',
+  created_at datetime2 not null constraint df_smtp_sms_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_smtp_sms_updated default sysutcdatetime()
 );
 go
 

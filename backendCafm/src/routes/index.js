@@ -4,13 +4,31 @@ import rolesRouter from './roles.js'
 import usersRouter from './users.js'
 import { crudRouter } from './crudFactory.js'
 import inventoryStockRouter from './inventoryStock.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, requirePermission } from '../middleware/auth.js'
+import { getPmSchedulerStatus, runPmSchedulerOnce } from '../services/pmScheduler.js'
 
 const router = Router()
 
 router.get('/health', (req, res) => res.json({ ok: true, service: 'backendCafm', realtime: Boolean(req.app.locals.io) }))
 router.use('/auth', authRouter)
 router.use(requireAuth)
+
+router.get('/pm-scheduler/status', requirePermission('Preventive Maintenance', 'edit'), async (req, res, next) => {
+  try {
+    res.json(await getPmSchedulerStatus())
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/pm-scheduler/run', requirePermission('Preventive Maintenance', 'edit'), async (req, res, next) => {
+  try {
+    const generated = await runPmSchedulerOnce()
+    res.json({ generatedCount: generated.length, generated })
+  } catch (error) {
+    next(error)
+  }
+})
 
 router.use('/sites', crudRouter({
   moduleName: 'Sites',
@@ -90,7 +108,7 @@ router.use('/work-orders', crudRouter({
   moduleName: 'Work Orders',
   table: 'dbo.work_orders',
   key: 'work_order_num',
-  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'reported_at', 'source_sr_num', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'ptw_files_json', 'general_files_json', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'created_at', 'updated_at'],
+  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'ptw_files_json', 'general_files_json', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'created_at', 'updated_at'],
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
 
@@ -163,6 +181,13 @@ router.use('/pm-schedule-rules', crudRouter({
   table: 'dbo.pm_schedule_rules',
   key: 'rule_name',
   columns: ['rule_name', 'frequency', 'frequency_unit', 'lead_time_days', 'horizon_days', 'trigger_hour', 'wo_prefix', 'default_wo_status', 'notes', 'status', 'created_at', 'updated_at']
+}))
+
+router.use('/smtp-sms-connectors', crudRouter({
+  moduleName: 'SMTP & SMS',
+  table: 'dbo.smtp_sms_connectors',
+  key: 'connector_name',
+  columns: ['connector_name', 'connector_type', 'host_endpoint', 'port', 'encryption', 'username_value', 'secret_value', 'sender_value', 'notes', 'status', 'created_at', 'updated_at']
 }))
 
 router.use('/job-plans', crudRouter({

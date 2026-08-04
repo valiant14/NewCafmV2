@@ -1,18 +1,37 @@
-import { ChevronRight } from 'lucide-react'
+import { ArrowDown, ArrowUp, CalendarClock, ChevronRight, Repeat } from 'lucide-react'
 import Badge from '../ui/Badge'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import { pmDueLabel, pmDueTone } from '../../lib/pmSchedule'
 import { scheduleForPlan } from '../../lib/pmGeneration'
+import { parseLocal } from '../../lib/datetime'
 
 const columns = [
   { key: 'pmNumber', label: 'PM plan' },
-  { key: 'asset', label: 'Asset / Location' },
+  { key: 'asset', label: 'Asset' },
   { key: 'jobPlan', label: 'Job plan' },
-  { key: 'frequency', label: 'Schedule' },
+  { key: 'frequency', label: 'Rule / Schedule' },
+  { key: 'startDate', label: 'Next run' },
   { key: 'department', label: 'Responsibility' },
   { key: 'pmStatus', label: 'Status' },
   { key: '', label: '' }
 ]
+
+const formatNextRun = value => {
+  const date = parseLocal(value)
+  if (!date) return '-'
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date)
+}
+
+const sortIcon = (sort, key) => {
+  if (sort?.key !== key) return null
+  return sort.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+}
 
 export default function PmScheduleTable({ rows, currentPage, pageSize, pageCount, total, onOpen, onPageChange, onPageSizeChange, sort, onSort, pmRules = [] }) {
   const from = total ? ((currentPage - 1) * pageSize) + 1 : 0
@@ -20,23 +39,26 @@ export default function PmScheduleTable({ rows, currentPage, pageSize, pageCount
 
   return (
     <section className="overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] shadow-[0_8px_24px_rgba(32,55,45,.06)]">
-      <div className="grid grid-cols-[1.3fr_1.1fr_.8fr_.9fr_1fr_.8fr_40px] bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]">
-        {columns.map(column => <span key={column.key || 'open'}>{column.label && <button className="inline-flex items-center gap-1 uppercase hover:text-[var(--app-primary)]" onClick={() => onSort?.(column.key)}>{column.label}{sort?.key === column.key && <span>{sort.direction === 'asc' ? 'up' : 'down'}</span>}</button>}</span>)}
+      <div className="grid grid-cols-[1.15fr_1fr_.8fr_1.1fr_1fr_.95fr_.95fr_28px] bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]">
+        {columns.map(column => <span key={column.key || 'open'}>{column.label && <button className="inline-flex items-center gap-1 uppercase hover:text-[var(--app-primary)]" onClick={() => onSort?.(column.key)}>{column.label}{sortIcon(sort, column.key)}</button>}</span>)}
       </div>
       {rows.map(plan => {
         const schedule = scheduleForPlan(plan, pmRules)
         return (
-          <button className="grid w-full grid-cols-[1.3fr_1.1fr_.8fr_.9fr_1fr_.8fr_40px] items-center border-t border-[var(--app-line)] px-4 py-4 text-left text-[length:var(--app-table-font-size)] text-[var(--app-table-text)] transition hover:bg-[var(--app-table-hover-bg)]" key={plan.pmNumber} onClick={() => onOpen(plan.pmNumber)}>
-            <div><strong className="block text-[var(--app-ink)]">{plan.pmNumber}</strong><span className="text-[var(--app-muted)]">{plan.description}</span></div>
-            <div><strong className="block text-[var(--app-ink)]">{plan.asset || plan.location}</strong><span className="text-[var(--app-muted)]">{plan.route || plan.location || 'Asset-based PM'}</span></div>
-            <div><strong className="block text-[var(--app-ink)]">{plan.jobPlan}</strong><span className="text-[var(--app-muted)]">Duration from job plan</span></div>
+          <button className="grid w-full grid-cols-[1.15fr_1fr_.8fr_1.1fr_1fr_.95fr_.95fr_28px] items-center gap-3 border-t border-[var(--app-line)] px-4 py-3 text-left text-[length:var(--app-table-font-size)] text-[var(--app-table-text)] transition hover:bg-[var(--app-table-hover-bg)]" key={plan.pmNumber} onClick={() => onOpen(plan.pmNumber)}>
+            <div className="min-w-0"><strong className="mono block truncate text-sm text-[var(--app-ink)]">{plan.pmNumber}</strong><span className="mt-1 block truncate text-[var(--app-muted)]">{plan.description || '-'}</span></div>
+            <div className="min-w-0"><strong className="block truncate text-[var(--app-ink)]">{plan.asset || plan.location}</strong><span className="block truncate text-[var(--app-muted)]">{plan.route || plan.location || 'Asset-based PM'}</span></div>
+            <div className="min-w-0"><strong className="block truncate text-[var(--app-ink)]">{plan.jobPlan}</strong><span className="block truncate text-[var(--app-muted)]">Job plan</span></div>
             <div>
-              <strong className="block text-[var(--app-ink)]">Every {schedule.frequency} {schedule.freqUnit}</strong>
-              <span className="text-[var(--app-muted)]">NEXTDATE {plan.startDate} - Lead {schedule.leadTime}d - {String(schedule.triggerHour || 0).padStart(2, '0')}:00</span>
-              {plan.scheduleRule && <span className="block text-[var(--app-muted)]">Rule {plan.scheduleRule}</span>}
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#eef6ff] px-2.5 py-1 text-[11px] font-extrabold text-[#165c96]"><Repeat size={12} />Every {schedule.frequency} {schedule.freqUnit}</span>
+              <span className="mt-1 block truncate text-[var(--app-muted)]">{plan.scheduleRule || 'Direct PM schedule'}</span>
             </div>
-            <div><strong className="block text-[var(--app-ink)]">{plan.personGroup || plan.department || 'Not assigned'}</strong><span className="text-[var(--app-muted)]">{plan.department} {plan.subDepartment}</span></div>
-            <div><Badge tone={statusTone(plan.pmStatus)}>{plan.pmStatus} - {statusDescription('preventiveMaintenance', plan.pmStatus)}</Badge><span className="mt-1 block"><Badge tone={pmDueTone(plan, pmRules)}>{pmDueLabel(plan, pmRules)}</Badge></span><span className="mt-1 block text-[var(--app-muted)]">{plan.workType} - {schedule.woStatus} - Counter {plan.pmCounter}</span></div>
+            <div>
+              <strong className="flex items-center gap-2 text-[var(--app-ink)]"><CalendarClock size={14} />{formatNextRun(plan.startDate)}</strong>
+              <span className="block text-[var(--app-muted)]">Lead {schedule.leadTime}d - Trigger {String(schedule.triggerHour || 0).padStart(2, '0')}:00</span>
+            </div>
+            <div className="min-w-0"><strong className="block truncate text-[var(--app-ink)]">{plan.personGroup || plan.department || 'Not assigned'}</strong><span className="block truncate text-[var(--app-muted)]">{plan.department} {plan.subDepartment}</span></div>
+            <div><div className="flex flex-wrap gap-1"><Badge tone={statusTone(plan.pmStatus)}>{plan.pmStatus}</Badge><Badge tone={pmDueTone(plan, pmRules)}>{pmDueLabel(plan, pmRules)}</Badge></div><span className="mt-1 block text-[var(--app-muted)]">{plan.workType} - {schedule.woStatus} - Counter {plan.pmCounter}</span></div>
             <ChevronRight className="text-[var(--app-muted)]" />
           </button>
         )

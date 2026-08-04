@@ -1,3 +1,5 @@
+import { toLocalDateTimeInput } from '../lib/datetime'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api'
 const tokenKey = 'seder-cafm-auth-token'
 
@@ -262,6 +264,10 @@ const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTa
   'ACTUAL FINISH ': dateValue(row.actual_finish_at),
   'REPORTED DATE ': dateValue(row.reported_at),
   'SOURCE SR': row.source_sr_num || '',
+  'PM NUMBER': row.pm_num || '',
+  'PM CYCLE': row.pm_cycle || '',
+  'JOB PLAN': row.job_plan_num || '',
+  'PM RULE': row.schedule_rule_name || '',
   'FAILURE CODE': row.failure_code || '',
   'PROBLEM CODE': row.problem_code || '',
   'CAUSE CODE': row.cause_code || '',
@@ -377,7 +383,7 @@ const mapPm = row => ({
   location: row.location_code || '',
   site: row.site_code,
   jobPlan: row.job_plan_num,
-  startDate: row.next_date || '',
+  startDate: toLocalDateTimeInput(row.next_date) || '',
   leadTime: row.lead_time_days || 0,
   frequency: row.frequency || 1,
   freqUnit: row.frequency_unit || 'MONTHS',
@@ -404,6 +410,20 @@ const mapPmRule = row => ({
   triggerHour: numberValue(row.trigger_hour) || 0,
   woPrefix: row.wo_prefix || 'PMWO-',
   defaultWoStatus: row.default_wo_status || 'WSCH',
+  notes: row.notes || '',
+  status: row.status || 'Active',
+  createdDate: row.created_at || ''
+})
+
+const mapConnector = row => ({
+  name: row.connector_name,
+  type: row.connector_type || 'SMTP',
+  host: row.host_endpoint || '',
+  port: row.port ?? '',
+  encryption: row.encryption || 'TLS',
+  username: row.username_value || '',
+  password: row.secret_value || '',
+  sender: row.sender_value || '',
   notes: row.notes || '',
   status: row.status || 'Active',
   createdDate: row.created_at || ''
@@ -468,6 +488,7 @@ export async function loadWorkspace() {
     reservations,
     pmSchedules,
     pmRules,
+    connectors,
     jobPlans,
     jobPlanTasks,
     incidents,
@@ -495,6 +516,7 @@ export async function loadWorkspace() {
     safeGet('/reservations'),
     safeGet('/preventive-maintenance'),
     safeGet('/pm-schedule-rules'),
+    safeGet('/smtp-sms-connectors'),
     safeGet('/job-plans'),
     safeGet('/job-plan-tasks'),
     safeGet('/incidents'),
@@ -526,6 +548,7 @@ export async function loadWorkspace() {
     reservations: reservations.map(mapReservation),
     pmSchedules: pmSchedules.map(mapPm),
     pmRules: pmRules.map(mapPmRule),
+    connectors: connectors.map(mapConnector),
     jobPlans: jobPlans.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status })),
     jobTasks: jobPlanTasks.map(mapJobTask),
     incidents: incidents.map(mapIncident),

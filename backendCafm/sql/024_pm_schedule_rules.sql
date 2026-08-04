@@ -23,6 +23,38 @@ begin
   alter table dbo.preventive_maintenance add schedule_rule_name nvarchar(160) null;
 end;
 
+if exists (
+  select 1
+  from sys.columns c
+  join sys.types t on t.user_type_id = c.user_type_id
+  where c.object_id = object_id('dbo.preventive_maintenance')
+    and c.name = 'next_date'
+    and t.name = 'date'
+)
+begin
+  alter table dbo.preventive_maintenance alter column next_date datetime2 not null;
+end;
+
+if col_length('dbo.work_orders', 'pm_num') is null
+begin
+  alter table dbo.work_orders add pm_num nvarchar(80) null;
+end;
+
+if col_length('dbo.work_orders', 'pm_cycle') is null
+begin
+  alter table dbo.work_orders add pm_cycle nvarchar(120) null;
+end;
+
+if col_length('dbo.work_orders', 'job_plan_num') is null
+begin
+  alter table dbo.work_orders add job_plan_num nvarchar(80) null;
+end;
+
+if col_length('dbo.work_orders', 'schedule_rule_name') is null
+begin
+  alter table dbo.work_orders add schedule_rule_name nvarchar(160) null;
+end;
+
 merge dbo.permission_modules as target
 using (values ('PM Schedule Rules')) as source(module_name)
 on target.module_name = source.module_name
@@ -30,7 +62,8 @@ when not matched then insert(module_name) values(source.module_name);
 
 merge dbo.pm_schedule_rules as target
 using (values
-  ('Default Monthly PM', 1, 'MONTHS', 7, 30, 6, 'PMWO-', 'WSCH', 'Default monthly preventive maintenance generation rule.', 'Active')
+  ('Default Monthly PM', 1, 'MONTHS', 7, 30, 6, 'PMWO-', 'WSCH', 'Default monthly preventive maintenance generation rule.', 'Active'),
+  ('Every 1 Minute Test', 1, 'MINUTES', 0, 1, 0, 'PMT-', 'WSCH', 'Fast testing rule. Use only for PM generation testing.', 'Active')
 ) as source(rule_name, frequency, frequency_unit, lead_time_days, horizon_days, trigger_hour, wo_prefix, default_wo_status, notes, status)
 on target.rule_name = source.rule_name
 when matched then update set

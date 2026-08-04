@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { CalendarClock, ChevronRight, FileSpreadsheet, Settings2, Sparkles, UserRoundCheck } from 'lucide-react'
+import { CalendarClock, ChevronRight, ExternalLink, FileSpreadsheet, Settings2, Sparkles, UserRoundCheck } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { DetailHeader, DetailTabs } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import { scheduleForPlan } from '../../lib/pmGeneration'
+import { nowLocalDateTime } from '../../lib/datetime'
 
 const normalize = value => String(value || '').trim()
 
@@ -57,7 +58,33 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
   const location = plan.location || asset?.location || 'From asset'
   const inactive = plan.pmStatus === 'INACTIVE'
   const schedule = scheduleForPlan(plan, pmRules)
+  const selectedRule = schedule.rule
   const changePmStatus = status => onUpdate?.(plan.pmNumber, { pmStatus: status })
+  const ruleOptions = [
+    { value: '', label: 'Direct PM schedule' },
+    ...pmRules
+      .filter(rule => rule.status === 'Active' || rule.name === plan.scheduleRule)
+      .map(rule => ({ value: rule.name, label: `${rule.frequency} ${rule.freqUnit} - ${rule.name}` }))
+  ]
+  const changeRule = event => {
+    const ruleName = event.target.value
+    const rule = pmRules.find(item => normalize(item.name).toLowerCase() === normalize(ruleName).toLowerCase())
+    onUpdate?.(plan.pmNumber, {
+      scheduleRule: ruleName,
+      ...(rule ? {
+        leadTime: Number(rule.leadTimeDays) || 0,
+        frequency: Number(rule.frequency) || 1,
+        freqUnit: rule.freqUnit || 'MONTHS',
+        woStatus: rule.defaultWoStatus || 'WSCH',
+        ...(['MINUTES', 'HOURS'].includes(rule.freqUnit) ? { startDate: nowLocalDateTime(), lastGeneratedCycle: '' } : {})
+      } : {})
+    })
+  }
+  const openRule = () => {
+    if (!plan.scheduleRule) return
+    window.history.pushState({}, '', `/pm-rules/${encodeURIComponent(plan.scheduleRule)}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
 
   return (
     <section className="printable-record">
@@ -102,6 +129,23 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
             <DetailCard icon={Sparkles} eyebrow="GENERATION" title="Automatic Work Order Behavior">
               <div className="grid gap-3 text-sm text-[var(--app-muted)]">
                 <p>Generated Work Orders inherit asset, location, site, department, job plan, and all job tasks from this PM and the linked asset master.</p>
+                <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4">
+                  <div className="flex items-end gap-2">
+                    <div className="grid min-w-0 flex-1 gap-2">
+                      <label className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]" htmlFor="pm-rule-select">PM Schedule Rule</label>
+                      <select id="pm-rule-select" className="h-11 w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none transition focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]" value={plan.scheduleRule || ''} onChange={changeRule}>
+                        {ruleOptions.map(option => <option key={option.value || 'direct'} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </div>
+                    <Button variant="outline" disabled={!plan.scheduleRule} onClick={openRule}><ExternalLink size={15} />Open rule</Button>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-4">
+                    <MiniMetric label="Every" value={`${schedule.frequency} ${schedule.freqUnit}`} note={selectedRule ? 'From rule' : 'Direct PM'} />
+                    <MiniMetric label="Lead Time" value={`${schedule.leadTime} days`} note="Due soon window" />
+                    <MiniMetric label="Trigger Hour" value={`${String(schedule.triggerHour || 0).padStart(2, '0')}:00`} note="Generation starts after" />
+                    <MiniMetric label="WO Status" value={schedule.woStatus} note="Generated WO status" />
+                  </div>
+                </div>
                 <div className="grid gap-2 rounded-2xl bg-[var(--app-soft-bg)] p-4">
                   <strong className="text-[var(--app-ink)]">Next output</strong>
                   <span>Work Type: {plan.workType || 'PM'} - Initial Status: {schedule.woStatus || 'WSCH'} - Job Tasks: {tasks.length}</span>
