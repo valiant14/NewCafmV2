@@ -15,6 +15,7 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { useAuth } from '../providers/AuthProvider'
 import { nowLocalDate } from '../lib/datetime'
+import { assetOptions, departmentOptions, locationOptions, siteOptions, withSuggestions } from '../lib/masterOptions'
 
 const emptyMeter = {
   meterId: '',
@@ -46,7 +47,13 @@ const fields = [
   { key: 'status', label: 'Status', options: ['Active', 'Inactive', 'Needs Review'] }
 ]
 
-export default function MetersPage({ rows = [], setRows, assets = [], workOrders = [] }) {
+export default function MetersPage({ rows = [], setRows, assets = [], workOrders = [], siteRecords = [], departmentRecords = [], locationRows = [] }) {
+  const modalFields = withSuggestions(fields, {
+    asset: assetOptions(assets),
+    location: locationOptions(locationRows),
+    site: siteOptions(siteRecords),
+    department: departmentOptions(departmentRecords)
+  })
   const { user } = useAuth()
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useScopedFilters(user, rows)
@@ -167,7 +174,7 @@ export default function MetersPage({ rows = [], setRows, assets = [], workOrders
         <MasterRecordModal
           title="Add meter reading"
           note="Create a standalone meter reading record for testing and reporting."
-          fields={fields}
+          fields={modalFields}
           form={form}
           setForm={setForm}
           onClose={() => setModalOpen(false)}

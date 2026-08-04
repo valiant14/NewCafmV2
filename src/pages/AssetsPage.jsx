@@ -54,7 +54,7 @@ const exportColumns = [
   { key: 'quantity', label: 'Quantity' }
 ]
 
-export default function AssetsPage({ rows: controlledRows, setRows: setControlledRows, initialAssets = [], workOrders = [] }) {
+export default function AssetsPage({ rows: controlledRows, setRows: setControlledRows, initialAssets = [], workOrders = [], siteRecords = [], departmentRecords = [], locationRows = [] }) {
   const { user } = useAuth()
   const [localRows, setLocalRows] = useState(initialAssets)
   const rows = controlledRows || localRows
@@ -169,7 +169,7 @@ export default function AssetsPage({ rows: controlledRows, setRows: setControlle
         />
       </section>
 
-      {adding && <AddAssetModal form={form} setForm={setForm} rows={rows} error={codeError} onClose={() => { setAdding(false); setCodeError('') }} onSave={save} />}
+      {adding && <AddAssetModal form={form} setForm={setForm} rows={rows} error={codeError} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={locationRows} onClose={() => { setAdding(false); setCodeError('') }} onSave={save} />}
     </>
   )
 }

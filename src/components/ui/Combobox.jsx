@@ -145,7 +145,9 @@ export default function Combobox({
             className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${index === highlight ? 'bg-[var(--app-table-hover-bg)]' : ''} ${selected ? 'font-bold text-[var(--app-ink)]' : 'text-[var(--app-table-text)]'}`}
           >
             <Check size={14} className={selected ? 'text-[var(--app-primary)]' : 'invisible'} />
-            <span className="min-w-0 flex-1 truncate">{itemValue}</span>
+            {/* Enum lists use an empty entry to mean "none" - shown as a dash so the row is
+                not a blank line. */}
+            <span className="min-w-0 flex-1 truncate">{itemValue || '—'}</span>
             {optionLabel(item) && <span className="shrink-0 text-[10px] font-bold uppercase tracking-[.08em] text-[var(--app-muted)]">{optionLabel(item)}</span>}
           </li>
         )

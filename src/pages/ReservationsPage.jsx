@@ -35,7 +35,27 @@ const numericBalance = value => {
   return Number.isFinite(number) ? number : null
 }
 
-export default function ReservationsPage({ rows = [], stockRows = [], onUpdate }) {
+// Cancelling a work order cannot write to every reservation it raised - that is inventory's
+// record, and whoever cancels the job may not be allowed to touch it. The linked work order is
+// read live instead, so a cancelled job stops asking the store to arrange anything for it.
+// Work order numbers reach here from several places and pick up decoration on the way (a "#"
+// prefix, padding, a number rather than a string), so both sides are reduced to alphanumerics
+// before they are compared.
+const workOrderKey = value => String(value ?? '').replace(/[^a-z0-9]/gi, '').toLowerCase()
+const isCancelledStatus = value => {
+  const status = String(value ?? '').trim().toUpperCase()
+  return status === 'CAN' || status.startsWith('CANCEL')
+}
+const cancelledWorkOrders = (workOrders = []) => new Set(
+  workOrders
+    .filter(order => isCancelledStatus(order.STATUS ?? order.status))
+    .map(order => workOrderKey(order.WORKORDER ?? order.workOrder))
+    .filter(Boolean)
+)
+
+export default function ReservationsPage({ rows = [], stockRows = [], workOrders = [], onUpdate }) {
+  const cancelled = cancelledWorkOrders(workOrders)
+  const isCancelled = row => isCancelledStatus(row.status) || cancelled.has(workOrderKey(row.workOrder))
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [status, setStatus] = useState('All')
   const [releaseRow, setReleaseRow] = useState(null)
@@ -54,6 +74,14 @@ export default function ReservationsPage({ rows = [], stockRows = [], onUpdate }
     const available = liveBalance === null ? q.available : liveBalance + q.released
     const arrangedQuantity = Math.min(q.requested, available)
     onUpdate?.(row.reservation, { arrangedQuantity, status: 'STAGED', statusDescription: statusDescription('inventoryUsage', 'STAGED') })
+  }
+  // With the store empty there is nothing to arrange, and the fix is a purchase request on the
+  // item itself - so the item opens its own record, where Request PR lives.
+  const openItem = row => {
+    const code = row.itemCode || row.item
+    if (!code) return
+    window.history.pushState({}, '', `${row.type === 'Tool' ? '/tools' : '/materials'}/${encodeURIComponent(code)}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
   }
   const stockBalanceFor = row => {
     const store = cleanKey(row.source)
@@ -96,6 +124,10 @@ export default function ReservationsPage({ rows = [], stockRows = [], onUpdate }
   }
 
   const actionFor = row => {
+    if (isCancelled(row)) return <Badge tone="orange">Work order cancelled</Badge>
+    // Records raised before the work order enforced a named item. The store cannot arrange or
+    // hand over something with no name, so the row stops here rather than being carried on.
+    if (!String(row.itemCode || row.item || '').trim()) return <Badge tone="orange">Item missing</Badge>
     if (row.status === 'COMPLETE') return <Badge tone="green">Complete</Badge>
     if (Number(row.releasedQuantity || 0) > Number(row.deliveredQuantity || 0)) return <Button className="h-8 px-3 text-xs" onClick={() => deliver(row)}><Truck size={14} />Deliver</Button>
     if (Number(row.arrangedQuantity || 0) > Number(row.releasedQuantity || 0)) return <Button className="h-8 px-3 text-xs" onClick={() => openRelease(row)}><PackageOpen size={14} />Release from store</Button>
@@ -142,14 +174,26 @@ export default function ReservationsPage({ rows = [], stockRows = [], onUpdate }
               { key: 'reservation', label: 'Reference', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
               { key: 'workOrder', label: 'Work Order' },
               { key: 'type', label: 'Type' },
-              { key: 'item', label: 'Item / Description' },
+              { key: 'item', label: 'Item / Description', render: (value, row) => (
+                <button
+                  type="button"
+                  onClick={() => openItem(row)}
+                  disabled={!(row.itemCode || row.item)}
+                  title={`Open ${row.itemCode || value} to request a purchase`}
+                  className="text-left text-[var(--app-primary)] transition hover:opacity-70 disabled:cursor-default disabled:text-[var(--app-table-text)] disabled:opacity-100"
+                >
+                  {value || row.itemCode || 'Unnamed item'}
+                </button>
+              ) },
               { key: 'quantity', label: 'Requested' },
               { key: 'availableQuantity', label: 'Balance', render: (_, row) => stockBalanceFor(row) },
               { key: 'arrangedQuantity', label: 'Arranged', render: value => value || 0 },
               { key: 'releasedQuantity', label: 'Released', render: value => value || 0 },
               { key: 'deliveredQuantity', label: 'Delivered', render: value => value || 0 },
               { key: 'source', label: 'Store / Source' },
-              { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value} - {statusDescription('inventoryUsage', value)}</Badge> },
+              { key: 'status', label: 'Status', render: (value, row) => isCancelled(row)
+                ? <Badge tone="orange">CANCELLED - Work order cancelled</Badge>
+                : <Badge tone={statusTone(value)}>{value} - {statusDescription('inventoryUsage', value)}</Badge> },
               { key: 'action', label: 'Next Step', sortable: false, render: (_, row) => actionFor(row) }
             ]}
           />

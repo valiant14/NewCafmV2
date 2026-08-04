@@ -1,9 +1,7 @@
 const clean = value => String(value ?? '').trim().toUpperCase()
-const isUsableStore = store => {
-  const code = String(store?.code || '').trim()
-  const name = String(store?.name || '').trim()
-  return code && !/^\d+$/.test(code) && name && !/^\d+$/.test(name)
-}
+// A store only has to carry a code and a name. Numeric codes are legitimate - a warehouse is
+// often numbered after its site - and rejecting them hid real stores from every list.
+export const isUsableStore = store => Boolean(String(store?.code || '').trim() && String(store?.name || '').trim())
 
 export const stores = []
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Combobox from '../ui/Combobox'
 import { BadgeCheck, Boxes, CalendarClock, ClipboardList, Factory, Tag } from 'lucide-react'
 import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
@@ -31,14 +32,16 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpda
           backLabel="Back to assets"
           printLabel="Print asset"
           actions={(
-            <select
-              className="h-10 min-w-[190px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
-              value={status}
-              onChange={event => changeStatus(event.target.value)}
-              aria-label="Change asset status"
-            >
-              {statusOptions('asset').map(option => <option value={option} key={option}>{option} · {statusDescription('asset', option)}</option>)}
-            </select>
+            <div className="min-w-[190px]">
+              <Combobox
+                picker
+                className="h-10 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+                value={status}
+                suggestions={statusOptions('asset').map(option => ({ value: option, label: statusDescription('asset', option) }))}
+                onChange={event => changeStatus(event.target.value)}
+                placeholder="Status"
+              />
+            </div>
           )}
           stats={[
             { label: 'Site / Location', value: asset.site || '-', note: asset.location || 'Location not set' },

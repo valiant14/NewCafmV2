@@ -12,6 +12,7 @@ import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
+import { departmentOptions, laborNameOptions, locationOptions, siteOptions } from '../lib/masterOptions'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMatrix'
 import { nowLocalDateTime } from '../lib/datetime'
@@ -31,7 +32,7 @@ const exportColumns = [
 
 const incidentTemplateHeaders = ['incidentNumber', 'description', 'site', 'department', 'location', 'severity', 'status', 'reportedBy', 'reportedDate']
 
-export default function IncidentsPage({ rows, setRows }) {
+export default function IncidentsPage({ rows, setRows, siteRecords = [], departmentRecords = [], locationRows = [], laborRows = [] }) {
   const { user } = useAuth()
   const [tab, setTab] = useState('All')
   const [modalOpen, setModalOpen] = useState(false)
@@ -164,12 +165,12 @@ export default function IncidentsPage({ rows, setRows }) {
           setForm={setForm}
           fields={[
             { key: 'description', label: 'Description', required: true, full: true },
-            { key: 'site', label: 'Site', required: true },
-            { key: 'department', label: 'Department', required: true },
-            { key: 'location', label: 'Location', required: true },
+            { key: 'site', label: 'Site', required: true, suggestions: siteOptions(siteRecords), placeholder: 'Select a site' },
+            { key: 'department', label: 'Department', required: true, suggestions: departmentOptions(departmentRecords), placeholder: 'Select a department' },
+            { key: 'location', label: 'Location', required: true, suggestions: locationOptions(locationRows), placeholder: 'Select a location' },
             { key: 'severity', label: 'Severity', required: true, options: ['Low', 'Medium', 'High', 'Critical'] },
             { key: 'status', label: 'Status', required: true, options: ['NEW', 'INPRG', 'RESOLVED', 'CLOSED'] },
-            { key: 'reportedBy', label: 'Reported By', required: true },
+            { key: 'reportedBy', label: 'Reported By', required: true, suggestions: laborNameOptions(laborRows), placeholder: 'Select who reported it' },
             { key: 'reportedDate', label: 'Reported Date', type: 'datetime-local' }
           ]}
           onClose={() => setModalOpen(false)}

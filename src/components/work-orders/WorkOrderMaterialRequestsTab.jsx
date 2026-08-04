@@ -17,23 +17,58 @@ const hasFulfillment = resource => Boolean(resource.reservation)
 const hasProcurement = resource => Boolean(resource.purchaseRequest || resource.purchaseOrder)
 const liveReservationFor = (resource, reservations = []) =>
   resource.reservation ? reservations.find(row => String(row.reservation) === String(resource.reservation)) : null
-const resourceWithLiveReservation = (resource, reservations = []) => {
+// The status stored on the planned row is only a snapshot taken when the request was raised.
+// Advancing a requisition or order is Supply Chain's job, and writing back to the work order
+// needs work-order edit rights they do not have - so the requisition and order records are
+// read live here, exactly as the reservation already was. Without this a work order sat on
+// "PR waiting approval" for ever, however far procurement had actually got.
+const sameRef = (left, right) => Boolean(left) && String(left).trim() === String(right).trim()
+const liveProcurementFor = (resource, purchaseRequests = [], purchaseOrders = []) => {
+  const request = resource.purchaseRequest
+    ? purchaseRequests.find(row => sameRef(row.purchaseRequest, resource.purchaseRequest))
+    : null
+  // The order is found three ways because only one of them is reliable: the planned row knows
+  // it only if the order existed when the row was written, and an approved requisition does not
+  // always record the order it produced - but the order always names its source requisition.
+  const order =
+    purchaseOrders.find(row => sameRef(row.purchaseOrder, resource.purchaseOrder)) ||
+    purchaseOrders.find(row => sameRef(row.purchaseOrder, request?.purchaseOrder)) ||
+    purchaseOrders.find(row => sameRef(row.purchaseRequest, resource.purchaseRequest)) ||
+    null
+  return { request, order, orderNumber: order?.purchaseOrder || resource.purchaseOrder || '' }
+}
+const resourceWithLiveReservation = (resource, reservations = [], purchaseRequests = [], purchaseOrders = []) => {
   const reservation = liveReservationFor(resource, reservations)
-  return reservation ? {
+  if (reservation) return {
     ...resource,
     requestStatus: reservation.status || resource.requestStatus,
     supplyChainStatus: reservation.statusDescription || statusDescription('inventoryUsage', reservation.status) || resource.supplyChainStatus
-  } : resource
+  }
+  const { request, order, orderNumber } = liveProcurementFor(resource, purchaseRequests, purchaseOrders)
+  // A requisition that has been approved into an order carries its number, so the row follows
+  // the chain forward on its own.
+  if (order) return {
+    ...resource,
+    purchaseOrder: orderNumber,
+    requestStatus: order.status || resource.requestStatus,
+    supplyChainStatus: statusDescription('purchaseOrder', order.status) || resource.supplyChainStatus
+  }
+  if (request) return {
+    ...resource,
+    requestStatus: request.status || resource.requestStatus,
+    supplyChainStatus: statusDescription('purchaseRequisition', request.status) || resource.supplyChainStatus
+  }
+  return resource
 }
-const materialStatusForResource = (resource, stock, materials, reservations = []) => {
-  const liveResource = resourceWithLiveReservation(resource, reservations)
+const materialStatusForResource = (resource, stock, materials, reservations = [], purchaseRequests = [], purchaseOrders = []) => {
+  const liveResource = resourceWithLiveReservation(resource, reservations, purchaseRequests, purchaseOrders)
   if (liveResource.reservation) return liveResource.type === 'Material' ? 'Allocated' : ''
   if (liveResource.purchaseOrder) return 'On PO'
   if (liveResource.purchaseRequest) return 'On PR'
   return materialStatusFor(stock.itemNumber, materials)
 }
-const requestStatusFor = (resource, reservations = []) => {
-  const liveResource = resourceWithLiveReservation(resource, reservations)
+const requestStatusFor = (resource, reservations = [], purchaseRequests = [], purchaseOrders = []) => {
+  const liveResource = resourceWithLiveReservation(resource, reservations, purchaseRequests, purchaseOrders)
   if (liveResource.reservation) {
     const status = ['STAGED', 'COMPLETE', 'CANCELLED'].includes(liveResource.requestStatus) ? liveResource.requestStatus : 'ENTERED'
     return {
@@ -54,9 +89,13 @@ const requestStatusFor = (resource, reservations = []) => {
   }
   return null
 }
-const actionStateFor = (resource, stock, reservations = []) => {
-  const liveResource = resourceWithLiveReservation(resource, reservations)
+const actionStateFor = (resource, stock, reservations = [], purchaseRequests = [], purchaseOrders = []) => {
+  const liveResource = resourceWithLiveReservation(resource, reservations, purchaseRequests, purchaseOrders)
   const quantity = requestedQuantity(resource)
+  // Nothing can be reserved, allocated or purchased for a row that does not say what it is, or
+  // that names something the master does not hold - the store would be issuing an unknown.
+  if (!String(resource.item || '').trim()) return { kind: 'none', label: 'Name the item first', disabled: true, availability: 'Item needed' }
+  if (stock.availability === 'Not Found') return { kind: 'none', label: 'Not in master', disabled: true, availability: 'Unknown item' }
   if (!quantity) return { kind: 'none', label: 'Set quantity', disabled: true, availability: 'Quantity needed' }
   if (hasFulfillment(liveResource)) {
     const complete = liveResource.requestStatus === 'COMPLETE'
@@ -80,6 +119,8 @@ export default function WorkOrderMaterialRequestsTab({
   setTab,
   materials = [],
   reservations = [],
+  purchaseRequests = [],
+  purchaseOrders = [],
   workOrderContext = {},
   onCreatePurchaseRequest,
   onCreateReservation,
@@ -87,7 +128,7 @@ export default function WorkOrderMaterialRequestsTab({
 }) {
   const actionResource = (index, resource) => {
     const stock = getAvailability(resource)
-    const action = actionStateFor(resource, stock, reservations)
+    const action = actionStateFor(resource, stock, reservations, purchaseRequests, purchaseOrders)
     if (action.disabled || action.kind === 'none') return
     const nextStatus = action.kind === 'purchase' ? 'WAPPR' : 'ENTERED'
     // Buy the gap, not the whole line. Stock already on the shelf is issued to the job, so
@@ -158,9 +199,9 @@ export default function WorkOrderMaterialRequestsTab({
             {plannedResources.map((resource, index) => {
               if (!['Material', 'Tool', 'Equipment'].includes(resource.type)) return null
               const stock = getAvailability(resource)
-              const action = actionStateFor(resource, stock, reservations)
-              const requestStatus = requestStatusFor(resource, reservations)
-              const materialStatus = materialStatusForResource(resource, stock, materials, reservations)
+              const action = actionStateFor(resource, stock, reservations, purchaseRequests, purchaseOrders)
+              const requestStatus = requestStatusFor(resource, reservations, purchaseRequests, purchaseOrders)
+              const materialStatus = materialStatusForResource(resource, stock, materials, reservations, purchaseRequests, purchaseOrders)
               return (
                 <div className={rowClass} key={index}>
                   <div className="flex min-w-0 items-center gap-3">

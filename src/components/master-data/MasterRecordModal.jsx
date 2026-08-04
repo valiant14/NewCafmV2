@@ -14,6 +14,7 @@ function MasterRecordField({ field, value, onChange }) {
       </span>
 
       {field.options ? (
+<<<<<<< HEAD
         <select className="h-10 rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]" id={inputId} value={value ?? ''} onChange={event => onChange(field.key, event.target.value)}>
           {field.options.map(option => (
             <option key={option} value={option}>
@@ -29,6 +30,16 @@ function MasterRecordField({ field, value, onChange }) {
           onChange={event => onChange(field.key, event.target.value)}
           placeholder={field.placeholder}
           readOnly={field.locked}
+=======
+        <Combobox
+          inputId={inputId}
+          picker
+          className="h-10 w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+          value={value ?? ''}
+          suggestions={field.options}
+          onChange={event => onChange(field.key, event.target.value)}
+          placeholder={field.placeholder}
+>>>>>>> 07bda808d3626ac8094b2d57dc4fd6b7c04bde90
           disabled={field.locked}
         />
       ) : field.suggestions ? (

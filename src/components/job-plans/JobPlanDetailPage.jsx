@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Combobox from '../ui/Combobox'
 import { CalendarClock, ClipboardList, ListChecks, TimerReset, Wrench } from 'lucide-react'
 import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
@@ -34,14 +35,16 @@ export default function JobPlanDetailPage({ plan, tasks = [], workOrders = [], o
             { label: 'Status', value: statusDescription('jobPlan', status) }
           ]}
           actions={(
-            <select
-              value={status}
-              onChange={changeStatus}
-              className="h-10 min-w-[150px] rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
-              aria-label="Change job plan status"
-            >
-              {jobPlanStatuses.map(item => <option key={item} value={item}>{item}</option>)}
-            </select>
+            <div className="min-w-[150px]">
+              <Combobox
+                picker
+                className="h-10 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
+                value={status}
+                suggestions={jobPlanStatuses}
+                onChange={changeStatus}
+                placeholder="Status"
+              />
+            </div>
           )}
         />
 

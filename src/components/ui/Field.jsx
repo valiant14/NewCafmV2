@@ -18,10 +18,19 @@ export default function Field({ label, value = '', required, locked, disabled = 
         {label}
         {required && <b className="text-[var(--app-required)]">*</b>}
       </span>
+      {/* A fixed set of choices uses the same styled picker as a searchable list, so every
+          dropdown looks and behaves alike instead of falling back to the browser's menu. */}
       {options ? (
-        <select className={controlClass} value={value} onChange={onChange} onBlur={onBlur} disabled={isDisabled}>
-          {options.map(o => <option key={o}>{o}</option>)}
-        </select>
+        <Combobox
+          inputId={listId}
+          picker
+          className={controlClass}
+          value={value}
+          suggestions={options}
+          onChange={onChange}
+          placeholder={placeholder}
+          disabled={isDisabled}
+        />
       ) : type === 'textarea' ? (
         <textarea className={controlClass} value={value} onChange={onChange} onBlur={onBlur} onKeyDown={onKeyDown} readOnly={isDisabled} rows="3" placeholder={placeholder} />
       ) : suggestions?.length ? (

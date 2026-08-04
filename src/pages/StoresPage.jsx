@@ -12,7 +12,9 @@ import ImportNotice from '../components/ui/ImportNotice'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import PageHeader from '../components/ui/PageHeader'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../components/ui/ModalFrame'
-import { storeLocation, storeStockRows, storeSummary } from '../lib/inventory'
+// Shared with the summary builder - this page used to keep its own copy of the rule, so a
+// store could pass one check and be dropped by the other.
+import { isUsableStore, storeLocation, storeStockRows, storeSummary } from '../lib/inventory'
 import { scopeRowsForUser } from '../lib/accessControl'
 import { useAuth } from '../providers/AuthProvider'
 
@@ -87,15 +89,6 @@ const allStockRows = (materials, stockRows, storeRows) => stockRows.map(row => {
   }
 })
 const cleanKey = value => String(value || '').trim().toLowerCase()
-// Placeholder rows carry a bare number in both fields. A number on its own is a legitimate
-// store code though - a warehouse is often numbered after its site - so only a row whose code
-// AND name are both numbers is discarded. Rejecting any numeric code hid real stores.
-const isUsableStore = store => {
-  const code = String(store?.code || '').trim()
-  const name = String(store?.name || '').trim()
-  if (!code || !name) return false
-  return !(/^\d+$/.test(code) && /^\d+$/.test(name))
-}
 const defaultStoreCode = (storeRows = []) => {
   const validStores = storeRows.filter(isUsableStore)
   const store = validStores.find(row => row.status !== 'Inactive') || validStores[0]

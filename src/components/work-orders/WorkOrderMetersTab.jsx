@@ -4,7 +4,6 @@ import Field from '../ui/Field'
 import Section from '../ui/Section'
 
 const formGridClass = 'grid grid-cols-1 gap-4 md:grid-cols-[1.2fr_.8fr_.8fr]'
-const selectClass = 'h-11 w-full rounded-xl border border-[var(--app-field-border)] bg-[var(--app-panel)] px-3 text-sm text-[var(--app-ink)] outline-none transition focus:border-[var(--app-field-focus)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]'
 
 const same = (left, right) => String(left || '').trim().toLowerCase() === String(right || '').trim().toLowerCase()
 const openMeter = meterId => {
@@ -41,24 +40,19 @@ export default function WorkOrderMetersTab({
     <>
       <Section compact title="Meter Reading">
         <div className={formGridClass}>
-          <label className="grid gap-2">
-            <span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">Related Meter</span>
-            <select
-              className={selectClass}
-              value={meterId}
-              onChange={event => {
-                setMeterId(event.target.value)
-                if (!event.target.value) setMeterReading('')
-              }}
-            >
-              <option value="">Select asset meter first</option>
-              {meterOptions.map(row => (
-                <option key={row.meterId} value={row.meterId}>
-                  {row.meterId}{row.meterType ? ` · ${row.meterType}` : ''}{row.unit ? ` · ${row.unit}` : ''}{row.reading ? ` · Last ${row.reading}` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Field
+            label="Related Meter"
+            value={meterId}
+            suggestions={[{ value: '', label: 'None' }, ...meterOptions.map(row => ({
+              value: row.meterId,
+              label: [row.meterType, row.unit, row.reading ? `Last ${row.reading}` : ''].filter(Boolean).join(' / ')
+            }))]}
+            onChange={event => {
+              setMeterId(event.target.value)
+              if (!event.target.value) setMeterReading('')
+            }}
+            placeholder="Select asset meter first"
+          />
           <Field label={`Reading Value${selectedMeter?.unit ? ` (${selectedMeter.unit})` : ''}`} value={meterReading} onChange={event => setMeterReading(event.target.value)} type="number" locked={!meterId} placeholder={meterId ? 'Enter reading value' : 'Select meter first'} />
           <Field label="Reading Date" value={meterReadingDate} onChange={event => setMeterReadingDate(event.target.value)} type="datetime-local" locked={!meterId} />
         </div>

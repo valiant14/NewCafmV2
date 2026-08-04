@@ -18,6 +18,7 @@ import { normalizeStatus, statusDescription, statusTone } from '../lib/statusMat
 import { conformsToLocationCode, nextLocationCode, validateLocationCode } from '../lib/coding'
 import { useAuth } from '../providers/AuthProvider'
 import Badge from '../components/ui/Badge'
+import { buildingCategoryOptions, buildingOptions, priorityDescriptionOptions, siteOptions, withSuggestions } from '../lib/masterOptions'
 
 const locationFields = [
   { key: 'location', label: 'Location', required: true, placeholder: 'Fill site and building to generate' },
@@ -75,7 +76,7 @@ const normalizeLocationRow = row => ({
   department: row.department || ''
 })
 
-export default function LocationsPage({ rows: controlledRows, setRows: setControlledRows, initialLocations = [], assets = [], workOrders = [] }) {
+export default function LocationsPage({ rows: controlledRows, setRows: setControlledRows, initialLocations = [], assets = [], workOrders = [], siteRecords = [], departmentRecords = [] }) {
   const { user } = useAuth()
   const seededLocations = (initialLocations?.length ? initialLocations : locationSeed).map(normalizeLocationRow)
   const [imported, setImported] = useState('')
@@ -243,7 +244,12 @@ export default function LocationsPage({ rows: controlledRows, setRows: setContro
         <MasterRecordModal
           title="Add location"
           note="Create a location record for the facility hierarchy."
-          fields={locationFields}
+          fields={withSuggestions(locationFields, {
+            site: siteOptions(siteRecords),
+            builiding: buildingOptions(locations),
+            'builiding category': buildingCategoryOptions(locations),
+            'priority  description': priorityDescriptionOptions(locations)
+          })}
           error={codeError}
           form={form}
           setForm={updateLocationForm}
