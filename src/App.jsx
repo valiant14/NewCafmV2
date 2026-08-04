@@ -1846,7 +1846,66 @@ export default function App() {
     if(updated) linkWorkOrderResourceTransaction(updated, { requestStatus: updated.status, transactionRef: updated.reservation, reservation: updated.reservation, purchaseRequest: updated.purchaseRequest, purchaseOrder: updated.purchaseOrder, supplyChainStatus: `Reservation ${statusDescription('inventoryUsage', updated.status)}` })
     if(patch.status) notify(`${reference} updated to ${statusDescription('inventoryUsage', patch.status)}.`,'success')
   }
-  const updateWorkOrder=(number,patch)=>saveWorkOrders(rows=>rows.map(order=>String(order.WORKORDER)===String(number)?{...order,...patch}:order))
+  const releaseCancelledReservationStock = reservation => {
+    const reservedQuantity = Math.max(0, Number(reservation.quantity || reservation.reservedQuantity || 0) - Number(reservation.releasedQuantity || 0))
+    const stockStore = storeCodeFor(reservation.source)
+    const stockItem = materialCodeFor(reservation.itemCode || reservation.item)
+    if (reservation.type !== 'Material' || !reservedQuantity || !stockStore || !stockItem) return
+    setStockRecords(rows => rows.map(row => {
+      if (String(row.storeroom) !== String(stockStore) || String(row.itemNumber) !== String(stockItem)) return row
+      return { ...row, reserved: Math.max(0, Number(row.reserved || 0) - reservedQuantity) }
+    }))
+    const stockRow = stockRecords.find(row => String(row.storeroom) === String(stockStore) && String(row.itemNumber) === String(stockItem))
+    if (stockRow) api.put(`/inventory-stock/${encodeURIComponent(stockStore)}/${encodeURIComponent(stockItem)}`, {
+      balance: Number(stockRow.balance || 0),
+      reserved_quantity: Math.max(0, Number(stockRow.reserved || 0) - reservedQuantity),
+      reorder_point: stockRow.reorderLevel ?? null
+    }).catch(error => notify(error.message || 'Unable to release cancelled reservation stock.', 'error'))
+  }
+  const cancelWorkOrderSupplyChain = number => {
+    const relatedReservations = reservations.filter(row => String(row.workOrder) === String(number) && !['CANCELLED', 'COMPLETE'].includes(String(row.status || '').toUpperCase()))
+    const relatedRequests = purchaseRequests.filter(row => String(row.workOrder) === String(number) && !['CAN', 'CLOSE'].includes(String(row.status || '').toUpperCase()))
+    const relatedOrders = purchaseOrders.filter(row => String(row.workOrder) === String(number) && !['CAN', 'CLOSE'].includes(String(row.status || '').toUpperCase()))
+    if (!relatedReservations.length && !relatedRequests.length && !relatedOrders.length) return
+
+    relatedReservations.forEach(releaseCancelledReservationStock)
+    const cancelledAt = todayStamp()
+    if (relatedReservations.length) saveReservations(rows => rows.map(row =>
+      String(row.workOrder) === String(number) && !['CANCELLED', 'COMPLETE'].includes(String(row.status || '').toUpperCase())
+        ? { ...row, status: 'CANCELLED', statusDescription: statusDescription('inventoryUsage', 'CANCELLED'), cancelledAt }
+        : row
+    ))
+    if (relatedRequests.length) savePurchaseRequests(rows => rows.map(row =>
+      String(row.workOrder) === String(number) && !['CAN', 'CLOSE'].includes(String(row.status || '').toUpperCase())
+        ? { ...row, status: 'CAN', statusDescription: statusDescription('purchaseRequisition', 'CAN'), cancelledAt }
+        : row
+    ))
+    if (relatedOrders.length) savePurchaseOrders(rows => rows.map(row =>
+      String(row.workOrder) === String(number) && !['CAN', 'CLOSE'].includes(String(row.status || '').toUpperCase())
+        ? { ...row, status: 'CAN', statusDescription: statusDescription('purchaseOrder', 'CAN'), cancelledAt }
+        : row
+    ))
+    notify(`Cancelled ${relatedReservations.length} reservation(s), ${relatedRequests.length} PR(s), and ${relatedOrders.length} PO(s) for WO #${number}.`, 'success')
+  }
+  const updateWorkOrder=(number,patch)=>{
+    const source=allWorkOrders.find(order=>String(order.WORKORDER)===String(number))
+    const nextStatus=String(patch?.STATUS || source?.STATUS || '').toUpperCase()
+    const wasCancelled=String(source?.STATUS || '').toUpperCase()==='CAN'
+    const result=saveWorkOrders(rows=>rows.map(order=>{
+      if(String(order.WORKORDER)!==String(number)) return order
+      const resources = Array.isArray(order['PLANNED RESOURCES']) ? order['PLANNED RESOURCES'] : []
+      const cancelledResources = nextStatus === 'CAN'
+        ? resources.map(resource => ({
+          ...resource,
+          requestStatus: ['Tool', 'Equipment'].includes(resource.type) ? 'CANCELLED' : 'CAN',
+          supplyChainStatus: 'Cancelled with work order'
+        }))
+        : resources
+      return {...order,...patch,'PLANNED RESOURCES':cancelledResources}
+    }))
+    if(nextStatus==='CAN'&&!wasCancelled) cancelWorkOrderSupplyChain(number)
+    return result
+  }
   const createWorkOrder=async form=>{if(!canDo('Work Orders','create')){notify('No create access for Work Orders.','error');return null}const next=Math.max(...allWorkOrders.map(order=>Number(order.WORKORDER)||0),56545134)+1;const created={'WORKORDER':String(next),'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':toLocationPriority(form.priority),'ASSET':form.asset,'STATUS':'WAPPR','WORK TYPE ':form.type,'STATUS DESCRIPITION':'Waiting for Approval','DEPARTMENT ':form.department||'','SUB DEPARTMENT  NAME':form.subDepartment||'','ASSIGNED DEPARTMENT':form.department||'','ASSET DESCRIPTION':assetDescriptionFromMaster(form.asset, assetRecords),'SYSTEM':assetFromMaster(form.asset, assetRecords)?.system||'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':nowLocalDateTime(),'PTW REQUIRED':true};const result=await saveWorkOrders(rows=>[...rows,created]);if(result?.__saveError)return null;notify(`Work order #${created.WORKORDER} created.`,'success');return created}
   const generatePmWorkOrder=(pm,tasks)=>saveWorkOrders(rows=>{
     if(rows.some(order=>order['PM NUMBER']===pm.pmNumber&&order['PM CYCLE']===pm.cycle)){notify(`PM work order for ${pm.pmNumber} already exists.`,'info');return rows}
