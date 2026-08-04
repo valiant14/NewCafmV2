@@ -2,18 +2,18 @@ import { cn } from '../../lib/cn'
 
 export default function IndexTabs({ tabs, active, onChange }) {
   return (
-    <div className="mb-4 -mt-2 flex gap-1 overflow-auto border-b border-[var(--app-line)]">
+    <div className="mb-4 flex gap-1 overflow-auto rounded-2xl border border-[var(--app-line)] bg-[color:color-mix(in_srgb,var(--app-panel)_78%,var(--app-soft-bg))] p-1 shadow-[0_8px_24px_rgba(15,23,42,.04)]">
       {tabs.map(tab => (
         <button
           key={tab.key}
           className={cn(
-            'relative inline-flex items-center gap-2 whitespace-nowrap px-3 py-3 text-[11px] text-[#7a847e] transition',
-            active === tab.key && 'font-bold text-[#315a47] after:absolute after:bottom-[-1px] after:left-2 after:right-2 after:h-0.5 after:bg-[#477e63]'
+            'inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2.5 text-[11px] font-bold text-[var(--app-muted)] transition',
+            active === tab.key ? 'bg-[var(--app-panel)] text-[var(--app-primary)] shadow-[0_8px_18px_rgba(15,23,42,.06)]' : 'hover:bg-[var(--app-soft-bg-hover)] hover:text-[var(--app-ink)]'
           )}
           onClick={() => onChange?.(tab.key)}
         >
           {tab.label}
-          <b className="rounded-full bg-[#e9eee9] px-2 py-0.5 text-[8px] text-[#526159]">{tab.count}</b>
+          <b className="rounded-full bg-[var(--app-soft-bg)] px-2 py-0.5 text-[8px] text-[var(--app-muted)]">{tab.count}</b>
         </button>
       ))}
     </div>
