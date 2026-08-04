@@ -50,6 +50,13 @@ export default function Combobox({
     : suggestions
   const matchesKnown = !text || isKnownValue(text, suggestions)
 
+  // A fixed-choice field stores the code but reading back a bare "1" says nothing, so the
+  // closed box shows the code with its meaning. Only picker mode can do this: a searchable
+  // field has to keep showing exactly what is typed for filtering to make sense.
+  const selected = suggestions.find(item => optionValue(item).toLowerCase() === text.toLowerCase())
+  const selectedLabel = selected ? optionLabel(selected) : ''
+  const displayText = picker && text && selectedLabel ? `${optionValue(selected)} - ${selectedLabel}` : text
+
   // Consumers pass DOM-style handlers - event => setThing(event.target.value) - and some
   // cascade off the value, so the shape of this object is the compatibility contract.
   const emit = next => onChange?.({ target: { value: next } })
@@ -168,7 +175,7 @@ export default function Combobox({
         aria-activedescendant={open && highlight >= 0 ? `${id}-option-${highlight}` : undefined}
         autoComplete="off"
         className={`${className} ${picker ? 'cursor-pointer pr-9' : 'pr-16'}`}
-        value={query === null ? text : query}
+        value={query === null ? displayText : query}
         placeholder={placeholder}
         disabled={disabled}
         readOnly={disabled || picker}

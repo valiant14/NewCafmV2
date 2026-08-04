@@ -2,7 +2,7 @@ import { useId } from 'react'
 import Combobox from './Combobox'
 import { cn } from '../../lib/cn'
 
-export default function Field({ label, value = '', required, locked, disabled = false, type = 'text', options, suggestions, onChange, onBlur, onKeyDown, placeholder }) {
+export default function Field({ label, value = '', required, locked, disabled = false, type = 'text', options, suggestions, onChange, onBlur, onKeyDown, placeholder, min, max }) {
   const listId=useId()
   const isDisabled = locked || disabled
   const controlClass = cn(
@@ -53,6 +53,8 @@ export default function Field({ label, value = '', required, locked, disabled = 
           onKeyDown={onKeyDown}
           readOnly={isDisabled}
           placeholder={placeholder}
+          min={min}
+          max={max}
         />
       )}
     </label>

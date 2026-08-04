@@ -6,12 +6,14 @@ import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalF
 import { sameDepartment } from '../../lib/departments'
 import { deriveDepartmentOptions, deriveSiteOptions } from '../../lib/referenceFallbacks'
 import { useAuth } from '../../providers/AuthProvider'
+import { workOrderPriorities } from '../../lib/priority'
 
 const workTypes = ['CM', 'PM', 'Incident']
-const priorities = ['1 - Emergency', '2 - High', '3 - Medium', '4 - Low']
+const priorities = workOrderPriorities
 
 export default function CreateWorkOrderModal({ rows, assets, locationRows = [], siteRecords = [], departmentRecords = [], onCancel, onCreate }) {
-  const [form, setForm] = useState({ type: 'CM', description: '', priority: priorities[2], site: '', location: '', asset: '', department: '', subDepartment: '' })
+  // The priority is stored as its code, so the form holds '3' rather than '3 - Medium'.
+  const [form, setForm] = useState({ type: 'CM', description: '', priority: priorities[2].value, site: '', location: '', asset: '', department: '', subDepartment: '' })
   const [error, setError] = useState('')
   const { user } = useAuth()
   const update = key => event => setForm({ ...form, [key]: event.target.value })

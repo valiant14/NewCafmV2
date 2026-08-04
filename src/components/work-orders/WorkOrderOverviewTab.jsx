@@ -1,5 +1,6 @@
 import Field from '../ui/Field'
 import Section from '../ui/Section'
+import { priorityCode, workOrderPriorities } from '../../lib/priority'
 
 const layoutClass = 'grid items-start gap-3 lg:grid-cols-2'
 const columnClass = 'grid content-start gap-3'
@@ -68,7 +69,7 @@ export default function WorkOrderOverviewTab({
             <Field label="Work Order Number" value={String(number)} locked />
             <Field label="Status" value={status} locked />
             <Field label="Work Type" value={workType} required locked options={['CM', 'PM', 'Incident', 'SR']} />
-            <Field label="Priority" value={priority} required onChange={event => setPriority(event.target.value)} options={['1 - Emergency', '2 - High', '3 - Medium', '4 - Low']} />
+            <Field label="Priority" value={priorityCode(priority)} required onChange={event => setPriority(event.target.value)} options={workOrderPriorities} />
             <Field label="Description" value={description} required onChange={event => setDescription(event.target.value)} />
             <Field label="Site" value={siteValue} required onChange={changeSite} suggestions={siteOptions} placeholder="Search or select a site" />
             <div className="md:col-span-2">
@@ -114,8 +115,10 @@ export default function WorkOrderOverviewTab({
         <Section compact title="Target Dates" note="Schedule and actual timing for SLA tracking">
           <div className={gridClass}>
             <Field label="Reported Date" value={reportedDate} type="datetime-local" locked />
-            <Field label="Target Start" value={targetStart} required onChange={event => setTargetStart(event.target.value)} type="datetime-local" locked={isPM} />
-            <Field label="Target Finish" value={targetFinish} required onChange={event => setTargetFinish(event.target.value)} type="datetime-local" />
+            {/* Work cannot be scheduled to start before it was reported, and cannot finish
+                before it starts - the pickers refuse those dates rather than only warning. */}
+            <Field label="Target Start" value={targetStart} required onChange={event => setTargetStart(event.target.value)} type="datetime-local" locked={isPM} min={reportedDate} />
+            <Field label="Target Finish" value={targetFinish} required onChange={event => setTargetFinish(event.target.value)} type="datetime-local" min={targetStart || reportedDate} />
             <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" disabled />
             <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" disabled />
             <Field label="SLA Met?" value={slaLabel} locked />
