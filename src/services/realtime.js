@@ -14,7 +14,10 @@ export const subscribeWorkspaceChanges = onChange => {
     transports: ['websocket', 'polling']
   })
 
-  socket.on('workspace:changed', change => onChange?.(change))
+  socket.on('workspace:changed', change => {
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('cafm:workspace-change', { detail: change }))
+    onChange?.(change)
+  })
 
   return () => {
     socket.off('workspace:changed')

@@ -402,7 +402,7 @@ const ownerFromAccessibleSource = async (pool, payload, user, sources = []) => {
   return user?.userId || null
 }
 
-export function crudRouter({ table, key, columns, defaultOrder = key, moduleName, relatedModules = [], scope, ownerColumn = null, ownerSources = [], beforeCreate, beforeUpdate, additionalUpdatePermission }) {
+export function crudRouter({ table, key, columns, defaultOrder = key, defaultPageSize = null, moduleName, relatedModules = [], scope, ownerColumn = null, ownerSources = [], beforeCreate, beforeUpdate, additionalUpdatePermission, searchColumns = [], filterGroups = {}, prefixFilters = {}, dateFilterColumn = null, readOnly = false }) {
   const router = Router()
   const insertable = columns.filter(column => !generatedColumns.has(column))
   const editable = insertable.filter(column => column !== key)
@@ -420,6 +420,43 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
       filterClauses.push(`${quoteColumn(column)} = @listFilter${index}`)
       filterParams[`listFilter${index}`] = value
     })
+    Object.entries(filterGroups).forEach(([queryKey, groupColumns], groupIndex) => {
+      const value = Array.isArray(req.query[queryKey]) ? req.query[queryKey][0] : req.query[queryKey]
+      const validColumns = groupColumns.filter(column => columns.includes(column))
+      if (value === undefined || value === '' || !validColumns.length) return
+      const parameter = `groupFilter${groupIndex}`
+      filterClauses.push(`(${validColumns.map(column => `${quoteColumn(column)} = @${parameter}`).join(' or ')})`)
+      filterParams[parameter] = value
+    })
+    Object.entries(prefixFilters).forEach(([queryKey, column], prefixIndex) => {
+      const value = Array.isArray(req.query[queryKey]) ? req.query[queryKey][0] : req.query[queryKey]
+      if (value === undefined || value === '' || !columns.includes(column)) return
+      const parameter = `prefixFilter${prefixIndex}`
+      filterClauses.push(`${quoteColumn(column)} like @${parameter}`)
+      filterParams[parameter] = `${String(value).replaceAll('[', '[[]').replaceAll('%', '[%]').replaceAll('_', '[_]')}%`
+    })
+    const queryText = String(req.query.q || '').trim().slice(0, 200)
+    const validSearchColumns = searchColumns.filter(column => columns.includes(column))
+    if (queryText && validSearchColumns.length) {
+      filterClauses.push(`(${validSearchColumns.map(column => `convert(nvarchar(4000), ${quoteColumn(column)}) like @listSearch`).join(' or ')})`)
+      filterParams.listSearch = `%${queryText}%`
+    }
+    if (dateFilterColumn && columns.includes(dateFilterColumn)) {
+      const dateFrom = req.query.dateFrom ? new Date(String(req.query.dateFrom)) : null
+      const dateTo = req.query.dateTo ? new Date(String(req.query.dateTo)) : null
+      if (dateFrom && Number.isNaN(dateFrom.getTime())) return res.status(400).json({ error: 'BadRequest', message: 'dateFrom must be a valid date' })
+      if (dateTo && Number.isNaN(dateTo.getTime())) return res.status(400).json({ error: 'BadRequest', message: 'dateTo must be a valid date' })
+      if (dateFrom) {
+        filterClauses.push(`${quoteColumn(dateFilterColumn)} >= @listDateFrom`)
+        filterParams.listDateFrom = dateFrom
+      }
+      if (dateTo) {
+        const inclusiveDateTo = new Date(dateTo)
+        inclusiveDateTo.setUTCDate(inclusiveDateTo.getUTCDate() + 1)
+        filterClauses.push(`${quoteColumn(dateFilterColumn)} < @listDateTo`)
+        filterParams.listDateTo = inclusiveDateTo
+      }
+    }
     if (columns.includes('updated_at') && req.query.updatedAfter) {
       const updatedAfter = new Date(req.query.updatedAfter)
       if (Number.isNaN(updatedAfter.getTime())) {
@@ -430,13 +467,16 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     }
 
     const requestedLimit = req.query.limit ?? req.query.pageSize
-    const paged = requestedLimit !== undefined
-    const limit = boundedInteger(requestedLimit, 100, env.listMaxPageSize) || 1
+    const paged = requestedLimit !== undefined || defaultPageSize !== null
+    const limit = boundedInteger(requestedLimit, defaultPageSize ?? 100, env.listMaxPageSize) || 1
     const page = boundedInteger(req.query.page, 1) || 1
     const offset = req.query.offset === undefined
       ? (page - 1) * limit
       : boundedInteger(req.query.offset, 0)
     const includeTotal = ['1', 'true', 'yes'].includes(String(req.query.includeTotal || '').toLowerCase())
+    const requestedSort = String(req.query.sortBy || '')
+    const sortDirection = String(req.query.sortDirection || '').toLowerCase() === 'asc' ? 'asc' : 'desc'
+    const orderBy = columns.includes(requestedSort) ? `${quoteColumn(requestedSort)} ${sortDirection}` : defaultOrder
     const where = `${scoped.where}${filterClauses.length ? ` and ${filterClauses.join(' and ')}` : ''}`
     const request = bindParams(pool.request(), { ...scoped.params, ...filterParams })
     if (paged) {
@@ -447,7 +487,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
       select ${selectColumns}
       from ${table}
       where 1 = 1${where}
-      order by ${defaultOrder}
+      order by ${orderBy}
       ${paged ? 'offset @listOffset rows fetch next @listLimit rows only' : ''};
       ${includeTotal ? `select count_big(1) as total from ${table} where 1 = 1${where};` : ''}
     `)
@@ -470,6 +510,14 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
     res.json(result.recordset[0])
   }))
+
+  if (readOnly) {
+    router.use((req, res) => res.status(405).json({
+      error: 'CommandRequired',
+      message: 'This resource is read-only. Use the transactional command endpoint for changes.'
+    }))
+    return router
+  }
 
   router.post('/', permit('create'), asyncHandler(async (req, res) => {
     let payload = normalizePayload(req.body || {})

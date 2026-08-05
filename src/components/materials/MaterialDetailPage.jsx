@@ -72,8 +72,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
     setRequestForm({
       quantity,
       source,
-      site: storeRows.find(store => store.code === source)?.site || material.site || '',
-      department: material.department || material.category || ''
+      site: storeRows.find(store => store.code === source)?.site || material.site || ''
     })
     setRequestError('')
     setRequestModalOpen(true)
@@ -90,7 +89,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
       availableQuantity: stock.available,
       source: requestForm.source || defaultSource(),
       site: requestForm.site || material.site || '',
-      department: requestForm.department || material.department || material.category || ''
+      department: material.department || ''
     })
     if (!created) return setRequestError('Unable to create the purchase requisition.')
     setRequestModalOpen(false)

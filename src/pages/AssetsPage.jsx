@@ -21,6 +21,7 @@ import { conformsToAssetCode, validateAssetCode } from '../lib/coding'
 import { mergeImportedRows } from '../lib/importRows'
 import { useAuth } from '../providers/AuthProvider'
 import useModuleAccess from '../hooks/useModuleAccess'
+import useRelatedWorkOrders from '../hooks/useRelatedWorkOrders'
 
 const empty = {
   assetnum: '',
@@ -73,6 +74,7 @@ export default function AssetsPage({ rows: controlledRows, setRows: setControlle
   const [filters, setFilters] = useScopedFilters(user, rows)
   const routeId = decodeURIComponent(window.location.pathname.split('/assets/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.assetnum === routeId) || null)
+  const relatedWorkOrders = useRelatedWorkOrders(selected ? { asset_num: selected.assetnum } : null, { enabled: Boolean(selected) })
   useEffect(() => {
     if (!routeId) {
       setSelected(null)
@@ -112,7 +114,7 @@ export default function AssetsPage({ rows: controlledRows, setRows: setControlle
   }
 
   if (selected) {
-    return <AssetDetailPage asset={selected} workOrders={workOrders} onBack={close} onUpdate={updateAsset} />
+    return <AssetDetailPage asset={selected} workOrders={relatedWorkOrders.rows} onBack={close} onUpdate={updateAsset} />
   }
 
   return (

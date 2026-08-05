@@ -21,6 +21,7 @@ import { scopeRowsForUser } from '../lib/accessControl'
 import { normalizeWorkOrderWorkflow, workflowStatusOptions } from '../lib/workOrderWorkflow'
 import { mergeImportedRows } from '../lib/importRows'
 import useModuleAccess from '../hooks/useModuleAccess'
+import useRelatedWorkOrders from '../hooks/useRelatedWorkOrders'
 
 const emptyPlan = initialStatus => ({
   pmNumber: '',
@@ -111,6 +112,7 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
   const scopedPlans = scopeRowsForUser(plans, scopeUser || user, ['site'], ['department', 'subDepartment', 'personGroup'])
   const [mode, setMode] = useState('list')
   const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
+  const relatedWorkOrders = useRelatedWorkOrders(selectedId ? { pm_num: selectedId } : null, { enabled: Boolean(selectedId) })
   const [form, setForm] = useState(() => emptyPlan(activeWorkflow.initialStatus))
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -181,7 +183,7 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
     setRows?.(rows => rows.map(plan => plan.pmNumber === pmNumber ? { ...plan, ...patch } : plan))
   }
   if (selected) {
-    return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} pmRules={pmRules} workOrders={workOrders} workflow={activeWorkflow} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} onUpdate={updatePlan} />
+    return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} pmRules={pmRules} workOrders={relatedWorkOrders.rows} workflow={activeWorkflow} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} onUpdate={updatePlan} />
   }
 
   return (

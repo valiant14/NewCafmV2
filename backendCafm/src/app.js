@@ -14,13 +14,18 @@ app.use(helmet())
 app.use(cors({
   origin: env.corsOrigin,
   credentials: true,
-  exposedHeaders: ['ETag', 'X-Page-Size', 'X-Page-Offset', 'X-Total-Count', 'Accept-Ranges']
+  exposedHeaders: ['ETag', 'X-Page-Size', 'X-Page-Offset', 'X-Total-Count', 'Accept-Ranges', 'Content-Disposition']
 }))
 app.use((req, res, next) => {
   if (req.method === 'GET') res.set('Cache-Control', 'private, max-age=0, must-revalidate')
   next()
 })
-app.use(express.json({ limit: env.jsonBodyLimit }))
+const jsonParser = express.json({ limit: env.jsonBodyLimit })
+app.use((req, res, next) => {
+  const binaryAttachmentUpload = req.method === 'POST' && req.path.startsWith('/api/attachments/')
+  if (binaryAttachmentUpload) return next()
+  return jsonParser(req, res, next)
+})
 app.use(requestMetrics)
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev', {
   skip: req => req.path === '/api/health'

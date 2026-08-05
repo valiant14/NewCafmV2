@@ -19,6 +19,7 @@ import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScoped
 import { normalizeStatus } from '../lib/statusMatrix'
 import { mergeImportedRows } from '../lib/importRows'
 import { useAuth } from '../providers/AuthProvider'
+import { attachmentApi } from '../services/api'
 
 const blankRequest = () => ({
   sr: 'AUTO',
@@ -56,7 +57,7 @@ const exportColumns = [
   { key: 'convertedWorkOrder', label: 'Converted Work Order' }
 ]
 
-export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, access = {} }) {
+export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, access = {}, notify }) {
   const { user } = useAuth()
   const requestFromPath = () => {
     const id = decodeURIComponent((window.location.pathname.split('/job-requests/')[1] || window.location.pathname.split('/service-requests/')[1] || ''))
@@ -85,14 +86,21 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     setSelected(null)
     window.history.pushState({}, '', '/job-requests')
   }
-  const submit = async request => {
+  const submit = async (request, files = []) => {
     // blankRequest() stamps when the form is constructed - which is route-evaluation
     // time - so the reported time is taken again at the moment of submission.
     const submitted = { ...request, __isNew: true, reportedDate: nowLocalDateTime(), sr: 'AUTO', status: 'WAPPR', requestType: 'Service' }
     if (!access.create) return request
     await setRequests(list => [...list, submitted])
+    const failedUploads = []
+    for (const file of files) {
+      try { await attachmentApi.upload('service-request', submitted.sr, file, 'General') }
+      catch (error) { failedUploads.push(error) }
+    }
     setSelected(null)
     window.history.replaceState({}, '', '/job-requests')
+    if (failedUploads.length) notify?.(`Job request saved, but ${failedUploads.length} attachment${failedUploads.length === 1 ? '' : 's'} could not be uploaded.`, 'error')
+    else if (files.length) notify?.(`Job request and ${files.length} attachment${files.length === 1 ? '' : 's'} saved.`, 'success')
     return submitted
   }
   const approve = async request => {

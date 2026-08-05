@@ -1,0 +1,2 @@
+backendCafm/storage/attachments/*
+!backendCafm/storage/attachments/.gitkeep

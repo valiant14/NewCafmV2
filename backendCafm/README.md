@@ -141,3 +141,29 @@ GET /api/health?deep=1
 The health response reports bounded permission-cache size, MSSQL pool use, connected Socket.IO clients, scheduler state, memory use, request latency, and event-loop delay. Use `deep=1` for readiness checks that must confirm a live MSSQL query.
 
 Recommended production settings are documented in `.env.example`. Size `MSSQL_POOL_MAX` below the SQL Server connection limit across all API instances, and keep `PM_SCHEDULER_CONCURRENCY` lower than the pool maximum.
+
+## Transaction Commands
+
+Purchase requisitions, purchase orders, reservations, receipts, stock posting, and
+work-order cancellation are written through `/api/supply-chain/*`. Their generic
+resource routes are read-only so a client cannot partially update one table and
+leave the linked supply-chain records inconsistent. Each command uses a serializable
+MSSQL transaction and returns the committed rows needed to update the UI directly.
+
+## Attachments
+
+Run `npm run db:migrate` to create `dbo.attachments` and migrate legacy work-order
+data URLs out of MSSQL. File bytes are stored outside the database and are available
+only through authenticated upload/download endpoints; MSSQL retains metadata and
+entity links.
+
+Configure the storage volume with:
+
+```text
+ATTACHMENT_STORAGE_PATH=storage/attachments
+ATTACHMENT_MAX_BYTES=26214400
+```
+
+For a multi-instance deployment, point `ATTACHMENT_STORAGE_PATH` at a durable shared
+volume. Back up that volume together with MSSQL so attachment metadata and file bytes
+remain synchronized.

@@ -119,10 +119,12 @@ export default function OverviewPage({
   meters = [],
   purchaseRequests = [],
   purchaseOrders = [],
-  reservations = []
+  reservations = [],
+  snapshot = null
 }) {
   const assetRows = liveAssets
-  const operating = assetRows.filter(asset => asset.status === 'OPERATING').length
+  const assetTotal = snapshot ? Number(snapshot.assets?.total || 0) : assetRows.length
+  const operating = snapshot ? Number(snapshot.assets?.operating || 0) : assetRows.filter(asset => asset.status === 'OPERATING').length
   const now = Date.now()
   const workOrderRows = liveWorkOrders
   const openOrders = workOrderRows.filter(order => !isClosed(order))
@@ -136,12 +138,21 @@ export default function OverviewPage({
     return due && effectiveTargetTime(due, order, now) < now
   })
   const pausedOrders = openOrders.filter(isOnHold)
-  const pmCount = workOrderRows.filter(order => String(order['WORK TYPE '] || '').trim() === 'PM').length
-  const cmCount = workOrderRows.filter(order => String(order['WORK TYPE '] || '').trim() === 'CM').length
-  const slaCompliance = workOrderRows.length ? Math.round(((workOrderRows.length - overdueOrders.length) / workOrderRows.length) * 100) : 100
+  const workOrderStats = snapshot?.workOrders || null
+  const totalWorkOrders = workOrderStats ? Number(workOrderStats.total || 0) : workOrderRows.length
+  const openOrderCount = workOrderStats ? Number(workOrderStats.open || 0) : openOrders.length
+  const closedOrderCount = workOrderStats ? Number(workOrderStats.closed || 0) : closedOrders.length
+  const overdueOrderCount = workOrderStats ? Number(workOrderStats.overdue || 0) : overdueOrders.length
+  const pausedOrderCount = workOrderStats ? Number(workOrderStats.paused || 0) : pausedOrders.length
+  const pmCount = workOrderStats ? Number(workOrderStats.pm || 0) : workOrderRows.filter(order => String(order['WORK TYPE '] || '').trim() === 'PM').length
+  const cmCount = workOrderStats ? Number(workOrderStats.cm || 0) : workOrderRows.filter(order => String(order['WORK TYPE '] || '').trim() === 'CM').length
+  const slaCompliance = totalWorkOrders ? Math.round(((totalWorkOrders - overdueOrderCount) / totalWorkOrders) * 100) : 100
   const openPurchaseRequests = purchaseRequests.filter(row => !['CLOSE', 'CAN'].includes(String(row.status || '').toUpperCase()))
   const openPurchaseOrders = purchaseOrders.filter(row => !['CLOSE', 'CAN'].includes(String(row.status || '').toUpperCase()))
   const activeReservations = reservations.filter(row => !['COMPLETE', 'CANCELLED'].includes(String(row.status || '').toUpperCase()))
+  const openPurchaseRequestCount = snapshot ? Number(snapshot.supply?.openPurchaseRequests || 0) : openPurchaseRequests.length
+  const openPurchaseOrderCount = snapshot ? Number(snapshot.supply?.openPurchaseOrders || 0) : openPurchaseOrders.length
+  const activeReservationCount = snapshot ? Number(snapshot.supply?.activeReservations || 0) : activeReservations.length
   const percentage = (part, total) => total ? Math.round((part / total) * 100) : null
 
   const today = new Date()
@@ -151,27 +162,36 @@ export default function OverviewPage({
     const stamp = reportedTime(order)
     return stamp !== null && stamp >= from
   }).length
-  const loggedThisMonth = loggedSince(monthStart)
-  const loggedYtd = loggedSince(yearStart)
-  const openShare = percentage(openOrders.length, workOrderRows.length)
-  const closedShare = percentage(closedOrders.length, workOrderRows.length)
+  const loggedThisMonth = workOrderStats ? Number(workOrderStats.loggedThisMonth || 0) : loggedSince(monthStart)
+  const loggedYtd = workOrderStats ? Number(workOrderStats.loggedYtd || 0) : loggedSince(yearStart)
+  const openShare = percentage(openOrderCount, totalWorkOrders)
+  const closedShare = percentage(closedOrderCount, totalWorkOrders)
   const monthLabel = today.toLocaleDateString(undefined, { month: 'long' })
 
   const openIncidents = incidents.filter(row => !['RESOLVED', 'CLOSED'].includes(String(row.status || '').toUpperCase()))
-  const permitOrders = workOrderRows.filter(order => order['PTW REQUIRED'])
-  const permitFiles = permitOrders.reduce((sum, order) => sum + (order['PTW FILES']?.length || 0), 0)
-  const permitsMissingDocs = permitOrders.filter(order => !(order['PTW FILES']?.length)).length
+  const incidentTotal = snapshot ? Number(snapshot.incidents?.total || 0) : incidents.length
+  const openIncidentCount = snapshot ? Number(snapshot.incidents?.open || 0) : openIncidents.length
+  const recentPermitOrders = snapshot?.permitOrders || workOrderRows.filter(order => order['PTW REQUIRED']).map(order => ({
+    workOrder: order.WORKORDER,
+    description: order['DESCRIPITION '],
+    status: order.STATUS,
+    fileCount: order['PTW FILES']?.length || 0
+  }))
+  const permitCount = workOrderStats ? Number(workOrderStats.permits || 0) : recentPermitOrders.length
+  const permitsMissingDocs = workOrderStats ? Number(workOrderStats.permitsMissing || 0) : recentPermitOrders.filter(order => !order.fileCount).length
+  const permitsDocumented = Math.max(0, permitCount - permitsMissingDocs)
 
-  const connectedOperations = [
+  const connectedOperations = snapshot?.supply?.operations || [
     ...purchaseRequests.map(row => ({ type: 'Purchase Request', reference: row.purchaseRequest, workOrder: row.workOrder, item: row.item, status: row.status, next: row.purchaseOrder ? `Linked to ${row.purchaseOrder}` : 'Awaiting approval' })),
     ...purchaseOrders.map(row => ({ type: 'Purchase Order', reference: row.purchaseOrder, workOrder: row.workOrder, item: row.item, status: row.status, next: row.status === 'CLOSE' ? 'Received and closed' : 'Procurement follow-up' })),
     ...reservations.map(row => ({ type: row.type === 'Material' ? 'Reservation' : 'Allocation', reference: row.reservation, workOrder: row.workOrder, item: row.item, status: row.status, next: row.status === 'COMPLETE' ? 'Delivered to work order' : 'Store fulfillment' }))
   ].slice(0, 8)
-  const siteCompliance = [...new Set(workOrderRows.map(order => order.SITE).filter(Boolean))].slice(0, 4).map(site => {
+  const calculatedSiteCompliance = [...new Set(workOrderRows.map(order => order.SITE).filter(Boolean))].slice(0, 4).map(site => {
     const siteRows = workOrderRows.filter(order => order.SITE === site)
     const siteOverdue = overdueOrders.filter(order => order.SITE === site)
     return { site, value: siteRows.length ? Math.round(((siteRows.length - siteOverdue.length) / siteRows.length) * 100) : 100 }
   })
+  const siteCompliance = snapshot?.siteCompliance || calculatedSiteCompliance
 
   const targetTime = order => {
     const target = excelDate(order['TARGET FINISH '] || order['TARGET START '])
@@ -188,11 +208,18 @@ export default function OverviewPage({
     return Boolean(finished && finished > due)
   }
   const scheduledPmOrders = workOrderRows.filter(order => String(order['WORK TYPE '] || '').trim() === 'PM' && targetTime(order))
-  const pmMissed = scheduledPmOrders.filter(missedTarget).length
+  const scheduledPmCount = workOrderStats ? Number(workOrderStats.scheduledPm || 0) : scheduledPmOrders.length
+  const pmMissed = workOrderStats ? Number(workOrderStats.pmMissed || 0) : scheduledPmOrders.filter(missedTarget).length
+  const pmRows = snapshot?.preventiveMaintenance?.rows || pmRecords
+  const pmProgramCount = snapshot ? Number(snapshot.preventiveMaintenance?.total || 0) : pmRecords.length
+  const meterRows = snapshot?.meters?.rows || meters
+  const meterHistoryRows = snapshot?.meters?.history || meterRows
+  const meterTotal = snapshot ? Number(snapshot.meters?.total || 0) : meters.length
+  const failureCodeTotal = snapshot ? Number(snapshot.failureCodes?.total || 0) : failureCodes.length
   const healthComponents = [
-    { label: 'Asset availability', weight: 40, value: percentage(operating, assetRows.length), note: `${operating} of ${assetRows.length} assets operating` },
-    { label: 'SLA compliance', weight: 35, value: workOrderRows.length ? slaCompliance : null, note: workOrderRows.length ? `${overdueOrders.length} of ${workOrderRows.length} work orders past target` : 'No work orders logged yet' },
-    { label: 'PM compliance', weight: 25, value: percentage(scheduledPmOrders.length - pmMissed, scheduledPmOrders.length), note: scheduledPmOrders.length ? `${pmMissed} of ${scheduledPmOrders.length} PM work orders missed target` : 'No scheduled PM work orders yet' }
+    { label: 'Asset availability', weight: 40, value: percentage(operating, assetTotal), note: `${operating} of ${assetTotal} assets operating` },
+    { label: 'SLA compliance', weight: 35, value: totalWorkOrders ? slaCompliance : null, note: totalWorkOrders ? `${overdueOrderCount} of ${totalWorkOrders} work orders past target` : 'No work orders logged yet' },
+    { label: 'PM compliance', weight: 25, value: percentage(scheduledPmCount - pmMissed, scheduledPmCount), note: scheduledPmCount ? `${pmMissed} of ${scheduledPmCount} PM work orders missed target` : 'No scheduled PM work orders yet' }
   ]
   const measuredHealth = healthComponents.filter(item => item.value !== null)
   const healthWeight = measuredHealth.reduce((sum, item) => sum + item.weight, 0)
@@ -201,24 +228,20 @@ export default function OverviewPage({
     : null
 
   const utilityTrend = type => {
-    const typeMeters = meters.filter(meter => meter.meterType === type)
+    const typeMeters = meterHistoryRows
+      .filter(meter => meter.meterType === type && parseLocal(meter.readingDate))
+      .sort((left, right) => parseLocal(left.readingDate).getTime() - parseLocal(right.readingDate).getTime())
+      .slice(-6)
     if (!typeMeters.length) return []
-    const anchor = parseLocal([...typeMeters.map(meter => meter.readingDate)].sort().pop()) || new Date()
-    // Mirrors the history the Meters detail page synthesises: 30 days and 85 units per step.
-    return Array.from({ length: 6 }, (_, index) => {
-      const stepsBack = 5 - index
-      const date = new Date(anchor)
-      date.setDate(date.getDate() - stepsBack * 30)
-      return {
-        label: date.toLocaleDateString(undefined, { month: 'short' }),
-        value: typeMeters.reduce((sum, meter) => sum + Math.max(0, Number(meter.reading || 0) - stepsBack * 85), 0)
-      }
-    })
+    return typeMeters.map(meter => ({
+      label: parseLocal(meter.readingDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      value: Number(meter.reading || 0)
+    }))
   }
   const waterTrend = utilityTrend('Water')
   const energyTrend = utilityTrend('Energy')
-  const unitFor = type => meters.find(meter => meter.meterType === type)?.unit || ''
-  const meterCount = type => meters.filter(meter => meter.meterType === type).length
+  const unitFor = type => meterRows.find(meter => meter.meterType === type)?.unit || ''
+  const meterCount = type => meterRows.filter(meter => meter.meterType === type).length
 
   const printDashboard = () => printWithoutBrowserTitle()
   const currentHour = today.getHours()
@@ -251,22 +274,22 @@ export default function OverviewPage({
 
         <section className="print-grid-4 mb-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Metric label={`Logged in ${monthLabel}`} value={loggedThisMonth} detail="Work orders raised this month" icon={CalendarRange} tone="blue" onClick={() => onNavigate('Work Orders')} />
-          <Metric label="Logged year to date" value={loggedYtd} detail={`${workOrderRows.length} on record in total`} icon={Activity} tone="purple" onClick={() => onNavigate('Work Orders')} />
-          <Metric label="Open" value={openOrders.length} detail={openShare === null ? 'No work orders logged yet' : `${openShare}% of all work orders`} icon={ClipboardList} tone="orange" onClick={() => onNavigate('Work Orders')} />
-          <Metric label="Closed" value={closedOrders.length} detail={closedShare === null ? 'No work orders logged yet' : `${closedShare}% of all work orders`} icon={CheckCircle2} tone="green" onClick={() => onNavigate('Work Orders')} />
+          <Metric label="Logged year to date" value={loggedYtd} detail={`${totalWorkOrders} on record in total`} icon={Activity} tone="purple" onClick={() => onNavigate('Work Orders')} />
+          <Metric label="Open" value={openOrderCount} detail={openShare === null ? 'No work orders logged yet' : `${openShare}% of all work orders, ${pausedOrderCount} on hold`} icon={ClipboardList} tone="orange" onClick={() => onNavigate('Work Orders')} />
+          <Metric label="Closed" value={closedOrderCount} detail={closedShare === null ? 'No work orders logged yet' : `${closedShare}% of all work orders`} icon={CheckCircle2} tone="green" onClick={() => onNavigate('Work Orders')} />
         </section>
 
         <section className="print-grid-4 mb-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Incidents" value={openIncidents.length} detail={`${incidents.length} logged, ${incidents.length - openIncidents.length} resolved`} icon={AlertOctagon} tone="orange" onClick={() => onNavigate('Incidents')} />
-          <Metric label="Permits to work" value={permitOrders.length} detail={permitsMissingDocs ? `${permitsMissingDocs} awaiting documentation` : `${permitFiles} permit document${permitFiles === 1 ? '' : 's'} on file`} icon={FileCheck2} tone="purple" onClick={() => onNavigate('Work Orders')} />
-          <Metric label="Assets online" value={`${operating}/${assetRows.length}`} detail={`${percentage(operating, assetRows.length) ?? 0}% operational`} icon={Boxes} tone="green" onClick={() => onNavigate('Assets')} />
-          <Metric label="PM programs" value={pmRecords.length} detail="Recurring schedules" icon={CalendarClock} tone="blue" onClick={() => onNavigate('Preventive Maintenance')} />
+          <Metric label="Incidents" value={openIncidentCount} detail={`${incidentTotal} logged, ${Math.max(0, incidentTotal - openIncidentCount)} resolved`} icon={AlertOctagon} tone="orange" onClick={() => onNavigate('Incidents')} />
+          <Metric label="Permits to work" value={permitCount} detail={permitsMissingDocs ? `${permitsMissingDocs} awaiting documentation` : `${permitsDocumented} documented permit${permitsDocumented === 1 ? '' : 's'}`} icon={FileCheck2} tone="purple" onClick={() => onNavigate('Work Orders')} />
+          <Metric label="Assets online" value={`${operating}/${assetTotal}`} detail={`${percentage(operating, assetTotal) ?? 0}% operational`} icon={Boxes} tone="green" onClick={() => onNavigate('Assets')} />
+          <Metric label="PM programs" value={pmProgramCount} detail="Recurring schedules" icon={CalendarClock} tone="blue" onClick={() => onNavigate('Preventive Maintenance')} />
         </section>
 
         <section className="print-grid-3 mb-7 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Metric label="PM vs CM" value={`${pmCount}/${cmCount}`} detail="Preventive compared with corrective" icon={CalendarClock} tone="blue" onClick={() => onNavigate('Work Orders')} />
-          <Metric label="Failure codes" value={failureCodes.length.toLocaleString()} detail="Searchable library" icon={ShieldCheck} tone="purple" onClick={() => onNavigate('Failure Library')} />
-          <Metric label="Meters" value={meters.length} detail="Utility and runtime meters tracked" icon={Gauge} tone="green" onClick={() => onNavigate('Meters')} />
+          <Metric label="Failure codes" value={failureCodeTotal.toLocaleString()} detail="Searchable library" icon={ShieldCheck} tone="purple" onClick={() => onNavigate('Failure Library')} />
+          <Metric label="Meters" value={meterTotal} detail="Utility and runtime meters tracked" icon={Gauge} tone="green" onClick={() => onNavigate('Meters')} />
         </section>
 
         <Surface className="mb-7">
@@ -274,7 +297,7 @@ export default function OverviewPage({
 
           <div className="mb-5 grid gap-4 md:grid-cols-2">
             <Metric label="SLA compliance" value={`${slaCompliance}%`} detail="Based on target finish/start dates" icon={Gauge} tone="green" onClick={() => onNavigate('Work Orders')} />
-            <Metric label="SLA violations" value={overdueOrders.length} detail="Open work orders past target" icon={AlertTriangle} tone="orange" onClick={() => onNavigate('Work Orders')} />
+            <Metric label="SLA violations" value={overdueOrderCount} detail="Open work orders past target" icon={AlertTriangle} tone="orange" onClick={() => onNavigate('Work Orders')} />
           </div>
 
           {siteCompliance.length ? (
@@ -294,9 +317,9 @@ export default function OverviewPage({
         </Surface>
 
         <section className="print-grid-3 mb-7 grid gap-4 md:grid-cols-3">
-          <Metric label="Open purchase requisitions" value={openPurchaseRequests.length} detail="Material shortages awaiting approval" icon={ShoppingCart} tone="orange" onClick={() => onNavigate('Purchase Requisitions')} />
-          <Metric label="Open purchase orders" value={openPurchaseOrders.length} detail="Approved procurement still in process" icon={PackageCheck} tone="blue" onClick={() => onNavigate('Purchase Orders')} />
-          <Metric label="Store fulfillment" value={activeReservations.length} detail="Reservations or allocations not yet delivered" icon={Truck} tone="green" onClick={() => onNavigate('Reservations')} />
+          <Metric label="Open purchase requisitions" value={openPurchaseRequestCount} detail="Material shortages awaiting approval" icon={ShoppingCart} tone="orange" onClick={() => onNavigate('Purchase Requisitions')} />
+          <Metric label="Open purchase orders" value={openPurchaseOrderCount} detail="Approved procurement still in process" icon={PackageCheck} tone="blue" onClick={() => onNavigate('Purchase Orders')} />
+          <Metric label="Store fulfillment" value={activeReservationCount} detail="Reservations or allocations not yet delivered" icon={Truck} tone="green" onClick={() => onNavigate('Reservations')} />
         </section>
 
         <Surface className="mb-7">
@@ -326,7 +349,7 @@ export default function OverviewPage({
             />
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {meters.slice(0, 4).map(meter => (
+            {meterRows.slice(0, 4).map(meter => (
               <div className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-3" key={meter.meterId}>
                 <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">
                   {meter.meterType === 'Water' ? <Droplets size={13} /> : <Zap size={13} />}
@@ -343,7 +366,7 @@ export default function OverviewPage({
           <Surface as="article" flush>
             <SurfaceHeader eyebrow="Operations" title="Active work orders" actions={<Button className="print-hide" variant="ghost" onClick={() => onNavigate('Work Orders')}>View all <ChevronRight size={16} /></Button>} />
             <DataTable
-              rows={workOrderRows}
+              rows={openOrders}
               search=""
               pageSize={5}
               showFooter={false}
@@ -391,19 +414,19 @@ export default function OverviewPage({
 
         <Surface className="mb-7">
           <SurfaceHeader inset eyebrow="Compliance" title="Permits to work" description="Open a work order directly on its permit documentation." />
-          {permitOrders.length ? (
+          {recentPermitOrders.length ? (
             <div className="grid gap-2">
-              {permitOrders.slice(0, 6).map(order => {
-                const files = order['PTW FILES']?.length || 0
+              {recentPermitOrders.slice(0, 6).map(order => {
+                const files = Number(order.fileCount || 0)
                 return (
                   <button
                     type="button"
-                    key={order.WORKORDER}
-                    onClick={() => onOpenWorkOrderTab?.(order.WORKORDER, 'PTW & Files')}
+                    key={order.workOrder}
+                    onClick={() => onOpenWorkOrderTab?.(order.workOrder, 'PTW & Files')}
                     className="grid gap-2 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-3 text-left transition hover:bg-[var(--app-table-hover-bg)] md:grid-cols-[130px_1fr_auto] md:items-center"
                   >
-                    <strong className="mono text-sm text-[var(--app-ink)]">#{order.WORKORDER}</strong>
-                    <span className="truncate text-sm text-[var(--app-muted)]">{order['DESCRIPITION '] || 'Work order'}</span>
+                    <strong className="mono text-sm text-[var(--app-ink)]">#{order.workOrder}</strong>
+                    <span className="truncate text-sm text-[var(--app-muted)]">{order.description || 'Work order'}</span>
                     <span className="flex items-center gap-2">
                       <Badge tone={files ? 'green' : 'orange'}>{files ? `${files} document${files === 1 ? '' : 's'}` : 'Permit missing'}</Badge>
                       <ChevronRight size={16} className="text-[var(--app-muted)]" />
@@ -442,19 +465,22 @@ export default function OverviewPage({
         <Surface className="print-hide">
           <SurfaceHeader inset eyebrow="Maintenance" title="Preventive maintenance" actions={<Button className="print-hide" variant="ghost" onClick={() => onNavigate('Preventive Maintenance')}>Open schedule <ChevronRight size={16} /></Button>} />
           <div className="grid gap-3">
-            {pmRecords.slice(0, 4).map((pm, index) => (
-              <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4 md:grid-cols-[auto_1fr_auto] md:items-center" key={pm.PMNUM}>
-                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--app-badge-green-bg)] text-center">
-                  <span className="block text-lg font-extrabold leading-none text-[var(--app-badge-green-text)]">{String(index + 14).padStart(2, '0')}</span>
-                  <small className="text-[9px] font-extrabold text-[var(--app-muted)]">JUL</small>
+            {pmRows.slice(0, 4).map(pm => {
+              const dueDate = parseLocal(pm.startDate)
+              return (
+                <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4 md:grid-cols-[auto_1fr_auto] md:items-center" key={pm.pmNumber}>
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--app-badge-green-bg)] text-center">
+                    <span className="block text-lg font-extrabold leading-none text-[var(--app-badge-green-text)]">{dueDate ? String(dueDate.getDate()).padStart(2, '0') : '--'}</span>
+                    <small className="text-[9px] font-extrabold text-[var(--app-muted)]">{dueDate ? dueDate.toLocaleDateString(undefined, { month: 'short' }).toUpperCase() : 'TBD'}</small>
+                  </div>
+                  <div>
+                    <strong className="block text-sm text-[var(--app-ink)]">{pm.description || pm.pmNumber}</strong>
+                    <span className="text-xs text-[var(--app-muted)]">{pm.asset || 'No asset'} - Every {pm.frequency} {pm.freqUnit}</span>
+                  </div>
+                  <Badge tone={pmDueTone(pmPlanFromRecord(pm))}>{pmDueLabel(pmPlanFromRecord(pm))}</Badge>
                 </div>
-                <div>
-                  <strong className="block text-sm text-[var(--app-ink)]">{pm['PM DESCRIPTION']}</strong>
-                  <span className="text-xs text-[var(--app-muted)]">{pm.ASSETNUM} - {pm.FREQUENCY} {pm.FREQUNIT}</span>
-                </div>
-                <Badge tone={pmDueTone(pmPlanFromRecord(pm))}>{pmDueLabel(pmPlanFromRecord(pm))}</Badge>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </Surface>
       </div>

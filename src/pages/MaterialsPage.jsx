@@ -64,7 +64,8 @@ const exportColumns = [
 ]
 const sameMaterial = (row, id) => String(row.itemNumber || '').trim().toLowerCase() === String(id || '').trim().toLowerCase()
 
-const materialUsage = (material, workOrders) => workOrders.flatMap(order => {
+const materialUsage = (material, workOrders, resourceRequests = []) => {
+  const nested = workOrders.flatMap(order => {
   const resources = Array.isArray(order['PLANNED RESOURCES']) ? order['PLANNED RESOURCES'] : []
   return resources
     .filter(resource => resource.type === 'Material')
@@ -81,9 +82,26 @@ const materialUsage = (material, workOrders) => workOrders.flatMap(order => {
       department: order?.['DEPARTMENT '] || '',
       source: resource.transactionRef || resource.supplyChainStatus || resource.requestStatus || 'Planned resource'
     }))
-})
+  })
+  const direct = resourceRequests
+    .filter(resource => resource.type === 'Material')
+    .filter(resource => String(resource.itemCode || resource.item || '').trim() === String(material.itemNumber || material.description || '').trim() || String(resource.item || '').trim() === String(material.description || '').trim())
+    .map(resource => ({
+      reference: resource.resourceRequestId || `${resource.workOrder}-${resource.transactionRef || resource.item}`,
+      workOrder: resource.workOrder,
+      description: resource.item || material.description,
+      workType: '',
+      quantity: resource.quantity || resource.requestedQuantity || 0,
+      unit: material.unit,
+      status: resource.requestStatus || '',
+      site: resource.site || '',
+      department: resource.department || '',
+      source: resource.transactionRef || resource.supplyChainStatus || resource.requestStatus || 'Planned resource'
+    }))
+  return [...new Map([...nested, ...direct].map(row => [String(row.reference), row])).values()]
+}
 
-export default function MaterialsPage({ rows = [], setRows, stockRows = [], storeRows = [], workOrders = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest, onUpdateStock }) {
+export default function MaterialsPage({ rows = [], setRows, stockRows = [], storeRows = [], workOrders = [], resourceRequests = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest, onUpdateStock }) {
   const access = useModuleAccess('Materials')
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
@@ -139,7 +157,7 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
   }
 
   if (selectedMaterial) {
-    return <MaterialDetailPage material={selectedMaterial} stockRows={stockRows} storeRows={storeRows} usageRows={materialUsage(selectedMaterial, workOrders)} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} onBack={close} onUpdate={updateMaterial} onCreateRequest={onCreateRequest} onUpdateStock={onUpdateStock} />
+    return <MaterialDetailPage material={selectedMaterial} stockRows={stockRows} storeRows={storeRows} usageRows={materialUsage(selectedMaterial, workOrders, resourceRequests)} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} onBack={close} onUpdate={updateMaterial} onCreateRequest={onCreateRequest} onUpdateStock={onUpdateStock} />
   }
 
   return (

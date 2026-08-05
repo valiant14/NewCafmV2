@@ -22,6 +22,7 @@ import { conformsToLocationCode, nextLocationCode, validateLocationCode } from '
 import { mergeImportedRows } from '../lib/importRows'
 import { useAuth } from '../providers/AuthProvider'
 import useModuleAccess from '../hooks/useModuleAccess'
+import useRelatedWorkOrders from '../hooks/useRelatedWorkOrders'
 import Badge from '../components/ui/Badge'
 import { buildingCategoryOptions, buildingOptions, priorityDescriptionOptions, siteOptions, withSuggestions } from '../lib/masterOptions'
 
@@ -94,6 +95,7 @@ export default function LocationsPage({ rows: controlledRows, setRows: setContro
   const setLocations = setControlledRows || setLocalLocations
   const routeId = decodeURIComponent(window.location.pathname.split('/locations/')[1] || '')
   const [selected, setSelected] = useState(locations.find(row => row.location === routeId) || null)
+  const relatedWorkOrderResult = useRelatedWorkOrders(selected ? { locationPrefix: selected.location } : null, { enabled: Boolean(selected) })
   useEffect(() => {
     if (!routeId) {
       setSelected(null)
@@ -158,7 +160,7 @@ export default function LocationsPage({ rows: controlledRows, setRows: setContro
       site: asset.site
     }))
 
-  const relatedWorkOrders = location => workOrders
+  const relatedWorkOrders = location => (selected ? relatedWorkOrderResult.rows : workOrders)
     .filter(order => String(order['LOCATION '] || '').startsWith(location.location))
     .map(order => ({
       workOrder: order.WORKORDER,

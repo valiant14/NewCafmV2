@@ -201,10 +201,15 @@ const readWorkOrderContext = async (pool, workOrderNumber) => {
       select craft_name, estimated_hours, assigned_crew
       from dbo.work_order_planned_labor
       where work_order_num = @workOrderNumber;
+
+      select category
+      from dbo.attachments
+      where entity_type = 'work-order' and entity_id = @workOrderNumber;
     `)
   return {
     resources: result.recordsets[0] || [],
-    labor: result.recordsets[1] || []
+    labor: result.recordsets[1] || [],
+    attachments: result.recordsets[2] || []
   }
 }
 
@@ -238,7 +243,7 @@ const missingRequirements = (order, context, workflow, requirements) => {
     if (requirement === 'planned_labor' && !context.labor.some(row => text(row.craft_name) && text(row.assigned_crew) && positive(row.estimated_hours))) add(['Planned labor, hours, and crew'])
     if (requirement === 'planned_materials_cm' && isCorrective && !context.resources.some(row => statusCode(row.resource_type) === 'MATERIAL' && text(row.item_description) && positive(row.requested_quantity))) add(['Planned material'])
     if (requirement === 'planned_tools_cm' && isCorrective && !context.resources.some(row => ['TOOL', 'EQUIPMENT'].includes(statusCode(row.resource_type)) && text(row.item_description) && positive(row.requested_quantity))) add(['Planned tool or equipment'])
-    if (requirement === 'ptw' && (!workflow.allow_ptw_override || order.ptw_required) && !listFromJson(order.ptw_files_json).length) add(['Approved PTW attachment'])
+    if (requirement === 'ptw' && (!workflow.allow_ptw_override || order.ptw_required) && !context.attachments.some(row => text(row.category).toUpperCase() === 'PTW')) add(['Approved PTW attachment'])
     if (requirement === 'store_issue') {
       for (const resource of namedRows(context.resources)) {
         if (!text(resource.reservation_num) || statusCode(resource.request_status) !== 'COMPLETE') add([`Store issue for ${text(resource.item_description)}`])

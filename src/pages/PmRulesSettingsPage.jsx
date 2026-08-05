@@ -19,6 +19,7 @@ import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../
 import { nowLocalDate } from '../lib/datetime'
 import { normalizeWorkOrderWorkflow, workflowStatusLabel, workflowStatusOptions } from '../lib/workOrderWorkflow'
 import useModuleAccess from '../hooks/useModuleAccess'
+import useRelatedWorkOrders from '../hooks/useRelatedWorkOrders'
 import { mergeImportedRows } from '../lib/importRows'
 
 // Same enum the PM schedule form uses, so a rule can never describe a frequency the
@@ -213,6 +214,7 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
   const visibleRows = applyStandardFilters(tabRows, filters, { status: ['status'], date: ['createdDate'] })
   const routeId = decodeURIComponent(routePath.split('/pm-rules/')[1] || '')
   const selectedRule = rows.find(row => row.name === routeId)
+  const relatedWorkOrders = useRelatedWorkOrders(selectedRule ? { schedule_rule_name: selectedRule.name } : null, { enabled: Boolean(selectedRule) })
 
   useEffect(() => {
     const syncRoute = () => setRoutePath(window.location.pathname)
@@ -255,7 +257,7 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
   }
 
   if (selectedRule) {
-    return <PmRuleDetail rule={selectedRule} rows={rows} setRows={setRows} pmSchedules={pmSchedules} workOrders={workOrders} workflow={activeWorkflow} onBack={() => { window.history.pushState({}, '', '/pm-rules'); setRoutePath('/pm-rules') }} />
+    return <PmRuleDetail rule={selectedRule} rows={rows} setRows={setRows} pmSchedules={pmSchedules} workOrders={relatedWorkOrders.rows} workflow={activeWorkflow} onBack={() => { window.history.pushState({}, '', '/pm-rules'); setRoutePath('/pm-rules') }} />
   }
 
   return (

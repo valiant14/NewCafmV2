@@ -36,10 +36,9 @@ export default function WorkOrderDocumentsTab({
   setPtwRequired,
   allowPtwOverride = true,
   ptwFiles,
-  setPtwFiles,
   generalFiles,
-  setGeneralFiles,
   addFiles,
+  removeFile,
   downloadFile
 }) {
   return (
@@ -67,7 +66,7 @@ export default function WorkOrderDocumentsTab({
           {!readOnly && <label className={uploadClass}>
             <Upload size={18} />
             <div><strong>Add PTW documents</strong><span>PDF, DOCX, JPG or PNG · multiple files accepted</span></div>
-            <input type="file" multiple onChange={addFiles(setPtwFiles)} />
+            <input type="file" multiple onChange={addFiles('PTW')} />
           </label>}
           {ptwFiles.length > 0 && (
             <div className={listClass}>
@@ -78,7 +77,7 @@ export default function WorkOrderDocumentsTab({
                   label="PTW document"
                   showBadge
                   onDownload={() => downloadFile(file)}
-                  onRemove={() => setPtwFiles(files => files.filter((_, i) => i !== index))}
+                  onRemove={() => removeFile(file)}
                   removeLabel="Remove PTW document"
                   canRemove={!readOnly}
                 />
@@ -107,7 +106,7 @@ export default function WorkOrderDocumentsTab({
         {!readOnly && <label className={uploadClass}>
           <Upload size={18} />
           <div><strong>Add attachments</strong><span>Choose multiple files if needed</span></div>
-          <input type="file" multiple onChange={addFiles(setGeneralFiles)} />
+          <input type="file" multiple onChange={addFiles('General')} />
         </label>}
         <div className={listClass}>
           {generalFiles.map((file, index) => (
@@ -116,7 +115,7 @@ export default function WorkOrderDocumentsTab({
               file={file}
               label={file.type}
               onDownload={() => downloadFile(file)}
-              onRemove={() => setGeneralFiles(files => files.filter((_, i) => i !== index))}
+              onRemove={() => removeFile(file)}
               removeLabel="Remove attachment"
               canRemove={!readOnly}
             />
