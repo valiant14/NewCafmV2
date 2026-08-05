@@ -13,6 +13,7 @@ import PageHeader from '../components/ui/PageHeader'
 import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import useModuleAccess from '../hooks/useModuleAccess'
 import { pick, upsertImportRows } from '../services/importRows'
 
 const emptySite = {
@@ -42,6 +43,7 @@ const exportColumns = [
 export const siteScopeValue = site => site.name ? `${site.name} / ${site.code}` : site.code
 
 export default function SitesSettingsPage({ rows = [], setRows }) {
+  const access = useModuleAccess('Sites')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [imported, setImported] = useState('')
@@ -119,8 +121,8 @@ export default function SitesSettingsPage({ rows = [], setRows }) {
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Sites_Template.xlsx" />
             <ExportExcelButton module="Sites" rows={visibleRows} columns={exportColumns} />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={importRows} />
-            <Button onClick={openNew}><Plus size={17} />Add site</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={importRows} />}
+            {access.create && <Button onClick={openNew}><Plus size={17} />Add site</Button>}
           </div>
         )}
       />

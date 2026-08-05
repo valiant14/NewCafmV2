@@ -11,6 +11,7 @@ import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const todayStamp = () => nowLocalDate()
 const purchaseOrderStatuses = ['WAPPR', 'APPR', 'INPRG', 'CLOSE', 'CAN']
@@ -20,6 +21,7 @@ export default function PurchaseOrdersPage({
   onUpdateOrder,
   onUpdateRequest
 }) {
+  const access = useModuleAccess('Purchase Orders')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [status, setStatus] = useState('All')
   const statusRows = status === 'All' ? rows : rows.filter(row => row.status === status)
@@ -43,14 +45,16 @@ export default function PurchaseOrdersPage({
 
   const rowAction = row => {
     if (row.status === 'WAPPR') {
+      if (!access.edit) return '-'
       return (
         <div className="flex flex-wrap gap-2">
-          <Button className="h-8 px-3 text-xs" onClick={() => updateOrderStatus(row, 'APPR')}><CheckCircle2 size={14} />Approve PO</Button>
-          <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelOrder(row)}><XCircle size={14} />Cancel</Button>
+          {access.edit && access.approve && <Button className="h-8 px-3 text-xs" onClick={() => updateOrderStatus(row, 'APPR')}><CheckCircle2 size={14} />Approve PO</Button>}
+          {access.edit && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelOrder(row)}><XCircle size={14} />Cancel</Button>}
         </div>
       )
     }
     if (row.status === 'APPR') {
+      if (!access.edit) return '-'
       return (
         <div className="flex flex-wrap gap-2">
           <Button className="h-8 px-3 text-xs" onClick={() => updateOrderStatus(row, 'INPRG')}><Play size={14} />Start processing</Button>
@@ -59,10 +63,11 @@ export default function PurchaseOrdersPage({
       )
     }
     if (row.status === 'INPRG') {
+      if (!access.edit) return '-'
       return (
         <div className="flex flex-wrap gap-2">
-          <Button className="h-8 px-3 text-xs" onClick={() => updateOrderStatus(row, 'CLOSE')}><PackageCheck size={14} />Receive & close</Button>
-          <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelOrder(row)}><XCircle size={14} />Cancel</Button>
+          {access.edit && access.close && <Button className="h-8 px-3 text-xs" onClick={() => updateOrderStatus(row, 'CLOSE')}><PackageCheck size={14} />Receive & close</Button>}
+          {access.edit && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelOrder(row)}><XCircle size={14} />Cancel</Button>}
         </div>
       )
     }

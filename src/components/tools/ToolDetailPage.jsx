@@ -13,6 +13,7 @@ import EmptyState from '../ui/EmptyState'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import MasterRecordModal from '../master-data/MasterRecordModal'
 import { statusTone as workOrderStatusTone } from '../../lib/statusMatrix'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 const statusTone = {
   Available: 'green',
@@ -45,6 +46,8 @@ function inspectionState(tool) {
 }
 
 export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests = [], purchaseOrders = [], onBack, onUpdate, onCreateRequest }) {
+  const access = useModuleAccess('Tools & Equipment')
+  const purchaseRequestAccess = useModuleAccess('Purchase Requisitions')
   const [tab, setTab] = useState('Tool Details')
   const [requestModalOpen, setRequestModalOpen] = useState(false)
   const [requestForm, setRequestForm] = useState({})
@@ -53,7 +56,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
   const inspection = inspectionState(tool)
   const tone = statusTone[tool.status] || 'green'
   const availableUnits = Number(tool.availableQuantity ?? (tool.status === 'Available' ? tool.quantity : 0)) || 0
-  const canRequestPr = ['Low Stock', 'No Stock'].includes(tool.availability)
+  const canRequestPr = purchaseRequestAccess.create && ['Low Stock', 'No Stock'].includes(tool.availability)
   const changeStatus = event => onUpdate?.(tool.toolNumber, { status: event.target.value })
   const saveLowLevel = () => onUpdate?.(tool.toolNumber, { lowLevel: Math.max(0, Number(lowLevelDraft) || 0) })
   const procurementRows = [
@@ -71,10 +74,10 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
     setRequestError('')
     setRequestModalOpen(true)
   }
-  const requestPr = () => {
+  const requestPr = async () => {
     const quantity = Number(requestForm.quantity || 0)
     if (!quantity || quantity <= 0) return setRequestError('Enter a requested quantity above zero.')
-    onCreateRequest?.({
+    const created = await onCreateRequest?.({
       type: tool.category?.toLowerCase().includes('equipment') ? 'Equipment' : 'Tool',
       item: tool.description,
       itemCode: tool.toolNumber,
@@ -85,6 +88,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
       site: requestForm.site || tool.site || '',
       department: requestForm.department || tool.department || tool.category || ''
     })
+    if (!created) return setRequestError('Unable to create the purchase requisition.')
     setRequestModalOpen(false)
     setTab('Procurement History')
   }
@@ -109,7 +113,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
           actions={(
             <div className="flex flex-wrap items-center gap-2">
               {canRequestPr && <Button onClick={openRequestModal}><ShoppingCart size={15} />Request PR</Button>}
-              <div className="min-w-[160px]">
+              {access.edit && <div className="min-w-[160px]">
               <Combobox
                 picker
                 className="h-10 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
@@ -118,7 +122,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
                 onChange={changeStatus}
                 placeholder="Status"
               />
-            </div>
+            </div>}
             </div>
           )}
         />
@@ -178,6 +182,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
                   <input
                     type="number"
                     min="0"
+                    disabled={!access.edit}
                     value={lowLevelDraft}
                     onChange={event => setLowLevelDraft(event.target.value)}
                     onBlur={saveLowLevel}

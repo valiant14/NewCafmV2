@@ -155,9 +155,19 @@ for (const endpoint of scopedEndpoints) {
   endpointsChecked.push(endpoint)
 }
 
+for (const endpoint of ['/tools-equipment']) {
+  const response = await request(endpoint, scopedUser.user_id)
+  if (response.status === 403) continue
+  if (response.status !== 200) throw new Error(`${endpoint} site scope check failed with HTTP ${response.status}.`)
+  if (response.body.some(row => !allowedSites.has(String(row.site_code || '').toLowerCase()))) {
+    throw new Error(`${endpoint} returned a record outside the assigned site scope.`)
+  }
+  endpointsChecked.push(endpoint)
+}
+
 const denyByDefaultChecked = []
 if (unconfiguredUser) {
-  for (const endpoint of ['/work-orders', '/service-requests', '/purchase-requisitions', '/purchase-orders', '/reservations', '/storerooms', '/inventory-stock']) {
+  for (const endpoint of ['/work-orders', '/service-requests', '/purchase-requisitions', '/purchase-orders', '/reservations', '/storerooms', '/inventory-stock', '/tools-equipment']) {
     const response = await request(endpoint, unconfiguredUser.user_id)
     if (response.status === 403) continue
     if (response.status !== 200 || !Array.isArray(response.body) || response.body.length) {

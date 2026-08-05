@@ -11,7 +11,7 @@ const actionsClass = 'ml-auto flex shrink-0 items-center gap-2'
 const downloadButtonClass = 'inline-flex h-8 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-bold text-[var(--app-muted)] transition hover:bg-[var(--app-soft-bg-hover)] hover:text-[var(--app-ink)]'
 const removeButtonClass = 'inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--app-muted)] transition hover:bg-[var(--app-badge-orange-bg)] hover:text-[var(--app-badge-orange-text)]'
 
-function FileRow({ file, label, showBadge, onDownload, onRemove, removeLabel }) {
+function FileRow({ file, label, showBadge, onDownload, onRemove, removeLabel, canRemove = true }) {
   return (
     <div>
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]">
@@ -24,13 +24,14 @@ function FileRow({ file, label, showBadge, onDownload, onRemove, removeLabel }) 
       {showBadge && <Badge tone="green">Attached</Badge>}
       <div className={actionsClass}>
         <button type="button" className={downloadButtonClass} onClick={onDownload}>Download</button>
-        <button type="button" className={removeButtonClass} aria-label={removeLabel} onClick={onRemove}><X size={14} /></button>
+        {canRemove && <button type="button" className={removeButtonClass} aria-label={removeLabel} onClick={onRemove}><X size={14} /></button>}
       </div>
     </div>
   )
 }
 
 export default function WorkOrderDocumentsTab({
+  readOnly = false,
   ptwRequired,
   setPtwRequired,
   allowPtwOverride = true,
@@ -52,8 +53,8 @@ export default function WorkOrderDocumentsTab({
           </div>
         </div>
         <div className="flex rounded-xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-1">
-          <button type="button" className={toggleButtonClass(!ptwRequired)} disabled={!allowPtwOverride} title={allowPtwOverride ? 'Permit not required' : 'Disabled by Work Order Workflow settings'} onClick={() => setPtwRequired(false)}>No</button>
-          <button type="button" className={toggleButtonClass(ptwRequired)} onClick={() => setPtwRequired(true)}>Yes</button>
+          <button type="button" className={toggleButtonClass(!ptwRequired)} disabled={readOnly || !allowPtwOverride} title={allowPtwOverride ? 'Permit not required' : 'Disabled by Work Order Workflow settings'} onClick={() => setPtwRequired(false)}>No</button>
+          <button type="button" className={toggleButtonClass(ptwRequired)} disabled={readOnly} onClick={() => setPtwRequired(true)}>Yes</button>
         </div>
       </section>
 
@@ -63,11 +64,11 @@ export default function WorkOrderDocumentsTab({
             <div><span>PTW</span><h3>Permit documents</h3><p>Upload one or more approved permits before execution.</p></div>
             <Badge tone={ptwFiles.length ? 'green' : 'orange'}>{ptwFiles.length ? 'Permit attached' : 'Permit missing'}</Badge>
           </header>
-          <label className={uploadClass}>
+          {!readOnly && <label className={uploadClass}>
             <Upload size={18} />
             <div><strong>Add PTW documents</strong><span>PDF, DOCX, JPG or PNG · multiple files accepted</span></div>
             <input type="file" multiple onChange={addFiles(setPtwFiles)} />
-          </label>
+          </label>}
           {ptwFiles.length > 0 && (
             <div className={listClass}>
               {ptwFiles.map((file, index) => (
@@ -79,6 +80,7 @@ export default function WorkOrderDocumentsTab({
                   onDownload={() => downloadFile(file)}
                   onRemove={() => setPtwFiles(files => files.filter((_, i) => i !== index))}
                   removeLabel="Remove PTW document"
+                  canRemove={!readOnly}
                 />
               ))}
             </div>
@@ -102,11 +104,11 @@ export default function WorkOrderDocumentsTab({
           <div><span>FILES</span><h3>General attachments</h3><p>Photos, reports, drawings, and supporting documents.</p></div>
           <Badge>{generalFiles.length} files</Badge>
         </header>
-        <label className={uploadClass}>
+        {!readOnly && <label className={uploadClass}>
           <Upload size={18} />
           <div><strong>Add attachments</strong><span>Choose multiple files if needed</span></div>
           <input type="file" multiple onChange={addFiles(setGeneralFiles)} />
-        </label>
+        </label>}
         <div className={listClass}>
           {generalFiles.map((file, index) => (
             <FileRow
@@ -116,6 +118,7 @@ export default function WorkOrderDocumentsTab({
               onDownload={() => downloadFile(file)}
               onRemove={() => setGeneralFiles(files => files.filter((_, i) => i !== index))}
               removeLabel="Remove attachment"
+              canRemove={!readOnly}
             />
           ))}
         </div>

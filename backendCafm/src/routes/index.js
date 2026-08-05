@@ -39,6 +39,30 @@ const workOrderOwnerSource = ownedSource({
   payloadKey: 'work_order_num',
   scope: workOrderScope
 })
+const normalizedStatus = value => String(value || '').trim().toUpperCase()
+const statusTransitionPermission = ({ approve = [], close = [] } = {}) => ({ payload, current }) => {
+  if (!Object.hasOwn(payload, 'status')) return null
+  const previous = normalizedStatus(current?.status)
+  const next = normalizedStatus(payload.status)
+  if (!next || next === previous) return null
+  if (close.includes(next)) return 'close'
+  if (approve.includes(next)) return 'approve'
+  return null
+}
+const workOrderUpdatePermission = context => {
+  const action = statusTransitionPermission({ approve: ['HOLD', 'HOLD-MATERIAL'], close: ['CLOSE', 'CAN'] })(context)
+  if (action) return action
+  const previous = normalizedStatus(context.current?.status)
+  const next = normalizedStatus(context.payload?.status)
+  return ['HOLD', 'HOLD-MATERIAL'].includes(previous) && next && next !== previous ? 'approve' : null
+}
+const purchaseRequestUpdatePermission = statusTransitionPermission({ approve: ['APPR'], close: ['CLOSE'] })
+const purchaseOrderUpdatePermission = statusTransitionPermission({ approve: ['APPR'], close: ['CLOSE'] })
+const serviceRequestUpdatePermission = ({ payload, current }) => {
+  const converted = payload.converted_work_order_num && payload.converted_work_order_num !== current?.converted_work_order_num
+  const resolved = normalizedStatus(payload.status) === 'RESOLVED' && normalizedStatus(current?.status) !== 'RESOLVED'
+  return converted || resolved ? 'approve' : null
+}
 
 const testTcpConnection = ({ host, port, secure }) => new Promise((resolve, reject) => {
   const socket = secure ? tls.connect({ host, port, servername: host }) : net.connect({ host, port })
@@ -186,7 +210,8 @@ router.use('/tools-equipment', crudRouter({
   moduleName: 'Tools & Equipment',
   table: 'dbo.tools_equipment',
   key: 'tool_code',
-  columns: ['tool_code', 'description', 'category', 'location_code', 'quantity', 'low_level', 'status', 'inspection_due', 'created_at', 'updated_at']
+  columns: ['tool_code', 'description', 'category', 'location_code', 'site_code', 'quantity', 'low_level', 'status', 'inspection_due', 'created_at', 'updated_at'],
+  scope: { siteColumn: 'site_code', departmentColumn: null }
 }))
 
 router.use('/failure-library', crudRouter({
@@ -214,13 +239,14 @@ router.use('/work-orders', crudRouter({
   relatedModules: ['Overview', 'Job Requests', 'Preventive Maintenance', 'Meters'],
   table: 'dbo.work_orders',
   key: 'work_order_num',
-  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'ptw_files_json', 'general_files_json', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'held_from_status', 'hold_periods_json', 'created_by_user_id', 'created_at', 'updated_at'],
+  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'work_group', 'system_name', 'supervisor', 'labor_craft_code', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'ptw_files_json', 'general_files_json', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'held_from_status', 'hold_periods_json', 'created_by_user_id', 'created_at', 'updated_at'],
   defaultOrder: 'reported_at desc, work_order_num desc',
   scope: workOrderScope,
   ownerColumn,
   ownerSources: [ownedSource({ table: 'dbo.service_requests', key: 'sr_num', payloadKey: 'source_sr_num', scope: workOrderScope })],
   beforeCreate: prepareWorkOrderCreate,
-  beforeUpdate: validateWorkOrderUpdate
+  beforeUpdate: validateWorkOrderUpdate,
+  additionalUpdatePermission: workOrderUpdatePermission
 }))
 
 router.use('/work-order-resource-requests', crudRouter({
@@ -262,7 +288,8 @@ router.use('/service-requests', crudRouter({
   columns: ['sr_num', 'description', 'long_description', 'site_code', 'location_code', 'asset_num', 'department_name', 'sub_department_code', 'assigned_department_name', 'reported_by', 'reported_at', 'priority', 'request_type', 'failure_code', 'status', 'converted_work_order_num', 'created_by_user_id', 'created_at', 'updated_at'],
   defaultOrder: 'reported_at desc, sr_num desc',
   scope: workOrderScope,
-  ownerColumn
+  ownerColumn,
+  additionalUpdatePermission: serviceRequestUpdatePermission
 }))
 
 router.use('/purchase-requisitions', crudRouter({
@@ -274,7 +301,8 @@ router.use('/purchase-requisitions', crudRouter({
   defaultOrder: 'created_at desc, pr_num desc',
   scope: departmentScope,
   ownerColumn,
-  ownerSources: [workOrderOwnerSource, ownedSource({ table: 'dbo.work_order_resource_requests', key: 'resource_request_id', payloadKey: 'resource_request_id' })]
+  ownerSources: [workOrderOwnerSource, ownedSource({ table: 'dbo.work_order_resource_requests', key: 'resource_request_id', payloadKey: 'resource_request_id' })],
+  additionalUpdatePermission: purchaseRequestUpdatePermission
 }))
 
 router.use('/purchase-orders', crudRouter({
@@ -286,7 +314,8 @@ router.use('/purchase-orders', crudRouter({
   defaultOrder: 'created_at desc, po_num desc',
   scope: departmentScope,
   ownerColumn,
-  ownerSources: [workOrderOwnerSource, ownedSource({ table: 'dbo.purchase_requisitions', key: 'pr_num', payloadKey: 'pr_num' })]
+  ownerSources: [workOrderOwnerSource, ownedSource({ table: 'dbo.purchase_requisitions', key: 'pr_num', payloadKey: 'pr_num' })],
+  additionalUpdatePermission: purchaseOrderUpdatePermission
 }))
 
 router.use('/reservations', crudRouter({
@@ -294,7 +323,7 @@ router.use('/reservations', crudRouter({
   relatedModules: ['Work Orders', 'Stores', 'Materials', 'Tools & Equipment'],
   table: 'dbo.inventory_reservations',
   key: 'reservation_num',
-  columns: ['reservation_num', 'work_order_num', 'resource_request_id', 'pr_num', 'po_num', 'item_code', 'item_description', 'reserved_quantity', 'arranged_quantity', 'released_quantity', 'delivered_quantity', 'store_code', 'site_code', 'department_name', 'status', 'created_by_user_id', 'created_at', 'updated_at'],
+  columns: ['reservation_num', 'work_order_num', 'resource_request_id', 'pr_num', 'po_num', 'request_type', 'item_code', 'item_description', 'reserved_quantity', 'arranged_quantity', 'released_quantity', 'delivered_quantity', 'store_code', 'site_code', 'department_name', 'status', 'created_by_user_id', 'created_at', 'updated_at'],
   defaultOrder: 'created_at desc, reservation_num desc',
   scope: departmentScope,
   ownerColumn,
@@ -372,6 +401,15 @@ router.use('/smtp-sms-connectors', crudRouter({
   table: 'dbo.smtp_sms_connectors',
   key: 'connector_name',
   columns: ['connector_name', 'connector_type', 'host_endpoint', 'port', 'encryption', 'username_value', 'secret_value', 'sender_value', 'notes', 'status', 'created_at', 'updated_at']
+}))
+
+router.use('/notification-rules', crudRouter({
+  moduleName: 'Settings',
+  relatedModules: ['SMTP & SMS', 'Work Orders'],
+  table: 'dbo.notification_rules',
+  key: 'rule_id',
+  columns: ['rule_id', 'event_name', 'channel_name', 'recipients', 'notes', 'status', 'created_at', 'updated_at'],
+  defaultOrder: 'created_at desc, rule_id'
 }))
 
 router.use('/job-plans', crudRouter({

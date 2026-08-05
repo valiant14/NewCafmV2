@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ExternalLink, Plus, Repeat, Save } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
@@ -17,15 +17,17 @@ import { Field, Section } from '../components/ui/FormControls'
 import { SurfaceHeader } from '../components/ui/Surface'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
+import { normalizeWorkOrderWorkflow, workflowStatusLabel, workflowStatusOptions } from '../lib/workOrderWorkflow'
+import useModuleAccess from '../hooks/useModuleAccess'
+import { mergeImportedRows } from '../lib/importRows'
 
 // Same enum the PM schedule form uses, so a rule can never describe a frequency the
 // schedules themselves cannot hold.
 const frequencyUnits = ['MINUTES', 'HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'YEARS']
-const woStatuses = ['WSCH', 'APPR', 'WAPPR']
 const usesTriggerHour = unit => !['MINUTES', 'HOURS'].includes(unit)
 const cleanTriggerHour = (unit, value) => usesTriggerHour(unit) ? Math.max(0, Math.min(23, Number(value) || 0)) : 0
 
-const emptyRule = {
+const emptyRule = initialStatus => ({
   name: '',
   frequency: 1,
   freqUnit: 'MONTHS',
@@ -33,11 +35,11 @@ const emptyRule = {
   horizonDays: 30,
   triggerHour: 0,
   woPrefix: 'PMWO-',
-  defaultWoStatus: woStatuses[0],
+  defaultWoStatus: initialStatus,
   notes: '',
   status: 'Active',
   createdDate: ''
-}
+})
 
 const fields = [
   { key: 'name', label: 'Rule Name', required: true, placeholder: 'Monthly HVAC schedules' },
@@ -47,7 +49,7 @@ const fields = [
   { key: 'horizonDays', label: 'Generation Horizon (Days)', type: 'number', placeholder: '30' },
   { key: 'triggerHour', label: 'Trigger Hour (0-23)', type: 'number', placeholder: '6' },
   { key: 'woPrefix', label: 'Work Order Prefix', placeholder: 'PMWO-' },
-  { key: 'defaultWoStatus', label: 'Default WO Status', options: woStatuses },
+  { key: 'defaultWoStatus', label: 'Default WO Status' },
   { key: 'notes', label: 'Notes', placeholder: 'Which schedules this rule covers' },
   { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
 ]
@@ -68,8 +70,14 @@ const exportColumns = [
 
 const templateHeaders = exportColumns.map(column => column.header)
 
-const mapImportRows = rows => rows.map(row => ({
-  ...emptyRule,
+const mapImportRows = (rows, workflow) => {
+  const statusOptions = workflowStatusOptions(workflow)
+  const validStatus = value => {
+    const code = String(value || '').trim().toUpperCase()
+    return statusOptions.some(option => option.value === code) ? code : workflow.initialStatus
+  }
+  return rows.map(row => ({
+  ...emptyRule(workflow.initialStatus),
   name: row['Rule Name'] || row.RULE_NAME || '',
   frequency: Math.max(1, Number(row.Every || row.FREQUENCY) || 1),
   freqUnit: row['Frequency Unit'] || row.FREQUENCY_UNIT || 'MONTHS',
@@ -77,16 +85,18 @@ const mapImportRows = rows => rows.map(row => ({
   horizonDays: Math.max(0, Number(row['Generation Horizon (Days)'] || row.HORIZON_DAYS) || 0),
   triggerHour: cleanTriggerHour(row['Frequency Unit'] || row.FREQUENCY_UNIT || 'MONTHS', row['Trigger Hour'] || row.TRIGGER_HOUR),
   woPrefix: row['Work Order Prefix'] || row.WO_PREFIX || 'PMWO-',
-  defaultWoStatus: row['Default WO Status'] || row.DEFAULT_WO_STATUS || 'WSCH',
+  defaultWoStatus: validStatus(row['Default WO Status'] || row.DEFAULT_WO_STATUS),
   notes: row.Notes || row.NOTES || '',
   status: row.Status || row.STATUS || 'Active',
   createdDate: row.Created || row.CREATED || nowLocalDate()
-})).filter(row => row.name)
+  })).filter(row => row.name)
+}
 
 const normalize = value => String(value || '').trim()
 
-function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], onBack }) {
-  const [form, setForm] = useState({ ...emptyRule, ...rule })
+function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], workflow, onBack }) {
+  const statusOptions = workflowStatusOptions(workflow)
+  const [form, setForm] = useState({ ...emptyRule(workflow.initialStatus), ...rule })
   const [error, setError] = useState('')
   const relatedPm = pmSchedules.filter(pm => normalize(pm.scheduleRule).toLowerCase() === normalize(rule.name).toLowerCase())
   const relatedPmNumbers = new Set(relatedPm.map(pm => pm.pmNumber))
@@ -106,6 +116,7 @@ function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], 
       leadTimeDays: Math.max(0, Number(form.leadTimeDays) || 0),
       horizonDays: Math.max(0, Number(form.horizonDays) || 0),
       triggerHour: cleanTriggerHour(form.freqUnit, form.triggerHour),
+      defaultWoStatus: statusOptions.some(option => option.value === form.defaultWoStatus) ? form.defaultWoStatus : workflow.initialStatus,
       status: form.status || 'Active'
     }
     setRows(current => current.map(row => row.name === rule.name ? record : row))
@@ -132,7 +143,7 @@ function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], 
           <Field label="Generation Horizon (Days)" type="number" value={form.horizonDays} onChange={event => set('horizonDays', event.target.value)} />
           <Field label="Trigger Hour (0-23)" type="number" value={form.triggerHour} disabled={!usesTriggerHour(form.freqUnit)} onChange={event => set('triggerHour', cleanTriggerHour(form.freqUnit, event.target.value))} />
           <Field label="Work Order Prefix" value={form.woPrefix} onChange={event => set('woPrefix', event.target.value)} />
-          <Field label="Default WO Status" value={form.defaultWoStatus} options={woStatuses} onChange={event => set('defaultWoStatus', event.target.value)} />
+          <Field label="Default WO Status" value={form.defaultWoStatus} options={statusOptions} onChange={event => set('defaultWoStatus', event.target.value)} />
           <Field label="Status" value={form.status} options={['Active', 'Inactive']} onChange={event => set('status', event.target.value)} />
           <div className="xl:col-span-3"><Field label="Notes" type="textarea" value={form.notes} onChange={event => set('notes', event.target.value)} /></div>
         </div>
@@ -187,22 +198,31 @@ function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], 
   )
 }
 
-export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = [], workOrders = [] }) {
+export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = [], workOrders = [], workflow }) {
+  const access = useModuleAccess('PM Schedule Rules')
+  const activeWorkflow = normalizeWorkOrderWorkflow(workflow)
+  const statusOptions = workflowStatusOptions(activeWorkflow)
   const [tab, setTab] = useState('All')
   const [routePath, setRoutePath] = useState(window.location.pathname)
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState(emptyRule)
+  const [form, setForm] = useState(() => emptyRule(activeWorkflow.initialStatus))
   const [error, setError] = useState('')
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, { status: ['status'], date: ['createdDate'] })
   const routeId = decodeURIComponent(routePath.split('/pm-rules/')[1] || '')
   const selectedRule = rows.find(row => row.name === routeId)
 
+  useEffect(() => {
+    const syncRoute = () => setRoutePath(window.location.pathname)
+    window.addEventListener('popstate', syncRoute)
+    return () => window.removeEventListener('popstate', syncRoute)
+  }, [])
+
   const openNew = () => {
     setEditing(null)
-    setForm(emptyRule)
+    setForm(emptyRule(activeWorkflow.initialStatus))
     setError('')
     setModalOpen(true)
   }
@@ -224,6 +244,7 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
       leadTimeDays: Math.max(0, Number(form.leadTimeDays) || 0),
       horizonDays: Math.max(0, Number(form.horizonDays) || 0),
       triggerHour: cleanTriggerHour(form.freqUnit, form.triggerHour),
+      defaultWoStatus: statusOptions.some(option => option.value === form.defaultWoStatus) ? form.defaultWoStatus : activeWorkflow.initialStatus,
       createdDate: form.createdDate || nowLocalDate()
     }
     setRows(current => editing
@@ -234,7 +255,7 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
   }
 
   if (selectedRule) {
-    return <PmRuleDetail rule={selectedRule} rows={rows} setRows={setRows} pmSchedules={pmSchedules} workOrders={workOrders} onBack={() => { window.history.pushState({}, '', '/pm-rules'); setRoutePath('/pm-rules') }} />
+    return <PmRuleDetail rule={selectedRule} rows={rows} setRows={setRows} pmSchedules={pmSchedules} workOrders={workOrders} workflow={activeWorkflow} onBack={() => { window.history.pushState({}, '', '/pm-rules'); setRoutePath('/pm-rules') }} />
   }
 
   return (
@@ -247,8 +268,8 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="PM_Schedule_Rules_Template.xlsx" />
             <ExportExcelButton module="PM Schedule Rules" rows={visibleRows} columns={exportColumns} />
-            <ExcelImportButton onImport={importedRows => { const imported = mapImportRows(importedRows); if (imported.length) setRows(current => [...imported, ...current.filter(row => !imported.some(item => item.name === row.name))]) }} />
-            <Button onClick={openNew}><Plus size={17} />Add rule</Button>
+            {access.import && <ExcelImportButton onImport={importedRows => { const imported = mapImportRows(importedRows, activeWorkflow); if (imported.length) setRows(current => mergeImportedRows(current, imported, 'name')) }} />}
+            {access.create && <Button onClick={openNew}><Plus size={17} />Add rule</Button>}
           </div>
         )}
       />
@@ -286,7 +307,7 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
               { key: 'horizonDays', label: 'Horizon (Days)' },
               { key: 'triggerHour', label: 'Trigger Hour', render: (value, row) => usesTriggerHour(row.freqUnit) ? `${String(value ?? 0).padStart(2, '0')}:00` : 'Auto' },
               { key: 'woPrefix', label: 'WO Prefix', render: value => <span className="mono">{value}</span> },
-              { key: 'defaultWoStatus', label: 'Default WO Status' },
+              { key: 'defaultWoStatus', label: 'Default WO Status', render: value => workflowStatusLabel(activeWorkflow, value) || value },
               { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> },
               { key: 'createdDate', label: 'Created', render: value => value || '-' }
             ]}
@@ -300,7 +321,7 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
         <MasterRecordModal
           title={editing ? 'Edit PM rule' : 'Add PM rule'}
           note="Rules control when PM schedules are eligible to generate work orders."
-          fields={fields}
+          fields={fields.map(field => field.key === 'defaultWoStatus' ? { ...field, options: statusOptions } : field)}
           form={form}
           setForm={setForm}
           error={error}

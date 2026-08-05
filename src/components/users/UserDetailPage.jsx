@@ -10,6 +10,7 @@ import Field from '../ui/Field'
 import Surface, { SurfaceHeader } from '../ui/Surface'
 import TablePanel from '../ui/TablePanel'
 import { dataScopeLabel, userDataScopeOptions } from '../../lib/dataScope'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 const userStatuses = ['Active', 'Inactive', 'Locked']
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
@@ -35,7 +36,7 @@ function AccessTile({ icon: Icon, label, note, children }) {
 
 // Each keystroke would otherwise be its own save, so text edits are held locally and
 // committed when the field is left or Enter is pressed.
-function EditableField({ label, value = '', type, placeholder, clearOnCommit, onCommit }) {
+function EditableField({ label, value = '', type, placeholder, clearOnCommit, onCommit, disabled = false }) {
   const [draft, setDraft] = useState(value)
   useEffect(() => { setDraft(value) }, [value])
   const commit = () => {
@@ -50,6 +51,7 @@ function EditableField({ label, value = '', type, placeholder, clearOnCommit, on
       value={draft}
       type={type}
       placeholder={placeholder}
+      disabled={disabled}
       onChange={event => setDraft(event.target.value)}
       onBlur={commit}
       onKeyDown={event => {
@@ -61,6 +63,7 @@ function EditableField({ label, value = '', type, placeholder, clearOnCommit, on
 }
 
 export default function UserDetailPage({ user, role, labor, roleOptions = [], siteOptions = [], departmentOptions = [], onBack, onUpdate }) {
+  const access = useModuleAccess('Users')
   const [tab, setTab] = useState('User Details')
   const changeStatus = event => onUpdate?.(user.userId, { status: event.target.value })
   const updateField = key => event => onUpdate?.(user.userId, { [key]: event.target.value })
@@ -97,7 +100,7 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
             { label: 'Department', value: user.department },
             { label: 'Data View', value: dataScopeLabel(user.dataScope) }
           ]}
-          actions={(
+          actions={access.edit ? (
             <div className="min-w-[150px]">
               <Combobox
                 picker
@@ -108,7 +111,7 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
                 placeholder="Status"
               />
             </div>
-          )}
+          ) : null}
         />
 
         <DetailTabs tabs={['User Details', 'Role Permissions', 'Labor Link']} active={tab} onChange={setTab} />
@@ -117,15 +120,15 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
           <main className="space-y-4">
             <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <AccessTile icon={ShieldCheck} label="Role" note={role?.status || 'No role'}>
-                <Combobox className={tileControl} value={user.role || ''} suggestions={roleChoices} onChange={changeRole} placeholder="Select a role" />
+                <Combobox className={tileControl} value={user.role || ''} suggestions={roleChoices} onChange={changeRole} placeholder="Select a role" disabled={!access.edit} />
               </AccessTile>
 
               <AccessTile icon={Building2} label="Site Scope" note={everySite(user.site) ? 'Every site' : 'Listed sites only'}>
-                <Combobox className={tileControl} value={user.site || ''} suggestions={siteOptions} onChange={updateField('site')} placeholder="All Sites" />
+                <Combobox className={tileControl} value={user.site || ''} suggestions={siteOptions} onChange={updateField('site')} placeholder="All Sites" disabled={!access.edit} />
               </AccessTile>
 
               <AccessTile icon={Building2} label="Department Scope" note={everyDepartment(user.department) ? 'Every department' : 'Listed departments only'}>
-                <Combobox className={tileControl} value={user.department || ''} suggestions={departmentOptions} onChange={updateField('department')} placeholder="All Departments" />
+                <Combobox className={tileControl} value={user.department || ''} suggestions={departmentOptions} onChange={updateField('department')} placeholder="All Departments" disabled={!access.edit} />
               </AccessTile>
 
               <AccessTile icon={BriefcaseBusiness} label="Labor" note={labor?.craft || 'No labor link'}>
@@ -137,12 +140,12 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
               <SurfaceHeader eyebrow="Account" title="User Information" actions={<UserRound className="text-[var(--app-muted)]" size={18} />} />
               <div className="grid gap-3 md:grid-cols-3">
                 <Field label="User ID" value={user.userId} locked />
-                <EditableField label="Username" value={user.username || ''} onCommit={commitField('username')} />
-                <Field label="Status" value={user.status} options={userStatuses} onChange={changeStatus} />
-                <Field label="Data View" value={user.dataScopeOverride || 'ROLE'} options={userDataScopeOptions} onChange={updateField('dataScopeOverride')} />
-                <EditableField label="Name" value={user.name || ''} onCommit={commitField('name')} />
-                <EditableField label="Email" value={user.email || ''} onCommit={commitField('email')} placeholder="name@company.com" />
-                <EditableField label="New Password" value="" type="password" placeholder="Leave blank to keep current" clearOnCommit onCommit={commitField('password')} />
+                <EditableField label="Username" value={user.username || ''} onCommit={commitField('username')} disabled={!access.edit} />
+                <Field label="Status" value={user.status} options={userStatuses} onChange={changeStatus} disabled={!access.edit} />
+                <Field label="Data View" value={user.dataScopeOverride || 'ROLE'} options={userDataScopeOptions} onChange={updateField('dataScopeOverride')} disabled={!access.edit} />
+                <EditableField label="Name" value={user.name || ''} onCommit={commitField('name')} disabled={!access.edit} />
+                <EditableField label="Email" value={user.email || ''} onCommit={commitField('email')} placeholder="name@company.com" disabled={!access.edit} />
+                <EditableField label="New Password" value="" type="password" placeholder="Leave blank to keep current" clearOnCommit onCommit={commitField('password')} disabled={!access.edit} />
                 <Field label="Last Login" value={user.lastLogin || '-'} locked />
               </div>
             </Surface>

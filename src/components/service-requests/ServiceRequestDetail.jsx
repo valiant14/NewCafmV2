@@ -158,7 +158,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
                 {form.convertedWorkOrder ? (
                   <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder, form)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>
                 ) : (
-                  access.approve ? <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} /> Approve & convert to CM</Button> : null
+                  access.approve && access.edit ? <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} /> Approve & convert to CM</Button> : null
                 )}
               </div>
             )}

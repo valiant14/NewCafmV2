@@ -9,13 +9,16 @@ import Field from '../ui/Field'
 import Surface, { SurfaceHeader } from '../ui/Surface'
 import TablePanel from '../ui/TablePanel'
 import { dataScopeLabel, roleDataScopeOptions } from '../../lib/dataScope'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 const checkClass = active => `mx-auto grid h-6 w-6 place-items-center rounded-lg border text-[10px] font-extrabold ${active ? 'border-[var(--app-primary)] bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'border-[var(--app-line)] text-[var(--app-muted)]'}`
 const isAllActionsSelected = (role, module) => permissionActions.every(action => role.permissions?.[action]?.includes(module))
 
 export default function RolePermissionDetailPage({ role, siteOptions = [], departmentOptions = [], onBack, onUpdate }) {
+  const access = useModuleAccess('Roles & Permissions')
   const [tab, setTab] = useState('Scope Rules')
-  const disabled = role.status === 'Inactive'
+  const roleInactive = role.status === 'Inactive'
+  const disabled = roleInactive || !access.edit
   const updateField = key => event => onUpdate?.(role.role, { [key]: event.target.value })
   const updateStatus = status => onUpdate?.(role.role, { status })
   const updatePermissions = permissions => {
@@ -64,12 +67,12 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
           statusTone={role.status === 'Active' ? 'green' : 'orange'}
           onBack={onBack}
           backLabel="Back to roles"
-          actions={(
-            <Button variant={disabled ? 'primary' : 'outline'} onClick={() => updateStatus(disabled ? 'Active' : 'Inactive')}>
-              {disabled ? <Power size={15} /> : <PowerOff size={15} />}
-              {disabled ? 'Activate role' : 'Disable role'}
+          actions={access.edit ? (
+            <Button variant={roleInactive ? 'primary' : 'outline'} onClick={() => updateStatus(roleInactive ? 'Active' : 'Inactive')}>
+              {roleInactive ? <Power size={15} /> : <PowerOff size={15} />}
+              {roleInactive ? 'Activate role' : 'Disable role'}
             </Button>
-          )}
+          ) : null}
           stats={[
             { label: 'User / Group', value: role.user },
             { label: 'Data Visibility', value: dataScopeLabel(role.dataScope) },
@@ -107,7 +110,7 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
             <Surface>
               <SurfaceHeader eyebrow="Scope defaults" title="Transaction Visibility" description="The role controls how far users can see. Site and department assignments stay on each user account." />
               <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Status" value={role.status || 'Draft'} options={['Draft', 'Active', 'Inactive']} onChange={event => updateStatus(event.target.value)} />
+                <Field label="Status" value={role.status || 'Draft'} options={['Draft', 'Active', 'Inactive']} onChange={event => updateStatus(event.target.value)} disabled={!access.edit} />
                 <Field label="Data Visibility" value={role.dataScope || 'DEPARTMENT'} options={roleDataScopeOptions} onChange={updateField('dataScope')} disabled={disabled} />
                 <Field label="Allowed Access" value={role.scope || ''} onChange={updateField('scope')} disabled={disabled} placeholder="Describe the purpose of this role" />
               </div>

@@ -8,10 +8,12 @@ import { DetailHeader, DetailTabs, InfoCard, MetricCard } from '../ui/DetailScaf
 import TablePanel from '../ui/TablePanel'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 const locationStatuses = ['OPERATING', 'PLANNED', 'DECOMMISSIONED']
 
 export default function LocationDetailPage({ location, assets = [], workOrders = [], onBack, onUpdate }) {
+  const access = useModuleAccess('Locations')
   const [tab, setTab] = useState('Location Details')
   const changeStatus = event => onUpdate?.(location.location, { status: event.target.value })
 
@@ -32,7 +34,7 @@ export default function LocationDetailPage({ location, assets = [], workOrders =
             { label: 'Priority', value: location.priority },
             { label: 'Building', value: location.builiding }
           ]}
-          actions={(
+          actions={access.edit ? (
             <div className="min-w-[180px]">
               <Combobox
                 picker
@@ -43,7 +45,7 @@ export default function LocationDetailPage({ location, assets = [], workOrders =
                 placeholder="Status"
               />
             </div>
-          )}
+          ) : null}
         />
 
         <DetailTabs tabs={['Location Details', 'Assets', 'Work Orders']} active={tab} onChange={setTab} />

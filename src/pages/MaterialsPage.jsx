@@ -15,6 +15,8 @@ import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { availabilityFor, materialStatusTone, stockForItem, storeLabel, storesHolding, totalAvailable, totalBalance, totalReserved } from '../lib/inventory'
+import { mergeImportedRows } from '../lib/importRows'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const empty = {
   itemNumber: '',
@@ -82,6 +84,7 @@ const materialUsage = (material, workOrders) => workOrders.flatMap(order => {
 })
 
 export default function MaterialsPage({ rows = [], setRows, stockRows = [], storeRows = [], workOrders = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest, onUpdateStock }) {
+  const access = useModuleAccess('Materials')
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -96,8 +99,7 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
       setSelected(null)
       return
     }
-    const latest = rows.find(row => sameMaterial(row, routeId))
-    if (latest) setSelected(latest)
+    setSelected(rows.find(row => sameMaterial(row, routeId)) || null)
   }, [rows, routeId])
   const tabRows = tab === 'All' ? stockedRows : stockedRows.filter(row => row.availability === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
@@ -150,8 +152,8 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Materials_Template.xlsx" />
             <ExportExcelButton module="Materials" rows={visibleRows} columns={exportColumns} />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(rows)} />
-            <Button onClick={() => setAdding(true)}><Plus size={17} />Add material</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(current => mergeImportedRows(current, rows, 'itemNumber'))} />}
+            {access.create && <Button onClick={() => setAdding(true)}><Plus size={17} />Add material</Button>}
           </div>
         )}
       />

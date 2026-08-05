@@ -13,6 +13,7 @@ import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const todayStamp = () => nowLocalDate()
 const purchaseRequisitionStatuses = ['WAPPR', 'APPR', 'CLOSE', 'CAN']
@@ -55,6 +56,8 @@ export default function PurchaseRequestsPage({
   onUpdateRequest,
   onCreateRequest
 }) {
+  const access = useModuleAccess('Purchase Requisitions')
+  const purchaseOrderAccess = useModuleAccess('Purchase Orders')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(emptyRequest)
   const [formError, setFormError] = useState('')
@@ -77,7 +80,7 @@ export default function PurchaseRequestsPage({
     date: ['createdAt']
   })
 
-  const approveRequest = row => onApproveRequest?.(row)
+  const approveRequest = async row => onApproveRequest?.(row)
   const closeRequest = row => onUpdateRequest?.(row.purchaseRequest, { status: 'CLOSE', closedAt: todayStamp() })
   const cancelRequest = row => onUpdateRequest?.(row.purchaseRequest, { status: 'CAN', cancelledAt: todayStamp() })
 
@@ -88,18 +91,21 @@ export default function PurchaseRequestsPage({
         : <Badge tone="blue">PO created</Badge>
     }
     if (row.status === 'WAPPR') {
+      const canApprove = access.edit && access.approve && purchaseOrderAccess.create
+      if (!canApprove && !access.edit) return '-'
       return (
         <div className="flex flex-wrap gap-2">
-          <Button className="h-8 px-3 text-xs" onClick={() => approveRequest(row)}><CheckCircle2 size={14} />Approve & create PO</Button>
-          <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelRequest(row)}><XCircle size={14} />Cancel</Button>
+          {canApprove && <Button className="h-8 px-3 text-xs" onClick={() => approveRequest(row)}><CheckCircle2 size={14} />Approve & create PO</Button>}
+          {access.edit && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelRequest(row)}><XCircle size={14} />Cancel</Button>}
         </div>
       )
     }
     if (row.status === 'APPR') {
+      if (!access.edit) return '-'
       return (
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => closeRequest(row)}><CheckCircle2 size={14} />Close PR</Button>
-          <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelRequest(row)}><XCircle size={14} />Cancel</Button>
+          {access.edit && access.close && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => closeRequest(row)}><CheckCircle2 size={14} />Close PR</Button>}
+          {access.edit && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelRequest(row)}><XCircle size={14} />Cancel</Button>}
         </div>
       )
     }
@@ -117,7 +123,7 @@ export default function PurchaseRequestsPage({
         actions={(
           <div className="flex items-center gap-2">
             <ExportExcelButton module="Purchase Requisitions" rows={visibleRows} columns={exportColumns} />
-            <Button onClick={() => { setForm(emptyRequest); setFormError(''); setModalOpen(true) }}><Plus size={17} />New purchase request</Button>
+            {access.create && <Button onClick={() => { setForm(emptyRequest); setFormError(''); setModalOpen(true) }}><Plus size={17} />New purchase request</Button>}
           </div>
         )}
       />
@@ -184,9 +190,10 @@ export default function PurchaseRequestsPage({
           error={formError}
           submitLabel="Create request"
           onClose={() => { setModalOpen(false); setFormError('') }}
-          onSave={() => {
+          onSave={async () => {
             if (!form.item || !Number(form.quantity)) return setFormError('Choose an item and a quantity above zero.')
-            onCreateRequest?.({ ...form, quantity: Number(form.quantity) })
+            const created = await onCreateRequest?.({ ...form, quantity: Number(form.quantity) })
+            if (!created) return setFormError('Unable to create the purchase requisition.')
             setModalOpen(false)
             setForm(emptyRequest)
             setFormError('')

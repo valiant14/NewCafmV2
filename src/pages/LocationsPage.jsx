@@ -19,7 +19,9 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { normalizeStatus } from '../lib/statusMatrix'
 import { conformsToLocationCode, nextLocationCode, validateLocationCode } from '../lib/coding'
+import { mergeImportedRows } from '../lib/importRows'
 import { useAuth } from '../providers/AuthProvider'
+import useModuleAccess from '../hooks/useModuleAccess'
 import Badge from '../components/ui/Badge'
 import { buildingCategoryOptions, buildingOptions, priorityDescriptionOptions, siteOptions, withSuggestions } from '../lib/masterOptions'
 
@@ -81,6 +83,7 @@ const normalizeLocationRow = row => ({
 
 export default function LocationsPage({ rows: controlledRows, setRows: setControlledRows, initialLocations = [], assets = [], workOrders = [], siteRecords = [], departmentRecords = [] }) {
   const { user } = useAuth()
+  const access = useModuleAccess('Locations')
   const seededLocations = (initialLocations?.length ? initialLocations : locationSeed).map(normalizeLocationRow)
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -92,9 +95,11 @@ export default function LocationsPage({ rows: controlledRows, setRows: setContro
   const routeId = decodeURIComponent(window.location.pathname.split('/locations/')[1] || '')
   const [selected, setSelected] = useState(locations.find(row => row.location === routeId) || null)
   useEffect(() => {
-    if (!routeId) return
-    const latest = locations.find(row => row.location === routeId)
-    if (latest) setSelected(latest)
+    if (!routeId) {
+      setSelected(null)
+      return
+    }
+    setSelected(locations.find(row => row.location === routeId) || null)
   }, [locations, routeId])
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useScopedFilters(user, seededLocations, ['site'])
@@ -186,8 +191,8 @@ export default function LocationsPage({ rows: controlledRows, setRows: setContro
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Locations_Template.xlsx" />
             <ExportExcelButton module="Locations" rows={visibleLocations} columns={exportColumns} />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setLocations(rows.map(normalizeLocationRow))} />
-            <Button onClick={() => setModalOpen(true)}><Plus size={17} />Add location</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setLocations(current => mergeImportedRows(current, rows.map(normalizeLocationRow), 'location'))} />}
+            {access.create && <Button onClick={() => setModalOpen(true)}><Plus size={17} />Add location</Button>}
           </div>
         )}
       />

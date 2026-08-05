@@ -9,8 +9,10 @@ import { SurfaceHeader } from '../ui/Surface'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { systemLabel } from '../../lib/departments'
 import { statusDescription, statusOptions, statusTone as matrixStatusTone } from '../../lib/statusMatrix'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpdate }) {
+  const access = useModuleAccess('Assets')
   const [activeTab, setActiveTab] = useState('Asset Details')
   const [status, setStatus] = useState(asset.status || 'OPERATING')
   const assetWorkOrders = workOrders.filter(order => String(order.ASSET || '').trim() === String(asset.assetnum || '').trim())
@@ -33,7 +35,7 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpda
           onBack={onBack}
           backLabel="Back to assets"
           printLabel="Print asset"
-          actions={(
+          actions={access.edit ? (
             <div className="min-w-[190px]">
               <Combobox
                 picker
@@ -44,7 +46,7 @@ export default function AssetDetailPage({ asset, workOrders = [], onBack, onUpda
                 placeholder="Status"
               />
             </div>
-          )}
+          ) : null}
           stats={[
             { label: 'Site / Location', value: asset.site || '-', note: asset.location || 'Location not set' },
             { label: 'Department', value: asset.department || 'Not configured', note: asset['sub department'] || 'No sub department' },

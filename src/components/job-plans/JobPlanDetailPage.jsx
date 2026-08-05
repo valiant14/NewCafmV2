@@ -8,11 +8,13 @@ import { DetailHeader, DetailTabs, InfoCard, MetricCard } from '../ui/DetailScaf
 import TablePanel from '../ui/TablePanel'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 const jobPlanStatuses = ['DRAFT', 'ACTIVE', 'INACTIVE']
-const minutesFromExcelHours = value => Math.max(1, Math.round(Number(value || 0) * 1440))
+const minutesFromExcelHours = value => Math.max(1, Math.round(Number(value || 0) * 60))
 
 export default function JobPlanDetailPage({ plan, tasks = [], workOrders = [], onBack, onUpdate }) {
+  const access = useModuleAccess('Job Plans')
   const [tab, setTab] = useState('Job Plan Details')
   const status = plan.status || plan.STATUS || 'ACTIVE'
   const totalMinutes = tasks.reduce((sum, task) => sum + minutesFromExcelHours(task['TASK DURATION IN HOUR']), 0)
@@ -35,7 +37,7 @@ export default function JobPlanDetailPage({ plan, tasks = [], workOrders = [], o
             { label: 'Used by WOs', value: workOrders.length },
             { label: 'Status', value: statusDescription('jobPlan', status) }
           ]}
-          actions={(
+          actions={access.edit ? (
             <div className="min-w-[150px]">
               <Combobox
                 picker
@@ -46,7 +48,7 @@ export default function JobPlanDetailPage({ plan, tasks = [], workOrders = [], o
                 placeholder="Status"
               />
             </div>
-          )}
+          ) : null}
         />
 
         <DetailTabs tabs={['Job Plan Details', 'Tasks', 'Work Orders']} active={tab} onChange={setTab} />

@@ -6,8 +6,10 @@ import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusOptions, statusTone } from '../../lib/statusMatrix'
 import Alert from '../ui/Alert'
 import Surface, { SurfaceHeader } from '../ui/Surface'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
+  const access = useModuleAccess('Incidents')
   const [status, setStatus] = useState(incident.status || 'NEW')
   const [activeTab, setActiveTab] = useState('Incident Details')
   const [attachments, setAttachments] = useState(Array.isArray(incident.attachments) ? incident.attachments : [])
@@ -36,7 +38,7 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
             { label: 'Location', value: incident.location || 'No location', note: 'Incident area' },
             { label: 'Reported By', value: incident.reportedBy || '-', note: reportedDate }
           ]}
-          actions={(
+          actions={access.edit ? (
             <div className="min-w-[170px]">
               <Combobox
                 picker
@@ -47,7 +49,7 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
                 placeholder="Status"
               />
             </div>
-          )}
+          ) : null}
         />
 
         <DetailTabs tabs={['Incident Details', 'Review', 'Attachments']} active={activeTab} onChange={setActiveTab} />
@@ -108,7 +110,7 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
               eyebrow="Files"
               title="Incident Attachments"
               description="Photos, reports, and supporting documents."
-              actions={(
+              actions={access.edit ? (
               <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-4 text-xs font-bold text-[var(--app-muted)] transition hover:bg-[var(--app-soft-bg-hover)]">
                 <FileText size={15} />Add files
                 <input
@@ -122,7 +124,7 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
                   }}
                 />
               </label>
-              )}
+              ) : null}
             />
             <div className="app-record-list">
               {attachments.map((file, index) => (

@@ -15,7 +15,7 @@ import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../
 
 const emptyFromFields = fields => Object.fromEntries((fields || []).map(field => [field.key, field.defaultValue ?? '']))
 
-export default function RegisterPage({ title, eyebrow, description, rows, columns, search, setSearch, action = 'Add record', modalTitle, modalNote, modalFields = [], mapFormToRow, statusTabs = [], rowKey, onRowClick, onCreate }) {
+export default function RegisterPage({ title, eyebrow, description, rows, columns, search, setSearch, action = 'Add record', modalTitle, modalNote, modalFields = [], mapFormToRow, statusTabs = [], rowKey, onRowClick, onCreate, onImport, access = { create: true, import: true } }) {
   const [imported, setImported] = useState('')
   const [records, setRecords] = useState(rows)
   const [modalOpen, setModalOpen] = useState(false)
@@ -29,14 +29,21 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
   const tabRecords = tab === 'All' ? records : records.filter(row => statusOf(row) === tab)
   const visibleRecords = applyStandardFilters(tabRecords, filters)
 
-  const saveRecord = () => {
+  const saveRecord = async () => {
     const next = mapFormToRow ? mapFormToRow(form) : form
     // Local state is reset whenever `rows` changes identity, so when the parent owns the
     // data it has to save through the callback or the record is lost on the next render.
-    if (onCreate) onCreate(next)
-    else setRecords(current => [next, ...current])
+    if (onCreate) {
+      const saved = await onCreate(next)
+      if (!saved) return
+    } else setRecords(current => [next, ...current])
     setForm(emptyFromFields(modalFields))
     setModalOpen(false)
+  }
+
+  const importRecords = async importedRows => {
+    if (onImport) return onImport(importedRows)
+    setRecords(current => [...importedRows, ...current])
   }
 
   return (
@@ -49,8 +56,8 @@ export default function RegisterPage({ title, eyebrow, description, rows, column
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={modalFields.map(field => field.key)} fileName={`${title.replace(/\s+/g, '_')}_Template.xlsx`} />
             <ExportExcelButton module={title} rows={visibleRecords} columns={columns} />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRecords(rows)} />
-            <Button onClick={() => setModalOpen(true)}><Plus size={17} />{action}</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={importRecords} />}
+            {access.create && <Button onClick={() => setModalOpen(true)}><Plus size={17} />{action}</Button>}
           </div>
         )}
       />

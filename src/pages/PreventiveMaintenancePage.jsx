@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import PmScheduleDetail from '../components/preventive-maintenance/PmScheduleDetail'
 import PmScheduleForm from '../components/preventive-maintenance/PmScheduleForm'
@@ -18,8 +18,11 @@ import { parseLocal, toLocalDateTimeInput } from '../lib/datetime'
 import { countPmDueState, pmDueState } from '../lib/pmSchedule'
 import { filterRows } from '../lib/tableSearch'
 import { scopeRowsForUser } from '../lib/accessControl'
+import { normalizeWorkOrderWorkflow, workflowStatusOptions } from '../lib/workOrderWorkflow'
+import { mergeImportedRows } from '../lib/importRows'
+import useModuleAccess from '../hooks/useModuleAccess'
 
-const emptyPlan = {
+const emptyPlan = initialStatus => ({
   pmNumber: '',
   description: '',
   asset: '',
@@ -34,7 +37,7 @@ const emptyPlan = {
   scheduleRule: '',
   pmCounter: 0,
   workType: 'PM',
-  woStatus: 'WSCH',
+  woStatus: initialStatus,
   storeLocation: '',
   supervisor: '',
   lead: '',
@@ -43,7 +46,7 @@ const emptyPlan = {
   subDepartment: '',
   pmStatus: 'ACTIVE',
   lastGeneratedCycle: ''
-}
+})
 const searchKeys = ['pmNumber', 'description', 'jobPlan', 'asset', 'location', 'route', 'department', 'subDepartment', 'supervisor', 'personGroup', 'storeLocation', 'workType']
 
 const pmTemplateHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'ROUTE', 'LOCATION', 'JPNUM', 'PM RULE', 'NEXTDATE', 'PMCOUNTER', 'WORKTYPE', 'STORELOC', 'SUPERVISOR', 'LEAD', 'PERSONGROUP', 'department', 'sub department']
@@ -60,7 +63,12 @@ const normalizeDate = value => {
 
 const findPmRule = (rules = [], name = '') => rules.find(rule => String(rule.name || '').trim().toLowerCase() === String(name || '').trim().toLowerCase())
 
-const mapPmImportRows = (rows, rules = []) => rows.map(row => {
+const validWorkflowStatus = (value, workflow) => {
+  const code = String(value || '').trim().toUpperCase()
+  return workflowStatusOptions(workflow).some(option => option.value === code) ? code : workflow.initialStatus
+}
+
+const mapPmImportRows = (rows, rules = [], workflow) => rows.map(row => {
   const scheduleRule = row['PM RULE'] || row.SCHEDULE_RULE || ''
   const rule = findPmRule(rules, scheduleRule)
   return {
@@ -78,7 +86,7 @@ const mapPmImportRows = (rows, rules = []) => rows.map(row => {
     scheduleRule,
     pmCounter: Number(row.PMCOUNTER || 0),
     workType: row.WORKTYPE || 'PM',
-    woStatus: rule?.defaultWoStatus || row.WOSTATUS || 'WSCH',
+    woStatus: validWorkflowStatus(rule?.defaultWoStatus || row.WOSTATUS, workflow),
     storeLocation: row.STORELOC || '',
     supervisor: row.SUPERVISOR || '',
     lead: row.LEAD || '',
@@ -90,14 +98,20 @@ const mapPmImportRows = (rows, rules = []) => rows.map(row => {
   }
 }).filter(plan => plan.pmNumber && plan.description)
 
-export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules = [], assets = [], jobTasks = [], workOrders = [], departmentRecords = [], locationRows = [], storeRows = [], laborRows = [], scopeUser, onOpenWorkOrder }) {
+export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules = [], assets = [], jobTasks = [], workOrders = [], departmentRecords = [], locationRows = [], storeRows = [], laborRows = [], workflow, scopeUser, onOpenWorkOrder }) {
   const { user } = useAuth()
+  const access = useModuleAccess('Preventive Maintenance')
+  const activeWorkflow = useMemo(() => normalizeWorkOrderWorkflow(workflow), [workflow])
   const routeId = window.location.pathname.match(/^\/preventive-maintenance\/([^/]+)$/)?.[1]
-  const plans = rows.map(plan => ({ ...plan, pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE') }))
+  const plans = rows.map(plan => ({
+    ...plan,
+    pmStatus: normalizeStatus('preventiveMaintenance', plan.pmStatus, 'ACTIVE'),
+    woStatus: validWorkflowStatus(plan.woStatus, activeWorkflow)
+  }))
   const scopedPlans = scopeRowsForUser(plans, scopeUser || user, ['site'], ['department', 'subDepartment', 'personGroup'])
   const [mode, setMode] = useState('list')
   const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
-  const [form, setForm] = useState(emptyPlan)
+  const [form, setForm] = useState(() => emptyPlan(activeWorkflow.initialStatus))
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [pmTab, setPmTab] = useState('All')
@@ -105,13 +119,17 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useScopedFilters(user, plans, ['site'])
 
+  useEffect(() => {
+    setSelectedId(routeId ? decodeURIComponent(routeId) : '')
+  }, [routeId])
+
   const jobPlans = useMemo(() => [
     ...new Map(jobTasks
       .filter(task => task.JPNUM)
       .map(task => [task.JPNUM, {
         number: task.JPNUM,
         description: task.DESCRIPTION,
-        duration: jobTasks.filter(item => item.JPNUM === task.JPNUM).reduce((sum, item) => sum + Number(item['TASK DURATION IN HOUR'] || 0), 0) * 24
+        duration: jobTasks.filter(item => item.JPNUM === task.JPNUM).reduce((sum, item) => sum + Number(item['TASK DURATION IN HOUR'] || 0), 0)
       }])
     ).values()
   ], [jobTasks])
@@ -148,7 +166,7 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
   const save = () => {
     if (!valid) return
     setRows?.(rows => [...rows, form])
-    setForm(emptyPlan)
+    setForm(emptyPlan(activeWorkflow.initialStatus))
     setMode('list')
   }
   const openPlan = id => {
@@ -163,7 +181,7 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
     setRows?.(rows => rows.map(plan => plan.pmNumber === pmNumber ? { ...plan, ...patch } : plan))
   }
   if (selected) {
-    return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} pmRules={pmRules} workOrders={workOrders} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} onUpdate={updatePlan} />
+    return <PmScheduleDetail plan={selected} assets={assets} jobTasks={jobTasks} jobPlans={jobPlans} pmRules={pmRules} workOrders={workOrders} workflow={activeWorkflow} onBack={closePlan} onOpenWorkOrder={onOpenWorkOrder} onUpdate={updatePlan} />
   }
 
   return (
@@ -172,7 +190,7 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
         eyebrow="PREVENTIVE MAINTENANCE"
         title="PM Schedule"
         description="Maximo-aligned PM masters and automatic work-order generation."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" /><ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows, pmRules); if (imported.length) setRows?.(imported) }} /><Button onClick={() => setMode('new')}><Plus size={16} />New PM schedule</Button></div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" />{access.import && <ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows, pmRules, activeWorkflow); if (imported.length) setRows?.(current => mergeImportedRows(current, imported, 'pmNumber')) }} />}{access.create && <Button onClick={() => { setForm(emptyPlan(activeWorkflow.initialStatus)); setMode('new') }}><Plus size={16} />New PM schedule</Button>}</div>}
       />
 
       <IndexTabs
@@ -215,10 +233,11 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
         sort={sort}
         onSort={toggleSort}
         pmRules={pmRules}
+        workflow={activeWorkflow}
       />
       {mode === 'new' && (
         <ModalOverlay>
-          <PmScheduleForm modal form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departmentRecords} pmRules={pmRules} locations={locationRows} stores={storeRows} labor={laborRows} onCancel={() => setMode('list')} onSave={save} />
+          <PmScheduleForm modal form={form} setForm={setForm} assets={assets} jobPlans={jobPlans} departments={departmentRecords} pmRules={pmRules} workflow={activeWorkflow} locations={locationRows} stores={storeRows} labor={laborRows} onCancel={() => setMode('list')} onSave={save} />
         </ModalOverlay>
       )}
     </section>

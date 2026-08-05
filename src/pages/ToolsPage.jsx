@@ -14,6 +14,8 @@ import PageHeader from '../components/ui/PageHeader'
 import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { mergeImportedRows } from '../lib/importRows'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const empty = {
   toolNumber: '',
@@ -123,6 +125,7 @@ const withToolUsage = (row, workOrders, allocations = [], storeRows = []) => {
 }
 
 export default function ToolsPage({ rows = [], setRows, workOrders = [], allocations = [], storeRows = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest }) {
+  const access = useModuleAccess('Tools & Equipment')
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -137,8 +140,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [], allocat
       setSelected(null)
       return
     }
-    const latest = rows.find(row => sameTool(row, routeId))
-    if (latest) setSelected(latest)
+    setSelected(rows.find(row => sameTool(row, routeId)) || null)
   }, [rows, routeId])
   const tabRows = tab === 'All' ? enrichedRows : enrichedRows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
@@ -186,8 +188,8 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [], allocat
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Tools_Equipment_Template.xlsx" />
             <ExportExcelButton module="Tools_Equipment" rows={visibleRows} columns={exportColumns} />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(rows)} />
-            <Button onClick={() => setAdding(true)}><Plus size={17} />Add tool or equipment</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(current => mergeImportedRows(current, rows, 'toolNumber'))} />}
+            {access.create && <Button onClick={() => setAdding(true)}><Plus size={17} />Add tool or equipment</Button>}
           </div>
         )}
       />

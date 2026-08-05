@@ -108,6 +108,7 @@ const actionStateFor = (resource, stock, reservations = [], purchaseRequests = [
 }
 
 export default function WorkOrderMaterialRequestsTab({
+  readOnly = false,
   resourceRequests,
   plannedResources,
   setPlannedResources,
@@ -126,7 +127,8 @@ export default function WorkOrderMaterialRequestsTab({
   onCreateReservation,
   onUpdateWorkOrder
 }) {
-  const actionResource = (index, resource) => {
+  const actionResource = async (index, resource) => {
+    if (readOnly) return
     const stock = getAvailability(resource)
     const action = actionStateFor(resource, stock, reservations, purchaseRequests, purchaseOrders)
     if (action.disabled || action.kind === 'none') return
@@ -137,7 +139,7 @@ export default function WorkOrderMaterialRequestsTab({
     const onHand = Math.max(0, Number(stock.availableQuantity || 0))
     const shortfall = Math.max(0, planned - onHand)
     const transaction = action.kind === 'purchase'
-      ? onCreatePurchaseRequest?.({
+      ? await onCreatePurchaseRequest?.({
         workOrder: workOrderContext.number,
         resourceRequestId: resource.resourceRequestId,
         resourceIndex: index,
@@ -151,7 +153,7 @@ export default function WorkOrderMaterialRequestsTab({
         site: workOrderContext.site,
         department: workOrderContext.department
       })
-      : onCreateReservation?.({
+      : await onCreateReservation?.({
         workOrder: workOrderContext.number,
         resourceRequestId: resource.resourceRequestId,
         resourceIndex: index,
@@ -168,6 +170,7 @@ export default function WorkOrderMaterialRequestsTab({
         status: nextStatus,
         statusDescription: statusDescription('inventoryUsage', nextStatus)
       })
+    if (!transaction) return
     const linkedResource = {
       ...resource,
       requestStatus: nextStatus,
@@ -220,7 +223,7 @@ export default function WorkOrderMaterialRequestsTab({
                     ? <Badge tone={materialStatusTone(materialStatus)}>{materialStatus}</Badge>
                     : <span className="text-[var(--app-muted)]">—</span>}</span>
                   <span className={statusClass(requestStatus?.status)}>{requestStatus ? `${requestStatus.status} · ${requestStatus.label}${requestStatus.ref ? ` · ${requestStatus.ref}` : ''}` : `Stock: ${stock.availableQuantity ?? '-'}`}</span>
-                  <button className={action.kind === 'reserve' ? primaryButtonClass : outlineButtonClass} disabled={action.disabled} onClick={() => actionResource(index, resource)}>
+                  <button className={action.kind === 'reserve' ? primaryButtonClass : outlineButtonClass} disabled={readOnly || action.disabled} onClick={() => actionResource(index, resource)}>
                     {action.label}
                   </button>
                 </div>

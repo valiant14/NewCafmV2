@@ -97,6 +97,7 @@ function ActualResourceSection({ title, note, rows, icon: Icon, update, onReturn
 }
 
 export default function WorkOrderActualTab({
+  readOnly = false,
   actualsEditable,
   status,
   nextStatus,
@@ -142,6 +143,7 @@ export default function WorkOrderActualTab({
   currentUser
 }) {
   const closed = ['CLOSE', 'CLOSED'].includes(String(status || '').toUpperCase())
+  const locked = closed || readOnly
   const next = String(nextStatus || '').toUpperCase()
   if (!actualsEditable) {
     return (
@@ -151,9 +153,9 @@ export default function WorkOrderActualTab({
           <strong>Available after work completion</strong>
           <p>{next === 'INPRG' ? 'Complete Plan and Failure preparation, then select Start Work. When execution is finished, select Resolve / Complete.' : 'When physical work is finished, select Resolve / Complete in the header to unlock execution notes and actual consumption.'}</p>
           <span>Current status: {status}</span>
-          {next === 'INPRG' && !preparationReady && <button className={outlineButtonClass} onClick={() => setTab(planReady ? 'Failure' : 'Plan')}>Complete {planReady ? 'Failure' : 'Plan'} preparation</button>}
-          {next === 'INPRG' && preparationReady && <button className={primaryButtonClass} onClick={() => setWorkStarted(true)}>Start work</button>}
-          {next === 'COMP' && <button className={primaryButtonClass} onClick={completeWork}>Resolve / complete work</button>}
+          {!readOnly && next === 'INPRG' && !preparationReady && <button className={outlineButtonClass} onClick={() => setTab(planReady ? 'Failure' : 'Plan')}>Complete {planReady ? 'Failure' : 'Plan'} preparation</button>}
+          {!readOnly && next === 'INPRG' && preparationReady && <button className={primaryButtonClass} onClick={() => setWorkStarted(true)}>Start work</button>}
+          {!readOnly && next === 'COMP' && <button className={primaryButtonClass} onClick={completeWork}>Resolve / complete work</button>}
         </div>
       </div>
     )
@@ -176,7 +178,7 @@ export default function WorkOrderActualTab({
 
   return (
     <>
-      {step && (
+      {!readOnly && step && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
           <div className="grid gap-1">
             <strong className="text-sm text-[var(--app-ink)]">{step.ready ? `Ready to ${step.label.toLowerCase()}` : 'Not ready yet'}</strong>
@@ -201,17 +203,17 @@ export default function WorkOrderActualTab({
 
       <Section compact title="Execution Notes">
         <div className={twoColumnGridClass}>
-          <Field label="Technician Remarks" value={technicianRemarks} onChange={event => setTechnicianRemarks(event.target.value)} type="textarea" required disabled={closed} />
-          <Field label="Completion Notes" value={completionNotes} onChange={event => setCompletionNotes(event.target.value)} type="textarea" required disabled={closed} />
+          <Field label="Technician Remarks" value={technicianRemarks} onChange={event => setTechnicianRemarks(event.target.value)} type="textarea" required disabled={locked} />
+          <Field label="Completion Notes" value={completionNotes} onChange={event => setCompletionNotes(event.target.value)} type="textarea" required disabled={locked} />
         </div>
       </Section>
 
       <Section compact title="Actual Labor">
         <div className={laborGridClass}>
-          <Field label="Technicians / Labor" value={actualLabor} onChange={event => setActualLabor(event.target.value)} required disabled={closed} />
-          <Field label="Actual Labor Hours" value={actualHours} onChange={event => setActualHours(event.target.value)} type="number" required disabled={closed} />
-          <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" disabled={closed} />
-          <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" disabled={closed} />
+          <Field label="Technicians / Labor" value={actualLabor} onChange={event => setActualLabor(event.target.value)} required disabled={locked} />
+          <Field label="Actual Labor Hours" value={actualHours} onChange={event => setActualHours(event.target.value)} type="number" required disabled={locked} />
+          <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" disabled={locked} />
+          <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" disabled={locked} />
         </div>
       </Section>
 
@@ -224,7 +226,7 @@ export default function WorkOrderActualTab({
         emptyText="Planned materials appear here once work is completed."
         update={(index, value) => updateActualRow(setActualMaterials, index, value)}
         onReturn={index => returnResource?.('material', index)}
-        locked={closed}
+        locked={locked}
       />
       <ActualResourceSection
         title="Actual Tools and Equipment Used"
@@ -235,7 +237,7 @@ export default function WorkOrderActualTab({
         emptyText="Planned tools appear here once work is completed."
         update={(index, value) => updateActualRow(setActualTools, index, value)}
         onReturn={index => returnResource?.('tool', index)}
-        locked={closed}
+        locked={locked}
       />
 
       <Section compact title="Store Returns" note="Unused material and every borrowed tool must be back in the store before the work order closes">

@@ -17,6 +17,7 @@ import { applyStandardFilters, optionsFromRows, useScopedFilters } from '../lib/
 import { statusDescription } from '../lib/statusMatrix'
 import { workflowStatusLabel } from '../lib/workOrderWorkflow'
 import { filterRows } from '../lib/tableSearch'
+import { mergeImportedRows } from '../lib/importRows'
 import { useAuth } from '../providers/AuthProvider'
 
 // Restricted to text columns: matching every value would hit Excel date serials and the
@@ -75,15 +76,18 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    if (routeId) {
-      const routed = rows.find(order => String(order.WORKORDER) === routeId)
-      if (routed && routed !== selected) setSelected(routed)
+    if (routeId === 'new') {
+      setCreating(true)
+      setSelected(null)
       return
     }
-    if (!selected?.WORKORDER) return
-    const latest = rows.find(order => String(order.WORKORDER) === String(selected.WORKORDER))
-    if (latest && latest !== selected) setSelected(latest)
-  }, [rows, routeId, selected])
+    setCreating(false)
+    if (!routeId) {
+      setSelected(null)
+      return
+    }
+    setSelected(rows.find(order => String(order.WORKORDER) === routeId) || null)
+  }, [rows, routeId])
 
   const orderType = order => (order['WORK TYPE'] || order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
   const typedRows = rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)
@@ -148,6 +152,13 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
     setSelected(created)
     window.history.replaceState({}, '', `/work-orders/${created.WORKORDER}`)
   }
+  const importRows = importedRows => {
+    const importedAt = Date.now()
+    const normalized = importedRows.map((row, index) => row.WORKORDER
+      ? row
+      : { ...row, WORKORDER: `WO-PENDING-${importedAt}-${index + 1}`, __isNew: true })
+    return onImportRows?.(current => mergeImportedRows(current, normalized, 'WORKORDER'))
+  }
   const printList = () => printWithoutBrowserTitle()
 
   const listView = (
@@ -157,7 +168,7 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
           eyebrow="MAINTENANCE OPERATIONS"
           title="Work Orders"
           description="Track, plan, execute, and close every maintenance work order."
-          actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={workOrderTemplateHeaders} fileName="Work_Orders_Template.xlsx" /><ExportExcelButton module="Work Orders" rows={sorted} columns={exportColumns(excelDate)} />{access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={importedRows => onImportRows?.(importedRows)} />}<Button variant="outline" onClick={printList}><Printer size={16} /> Print list</Button>{access.create && <Button onClick={openCreate}><Plus size={17} />New work order</Button>}</div>}
+          actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={workOrderTemplateHeaders} fileName="Work_Orders_Template.xlsx" /><ExportExcelButton module="Work Orders" rows={sorted} columns={exportColumns(excelDate)} />{access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={importRows} />}<Button variant="outline" onClick={printList}><Printer size={16} /> Print list</Button>{access.create && <Button onClick={openCreate}><Plus size={17} />New work order</Button>}</div>}
         />
         <ImportNotice fileName={imported} subject="work order" onClear={() => setImported('')} />
         <IndexTabs

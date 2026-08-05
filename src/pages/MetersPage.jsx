@@ -17,6 +17,8 @@ import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScoped
 import { useAuth } from '../providers/AuthProvider'
 import { nowLocalDate } from '../lib/datetime'
 import { assetOptions, departmentOptions, locationOptions, siteOptions, withSuggestions } from '../lib/masterOptions'
+import { mergeImportedRows } from '../lib/importRows'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const emptyMeter = {
   meterId: '',
@@ -56,6 +58,7 @@ export default function MetersPage({ rows = [], setRows, assets = [], workOrders
     department: departmentOptions(departmentRecords)
   })
   const { user } = useAuth()
+  const access = useModuleAccess('Meters')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useScopedFilters(user, rows)
   const [imported, setImported] = useState('')
@@ -64,9 +67,11 @@ export default function MetersPage({ rows = [], setRows, assets = [], workOrders
   const routeId = decodeURIComponent(window.location.pathname.split('/meters/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.meterId === routeId) || null)
   useEffect(() => {
-    if (!routeId) return
-    const latest = rows.find(row => row.meterId === routeId)
-    if (latest) setSelected(latest)
+    if (!routeId) {
+      setSelected(null)
+      return
+    }
+    setSelected(rows.find(row => row.meterId === routeId) || null)
   }, [rows, routeId])
 
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
@@ -120,8 +125,8 @@ export default function MetersPage({ rows = [], setRows, assets = [], workOrders
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Meters_Template.xlsx" />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={setRows} />
-            <Button onClick={() => { setForm(blankMeter()); setModalOpen(true) }}><Plus size={17} />Add meter reading</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(current => mergeImportedRows(current, rows, row => row.meterReadingId))} />}
+            {access.create && <Button onClick={() => { setForm(blankMeter()); setModalOpen(true) }}><Plus size={17} />Add meter reading</Button>}
           </div>
         )}
       />

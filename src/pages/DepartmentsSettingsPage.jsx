@@ -13,6 +13,7 @@ import PageHeader from '../components/ui/PageHeader'
 import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import useModuleAccess from '../hooks/useModuleAccess'
 import { pick, upsertImportRows } from '../services/importRows'
 
 const emptyDepartment = {
@@ -37,6 +38,7 @@ const exportColumns = [
 ]
 
 export default function DepartmentsSettingsPage({ rows = [], setRows }) {
+  const access = useModuleAccess('Departments')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [imported, setImported] = useState('')
@@ -112,8 +114,8 @@ export default function DepartmentsSettingsPage({ rows = [], setRows }) {
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Departments_Template.xlsx" />
             <ExportExcelButton module="Departments" rows={visibleRows} columns={exportColumns} />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={importRows} />
-            <Button onClick={openNew}><Plus size={17} />Add department</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={importRows} />}
+            {access.create && <Button onClick={openNew}><Plus size={17} />Add department</Button>}
           </div>
         )}
       />

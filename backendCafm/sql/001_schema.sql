@@ -58,6 +58,14 @@ create table dbo.permission_actions (
 );
 go
 
+create table dbo.number_sequences (
+  sequence_key nvarchar(80) not null constraint pk_number_sequences primary key,
+  next_value bigint not null,
+  updated_at datetime2 not null constraint df_number_sequences_updated default sysutcdatetime(),
+  constraint ck_number_sequences_positive check (next_value > 0)
+);
+go
+
 create table dbo.role_permissions (
   role_id int not null,
   module_name nvarchar(120) not null,
@@ -179,9 +187,15 @@ create table dbo.tools_equipment (
   tool_code nvarchar(80) not null primary key,
   description nvarchar(300) not null,
   category nvarchar(120) null,
+  location_code nvarchar(80) null,
+  site_code nvarchar(30) null,
+  quantity decimal(18,4) not null constraint df_tools_equipment_quantity default 1,
+  low_level decimal(18,4) not null constraint df_tools_equipment_low_level default 0,
   status nvarchar(40) not null constraint df_tools_status default 'Available',
+  inspection_due date null,
   created_at datetime2 not null constraint df_tools_created default sysutcdatetime(),
-  updated_at datetime2 not null constraint df_tools_updated default sysutcdatetime()
+  updated_at datetime2 not null constraint df_tools_updated default sysutcdatetime(),
+  constraint fk_tools_site foreign key (site_code) references dbo.sites(site_code)
 );
 go
 
@@ -265,6 +279,10 @@ create table dbo.work_orders (
   department_name nvarchar(160) null,
   sub_department_code nvarchar(50) null,
   assigned_department_name nvarchar(160) null,
+  work_group nvarchar(160) null,
+  system_name nvarchar(160) null,
+  supervisor nvarchar(160) null,
+  labor_craft_code nvarchar(80) null,
   target_start_at datetime2 null,
   target_finish_at datetime2 null,
   actual_start_at datetime2 null,
@@ -450,6 +468,7 @@ create table dbo.purchase_orders (
   po_num nvarchar(80) not null primary key,
   pr_num nvarchar(80) not null,
   work_order_num nvarchar(80) null,
+  resource_request_id bigint null,
   request_type nvarchar(40) not null,
   item_code nvarchar(80) null,
   item_description nvarchar(300) not null,
@@ -467,6 +486,7 @@ create table dbo.purchase_orders (
   updated_at datetime2 not null constraint df_po_updated default sysutcdatetime(),
   constraint fk_po_pr foreign key (pr_num) references dbo.purchase_requisitions(pr_num),
   constraint fk_po_wo foreign key (work_order_num) references dbo.work_orders(work_order_num),
+  constraint fk_po_resource foreign key (resource_request_id) references dbo.work_order_resource_requests(resource_request_id),
   constraint fk_po_site foreign key (site_code) references dbo.sites(site_code),
   constraint fk_po_store foreign key (store_code) references dbo.storerooms(store_code)
 );
@@ -478,8 +498,10 @@ go
 create table dbo.inventory_reservations (
   reservation_num nvarchar(80) not null primary key,
   work_order_num nvarchar(80) not null,
+  resource_request_id bigint null,
   pr_num nvarchar(80) null,
   po_num nvarchar(80) null,
+  request_type nvarchar(40) not null constraint df_res_request_type default 'Material',
   item_code nvarchar(80) null,
   item_description nvarchar(300) not null,
   reserved_quantity decimal(18,4) not null,
@@ -490,10 +512,12 @@ create table dbo.inventory_reservations (
   site_code nvarchar(30) not null,
   department_name nvarchar(160) null,
   status nvarchar(40) not null constraint df_res_status default 'ENTERED',
+  stock_posted_at datetime2 null,
   created_by_user_id nvarchar(50) null,
   created_at datetime2 not null constraint df_res_created default sysutcdatetime(),
   updated_at datetime2 not null constraint df_res_updated default sysutcdatetime(),
   constraint fk_res_wo foreign key (work_order_num) references dbo.work_orders(work_order_num),
+  constraint fk_res_resource foreign key (resource_request_id) references dbo.work_order_resource_requests(resource_request_id),
   constraint fk_res_pr foreign key (pr_num) references dbo.purchase_requisitions(pr_num),
   constraint fk_res_po foreign key (po_num) references dbo.purchase_orders(po_num),
   constraint fk_res_site foreign key (site_code) references dbo.sites(site_code),
@@ -584,6 +608,18 @@ create table dbo.smtp_sms_connectors (
   status nvarchar(40) not null constraint df_smtp_sms_status default 'Active',
   created_at datetime2 not null constraint df_smtp_sms_created default sysutcdatetime(),
   updated_at datetime2 not null constraint df_smtp_sms_updated default sysutcdatetime()
+);
+go
+
+create table dbo.notification_rules (
+  rule_id nvarchar(80) not null constraint pk_notification_rules primary key,
+  event_name nvarchar(160) not null,
+  channel_name nvarchar(40) not null,
+  recipients nvarchar(max) null,
+  notes nvarchar(500) null,
+  status nvarchar(40) not null constraint df_notification_rules_status default 'Active',
+  created_at datetime2 not null constraint df_notification_rules_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_notification_rules_updated default sysutcdatetime()
 );
 go
 

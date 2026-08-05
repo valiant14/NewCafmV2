@@ -17,6 +17,7 @@ const relatedMetersForAsset = (meterRows, assetValue) => [...new Map(meterRows
   .map(row => [row.meterId, row])).values()]
 
 export default function WorkOrderMetersTab({
+  readOnly = false,
   workOrderNumber,
   assetValue,
   siteValue,
@@ -43,6 +44,7 @@ export default function WorkOrderMetersTab({
           <Field
             label="Related Meter"
             value={meterId}
+            locked={readOnly}
             suggestions={[{ value: '', label: 'None' }, ...meterOptions.map(row => ({
               value: row.meterId,
               label: [row.meterType, row.unit, row.reading ? `Last ${row.reading}` : ''].filter(Boolean).join(' / ')
@@ -53,8 +55,8 @@ export default function WorkOrderMetersTab({
             }}
             placeholder="Select asset meter first"
           />
-          <Field label={`Reading Value${selectedMeter?.unit ? ` (${selectedMeter.unit})` : ''}`} value={meterReading} onChange={event => setMeterReading(event.target.value)} type="number" locked={!meterId} placeholder={meterId ? 'Enter reading value' : 'Select meter first'} />
-          <Field label="Reading Date" value={meterReadingDate} onChange={event => setMeterReadingDate(event.target.value)} type="datetime-local" locked={!meterId} />
+          <Field label={`Reading Value${selectedMeter?.unit ? ` (${selectedMeter.unit})` : ''}`} value={meterReading} onChange={event => setMeterReading(event.target.value)} type="number" locked={readOnly || !meterId} placeholder={meterId ? 'Enter reading value' : 'Select meter first'} />
+          <Field label="Reading Date" value={meterReadingDate} onChange={event => setMeterReadingDate(event.target.value)} type="datetime-local" locked={readOnly || !meterId} />
         </div>
         {!meterOptions.length && (
           <p className="mt-4 rounded-2xl border border-dashed border-[var(--app-line)] p-4 text-sm text-[var(--app-muted)]">No /meters record is linked to asset {assetValue || '-'}. Add the meter in /meters first.</p>

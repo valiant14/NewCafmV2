@@ -8,6 +8,7 @@ import DataTable from '../ui/DataTable'
 import EmptyState from '../ui/EmptyState'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusTone } from '../../lib/statusMatrix'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 const toneByStatus = {
   Available: 'green',
@@ -18,6 +19,7 @@ const toneByStatus = {
 const laborStatuses = ['Available', 'Assigned', 'On Leave']
 
 export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate }) {
+  const access = useModuleAccess('Labor')
   const [tab, setTab] = useState('Labor Details')
   const closedStatuses = new Set(['COMP', 'COMPLETED', 'CLOSE', 'CLOSED', 'CAN', 'CANCELLED'])
   const completedWork = pastWork.filter(row => closedStatuses.has(String(row.status || '').toUpperCase()))
@@ -51,7 +53,7 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
             { label: 'Shift', value: labor.shift },
             { label: 'Next Action', value: nextAssignment }
           ]}
-          actions={(
+          actions={access.edit ? (
             <div className="min-w-[150px]">
               <Combobox
                 picker
@@ -62,7 +64,7 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
                 placeholder="Status"
               />
             </div>
-          )}
+          ) : null}
         />
 
         <DetailTabs tabs={['Labor Details', 'Past Work']} active={tab} onChange={setTab} />

@@ -15,6 +15,8 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { scopeRowsForUser } from '../lib/accessControl'
 import { dataScopeLabel, userDataScopeOptions } from '../lib/dataScope'
+import { mergeImportedRows } from '../lib/importRows'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const emptyUser = {
   userId: '',
@@ -50,6 +52,7 @@ const templateHeaders = Object.keys(emptyUser)
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
 
 export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows = [], scopeUser, siteOptions = [], departmentOptions = [] }) {
+  const access = useModuleAccess('Users')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [imported, setImported] = useState('')
@@ -67,9 +70,11 @@ export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows
   const scopedRows = scopeRowsForUser(rows, scopeUser, ['site'], ['department'])
   const [selected, setSelected] = useState(scopedRows.find(row => row.userId === routeId || row.username === routeId) || null)
   useEffect(() => {
-    if (!routeId) return
-    const latest = scopedRows.find(row => row.userId === routeId || row.username === routeId)
-    if (latest) setSelected(latest)
+    if (!routeId) {
+      setSelected(null)
+      return
+    }
+    setSelected(scopedRows.find(row => row.userId === routeId || row.username === routeId) || null)
   }, [scopedRows, routeId])
   const tabRows = tab === 'All' ? scopedRows : scopedRows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
@@ -130,8 +135,8 @@ export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Users_Template.xlsx" />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={setRows} />
-            <Button onClick={() => setModalOpen(true)}><Plus size={17} />Add user</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={importedRows => setRows(current => mergeImportedRows(current, importedRows, row => row.userId || row.username))} />}
+            {access.create && <Button onClick={() => setModalOpen(true)}><Plus size={17} />Add user</Button>}
           </div>
         )}
       />

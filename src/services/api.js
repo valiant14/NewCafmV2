@@ -22,6 +22,10 @@ const request = async (path, options = {}) => {
   })
   const body = await response.json().catch(() => null)
   if (!response.ok) {
+    if (response.status === 401 && path !== '/auth/login') {
+      setAuthToken('')
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('cafm:unauthorized'))
+    }
     const error = new Error(body?.message || `API request failed: ${response.status}`)
     error.status = response.status
     throw error
@@ -174,6 +178,7 @@ const mapTool = row => ({
   description: row.description,
   category: row.category || '',
   location: row.location_code || '',
+  site: row.site_code || '',
   quantity: numberValue(row.quantity) || 1,
   lowLevel: numberValue(row.low_level),
   inspectionDue: row.inspection_due || '',
@@ -263,6 +268,10 @@ const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTa
   'DEPARTMENT ': row.department_name || '',
   'SUB DEPARTMENT  NAME': row.sub_department_code || '',
   'ASSIGNED DEPARTMENT': row.assigned_department_name || '',
+  'WORK GROUP': row.work_group || '',
+  SYSTEM: row.system_name || '',
+  SUPERVISOR: row.supervisor || '',
+  'LABOR CRAFT CODE': row.labor_craft_code || '',
   'TARGET START ': dateValue(row.target_start_at),
   'TARGET FINISH ': dateValue(row.target_finish_at),
   'ACTUAL START ': dateValue(row.actual_start_at),
@@ -372,7 +381,7 @@ const mapReservation = row => ({
   resourceRequestId: row.resource_request_id,
   purchaseRequest: row.pr_num || '',
   purchaseOrder: row.po_num || '',
-  type: String(row.reservation_num || '').startsWith('ALC-') ? 'Tool' : 'Material',
+  type: row.request_type || (String(row.reservation_num || '').startsWith('ALC-') ? 'Tool' : 'Material'),
   item: row.item_description || row.item_code,
   itemCode: row.item_code || '',
   quantity: numberValue(row.reserved_quantity),
@@ -402,7 +411,7 @@ const mapPm = row => ({
   scheduleRule: row.schedule_rule_name || '',
   pmCounter: row.pm_counter || 0,
   workType: row.work_type || 'PM',
-  woStatus: row.wo_status || 'WSCH',
+  woStatus: row.wo_status || '',
   storeLocation: row.store_code || '',
   supervisor: row.supervisor || '',
   lead: row.lead_person || '',
@@ -422,7 +431,7 @@ const mapPmRule = row => ({
   horizonDays: numberValue(row.horizon_days) || 30,
   triggerHour: numberValue(row.trigger_hour) || 0,
   woPrefix: row.wo_prefix || 'PMWO-',
-  defaultWoStatus: row.default_wo_status || 'WSCH',
+  defaultWoStatus: row.default_wo_status || '',
   notes: row.notes || '',
   status: row.status || 'Active',
   createdDate: row.created_at || ''
@@ -437,6 +446,16 @@ const mapConnector = row => ({
   username: row.username_value || '',
   password: row.secret_value || '',
   sender: row.sender_value || '',
+  notes: row.notes || '',
+  status: row.status || 'Active',
+  createdDate: row.created_at || ''
+})
+
+const mapNotificationRule = row => ({
+  id: row.rule_id,
+  event: row.event_name,
+  channel: row.channel_name,
+  recipients: row.recipients || '',
   notes: row.notes || '',
   status: row.status || 'Active',
   createdDate: row.created_at || ''
@@ -506,6 +525,7 @@ export async function loadWorkspace() {
     pmSchedules,
     pmRules,
     connectors,
+    notificationRules,
     jobPlans,
     jobPlanTasks,
     incidents,
@@ -535,6 +555,7 @@ export async function loadWorkspace() {
     safeGet('/preventive-maintenance'),
     safeGet('/pm-schedule-rules'),
     safeGet('/smtp-sms-connectors'),
+    safeGet('/notification-rules'),
     safeGet('/job-plans'),
     safeGet('/job-plan-tasks'),
     safeGet('/incidents'),
@@ -589,6 +610,7 @@ export async function loadWorkspace() {
     pmSchedules: pmSchedules.map(mapPm),
     pmRules: pmRules.map(mapPmRule),
     connectors: connectors.map(mapConnector),
+    notificationRules: notificationRules.map(mapNotificationRule),
     jobPlans: jobPlans.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status })),
     jobTasks: jobPlanTasks.map(mapJobTask),
     incidents: incidents.map(mapIncident),

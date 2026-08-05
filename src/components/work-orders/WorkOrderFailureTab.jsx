@@ -30,6 +30,7 @@ function FailureStage({ item, index }) {
 }
 
 export default function WorkOrderFailureTab({
+  readOnly = false,
   isCM,
   causeApplicable = false,
   remedyApplicable = false,
@@ -54,10 +55,10 @@ export default function WorkOrderFailureTab({
   return (
     <Section compact title="Failure Classification" note={isCM ? 'Failure Class and Problem are required for corrective maintenance' : 'Optional for this work order type'}>
       <div className={fieldsClass}>
-        <Field label="Failure Code" value={failureClass} required={isCM} onChange={changeFailure} suggestions={failureClassOptions} placeholder="Search code or description" />
-        <Field label="Problem Code" value={problemCode} required={isCM} onChange={event => { setProblemCode(event.target.value); setCauseCode(''); setRemedyCode('') }} suggestions={problemOptions} placeholder={failureClass ? 'Search matching problems' : 'Select failure code first'} />
-        <Field label={causeApplicable ? 'Cause Code' : 'Cause Code (Optional)'} required={causeApplicable} value={causeCode} onChange={event => { setCauseCode(event.target.value); setRemedyCode('') }} suggestions={causeOptions} placeholder={problemCode ? 'Search cause code or description' : 'Select problem code first'} />
-        <Field label={remedyApplicable ? 'Remedy Code' : 'Remedy Code (Optional)'} required={remedyApplicable} value={remedyCode} onChange={event => setRemedyCode(event.target.value)} suggestions={remedyOptions} placeholder={problemCode ? 'Search remedy code or description' : 'Select problem code first'} />
+        <Field label="Failure Code" value={failureClass} required={isCM} locked={readOnly} onChange={changeFailure} suggestions={failureClassOptions} placeholder="Search code or description" />
+        <Field label="Problem Code" value={problemCode} required={isCM} locked={readOnly} onChange={event => { setProblemCode(event.target.value); setCauseCode(''); setRemedyCode('') }} suggestions={problemOptions} placeholder={failureClass ? 'Search matching problems' : 'Select failure code first'} />
+        <Field label={causeApplicable ? 'Cause Code' : 'Cause Code (Optional)'} required={causeApplicable} value={causeCode} locked={readOnly} onChange={event => { setCauseCode(event.target.value); setRemedyCode('') }} suggestions={causeOptions} placeholder={problemCode ? 'Search cause code or description' : 'Select problem code first'} />
+        <Field label={remedyApplicable ? 'Remedy Code' : 'Remedy Code (Optional)'} required={remedyApplicable} value={remedyCode} locked={readOnly} onChange={event => setRemedyCode(event.target.value)} suggestions={remedyOptions} placeholder={problemCode ? 'Search remedy code or description' : 'Select problem code first'} />
       </div>
 
       <div className={mapClass}>

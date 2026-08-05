@@ -2,8 +2,8 @@ import { Lock, Plus, X } from 'lucide-react'
 import Section from '../ui/Section'
 
 const workspaceClass = 'grid gap-3'
-const addButtonClass = 'mb-2 inline-flex items-center gap-2 rounded-lg bg-[var(--app-badge-green-bg)] px-2.5 py-1.5 text-xs font-bold text-[var(--app-badge-green-text)] transition hover:brightness-95'
-const secondaryAddButtonClass = 'mb-2 inline-flex items-center gap-2 rounded-lg bg-[var(--app-badge-blue-bg)] px-2.5 py-1.5 text-xs font-bold text-[var(--app-badge-blue-text)] transition hover:brightness-95'
+const addButtonClass = 'mb-2 inline-flex items-center gap-2 rounded-lg bg-[var(--app-badge-green-bg)] px-2.5 py-1.5 text-xs font-bold text-[var(--app-badge-green-text)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40'
+const secondaryAddButtonClass = 'mb-2 inline-flex items-center gap-2 rounded-lg bg-[var(--app-badge-blue-bg)] px-2.5 py-1.5 text-xs font-bold text-[var(--app-badge-blue-text)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40'
 const actionRowClass = 'flex flex-wrap gap-2'
 const tableClass = 'overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)]'
 const headBaseClass = 'gap-2 bg-[var(--app-table-header-bg)] px-3 py-2 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.08em] text-[var(--app-table-heading)]'
@@ -20,6 +20,7 @@ const emptyClass = 'border-t border-[var(--app-line)] px-3 py-6 text-center text
 const hasTransaction = row => Boolean(row.transactionRef || row.purchaseRequest || row.purchaseOrder || row.reservation)
 
 export default function WorkOrderPlanTab({
+  readOnly = false,
   isPM,
   tasksLocked = isPM,
   jobPlanNumber,
@@ -41,7 +42,7 @@ export default function WorkOrderPlanTab({
     <div className={workspaceClass}>
       <Section compact title="Planned Labor" note={isPM ? 'Generated from the linked job plan' : 'Add the crafts, crews, and estimated hours required'}>
         {!isPM && (
-          <button className={addButtonClass} onClick={() => setPlannedLabor(rows => [...rows, { craft: '', hours: '', crew: '' }])}>
+          <button className={addButtonClass} disabled={readOnly} onClick={() => setPlannedLabor(rows => [...rows, { craft: '', hours: '', crew: '' }])}>
             <Plus size={15} />Add labor
           </button>
         )}
@@ -56,10 +57,10 @@ export default function WorkOrderPlanTab({
           </div>
           {plannedLabor.map((row, index) => (
             <div className={isPM ? laborRowClass : editableLaborRowClass} key={index}>
-              <input value={row.craft} list="planned-craft-options" readOnly={isPM} onChange={event => updatePlanRow(setPlannedLabor, index, 'craft', event.target.value)} placeholder="Search craft code or description" />
-              <input value={row.hours} readOnly={isPM} type="number" onChange={event => updatePlanRow(setPlannedLabor, index, 'hours', event.target.value)} placeholder="Hours" />
-              <input value={row.crew} list="planned-crew-options" readOnly={isPM} onChange={event => updatePlanRow(setPlannedLabor, index, 'crew', event.target.value)} placeholder="Search technician or crew" />
-              {!isPM && <button onClick={() => setPlannedLabor(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
+              <input value={row.craft} list="planned-craft-options" readOnly={readOnly || isPM} onChange={event => updatePlanRow(setPlannedLabor, index, 'craft', event.target.value)} placeholder="Search craft code or description" />
+              <input value={row.hours} readOnly={readOnly || isPM} type="number" onChange={event => updatePlanRow(setPlannedLabor, index, 'hours', event.target.value)} placeholder="Hours" />
+              <input value={row.crew} list="planned-crew-options" readOnly={readOnly || isPM} onChange={event => updatePlanRow(setPlannedLabor, index, 'crew', event.target.value)} placeholder="Search technician or crew" />
+              {!isPM && <button disabled={readOnly} onClick={() => setPlannedLabor(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
             </div>
           ))}
         </div>
@@ -67,15 +68,15 @@ export default function WorkOrderPlanTab({
 
       <Section compact title="Planned Materials & Tools" note="Left empty by default. Data entry users add materials, tools, or equipment manually when needed; availability is managed in Materials.">
         <div className={actionRowClass}>
-          <button className={addButtonClass} onClick={() => setPlannedResources(rows => [...rows, { type: 'Material', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add material</button>
-          <button className={secondaryAddButtonClass} onClick={() => setPlannedResources(rows => [...rows, { type: 'Tool', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add tool</button>
+          <button className={addButtonClass} disabled={readOnly} onClick={() => setPlannedResources(rows => [...rows, { type: 'Material', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add material</button>
+          <button className={secondaryAddButtonClass} disabled={readOnly} onClick={() => setPlannedResources(rows => [...rows, { type: 'Tool', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add tool</button>
         </div>
         <datalist id="planned-material-options">{materialMaster.map(item => <option value={item.description} key={item.itemNumber}>{item.itemNumber} · {item.category}</option>)}</datalist>
         <datalist id="planned-tool-options">{toolMaster.map(item => <option value={item.description} key={item.toolNumber}>{item.toolNumber} · {item.category}</option>)}</datalist>
         <div className={tableClass}>
           <div className={resourceHeadClass}><span>Type</span><span>Item / description</span><span>Quantity</span><span /></div>
           {plannedResources.length ? plannedResources.map((row, index) => {
-            const locked = hasTransaction(row)
+            const locked = readOnly || hasTransaction(row)
             return (
             <div className={resourceRowClass} key={index}>
               <select value={row.type} disabled={locked} title={locked ? 'Submitted resource lines cannot be changed. Add a new row for extra quantity.' : undefined} onChange={event => updatePlannedResourceField(index, 'type', event.target.value)}>
@@ -90,15 +91,15 @@ export default function WorkOrderPlanTab({
       </Section>
 
       <Section compact title="Job Tasks" note={tasksLocked ? `Generated from job plan ${jobPlanNumber}` : 'Configure sequence, instructions, and expected duration'}>
-        {!tasksLocked && <button className={addButtonClass} onClick={() => setPlannedTasks(rows => [...rows, { sequence: (rows.length + 1) * 10, description: '', duration: '' }])}><Plus size={15} />Add task</button>}
+        {!tasksLocked && <button className={addButtonClass} disabled={readOnly} onClick={() => setPlannedTasks(rows => [...rows, { sequence: (rows.length + 1) * 10, description: '', duration: '' }])}><Plus size={15} />Add task</button>}
         <div className={tableClass}>
           <div className={taskHeadClass}><span>Sequence</span><span>Task instruction</span><span>Duration (min)</span><span /></div>
           {plannedTasks.map((row, index) => (
             <div className={taskRowClass} key={index}>
-              <input type="number" value={row.sequence} readOnly={tasksLocked} onChange={event => updatePlanRow(setPlannedTasks, index, 'sequence', event.target.value)} />
-              <input value={row.description} readOnly={tasksLocked} onChange={event => updatePlanRow(setPlannedTasks, index, 'description', event.target.value)} placeholder="Describe the task to complete" />
-              <input type="number" value={row.duration} readOnly={tasksLocked} onChange={event => updatePlanRow(setPlannedTasks, index, 'duration', event.target.value)} placeholder="Minutes" />
-              {!tasksLocked && <button onClick={() => setPlannedTasks(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
+              <input type="number" value={row.sequence} readOnly={readOnly || tasksLocked} onChange={event => updatePlanRow(setPlannedTasks, index, 'sequence', event.target.value)} />
+              <input value={row.description} readOnly={readOnly || tasksLocked} onChange={event => updatePlanRow(setPlannedTasks, index, 'description', event.target.value)} placeholder="Describe the task to complete" />
+              <input type="number" value={row.duration} readOnly={readOnly || tasksLocked} onChange={event => updatePlanRow(setPlannedTasks, index, 'duration', event.target.value)} placeholder="Minutes" />
+              {!tasksLocked && <button disabled={readOnly} onClick={() => setPlannedTasks(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
             </div>
           ))}
           {!plannedTasks.length && (

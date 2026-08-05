@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api, getAuthToken, setAuthToken } from '../services/api'
 
 const AuthContext = createContext(null)
@@ -83,6 +83,12 @@ export function AuthProvider({ children }) {
     setAuthError('')
     window.history.pushState({}, '', '/')
   }, [])
+
+  useEffect(() => {
+    const handleUnauthorized = () => logout()
+    window.addEventListener('cafm:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('cafm:unauthorized', handleUnauthorized)
+  }, [logout])
 
   const value = useMemo(() => ({
     user,

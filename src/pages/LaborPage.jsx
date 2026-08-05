@@ -13,6 +13,8 @@ import PageHeader from '../components/ui/PageHeader'
 import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { mergeImportedRows } from '../lib/importRows'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const empty = {
   personId: '',
@@ -46,6 +48,7 @@ const laborPastWork = (labor, workOrders) => workOrders
   }))
 
 export default function LaborPage({ rows = [], setRows, workOrders = [], departmentRecords = [] }) {
+  const access = useModuleAccess('Labor')
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
@@ -54,9 +57,11 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], departm
   const routeId = decodeURIComponent(window.location.pathname.split('/labor/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.personId === routeId) || null)
   useEffect(() => {
-    if (!routeId) return
-    const latest = rows.find(row => row.personId === routeId)
-    if (latest) setSelected(latest)
+    if (!routeId) {
+      setSelected(null)
+      return
+    }
+    setSelected(rows.find(row => row.personId === routeId) || null)
   }, [rows, routeId])
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.availability === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
@@ -102,8 +107,8 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], departm
         actions={(
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Labor_Template.xlsx" />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(rows)} />
-            <Button onClick={() => setAdding(true)}><Plus size={17} />Add labor</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(current => mergeImportedRows(current, rows, 'personId'))} />}
+            {access.create && <Button onClick={() => setAdding(true)}><Plus size={17} />Add labor</Button>}
           </div>
         )}
       />

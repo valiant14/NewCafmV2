@@ -13,6 +13,7 @@ import EmptyState from '../ui/EmptyState'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import MasterRecordModal from '../master-data/MasterRecordModal'
 import { statusTone } from '../../lib/statusMatrix'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 const materialStatusTone = {
   Available: 'green',
@@ -37,6 +38,8 @@ const matchesMaterial = (material, row) => {
 }
 
 export default function MaterialDetailPage({ material, stockRows = [], storeRows = [], usageRows = [], purchaseRequests = [], purchaseOrders = [], onBack, onUpdate, onCreateRequest, onUpdateStock }) {
+  const access = useModuleAccess('Materials')
+  const purchaseRequestAccess = useModuleAccess('Purchase Requisitions')
   const [tab, setTab] = useState('Material Details')
   const [requestModalOpen, setRequestModalOpen] = useState(false)
   const [requestForm, setRequestForm] = useState({})
@@ -49,7 +52,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
     available: Math.max(0, Number(row.balance || 0) - Number(row.reserved || 0))
   }))
   const tone = materialStatusTone[material.availability] || 'green'
-  const canRequestPr = ['Low Stock', 'Purchase Required'].includes(material.availability)
+  const canRequestPr = purchaseRequestAccess.create && ['Low Stock', 'Purchase Required'].includes(material.availability)
   const changeStatus = event => onUpdate?.(material.itemNumber, { availability: event.target.value })
   const procurementRows = [
     ...purchaseRequests.filter(row => matchesMaterial(material, row)).map(row => ({ ...row, recordType: 'PR', reference: row.purchaseRequest, linked: row.purchaseOrder || '-' })),
@@ -75,10 +78,10 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
     setRequestError('')
     setRequestModalOpen(true)
   }
-  const requestPr = () => {
+  const requestPr = async () => {
     const quantity = Number(requestForm.quantity || 0)
     if (!quantity || quantity <= 0) return setRequestError('Enter a requested quantity above zero.')
-    onCreateRequest?.({
+    const created = await onCreateRequest?.({
       type: 'Material',
       item: material.description,
       itemCode: material.itemNumber,
@@ -89,6 +92,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
       site: requestForm.site || material.site || '',
       department: requestForm.department || material.department || material.category || ''
     })
+    if (!created) return setRequestError('Unable to create the purchase requisition.')
     setRequestModalOpen(false)
     setTab('Procurement History')
   }
@@ -113,7 +117,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
           actions={(
             <div className="flex flex-wrap items-center gap-2">
               {canRequestPr && <Button onClick={openRequestModal}><ShoppingCart size={15} />Request PR</Button>}
-              <div className="min-w-[180px]">
+              {access.edit && <div className="min-w-[180px]">
               <Combobox
                 picker
                 className="h-10 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
@@ -122,7 +126,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
                 onChange={changeStatus}
                 placeholder="Status"
               />
-            </div>
+            </div>}
             </div>
           )}
         />
@@ -182,6 +186,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
                   <input
                     type="number"
                     min="0"
+                    disabled={!access.edit}
                     value={reorderDraftValue(row)}
                     onChange={event => updateReorderDraft(row, event.target.value)}
                     onBlur={() => saveReorderLevel(row)}

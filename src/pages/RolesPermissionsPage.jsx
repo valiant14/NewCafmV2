@@ -18,6 +18,8 @@ import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../component
 import { permissionActions, rolePermissionRows } from '../config/runtimeDefaults'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { dataScopeLabel, roleDataScopeOptions } from '../lib/dataScope'
+import { mergeImportedRows } from '../lib/importRows'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const headers = ['role', 'dataScope', 'scope', 'status', ...permissionActions]
 const permissionText = value => Array.isArray(value) ? value.join(', ') : String(value || '')
@@ -43,6 +45,7 @@ const blankRole = () => ({
 })
 
 export default function RolesPermissionsPage({ rows = rolePermissionRows, setRows, siteOptions = [], departmentOptions = [] }) {
+  const access = useModuleAccess('Roles & Permissions')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [imported, setImported] = useState('')
@@ -52,9 +55,11 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
   const routeId = decodeURIComponent(window.location.pathname.split('/roles-permissions/')[1] || '')
   const [selectedRole, setSelectedRole] = useState(rows.find(row => row.role === routeId) || null)
   useEffect(() => {
-    if (!routeId) return
-    const latest = rows.find(row => row.role === routeId)
-    if (latest) setSelectedRole(latest)
+    if (!routeId) {
+      setSelectedRole(null)
+      return
+    }
+    setSelectedRole(rows.find(row => row.role === routeId) || null)
   }, [rows, routeId])
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, { site: ['site'], department: ['department'], status: ['status'] })
@@ -100,8 +105,8 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={headers} fileName="Roles_Permissions_Template.xlsx" />
             <ExportExcelButton module="Roles Permissions" rows={visibleRows} columns={exportColumns} />
-            <ExcelImportButton label="Import Excel" fileName={imported} onFile={setImported} onImport={importedRows => setRows?.(importedRows.map(roleFromImport))} />
-            <Button onClick={() => { setForm(blankRole()); setFormError(''); setCreating(true) }}><Plus size={15} />Add role</Button>
+            {access.import && <ExcelImportButton label="Import Excel" fileName={imported} onFile={setImported} onImport={importedRows => setRows?.(current => mergeImportedRows(current, importedRows.map(roleFromImport), 'role'))} />}
+            {access.create && <Button onClick={() => { setForm(blankRole()); setFormError(''); setCreating(true) }}><Plus size={15} />Add role</Button>}
           </div>
         )}
       />

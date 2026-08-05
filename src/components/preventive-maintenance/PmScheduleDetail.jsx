@@ -9,6 +9,8 @@ import { scheduleForPlan } from '../../lib/pmGeneration'
 import { nowLocalDateTime } from '../../lib/datetime'
 import Surface, { SurfaceHeader } from '../ui/Surface'
 import Field from '../ui/Field'
+import { normalizeWorkOrderWorkflow, workflowStatusLabel, workflowStatusOptions } from '../../lib/workOrderWorkflow'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 const normalize = value => String(value || '').trim()
 
@@ -38,7 +40,10 @@ function FieldGrid({ rows }) {
   )
 }
 
-export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmRules = [], workOrders, onBack, onOpenWorkOrder, onUpdate }) {
+export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmRules = [], workOrders, workflow, onBack, onOpenWorkOrder, onUpdate }) {
+  const access = useModuleAccess('Preventive Maintenance')
+  const activeWorkflow = normalizeWorkOrderWorkflow(workflow)
+  const validWoStatuses = workflowStatusOptions(activeWorkflow).map(option => option.value)
   const generatedTab = 'Generated Work Orders'
   const [activeTab, setActiveTab] = useState('PM Details')
   const asset = assets.find(item => normalize(item.assetnum) === normalize(plan.asset))
@@ -65,7 +70,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
         leadTime: Number(rule.leadTimeDays) || 0,
         frequency: Number(rule.frequency) || 1,
         freqUnit: rule.freqUnit || 'MONTHS',
-        woStatus: rule.defaultWoStatus || 'WSCH',
+        woStatus: validWoStatuses.includes(rule.defaultWoStatus) ? rule.defaultWoStatus : activeWorkflow.initialStatus,
         ...(['MINUTES', 'HOURS'].includes(rule.freqUnit) ? { startDate: nowLocalDateTime(), lastGeneratedCycle: '' } : {})
       } : {})
     })
@@ -94,11 +99,11 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
             { label: 'Job Plan', value: plan.jobPlan, note: linkedPlan?.description || 'Excel reference' },
             { label: 'Asset / Location', value: plan.asset || 'Location PM', note: location }
           ]}
-          actions={(
+          actions={access.edit ? (
             <Button variant={inactive ? 'outline' : 'primary'} onClick={() => changePmStatus(inactive ? 'ACTIVE' : 'INACTIVE')}>
               {inactive ? 'Activate PM' : 'Set Inactive'}
             </Button>
-          )}
+          ) : null}
         />
 
         <DetailTabs tabs={['PM Details', 'Job Plan', generatedTab]} active={activeTab} onChange={setActiveTab} />
@@ -121,19 +126,19 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                 <p>Generated Work Orders inherit asset, location, site, department, job plan, and all job tasks from this PM and the linked asset master.</p>
                 <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4">
                   <div className="flex items-end gap-2">
-                    <div className="min-w-0 flex-1"><Field label="PM Schedule Rule" value={plan.scheduleRule || ''} options={ruleOptions} onChange={changeRule} /></div>
+                    <div className="min-w-0 flex-1"><Field label="PM Schedule Rule" value={plan.scheduleRule || ''} options={ruleOptions} onChange={changeRule} disabled={!access.edit} /></div>
                     <Button variant="outline" disabled={!plan.scheduleRule} onClick={openRule}><ExternalLink size={15} />Open rule</Button>
                   </div>
                   <div className="grid gap-2 md:grid-cols-4">
                     <MiniMetric label="Every" value={`${schedule.frequency} ${schedule.freqUnit}`} note={selectedRule ? 'From rule' : 'Direct PM'} />
                     <MiniMetric label="Lead Time" value={`${schedule.leadTime} days`} note="Due soon window" />
                     <MiniMetric label="Trigger Hour" value={`${String(schedule.triggerHour || 0).padStart(2, '0')}:00`} note="Generation starts after" />
-                    <MiniMetric label="WO Status" value={schedule.woStatus} note="Generated WO status" />
+                    <MiniMetric label="WO Status" value={workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus} note={schedule.woStatus || activeWorkflow.initialStatus} />
                   </div>
                 </div>
                 <div className="grid gap-2 rounded-2xl bg-[var(--app-soft-bg)] p-4">
                   <strong className="text-[var(--app-ink)]">Next output</strong>
-                  <span>Work Type: {plan.workType || 'PM'} - Initial Status: {schedule.woStatus || 'WSCH'} - Job Tasks: {tasks.length}</span>
+                  <span>Work Type: {plan.workType || 'PM'} - Initial Status: {workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus} - Job Tasks: {tasks.length}</span>
                   <span>Frequency: every {schedule.frequency} {schedule.freqUnit} at {String(schedule.triggerHour || 0).padStart(2, '0')}:00</span>
                 </div>
                 <div className="grid gap-2 rounded-2xl bg-[var(--app-soft-bg)] p-4">
@@ -163,7 +168,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                 <article className="grid grid-cols-[90px_1fr_120px] border-t border-[var(--app-line)] px-4 py-3 text-[length:var(--app-table-font-size)] text-[var(--app-table-text)]" key={`${task.JPNUM}-${task['JOB TASK SEQUENCE']}-${index}`}>
                   <strong>{task['JOB TASK SEQUENCE']}</strong>
                   <span>{task['JOB TASK DESCRIPTION']}</span>
-                  <strong>{Math.max(1, Math.round(Number(task['TASK DURATION IN HOUR']) * 1440))} min</strong>
+                  <strong>{Math.max(1, Math.round(Number(task['TASK DURATION IN HOUR']) * 60))} min</strong>
                 </article>
               )) : (
                 <p className="p-4 text-sm text-[var(--app-muted)]">No task rows found for this job plan.</p>
@@ -223,7 +228,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
             columns: [
               { key: 'JOB TASK SEQUENCE', label: 'Seq.' },
               { key: 'JOB TASK DESCRIPTION', label: 'Task Description' },
-              { key: 'TASK DURATION IN HOUR', label: 'Duration', render: row => `${Math.max(1, Math.round(Number(row['TASK DURATION IN HOUR']) * 1440))} min` }
+              { key: 'TASK DURATION IN HOUR', label: 'Duration', render: row => `${Math.max(1, Math.round(Number(row['TASK DURATION IN HOUR']) * 60))} min` }
             ],
             rows: tasks,
             emptyText: 'No task rows found for this job plan.'

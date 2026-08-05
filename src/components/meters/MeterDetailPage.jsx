@@ -7,6 +7,7 @@ import EmptyState from '../ui/EmptyState'
 import { DetailHeader, DetailTabs, InfoCard, MetricCard } from '../ui/DetailScaffold'
 import TablePanel from '../ui/TablePanel'
 import GenericPrintReport from '../ui/GenericPrintReport'
+import useModuleAccess from '../../hooks/useModuleAccess'
 
 const meterStatuses = ['Active', 'Inactive', 'Needs Review']
 const toneByStatus = {
@@ -17,6 +18,7 @@ const toneByStatus = {
 }
 
 export default function MeterDetailPage({ meter, pastReadings = [], onBack, onUpdate }) {
+  const access = useModuleAccess('Meters')
   const [tab, setTab] = useState('Meter Details')
   const changeStatus = event => onUpdate?.(meter.meterId, { status: event.target.value })
   const latestReading = `${meter.reading || '-'} ${meter.unit || ''}`.trim()
@@ -38,7 +40,7 @@ export default function MeterDetailPage({ meter, pastReadings = [], onBack, onUp
             { label: 'Latest Reading', value: latestReading },
             { label: 'Reading Date', value: meter.readingDate }
           ]}
-          actions={(
+          actions={access.edit ? (
             <div className="min-w-[160px]">
               <Combobox
                 picker
@@ -49,7 +51,7 @@ export default function MeterDetailPage({ meter, pastReadings = [], onBack, onUp
                 placeholder="Status"
               />
             </div>
-          )}
+          ) : null}
         />
 
         <DetailTabs tabs={['Meter Details', 'Past Readings']} active={tab} onChange={setTab} />

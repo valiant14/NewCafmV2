@@ -11,6 +11,7 @@ import { ClipboardCheck, ClipboardList, PackageOpen, Truck, X } from 'lucide-rea
 import { useState } from 'react'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { statusDescription } from '../lib/statusMatrix'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const nextQuantity = row => {
   const requested = Number(row.quantity || 0)
@@ -56,6 +57,7 @@ const cancelledWorkOrders = (workOrders = []) => new Set(
 )
 
 export default function ReservationsPage({ rows = [], stockRows = [], workOrders = [], onUpdate }) {
+  const access = useModuleAccess('Reservations')
   const cancelled = cancelledWorkOrders(workOrders)
   const isCancelled = row => isCancelledStatus(row.status) || cancelled.has(workOrderKey(row.workOrder))
   const [filters, setFilters] = useState(emptyStandardFilters)
@@ -131,6 +133,7 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
     // hand over something with no name, so the row stops here rather than being carried on.
     if (!String(row.itemCode || row.item || '').trim()) return <Badge tone="orange">Item missing</Badge>
     if (row.status === 'COMPLETE') return <Badge tone="green">Complete</Badge>
+    if (!access.edit) return '-'
     if (Number(row.releasedQuantity || 0) > Number(row.deliveredQuantity || 0)) return <Button className="h-8 px-3 text-xs" onClick={() => deliver(row)}><Truck size={14} />Deliver</Button>
     if (Number(row.arrangedQuantity || 0) > Number(row.releasedQuantity || 0)) return <Button className="h-8 px-3 text-xs" onClick={() => openRelease(row)}><PackageOpen size={14} />Release from store</Button>
     return <Button className="h-8 px-3 text-xs" onClick={() => arrange(row)}><ClipboardCheck size={14} />Arrange</Button>

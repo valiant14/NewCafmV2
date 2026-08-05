@@ -1,33 +1,31 @@
 import { normalizeDepartmentName } from './departments'
 
 export const pagePermissionAliases = {
-  Overview: ['Overview', 'Reports'],
+  Overview: ['Overview'],
   'Job Requests': ['Job Requests'],
   'Work Orders': ['Work Orders'],
-  'Preventive Maintenance': ['Preventive Maintenance', 'PM'],
+  'Preventive Maintenance': ['Preventive Maintenance'],
   Incidents: ['Incidents'],
-  'Job Plans': ['Job Plans', 'PM'],
+  'Job Plans': ['Job Plans'],
   Assets: ['Assets'],
-  Labor: ['Labor', 'Work Orders'],
-  Locations: ['Locations', 'Assets'],
-  'Failure Library': ['Failure Library', 'Reports'],
-  Meters: ['Meters', 'Reports'],
-  Materials: ['Materials', 'Inventory'],
-  Stores: ['Stores', 'Inventory'],
-  'Tools & Equipment': ['Tools & Equipment', 'Inventory'],
-  Reservations: ['Reservations', 'Inventory'],
-  'Purchase Requisitions': ['Purchase Requisitions', 'Inventory'],
-  'Purchase Orders': ['Purchase Orders', 'Inventory'],
-  Users: ['Users', 'Administration'],
-  'Roles & Permissions': ['Roles & Permissions', 'Administration'],
-  Sites: ['Sites', 'Administration'],
-  Departments: ['Departments', 'Administration'],
-  'Work Order Workflow': ['Work Order Workflow', 'Administration'],
-  // Notifications is still a settings sub-page. SMTP & SMS and PM Schedule Rules now have
-  // their own backend modules, with Administration kept as the top-level bypass.
-  Notifications: ['Notifications', 'Settings', 'Administration'],
-  'SMTP & SMS': ['SMTP & SMS', 'Administration'],
-  'PM Schedule Rules': ['PM Schedule Rules', 'Settings', 'Administration']
+  Labor: ['Labor'],
+  Locations: ['Locations'],
+  'Failure Library': ['Failure Library'],
+  Meters: ['Meters'],
+  Materials: ['Materials'],
+  Stores: ['Stores'],
+  'Tools & Equipment': ['Tools & Equipment'],
+  Reservations: ['Reservations'],
+  'Purchase Requisitions': ['Purchase Requisitions'],
+  'Purchase Orders': ['Purchase Orders'],
+  Users: ['Users'],
+  'Roles & Permissions': ['Roles & Permissions'],
+  Sites: ['Sites'],
+  Departments: ['Departments'],
+  'Work Order Workflow': ['Work Order Workflow'],
+  Notifications: ['Settings'],
+  'SMTP & SMS': ['SMTP & SMS'],
+  'PM Schedule Rules': ['PM Schedule Rules']
 }
 
 export const siteCodeFromScope = value => {

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { getPool, sql } from '../db/pool.js'
 import { env } from '../config/env.js'
-import { requirePermission } from '../middleware/auth.js'
+import { assertPermission, requirePermission } from '../middleware/auth.js'
 import { addScopeWhere, applyScopeDefaults, assertPayloadWithinScope } from '../middleware/scope.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { bindParams } from '../utils/sqlParams.js'
@@ -153,6 +153,30 @@ const normalizeLocationCode = async (pool, payload) => {
   return { ...payload, location_code: result.recordset[0]?.location_code || null }
 }
 
+const normalizeToolStoreCode = async (pool, payload) => {
+  const value = payload.location_code
+  if (value === undefined) return payload
+  const text = String(value || '').trim()
+  if (!text) return { ...payload, location_code: null, site_code: null }
+  const result = await pool.request()
+    .input('value', text)
+    .query(`
+      select top 1 store_code, site_code
+      from dbo.storerooms
+      where store_code = @value
+        or store_name = @value
+        or concat(store_code, ' - ', store_name) = @value
+      order by case when store_code = @value then 0 when store_name = @value then 1 else 2 end, store_code
+    `)
+  const store = result.recordset[0]
+  if (!store) {
+    const error = new Error('Select a valid warehouse for this tool or equipment record.')
+    error.status = 400
+    throw error
+  }
+  return { ...payload, location_code: store.store_code, site_code: store.site_code }
+}
+
 const normalizeAssetNum = async (pool, payload) => {
   const value = payload.asset_num
   if (value === undefined) return payload
@@ -183,7 +207,9 @@ const normalizeForeignKeys = async (pool, payload, { table }) => {
     normalized = await normalizeSiteCode(pool, normalized)
   }
   if (table !== 'dbo.locations' && Object.hasOwn(normalized, 'location_code')) {
-    normalized = await normalizeLocationCode(pool, normalized)
+    normalized = table === 'dbo.tools_equipment'
+      ? await normalizeToolStoreCode(pool, normalized)
+      : await normalizeLocationCode(pool, normalized)
   }
   if (table !== 'dbo.assets' && Object.hasOwn(normalized, 'asset_num')) {
     normalized = await normalizeAssetNum(pool, normalized)
@@ -197,20 +223,145 @@ const normalizeForeignKeys = async (pool, payload, { table }) => {
   return normalized
 }
 
-const nextServiceRequestNumber = async pool => {
-  const result = await pool.request().query(`
-    select isnull(max(try_convert(int, substring(sr_num, 9, 20))), 41) + 1 as next_number
-    from dbo.service_requests
-    where sr_num like 'SR-2026-[0-9][0-9][0-9][0-9]'
-  `)
-  return `SR-2026-${String(result.recordset[0]?.next_number || 42).padStart(4, '0')}`
+const reserveNumber = async (pool, { sequenceKey, minimumSql, params = {} }) => {
+  const transaction = new sql.Transaction(pool)
+  await transaction.begin()
+  try {
+    const request = bindParams(new sql.Request(transaction), { sequenceKey, lockResource: `cafm-number-${sequenceKey}`, ...params })
+    const result = await request.query(`
+      set xact_abort on;
+      declare @lockResult int;
+      exec @lockResult = sp_getapplock
+        @Resource = @lockResource,
+        @LockMode = 'Exclusive',
+        @LockOwner = 'Transaction',
+        @LockTimeout = 10000;
+      if @lockResult < 0 throw 51001, 'Unable to reserve the next record number.', 1;
+
+      declare @minimum bigint = ${minimumSql};
+      if not exists (select 1 from dbo.number_sequences where sequence_key = @sequenceKey)
+        insert into dbo.number_sequences(sequence_key, next_value) values(@sequenceKey, @minimum);
+      else
+        update dbo.number_sequences
+        set next_value = case when next_value < @minimum then @minimum else next_value end,
+            updated_at = sysutcdatetime()
+        where sequence_key = @sequenceKey;
+
+      update dbo.number_sequences
+      set next_value = next_value + 1,
+          updated_at = sysutcdatetime()
+      output deleted.next_value as reserved_value
+      where sequence_key = @sequenceKey;
+    `)
+    await transaction.commit()
+    return Number(result.recordset[0]?.reserved_value)
+  } catch (error) {
+    await transaction.rollback().catch(() => {})
+    throw error
+  }
 }
+
+const nextServiceRequestNumber = async pool => {
+  const year = new Date().getUTCFullYear()
+  const prefix = `SR-${year}-`
+  const next = await reserveNumber(pool, {
+    sequenceKey: `SERVICE_REQUEST_${year}`,
+    params: { prefix },
+    minimumSql: `isnull((
+      select max(try_convert(bigint, substring(sr_num, len(@prefix) + 1, 30)))
+      from dbo.service_requests
+      where sr_num like @prefix + '%'
+    ), 0) + 1`
+  })
+  return `${prefix}${String(next).padStart(4, '0')}`
+}
+
+const nextWorkOrderNumber = pool => reserveNumber(pool, {
+  sequenceKey: 'WORK_ORDER',
+  minimumSql: `isnull((select max(try_convert(bigint, work_order_num)) from dbo.work_orders), 0) + 1`
+}).then(String)
+
+const nextAnnualNumber = async (pool, { sequenceName, prefixName, table, column }) => {
+  const year = new Date().getUTCFullYear()
+  const prefix = `${prefixName}-${year}-`
+  const next = await reserveNumber(pool, {
+    sequenceKey: `${sequenceName}_${year}`,
+    params: { prefix },
+    minimumSql: `isnull((
+      select max(try_convert(bigint, substring(${column}, len(@prefix) + 1, 30)))
+      from ${table}
+      where ${column} like @prefix + '%'
+    ), 0) + 1`
+  })
+  return `${prefix}${String(next).padStart(4, '0')}`
+}
+
+const nextPurchaseRequestNumber = pool => nextAnnualNumber(pool, {
+  sequenceName: 'PURCHASE_REQUEST',
+  prefixName: 'PR',
+  table: 'dbo.purchase_requisitions',
+  column: 'pr_num'
+})
+
+const nextPurchaseOrderNumber = pool => nextAnnualNumber(pool, {
+  sequenceName: 'PURCHASE_ORDER',
+  prefixName: 'PO',
+  table: 'dbo.purchase_orders',
+  column: 'po_num'
+})
+
+const nextReservationNumber = (pool, requestType) => {
+  const allocation = ['TOOL', 'EQUIPMENT'].includes(String(requestType || '').trim().toUpperCase())
+  return nextAnnualNumber(pool, {
+    sequenceName: allocation ? 'ALLOCATION' : 'RESERVATION',
+    prefixName: allocation ? 'ALC' : 'RSV',
+    table: 'dbo.inventory_reservations',
+    column: 'reservation_num'
+  })
+}
+
+const nextIncidentNumber = pool => nextAnnualNumber(pool, {
+  sequenceName: 'INCIDENT',
+  prefixName: 'INC',
+  table: 'dbo.incidents',
+  column: 'incident_num'
+})
 
 const normalizeGeneratedKeys = async (pool, payload, { table, key }) => {
   if (table === 'dbo.service_requests' && key === 'sr_num') {
     const value = String(payload.sr_num || '').trim()
     if (!value || value.toUpperCase() === 'AUTO') {
       return { ...payload, sr_num: await nextServiceRequestNumber(pool) }
+    }
+  }
+  if (table === 'dbo.work_orders' && key === 'work_order_num') {
+    const value = String(payload.work_order_num || '').trim()
+    if (!value || value.toUpperCase() === 'AUTO') {
+      return { ...payload, work_order_num: await nextWorkOrderNumber(pool) }
+    }
+  }
+  if (table === 'dbo.purchase_requisitions' && key === 'pr_num') {
+    const value = String(payload.pr_num || '').trim()
+    if (!value || value.toUpperCase() === 'AUTO') {
+      return { ...payload, pr_num: await nextPurchaseRequestNumber(pool) }
+    }
+  }
+  if (table === 'dbo.purchase_orders' && key === 'po_num') {
+    const value = String(payload.po_num || '').trim()
+    if (!value || value.toUpperCase() === 'AUTO') {
+      return { ...payload, po_num: await nextPurchaseOrderNumber(pool) }
+    }
+  }
+  if (table === 'dbo.inventory_reservations' && key === 'reservation_num') {
+    const value = String(payload.reservation_num || '').trim()
+    if (!value || value.toUpperCase() === 'AUTO') {
+      return { ...payload, reservation_num: await nextReservationNumber(pool, payload.request_type) }
+    }
+  }
+  if (table === 'dbo.incidents' && key === 'incident_num') {
+    const value = String(payload.incident_num || '').trim()
+    if (!value || value.toUpperCase() === 'AUTO') {
+      return { ...payload, incident_num: await nextIncidentNumber(pool) }
     }
   }
   return payload
@@ -251,7 +402,7 @@ const ownerFromAccessibleSource = async (pool, payload, user, sources = []) => {
   return user?.userId || null
 }
 
-export function crudRouter({ table, key, columns, defaultOrder = key, moduleName, relatedModules = [], scope, ownerColumn = null, ownerSources = [], beforeCreate, beforeUpdate }) {
+export function crudRouter({ table, key, columns, defaultOrder = key, moduleName, relatedModules = [], scope, ownerColumn = null, ownerSources = [], beforeCreate, beforeUpdate, additionalUpdatePermission }) {
   const router = Router()
   const insertable = columns.filter(column => !generatedColumns.has(column))
   const editable = insertable.filter(column => column !== key)
@@ -360,13 +511,21 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     if (scope) assertPayloadWithinScope({ user: req.user, payload, ...scope })
     await ownerFromAccessibleSource(pool, payload, req.user, ownerSources)
     const scoped = scope ? addScopeWhere({ user: req.user, ...scope, ownerColumn }) : { where: '', params: {} }
-    if (beforeUpdate) {
+    let current = null
+    if (beforeUpdate || additionalUpdatePermission) {
       const existingRequest = bindParams(pool.request(), scoped.params)
       const existingResult = await existingRequest
         .input('id', req.params.id)
         .query(`select ${selectColumns} from ${table} where ${quoteColumn(key)} = @id${scoped.where}`)
       if (!existingResult.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
-      payload = await beforeUpdate({ pool, payload, current: existingResult.recordset[0], id: req.params.id, req })
+      current = existingResult.recordset[0]
+    }
+    if (additionalUpdatePermission) {
+      const action = await additionalUpdatePermission({ pool, payload, current, id: req.params.id, req })
+      if (action) await assertPermission(req.user, moduleName, action)
+    }
+    if (beforeUpdate) {
+      payload = await beforeUpdate({ pool, payload, current, id: req.params.id, req })
       Object.keys(payload).forEach(column => assertKnownColumn(columns, column))
     }
     const updateColumns = editable.filter(column => payload[column] !== undefined)

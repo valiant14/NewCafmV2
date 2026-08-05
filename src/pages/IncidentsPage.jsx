@@ -19,6 +19,8 @@ import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScoped
 import { normalizeStatus } from '../lib/statusMatrix'
 import { nowLocalDateTime } from '../lib/datetime'
 import { useAuth } from '../providers/AuthProvider'
+import useModuleAccess from '../hooks/useModuleAccess'
+import { mergeImportedRows } from '../lib/importRows'
 
 const exportColumns = [
   { key: 'incidentNumber', label: 'Incident Number' },
@@ -36,6 +38,7 @@ const incidentTemplateHeaders = ['incidentNumber', 'description', 'site', 'depar
 
 export default function IncidentsPage({ rows, setRows, siteRecords = [], departmentRecords = [], locationRows = [], laborRows = [] }) {
   const { user } = useAuth()
+  const access = useModuleAccess('Incidents')
   const [tab, setTab] = useState('All')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({})
@@ -44,9 +47,11 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
   const routeId = decodeURIComponent(window.location.pathname.split('/incidents/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.incidentNumber === routeId) || null)
   useEffect(() => {
-    if (!routeId) return
-    const latest = rows.find(row => row.incidentNumber === routeId)
-    if (latest) setSelected(latest)
+    if (!routeId) {
+      setSelected(null)
+      return
+    }
+    setSelected(rows.find(row => row.incidentNumber === routeId) || null)
   }, [rows, routeId])
 
   const tabRows = useMemo(() => {
@@ -55,17 +60,16 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
   }, [rows, tab])
   const filteredRows = useMemo(() => applyStandardFilters(tabRows, filters, { date: ['reportedDate'] }), [tabRows, filters])
 
-  const addIncident = () => {
-    const nextNumber = `INC-2026-${String(rows.length + 1).padStart(4, '0')}`
-    setRows(current => [
-      {
-        incidentNumber: nextNumber,
-        status: 'NEW',
-        reportedDate: nowLocalDateTime(),
-        ...form
-      },
-      ...current
-    ])
+  const addIncident = async () => {
+    const created = {
+      incidentNumber: `INC-PENDING-${Date.now()}`,
+      __isNew: true,
+      status: 'NEW',
+      reportedDate: nowLocalDateTime(),
+      ...form
+    }
+    const result = await setRows(current => [created, ...current])
+    if (!result || result.__saveError) return
     setForm({})
     setModalOpen(false)
   }
@@ -84,9 +88,11 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
     setSelected(current => current?.incidentNumber === incidentNumber ? { ...current, ...patch } : current)
   }
 
-  const importRows = importedRows => {
-    setRows(importedRows.map((row, index) => ({
-      incidentNumber: row.incidentNumber || `INC-IMPORT-${String(index + 1).padStart(4, '0')}`,
+  const importRows = async importedRows => {
+    const importedAt = Date.now()
+    const normalized = importedRows.map((row, index) => ({
+      incidentNumber: row.incidentNumber || `INC-PENDING-${importedAt}-${index + 1}`,
+      ...(row.incidentNumber ? {} : { __isNew: true }),
       description: row.description || '',
       site: row.site || '',
       department: row.department || '',
@@ -95,7 +101,9 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
       status: normalizeStatus('incident', row.status, 'NEW'),
       reportedBy: row.reportedBy || '',
       reportedDate: row.reportedDate || ''
-    })))
+    }))
+    const result = await setRows(current => mergeImportedRows(current, normalized, 'incidentNumber'))
+    if (!result || result.__saveError) throw result?.error || new Error('Unable to import incidents.')
   }
 
   if (selected) return <IncidentDetailPage incident={selected} onBack={close} onUpdate={updateIncident} />
@@ -110,8 +118,8 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={incidentTemplateHeaders} fileName="Incidents_Template.xlsx" />
             <ExportExcelButton module="Incidents" rows={filteredRows} columns={exportColumns} />
-            <ExcelImportButton label="Import Excel" fileName={imported} onFile={setImported} onImport={importRows} />
-            <Button onClick={() => { setForm({ severity: 'Medium' }); setModalOpen(true) }}><Plus size={15} />New incident</Button>
+            {access.import && <ExcelImportButton label="Import Excel" fileName={imported} onFile={setImported} onImport={importRows} />}
+            {access.create && <Button onClick={() => { setForm({ severity: 'Medium' }); setModalOpen(true) }}><Plus size={15} />New incident</Button>}
           </div>
         )}
       />

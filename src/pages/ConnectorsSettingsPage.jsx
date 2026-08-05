@@ -13,6 +13,7 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
 import { api } from '../services/api'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const connectorTypes = ['SMTP', 'SMS']
 const encryptionModes = ['None', 'SSL', 'TLS']
@@ -58,6 +59,7 @@ const exportColumns = [
 ]
 
 export default function ConnectorsSettingsPage({ rows = [], setRows, notify }) {
+  const access = useModuleAccess('SMTP & SMS')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [modalOpen, setModalOpen] = useState(false)
@@ -116,7 +118,7 @@ export default function ConnectorsSettingsPage({ rows = [], setRows, notify }) {
         actions={(
           <div className="flex items-center gap-2">
             <ExportExcelButton module="Connectors" rows={visibleRows} columns={exportColumns} />
-            <Button onClick={openNew}><Plus size={17} />Add connector</Button>
+            {access.create && <Button onClick={openNew}><Plus size={17} />Add connector</Button>}
           </div>
         )}
       />

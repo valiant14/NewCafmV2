@@ -9,8 +9,18 @@ cd backendCafm
 npm install
 copy .env.example .env
 npm run db:check
-npm run db:create-admin
+npm run db:setup
 npm run dev
+```
+
+`db:setup` applies the base schema, core permissions, every idempotent production
+migration, performance indexes, and the administrator account. Sample and test-data
+scripts remain opt-in and are never run by setup.
+
+For an existing database, apply all production migrations with:
+
+```bash
+npm run db:migrate
 ```
 
 API base URL:
@@ -54,7 +64,14 @@ Apply the global work-order workflow controls on an existing database:
 npm run db:workflow-controls
 npm run db:workflow-designer
 npm run api:check-workflow
+npm run api:check-transitions
+npm run api:check-numbers
 ```
+
+`api:check-numbers` verifies concurrent MSSQL-issued PR references plus PO,
+allocation, and incident references, then removes its temporary records.
+`api:check-transitions` verifies work-order routing-field persistence and that edit access alone cannot close a Work Order;
+its temporary role, user, and Work Order are removed after every run.
 
 Default development login:
 

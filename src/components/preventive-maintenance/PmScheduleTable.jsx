@@ -5,6 +5,7 @@ import { statusDescription, statusTone } from '../../lib/statusMatrix'
 import { pmDueLabel, pmDueTone } from '../../lib/pmSchedule'
 import { scheduleForPlan } from '../../lib/pmGeneration'
 import { parseLocal } from '../../lib/datetime'
+import { normalizeWorkOrderWorkflow, workflowStatusLabel } from '../../lib/workOrderWorkflow'
 
 const columns = [
   { key: 'pmNumber', label: 'PM plan' },
@@ -34,7 +35,8 @@ const sortIcon = (sort, key) => {
   return sort.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
 }
 
-export default function PmScheduleTable({ rows, currentPage, pageSize, pageCount, total, onOpen, onPageChange, onPageSizeChange, sort, onSort, pmRules = [] }) {
+export default function PmScheduleTable({ rows, currentPage, pageSize, pageCount, total, onOpen, onPageChange, onPageSizeChange, sort, onSort, pmRules = [], workflow }) {
+  const activeWorkflow = normalizeWorkOrderWorkflow(workflow)
   const from = total ? ((currentPage - 1) * pageSize) + 1 : 0
   const to = Math.min(currentPage * pageSize, total)
 
@@ -59,7 +61,7 @@ export default function PmScheduleTable({ rows, currentPage, pageSize, pageCount
               <span className="block text-[var(--app-muted)]">Lead {schedule.leadTime}d - Trigger {String(schedule.triggerHour || 0).padStart(2, '0')}:00</span>
             </div>
             <div className="min-w-0"><strong className="block truncate text-[var(--app-ink)]">{plan.personGroup || plan.department || 'Not assigned'}</strong><span className="block truncate text-[var(--app-muted)]">{plan.department} {plan.subDepartment}</span></div>
-            <div><div className="flex flex-wrap gap-1"><Badge tone={statusTone(plan.pmStatus)}>{plan.pmStatus}</Badge><Badge tone={pmDueTone(plan, pmRules)}>{pmDueLabel(plan, pmRules)}</Badge></div><span className="mt-1 block text-[var(--app-muted)]">{plan.workType} - {schedule.woStatus} - Counter {plan.pmCounter}</span></div>
+            <div><div className="flex flex-wrap gap-1"><Badge tone={statusTone(plan.pmStatus)}>{plan.pmStatus}</Badge><Badge tone={pmDueTone(plan, pmRules)}>{pmDueLabel(plan, pmRules)}</Badge></div><span className="mt-1 block text-[var(--app-muted)]">{plan.workType} - {workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus} - Counter {plan.pmCounter}</span></div>
             <ChevronRight className="text-[var(--app-muted)]" />
           </button>
         )

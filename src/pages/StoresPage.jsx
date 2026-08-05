@@ -19,6 +19,8 @@ import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../component
 import { isUsableStore, storeLocation, storeStockRows, storeSummary } from '../lib/inventory'
 import { scopeRowsForUser } from '../lib/accessControl'
 import { useAuth } from '../providers/AuthProvider'
+import useModuleAccess from '../hooks/useModuleAccess'
+import { mergeImportedRows } from '../lib/importRows'
 
 const summaryColumns = [
   { key: 'code', label: 'Warehouse Code' },
@@ -154,6 +156,7 @@ function Widget({ icon: Icon, label, value, note, tone = 'neutral', onClick }) {
 
 export default function StoresPage({ materials = [], tools = [], stockRows = [], storeRows = [], setStoreRows, locationRows = [], siteRecords = [], scopeUser }) {
   const { user } = useAuth()
+  const access = useModuleAccess('Stores')
   const [imported, setImported] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [drill, setDrill] = useState(null)
@@ -182,9 +185,11 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
   const visibleRows = summary
   const [selected, setSelected] = useState(summary.find(store => store.code === routeId) || null)
   useEffect(() => {
-    if (!routeId) return
-    const latest = summary.find(store => store.code === routeId)
-    if (latest) setSelected(latest)
+    if (!routeId) {
+      setSelected(null)
+      return
+    }
+    setSelected(summary.find(store => store.code === routeId) || null)
   }, [summary, routeId])
 
   const open = store => {
@@ -240,10 +245,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
   }
   const importRows = async rows => {
     const normalized = normalizeImportRows(rows, defaultSite)
-    await setStoreRows?.(current => [
-      ...normalized,
-      ...current.filter(store => !normalized.some(row => row.code === store.code))
-    ])
+    await setStoreRows?.(current => mergeImportedRows(current, normalized, 'code'))
   }
 
   if (selected) {
@@ -307,8 +309,8 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Stores_Template.xlsx" />
             <ExportExcelButton module="Stores" rows={visibleRows} columns={summaryColumns} />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={importRows} />
-            <Button onClick={openNew}><Plus size={17} />Add store</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={importRows} />}
+            {access.create && <Button onClick={openNew}><Plus size={17} />Add store</Button>}
           </div>
         )}
       />

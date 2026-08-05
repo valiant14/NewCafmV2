@@ -18,7 +18,9 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, optionsFromRows, scopedStandardFilters, useScopedFilters } from '../lib/standardFilters'
 import { normalizeStatus } from '../lib/statusMatrix'
 import { conformsToAssetCode, validateAssetCode } from '../lib/coding'
+import { mergeImportedRows } from '../lib/importRows'
 import { useAuth } from '../providers/AuthProvider'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const empty = {
   assetnum: '',
@@ -59,6 +61,7 @@ const exportColumns = [
 
 export default function AssetsPage({ rows: controlledRows, setRows: setControlledRows, initialAssets = [], workOrders = [], siteRecords = [], departmentRecords = [], locationRows = [] }) {
   const { user } = useAuth()
+  const access = useModuleAccess('Assets')
   const [localRows, setLocalRows] = useState(initialAssets)
   const rows = controlledRows || localRows
   const setRows = setControlledRows || setLocalRows
@@ -71,9 +74,11 @@ export default function AssetsPage({ rows: controlledRows, setRows: setControlle
   const routeId = decodeURIComponent(window.location.pathname.split('/assets/')[1] || '')
   const [selected, setSelected] = useState(rows.find(row => row.assetnum === routeId) || null)
   useEffect(() => {
-    if (!routeId) return
-    const latest = rows.find(row => row.assetnum === routeId)
-    if (latest) setSelected(latest)
+    if (!routeId) {
+      setSelected(null)
+      return
+    }
+    setSelected(rows.find(row => row.assetnum === routeId) || null)
   }, [rows, routeId])
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, { date: ['installdate'] })
@@ -120,8 +125,8 @@ export default function AssetsPage({ rows: controlledRows, setRows: setControlle
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Assets_Template.xlsx" />
             <ExportExcelButton module="Assets" rows={visibleRows} columns={exportColumns} />
-            <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(rows.map(row => ({ ...row, status: normalizeStatus('asset', row.status, 'OPERATING') })))} />
-            <Button onClick={() => setAdding(true)}><Plus size={17} />Add asset</Button>
+            {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(current => mergeImportedRows(current, rows.map(row => ({ ...row, status: normalizeStatus('asset', row.status, 'OPERATING') })), 'assetnum'))} />}
+            {access.create && <Button onClick={() => setAdding(true)}><Plus size={17} />Add asset</Button>}
           </div>
         )}
       />

@@ -6,8 +6,11 @@ import { sameDepartment } from '../../lib/departments'
 import { craftCodeOptions, laborNameOptions, locationOptions, storeOptions } from '../../lib/masterOptions'
 import PageHeader from '../ui/PageHeader'
 import Surface from '../ui/Surface'
+import { normalizeWorkOrderWorkflow, workflowStatusOptions } from '../../lib/workOrderWorkflow'
 
-export default function PmScheduleForm({ form, setForm, assets, jobPlans, departments, pmRules = [], locations = [], stores = [], labor = [], onCancel, onSave, modal = false }) {
+export default function PmScheduleForm({ form, setForm, assets, jobPlans, departments, pmRules = [], workflow, locations = [], stores = [], labor = [], onCancel, onSave, modal = false }) {
+  const activeWorkflow = normalizeWorkOrderWorkflow(workflow)
+  const woStatusOptions = workflowStatusOptions(activeWorkflow)
   const locationChoices = locationOptions(locations)
   const storeChoices = storeOptions(stores)
   const peopleChoices = laborNameOptions(labor)
@@ -32,7 +35,9 @@ export default function PmScheduleForm({ form, setForm, assets, jobPlans, depart
         leadTime: Number(rule.leadTimeDays) || 0,
         frequency: Number(rule.frequency) || 1,
         freqUnit: rule.freqUnit || 'MONTHS',
-        woStatus: rule.defaultWoStatus || 'WSCH'
+        woStatus: woStatusOptions.some(option => option.value === rule.defaultWoStatus)
+          ? rule.defaultWoStatus
+          : activeWorkflow.initialStatus
       } : {})
     }))
   }
@@ -56,7 +61,7 @@ export default function PmScheduleForm({ form, setForm, assets, jobPlans, depart
       <Field label="FREQUNIT" value={form.freqUnit} required disabled={ruleLocked} options={['MINUTES', 'HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'YEARS']} onChange={event => set('freqUnit', event.target.value)} />
       <Field label="PMCOUNTER" type="number" value={form.pmCounter} onChange={event => set('pmCounter', Number(event.target.value))} />
       <Field label="WORKTYPE" value="PM" locked />
-      <Field label="WOSTATUS" value={form.woStatus} disabled={ruleLocked} options={['WSCH', 'WAPPR']} onChange={event => set('woStatus', event.target.value)} />
+      <Field label="WOSTATUS" value={form.woStatus || activeWorkflow.initialStatus} disabled={ruleLocked} options={woStatusOptions} onChange={event => set('woStatus', event.target.value)} />
       <Field label="STORELOC" value={form.storeLocation} onChange={event => set('storeLocation', event.target.value)} suggestions={storeChoices} placeholder="Select a store" />
       <Field label="SUPERVISOR" value={form.supervisor} onChange={event => set('supervisor', event.target.value)} suggestions={peopleChoices} placeholder="Select a supervisor" />
       <Field label="LEAD" value={form.lead} onChange={event => set('lead', event.target.value)} suggestions={peopleChoices} placeholder="Select a lead" />

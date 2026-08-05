@@ -120,33 +120,44 @@ export const requireAuth = async (req, res, next) => {
   }
 }
 
+export const userHasPermission = async (user, moduleName, action = 'view') => {
+  const userId = user?.userId || ''
+  const key = permissionKey(userId, moduleName, action)
+  const cached = cachedPermission(key)
+  if (cached !== undefined) return cached
+
+  const pool = await getPool()
+  const result = await pool.request()
+    .input('userId', userId)
+    .input('moduleName', moduleName)
+    .input('actionName', action)
+    .query(`
+      select top 1 p.module_name, p.action_name
+      from dbo.users u
+      join dbo.roles r on r.role_id = u.role_id
+      join dbo.role_permissions p on p.role_id = r.role_id and p.allowed = 1
+      where u.user_id = @userId
+        and u.status = 'Active'
+        and r.status = 'Active'
+        and p.module_name = @moduleName
+        and p.action_name = @actionName
+    `)
+  const allowed = Boolean(result.recordset[0])
+  cachePermission(key, allowed)
+  return allowed
+}
+
+export const assertPermission = async (user, moduleName, action) => {
+  if (await userHasPermission(user, moduleName, action)) return
+  const error = new Error(`Missing ${action} permission for ${moduleName}`)
+  error.name = 'Forbidden'
+  error.status = 403
+  throw error
+}
+
 export const requirePermission = (moduleName, action = 'view') => async (req, res, next) => {
   try {
-    const userId = req.user?.userId || ''
-    const key = permissionKey(userId, moduleName, action)
-    const cached = cachedPermission(key)
-    if (cached === true) return next()
-    if (cached === false) return res.status(403).json({ error: 'Forbidden', message: `Missing ${action} permission for ${moduleName}` })
-
-    const pool = await getPool()
-    const result = await pool.request()
-      .input('userId', userId)
-      .input('moduleName', moduleName)
-      .input('actionName', action)
-      .query(`
-        select top 1 p.module_name, p.action_name
-        from dbo.users u
-        join dbo.roles r on r.role_id = u.role_id
-        join dbo.role_permissions p on p.role_id = r.role_id and p.allowed = 1
-        where u.user_id = @userId
-          and u.status = 'Active'
-          and r.status = 'Active'
-          and p.module_name = @moduleName
-          and p.action_name = @actionName
-      `)
-    const allowed = Boolean(result.recordset[0])
-    cachePermission(key, allowed)
-    if (allowed) return next()
+    if (await userHasPermission(req.user, moduleName, action)) return next()
     res.status(403).json({ error: 'Forbidden', message: `Missing ${action} permission for ${moduleName}` })
   } catch (error) {
     next(error)

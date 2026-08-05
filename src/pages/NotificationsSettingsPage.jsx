@@ -12,7 +12,7 @@ import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
-import { readNotificationRules, storedListSetter, writeNotificationRules } from '../lib/settingsStore'
+import useModuleAccess from '../hooks/useModuleAccess'
 
 const events = [
   'Work order overdue',
@@ -91,9 +91,8 @@ const exportColumns = [
   { key: 'createdDate', header: 'Created' }
 ]
 
-export default function NotificationsSettingsPage() {
-  const [rows, setRowsState] = useState(readNotificationRules)
-  const setRows = storedListSetter(setRowsState, writeNotificationRules)
+export default function NotificationsSettingsPage({ rows = [], setRows }) {
+  const access = useModuleAccess('Settings')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [modalOpen, setModalOpen] = useState(false)
@@ -138,7 +137,7 @@ export default function NotificationsSettingsPage() {
         actions={(
           <div className="flex items-center gap-2">
             <ExportExcelButton module="Notification Rules" rows={visibleRows} columns={exportColumns} />
-            <Button onClick={openNew}><Plus size={17} />Add rule</Button>
+            {access.create && <Button onClick={openNew}><Plus size={17} />Add rule</Button>}
           </div>
         )}
       />
