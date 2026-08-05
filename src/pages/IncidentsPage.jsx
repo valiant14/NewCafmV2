@@ -148,9 +148,13 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
             { key: 'site', label: 'Site' },
             { key: 'department', label: 'Department' },
             { key: 'location', label: 'Location' },
-            { key: 'severity', label: 'Severity', render: value => <Badge tone={value === 'Critical' || value === 'High' ? 'orange' : 'blue'}>{value}</Badge> },
+            { key: 'severity', label: 'Severity', render: value => {
+              const severity = value || 'Medium'
+              const tone = severity === 'Critical' ? 'red' : severity === 'High' ? 'orange' : severity === 'Low' ? 'neutral' : 'blue'
+              return <Badge tone={tone}>{severity}</Badge>
+            } },
             { key: 'status', label: 'Status', render: value => <StatusBadge application="incident" value={value} /> },
-            { key: 'reportedBy', label: 'Reported By' },
+            { key: 'reportedBy', label: 'Reported By', render: value => value || '-' },
             { key: 'open', label: '', render: () => <ChevronRight size={17} /> }
           ]}
           emptyIcon={AlertTriangle}

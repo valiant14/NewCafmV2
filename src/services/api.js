@@ -437,7 +437,9 @@ const mapIncident = row => ({
   location: row.location_code || '',
   asset: row.asset_num || '',
   department: row.department_name || '',
+  severity: row.severity || 'Medium',
   status: row.status,
+  reportedBy: row.reported_by || '',
   reportedDate: row.reported_at || ''
 })
 

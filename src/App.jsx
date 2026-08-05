@@ -542,7 +542,7 @@ const apiMappers = {
     endpoint: '/incidents',
     key: 'incidentNumber',
     apiKey: 'incident_num',
-    toApi: row => ({ incident_num: toText(row.incidentNumber || row.incident), description: toText(row.description), site_code: row.site || null, location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', status: statusText(row.status, 'NEW'), reported_at: toDateOrNull(row.reportedDate) || new Date() })
+    toApi: row => ({ incident_num: toText(row.incidentNumber || row.incident), description: toText(row.description), site_code: row.site || null, location_code: row.location || '', asset_num: row.asset || null, department_name: row.department || '', severity: row.severity || 'Medium', status: statusText(row.status, 'NEW'), reported_by: row.reportedBy || '', reported_at: toDateOrNull(row.reportedDate) || new Date() })
   },
   pm: {
     endpoint: '/preventive-maintenance',

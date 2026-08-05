@@ -349,7 +349,7 @@ router.use('/incidents', crudRouter({
   relatedModules: ['Overview'],
   table: 'dbo.incidents',
   key: 'incident_num',
-  columns: ['incident_num', 'description', 'site_code', 'location_code', 'asset_num', 'department_name', 'status', 'reported_at', 'created_at', 'updated_at'],
+  columns: ['incident_num', 'description', 'site_code', 'location_code', 'asset_num', 'department_name', 'severity', 'status', 'reported_by', 'reported_at', 'created_at', 'updated_at'],
   defaultOrder: 'reported_at desc, incident_num desc',
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
 }))
