@@ -103,24 +103,27 @@ const mapDepartment = row => ({
   status: row.status || 'Active'
 })
 
-const mapUser = (row, roles = []) => ({
-  userId: row.user_id,
-  username: row.username,
-  password: '',
-  name: row.display_name,
-  email: row.email || '',
-  // The role master is only readable by roles that can open Roles & Permissions. Without the
-  // row's own role_name as a fallback, every user mapped to a blank role for everyone else.
-  role: roles.find(role => role.roleId === row.role_id)?.role || row.role_name || '',
-  roleId: row.role_id,
-  laborId: row.labor_id || '',
-  site: row.site_scope || 'All Sites',
-  department: row.department_scope || 'All Departments',
-  status: row.status || 'Active',
-  lastLogin: row.last_login_at || '',
-  dataScopeOverride: row.data_scope_override || 'ROLE',
-  dataScope: row.effective_data_scope || row.role_data_scope || 'DEPARTMENT'
-})
+const mapUser = (row, roles = []) => {
+  const dataScope = row.effective_data_scope || row.role_data_scope || 'DEPARTMENT'
+  return {
+    userId: row.user_id,
+    username: row.username,
+    password: '',
+    name: row.display_name,
+    email: row.email || '',
+    // The role master is only readable by roles that can open Roles & Permissions. Without the
+    // row's own role_name as a fallback, every user mapped to a blank role for everyone else.
+    role: roles.find(role => role.roleId === row.role_id)?.role || row.role_name || '',
+    roleId: row.role_id,
+    laborId: row.labor_id || '',
+    site: row.site_scope ?? (dataScope === 'GLOBAL' ? 'All Sites' : ''),
+    department: row.department_scope ?? (dataScope === 'GLOBAL' ? 'All Departments' : ''),
+    status: row.status || 'Active',
+    lastLogin: row.last_login_at || '',
+    dataScopeOverride: row.data_scope_override || 'ROLE',
+    dataScope
+  }
+}
 
 const mapRole = row => ({
   roleId: row.role_id,

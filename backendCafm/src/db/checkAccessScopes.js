@@ -16,13 +16,14 @@ const result = await pool.request().query(`
   order by u.user_id;
 
   select 'service_requests' as entity, count_big(1) as total,
-    sum(case when created_by_user_id is null then 1 else 0 end) as missing_owner from dbo.service_requests
-  union all select 'work_orders', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end) from dbo.work_orders
-  union all select 'purchase_requisitions', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end) from dbo.purchase_requisitions
-  union all select 'purchase_orders', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end) from dbo.purchase_orders
-  union all select 'inventory_reservations', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end) from dbo.inventory_reservations
-  union all select 'incidents', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end) from dbo.incidents
-  union all select 'meter_readings', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end) from dbo.meter_readings;
+    sum(case when created_by_user_id is null then 1 else 0 end) as missing_owner,
+    sum(case when created_by_user_id = 'USR-LEGACY' then 1 else 0 end) as legacy_custodian from dbo.service_requests
+  union all select 'work_orders', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end), sum(case when created_by_user_id = 'USR-LEGACY' then 1 else 0 end) from dbo.work_orders
+  union all select 'purchase_requisitions', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end), sum(case when created_by_user_id = 'USR-LEGACY' then 1 else 0 end) from dbo.purchase_requisitions
+  union all select 'purchase_orders', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end), sum(case when created_by_user_id = 'USR-LEGACY' then 1 else 0 end) from dbo.purchase_orders
+  union all select 'inventory_reservations', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end), sum(case when created_by_user_id = 'USR-LEGACY' then 1 else 0 end) from dbo.inventory_reservations
+  union all select 'incidents', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end), sum(case when created_by_user_id = 'USR-LEGACY' then 1 else 0 end) from dbo.incidents
+  union all select 'meter_readings', count_big(1), sum(case when created_by_user_id is null then 1 else 0 end), sum(case when created_by_user_id = 'USR-LEGACY' then 1 else 0 end) from dbo.meter_readings;
 
   select 'service_requests' as entity, site_code, department_name, nullif(reported_by, '') as reported_by, count_big(1) as record_count
   from dbo.service_requests
@@ -50,12 +51,15 @@ console.log('User access scopes')
 console.table(users)
 console.log('Transaction ownership')
 console.table(ownership)
-console.log('Legacy transaction distribution')
+console.log('Transaction scope distribution')
 console.table(transactionScopes)
 
 if (invalidUsers.length) {
-  console.warn(`Scope warning: ${invalidUsers.length} active scoped user(s) have no site or department assignment and are denied scoped data until configured.`)
+  throw new Error(`${invalidUsers.length} active scoped user(s) have no site or department assignment.`)
 }
+
+const missingOwners = ownership.reduce((sum, row) => sum + Number(row.missing_owner || 0), 0)
+if (missingOwners) throw new Error(`${missingOwners} transaction record(s) still have no ownership custodian.`)
 
 console.log('Scope check passed.')
 process.exit(0)

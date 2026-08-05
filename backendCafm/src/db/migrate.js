@@ -33,7 +33,8 @@ const migrationFiles = [
   '037_work_order_routing_fields.sql',
   '038_attachments.sql',
   '039_supply_chain_command_indexes.sql',
-  '040_work_order_history_indexes.sql'
+  '040_work_order_history_indexes.sql',
+  '041_scope_and_legacy_ownership_cleanup.sql'
 ]
 
 const batchesFor = fileName => fs.readFileSync(path.join(sqlDirectory, fileName), 'utf8')

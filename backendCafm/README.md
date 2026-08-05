@@ -119,6 +119,10 @@ Each user has a data-view override with four operational modes:
 
 Scoped users with no site or department assignment are denied scoped data. Transaction owners are assigned by the API and inherited through linked service request, work order, PR, PO, reservation, and meter records; clients cannot spoof the owner field.
 
+When a new user is linked to an active labor master, missing scope values default from that labor record. Supply-chain manager accounts without assignments are limited to sites containing active warehouses and active department masters.
+
+Migration `041_scope_and_legacy_ownership_cleanup.sql` repairs malformed legacy scope rows and propagates ownership through reporters, source requests, PM records, linked labor, work orders, requisitions, purchase orders, and reservations. Records whose human creator cannot be reconstructed are assigned to the inactive `USR-LEGACY` audit custodian; this does not bypass normal site or department filtering.
+
 ## Performance Operations
 
 High-volume list endpoints support server pagination while preserving the existing array response:
