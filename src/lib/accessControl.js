@@ -46,6 +46,10 @@ export const siteCodesFromScope = value => {
 }
 
 export const siteCodesForUser = user => siteCodesFromScope(user?.siteScope || user?.site)
+export const dataScopeForUser = user => {
+  const value = String(user?.dataScope || '').trim().toUpperCase()
+  return ['GLOBAL', 'DEPARTMENT', 'OWN'].includes(value) ? value : 'DEPARTMENT'
+}
 export const scopeValuesFromText = value => {
   const text = String(value || '').trim()
   if (!text || /^all departments$/i.test(text) || /^all$/i.test(text)) return []
@@ -81,32 +85,46 @@ const valuesFromKeys = (row, keys = []) => keys
   .map(value => String(value).trim())
 
 export const canViewSite = (user, site) => {
+  if (dataScopeForUser(user) === 'GLOBAL') return true
   const scope = siteCodesForUser(user)
-  if (!scope.length) return true
+  if (!scope.length) return false
   const rowSite = siteCodeFromScope(site) || String(site || '').trim()
-  return !rowSite || scope.includes(rowSite)
+  return Boolean(rowSite) && scope.includes(rowSite)
 }
 
 export const canViewDepartment = (user, department) => {
+  if (dataScopeForUser(user) === 'GLOBAL') return true
   const scope = scopeValuesFromText(user?.departmentScope || user?.department)
-  if (!scope.length) return true
+  if (!scope.length) return false
   const rowDepartment = normalizeDepartmentName(department)
-  return !rowDepartment || scope.includes(rowDepartment)
+  return Boolean(rowDepartment) && scope.includes(rowDepartment)
 }
 
 export const canViewAnyDepartment = (user, row, departmentKeys = []) => {
+  if (dataScopeForUser(user) === 'GLOBAL') return true
   const scope = scopeValuesFromText(user?.departmentScope || user?.department)
-  if (!scope.length || !departmentKeys.length) return true
+  if (!departmentKeys.length) return true
+  if (!scope.length) return false
   const values = valuesFromKeys(row, departmentKeys).map(normalizeDepartmentName)
-  if (!values.length) return true
+  if (!values.length) return false
   return values.some(value => scope.includes(value))
 }
 
-export const scopeRowsForUser = (rows = [], user, siteKeys = ['site', 'SITE'], departmentKeys = []) =>
-  rows.filter(row => (
-    canViewSite(user, valueFromKeys(row, siteKeys)) &&
-    canViewAnyDepartment(user, row, departmentKeys)
-  ))
+const canViewOwner = (user, row, ownerKeys) => {
+  const hasOwnerField = ownerKeys.some(key => Object.hasOwn(row || {}, key))
+  if (!hasOwnerField) return false
+  const owner = valueFromKeys(row, ownerKeys)
+  return Boolean(owner) && [user?.userId, user?.username].filter(Boolean).some(value => String(value) === owner)
+}
+
+export const scopeRowsForUser = (rows = [], user, siteKeys = ['site', 'SITE'], departmentKeys = [], ownerKeys = ['createdBy', 'CREATED BY']) =>
+  rows.filter(row => {
+    if (!canViewSite(user, valueFromKeys(row, siteKeys))) return false
+    if (dataScopeForUser(user) === 'GLOBAL') return true
+    const ownsRow = canViewOwner(user, row, ownerKeys)
+    if (dataScopeForUser(user) === 'OWN' && ownerKeys.some(key => Object.hasOwn(row || {}, key))) return ownsRow
+    return ownsRow || canViewAnyDepartment(user, row, departmentKeys)
+  })
 
 export const filterNavigationForUser = (navigationItems, user) =>
   navigationItems.filter(item => canViewPage(user, item.name))
@@ -118,6 +136,7 @@ export const accessContextForUser = user => ({
   userId: user?.userId || '',
   username: user?.username || '',
   role: user?.role || '',
+  dataScope: dataScopeForUser(user),
   view: user?.permissions?.view || [],
   create: user?.permissions?.create || [],
   edit: user?.permissions?.edit || [],

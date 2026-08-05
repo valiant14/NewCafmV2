@@ -12,7 +12,10 @@
     "db:setup": "npm run db:schema && npm run db:seed-core && npm run db:create-admin",
     "db:create-admin": "node src/db/createAdminUser.js",
     "db:check-users": "node src/db/checkUsers.js",
+    "db:check-scopes": "node src/db/checkAccessScopes.js",
+    "api:check-scopes": "node src/db/checkApiScopes.js",
     "db:optimize": "node src/db/runSqlFile.js sql/028_performance_indexes.sql",
+    "db:secure-scope": "node src/db/runSqlFile.js sql/030_user_transaction_scope.sql",
     "performance:check": "node src/db/checkPerformance.js"
   },
   "dependencies": {

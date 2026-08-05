@@ -9,13 +9,13 @@ go
 
 merge dbo.roles as target
 using (values
-  ('HVAC_SUPERVISOR', 'HVAC Supervisor', 'Manage HVAC work orders and supply chain', 'Active'),
-  ('CIVIL_TECHNICIAN', 'Civil Technician', 'View assigned work orders and enter actuals', 'Active')
-) as source(role_code, role_name, scope_description, status)
+  ('HVAC_SUPERVISOR', 'HVAC Supervisor', 'Manage HVAC work orders and supply chain', 'DEPARTMENT', 'Active'),
+  ('CIVIL_TECHNICIAN', 'Civil Technician', 'View assigned work orders and enter actuals', 'DEPARTMENT', 'Active')
+) as source(role_code, role_name, scope_description, data_scope, status)
 on target.role_code = source.role_code
-when matched then update set role_name = source.role_name, scope_description = source.scope_description, status = source.status, updated_at = sysutcdatetime()
-when not matched then insert(role_code, role_name, scope_description, status)
-  values(source.role_code, source.role_name, source.scope_description, source.status);
+when matched then update set role_name = source.role_name, scope_description = source.scope_description, data_scope = source.data_scope, status = source.status, updated_at = sysutcdatetime()
+when not matched then insert(role_code, role_name, scope_description, data_scope, status)
+  values(source.role_code, source.role_name, source.scope_description, source.data_scope, source.status);
 go
 
 insert into dbo.role_permissions(role_id, module_name, action_name, allowed)

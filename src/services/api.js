@@ -84,7 +84,9 @@ const mapUser = (row, roles = []) => ({
   site: row.site_scope || 'All Sites',
   department: row.department_scope || 'All Departments',
   status: row.status || 'Active',
-  lastLogin: row.last_login_at || ''
+  lastLogin: row.last_login_at || '',
+  dataScopeOverride: row.data_scope_override || 'ROLE',
+  dataScope: row.effective_data_scope || row.role_data_scope || 'DEPARTMENT'
 })
 
 const mapRole = row => ({
@@ -95,6 +97,7 @@ const mapRole = row => ({
   site: 'All Sites',
   department: 'All Departments',
   scope: row.scope_description || '',
+  dataScope: row.data_scope || 'DEPARTMENT',
   status: row.status || 'Active',
   permissions: row.permissions || {}
 })
@@ -282,6 +285,7 @@ const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTa
   'ACTUAL HOURS': row.actual_hours ?? '',
   'ACTUAL MATERIALS': jsonArrayValue(row.actual_materials_json),
   'ACTUAL TOOLS': jsonArrayValue(row.actual_tools_json),
+  createdBy: row.created_by_user_id || '',
   'METER ID': meter?.meterId || '',
   'METER READING': meter?.reading ?? '',
   'METER READING UNIT': meter?.unit || '',
@@ -312,7 +316,8 @@ const mapServiceRequest = row => ({
   requestType: row.request_type || '',
   failureCode: row.failure_code || '',
   status: row.status,
-  convertedWorkOrder: row.converted_work_order_num || ''
+  convertedWorkOrder: row.converted_work_order_num || '',
+  createdBy: row.created_by_user_id || ''
 })
 
 const mapPurchaseRequest = row => ({
@@ -333,7 +338,8 @@ const mapPurchaseRequest = row => ({
   createdAt: row.created_at || '',
   approvedAt: row.approved_at || '',
   closedAt: row.closed_at || '',
-  cancelledAt: row.cancelled_at || ''
+  cancelledAt: row.cancelled_at || '',
+  createdBy: row.created_by_user_id || ''
 })
 
 const mapPurchaseOrder = row => ({
@@ -353,7 +359,8 @@ const mapPurchaseOrder = row => ({
   approvedAt: row.approved_at || '',
   receivedAt: row.received_at || '',
   closedAt: row.closed_at || '',
-  cancelledAt: row.cancelled_at || ''
+  cancelledAt: row.cancelled_at || '',
+  createdBy: row.created_by_user_id || ''
 })
 
 const mapReservation = row => ({
@@ -373,7 +380,8 @@ const mapReservation = row => ({
   site: row.site_code,
   department: row.department_name || '',
   status: row.status,
-  createdAt: row.created_at || ''
+  createdAt: row.created_at || '',
+  createdBy: row.created_by_user_id || ''
 })
 
 const mapPm = row => ({
@@ -399,7 +407,8 @@ const mapPm = row => ({
   department: row.department_name || '',
   subDepartment: row.sub_department_code || '',
   pmStatus: row.pm_status || 'ACTIVE',
-  lastGeneratedCycle: row.last_generated_cycle || ''
+  lastGeneratedCycle: row.last_generated_cycle || '',
+  createdBy: row.created_by_user_id || ''
 })
 
 const mapPmRule = row => ({
@@ -440,7 +449,8 @@ const mapIncident = row => ({
   severity: row.severity || 'Medium',
   status: row.status,
   reportedBy: row.reported_by || '',
-  reportedDate: row.reported_at || ''
+  reportedDate: row.reported_at || '',
+  createdBy: row.created_by_user_id || ''
 })
 
 const mapMeter = row => ({
@@ -454,7 +464,8 @@ const mapMeter = row => ({
   unit: row.reading_unit || '',
   meterType: row.reading_unit === 'm3' ? 'Water' : row.reading_unit === 'kWh' ? 'Energy' : 'General',
   readingDate: row.reading_at || '',
-  status: row.status || 'Active'
+  status: row.status || 'Active',
+  createdBy: row.created_by_user_id || ''
 })
 
 const mapJobTask = row => ({

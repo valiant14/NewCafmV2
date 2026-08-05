@@ -17,16 +17,18 @@ import Field from '../components/ui/Field'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../components/ui/ModalFrame'
 import { permissionActions, rolePermissionRows } from '../config/runtimeDefaults'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
+import { dataScopeLabel, roleDataScopeOptions } from '../lib/dataScope'
 
-const headers = ['role', 'user', 'site', 'department', 'scope', 'status', ...permissionActions]
+const headers = ['role', 'dataScope', 'scope', 'status', ...permissionActions]
 const permissionText = value => Array.isArray(value) ? value.join(', ') : String(value || '')
 const parsePermissionText = value => permissionText(value).split(/[,;|]+/).map(item => item.trim()).filter(Boolean)
 const roleFromImport = row => ({
   ...row,
+  dataScope: row.dataScope || 'DEPARTMENT',
   permissions: Object.fromEntries(permissionActions.map(action => [action, parsePermissionText(row[action] || row.permissions?.[action])]))
 })
 const exportColumns = [
-  ...['role', 'user', 'site', 'department', 'scope', 'status'].map(header => ({ key: header, label: header })),
+  ...['role', 'dataScope', 'scope', 'status'].map(header => ({ key: header, label: header })),
   ...permissionActions.map(action => ({ key: action, label: action, exportValue: (_, row) => permissionText(row.permissions?.[action]) }))
 ]
 const blankRole = () => ({
@@ -34,6 +36,7 @@ const blankRole = () => ({
   user: '',
   site: 'All Sites',
   department: 'All Departments',
+  dataScope: 'DEPARTMENT',
   scope: '',
   status: 'Draft',
   permissions: Object.fromEntries(permissionActions.map(action => [action, []]))
@@ -131,9 +134,7 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
           pagination
           columns={[
             { key: 'role', label: 'Role', render: value => <strong className="text-[var(--app-ink)]">{value}</strong> },
-            { key: 'user', label: 'User / Group' },
-            { key: 'site', label: 'Site Scope' },
-            { key: 'department', label: 'Department Scope' },
+            { key: 'dataScope', label: 'Data Visibility', render: value => dataScopeLabel(value) },
             { key: 'scope', label: 'Allowed Access' },
             { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> }
           ]}
@@ -153,8 +154,7 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
               {formError && <Alert className="md:col-span-2" tone="danger">{formError}</Alert>}
               <Field label="Role name" value={form.role} required onChange={event => setForm({ ...form, role: event.target.value })} placeholder="Civil Supervisor" />
               <Field label="Status" value={form.status} options={['Draft', 'Active', 'Inactive']} onChange={event => setForm({ ...form, status: event.target.value })} />
-              <Field label="Site Scope" value={form.site} suggestions={siteOptions} onChange={event => setForm({ ...form, site: event.target.value })} placeholder="All Sites" />
-              <Field label="Department Scope" value={form.department} suggestions={departmentOptions} onChange={event => setForm({ ...form, department: event.target.value })} placeholder="All Departments" />
+              <Field label="Data Visibility" value={form.dataScope} options={roleDataScopeOptions} onChange={event => setForm({ ...form, dataScope: event.target.value })} />
               <div className="md:col-span-2"><Field label="Allowed Access" value={form.scope} onChange={event => setForm({ ...form, scope: event.target.value })} placeholder="Describe the purpose of this role" /></div>
             </div>
             <ModalFooter>

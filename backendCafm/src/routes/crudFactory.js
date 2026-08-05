@@ -2,12 +2,12 @@ import { Router } from 'express'
 import { getPool, sql } from '../db/pool.js'
 import { env } from '../config/env.js'
 import { requirePermission } from '../middleware/auth.js'
-import { addScopeWhere } from '../middleware/scope.js'
+import { addScopeWhere, applyScopeDefaults, assertPayloadWithinScope } from '../middleware/scope.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { bindParams } from '../utils/sqlParams.js'
 
 const dateColumnPattern = /(^|_)(date|at)$|_date$|_at$/
-const generatedColumns = new Set(['created_at', 'updated_at'])
+const generatedColumns = new Set(['created_at', 'updated_at', 'created_by_user_id'])
 const boundedInteger = (value, fallback, max = Number.MAX_SAFE_INTEGER) => {
   const parsed = Number.parseInt(value, 10)
   return Number.isFinite(parsed) ? Math.min(max, Math.max(0, parsed)) : fallback
@@ -45,7 +45,7 @@ const normalizeSubDepartmentCode = async (pool, payload) => {
   const result = await pool.request()
     .input('value', String(value).trim())
     .query(`
-      select top 1 sub_department_code
+      select top 1 sub_department_code, department_name
       from dbo.departments
       where sub_department_code = @value
         or description = @value
@@ -59,9 +59,17 @@ const normalizeSubDepartmentCode = async (pool, payload) => {
         sub_department_code
     `)
 
+  const match = result.recordset[0]
+  const suppliedDepartment = String(payload.department_name || '').trim()
+  if (match?.department_name && suppliedDepartment && suppliedDepartment.toLowerCase() !== String(match.department_name).trim().toLowerCase()) {
+    const error = new Error('The sub-department does not belong to the selected department.')
+    error.status = 400
+    throw error
+  }
   return {
     ...payload,
-    sub_department_code: result.recordset[0]?.sub_department_code || null
+    sub_department_code: match?.sub_department_code || null,
+    ...(match?.department_name && !suppliedDepartment ? { department_name: match.department_name } : {})
   }
 }
 
@@ -117,15 +125,7 @@ const normalizeSiteCode = async (pool, payload) => {
         site_code
     `)
   if (result.recordset[0]?.site_code) return { ...payload, site_code: result.recordset[0].site_code }
-  if (!text) {
-    const fallback = await pool.request().query(`
-      select top 1 site_code
-      from dbo.sites
-      where status is null or status <> 'Inactive'
-      order by site_code
-    `)
-    return { ...payload, site_code: fallback.recordset[0]?.site_code || text }
-  }
+  if (!text) return { ...payload, site_code: null }
   return payload
 }
 
@@ -216,16 +216,42 @@ const normalizeGeneratedKeys = async (pool, payload, { table, key }) => {
   return payload
 }
 
-const emitChange = (req, payload) => {
+const emitChange = (req, payload, row = {}) => {
   req.app.locals.broadcastWorkspaceChange?.({
     actor: req.user?.userId || req.user?.username || '',
-    siteCode: req.body?.site_code || null,
-    department: req.body?.department_name || null,
+    ownerUserId: row.created_by_user_id || null,
+    siteCode: row.site_code || req.body?.site_code || null,
+    department: row.department_name || req.body?.department_name || null,
     ...payload
   })
 }
 
-export function crudRouter({ table, key, columns, defaultOrder = key, moduleName, relatedModules = [], scope }) {
+const forbiddenSource = () => {
+  const error = new Error('The linked record is outside your access scope.')
+  error.status = 403
+  error.code = 'ScopeViolation'
+  return error
+}
+
+const ownerFromAccessibleSource = async (pool, payload, user, sources = []) => {
+  for (const source of sources) {
+    const sourceId = payload[source.payloadKey]
+    if (sourceId === undefined || sourceId === null || sourceId === '') continue
+    const scoped = addScopeWhere({ user, ...(source.scope || {}) })
+    const request = bindParams(pool.request(), scoped.params)
+    request.input('ownerSourceId', sourceId)
+    const result = await request.query(`
+      select top 1 ${quoteColumn(source.ownerColumn || 'created_by_user_id')} as owner_user_id
+      from ${source.table}
+      where ${quoteColumn(source.key)} = @ownerSourceId${scoped.where}
+    `)
+    if (!result.recordset[0]) throw forbiddenSource()
+    return result.recordset[0].owner_user_id || user?.userId || null
+  }
+  return user?.userId || null
+}
+
+export function crudRouter({ table, key, columns, defaultOrder = key, moduleName, relatedModules = [], scope, ownerColumn = null, ownerSources = [] }) {
   const router = Router()
   const insertable = columns.filter(column => !generatedColumns.has(column))
   const editable = insertable.filter(column => column !== key)
@@ -234,7 +260,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
 
   router.get('/', permit('view'), asyncHandler(async (req, res) => {
     const pool = await getPool()
-    const scoped = scope ? addScopeWhere({ user: req.user, ...scope }) : { where: '', params: {} }
+    const scoped = scope ? addScopeWhere({ user: req.user, ...scope, ownerColumn }) : { where: '', params: {} }
     const filterClauses = []
     const filterParams = {}
     columns.forEach((column, index) => {
@@ -285,7 +311,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
 
   router.get('/:id', permit('view'), asyncHandler(async (req, res) => {
     const pool = await getPool()
-    const scoped = scope ? addScopeWhere({ user: req.user, ...scope }) : { where: '', params: {} }
+    const scoped = scope ? addScopeWhere({ user: req.user, ...scope, ownerColumn }) : { where: '', params: {} }
     const request = bindParams(pool.request(), scoped.params)
     const result = await request
       .input('id', req.params.id)
@@ -300,7 +326,19 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     const pool = await getPool()
     payload = await normalizeGeneratedKeys(pool, payload, { table, key })
     payload = await normalizeForeignKeys(pool, payload, { table })
-    const insertColumns = insertable.filter(column => payload[column] !== undefined)
+    if (columns.includes('reported_by') && !String(payload.reported_by || '').trim()) {
+      payload.reported_by = req.user?.name || req.user?.username || req.user?.userId || null
+    }
+    if (scope) {
+      payload = applyScopeDefaults({ user: req.user, payload, ...scope })
+      assertPayloadWithinScope({ user: req.user, payload, ...scope, requireValues: true })
+    }
+    const resolvedOwner = await ownerFromAccessibleSource(pool, payload, req.user, ownerSources)
+    if (ownerColumn && columns.includes(ownerColumn)) payload[ownerColumn] = resolvedOwner
+    const insertColumns = [
+      ...insertable.filter(column => payload[column] !== undefined),
+      ...(ownerColumn && columns.includes(ownerColumn) && payload[ownerColumn] ? [ownerColumn] : [])
+    ]
     if (!insertColumns.length) return res.status(400).json({ error: 'BadRequest', message: 'No fields supplied' })
     const request = bindParams(pool.request(), Object.fromEntries(insertColumns.map(column => [column, payload[column]])))
     const result = await request.query(`
@@ -308,7 +346,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
       output inserted.*
       values (${insertColumns.map(column => `@${column}`).join(', ')})
     `)
-    emitChange(req, { moduleName, relatedModules, table, action: 'create', key, id: result.recordset[0]?.[key] })
+    emitChange(req, { moduleName, relatedModules, table, action: 'create', key, id: result.recordset[0]?.[key] }, result.recordset[0])
     res.status(201).json(result.recordset[0])
   }))
 
@@ -317,29 +355,37 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     Object.keys(payload).forEach(column => assertKnownColumn(columns, column))
     const pool = await getPool()
     payload = await normalizeForeignKeys(pool, payload, { table })
+    if (scope) assertPayloadWithinScope({ user: req.user, payload, ...scope })
+    await ownerFromAccessibleSource(pool, payload, req.user, ownerSources)
     const updateColumns = editable.filter(column => payload[column] !== undefined)
     if (!updateColumns.length) return res.status(400).json({ error: 'BadRequest', message: 'No editable fields supplied' })
-    const request = bindParams(pool.request(), Object.fromEntries(updateColumns.map(column => [column, payload[column]])))
+    const scoped = scope ? addScopeWhere({ user: req.user, ...scope, ownerColumn }) : { where: '', params: {} }
+    const request = bindParams(pool.request(), {
+      ...Object.fromEntries(updateColumns.map(column => [column, payload[column]])),
+      ...scoped.params
+    })
     request.input('id', req.params.id)
     const timestampUpdate = columns.includes('updated_at') ? ', updated_at = sysutcdatetime()' : ''
     const result = await request.query(`
       update ${table}
       set ${updateColumns.map(column => `${column} = @${column}`).join(', ')}${timestampUpdate}
       output inserted.*
-      where ${key} = @id
+      where ${quoteColumn(key)} = @id${scoped.where}
     `)
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
-    emitChange(req, { moduleName, relatedModules, table, action: 'edit', key, id: result.recordset[0]?.[key] })
+    emitChange(req, { moduleName, relatedModules, table, action: 'edit', key, id: result.recordset[0]?.[key] }, result.recordset[0])
     res.json(result.recordset[0])
   }))
 
   router.delete('/:id', permit('edit'), asyncHandler(async (req, res) => {
     const pool = await getPool()
-    const result = await pool.request()
+    const scoped = scope ? addScopeWhere({ user: req.user, ...scope, ownerColumn }) : { where: '', params: {} }
+    const request = bindParams(pool.request(), scoped.params)
+    const result = await request
       .input('id', req.params.id)
-      .query(`delete from ${table} output deleted.* where ${key} = @id`)
+      .query(`delete from ${table} output deleted.* where ${quoteColumn(key)} = @id${scoped.where}`)
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
-    emitChange(req, { moduleName, relatedModules, table, action: 'delete', key, id: result.recordset[0]?.[key] })
+    emitChange(req, { moduleName, relatedModules, table, action: 'delete', key, id: result.recordset[0]?.[key] }, result.recordset[0])
     res.json({ deleted: result.recordset[0] })
   }))
 

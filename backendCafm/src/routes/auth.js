@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import { getPool } from '../db/pool.js'
 import { env } from '../config/env.js'
 import { requireAuth } from '../middleware/auth.js'
+import { normalizeDataScope } from '../middleware/scope.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 
 const router = Router()
@@ -13,7 +14,8 @@ const sessionPayloadForAccount = async (pool, account) => {
   const result = await pool.request()
     .input('userId', account.user_id)
     .query(`
-      select u.user_id, u.username, u.password_hash, u.display_name, u.email, u.status, r.role_id, r.role_code, r.role_name
+      select u.user_id, u.username, u.password_hash, u.display_name, u.email, u.labor_id, u.status,
+        u.data_scope_override, r.role_id, r.role_code, r.role_name, r.data_scope as role_data_scope
       from dbo.users u
       left join dbo.roles r on r.role_id = u.role_id
       where u.user_id = @userId;
@@ -40,17 +42,25 @@ const sessionPayloadForAccount = async (pool, account) => {
   }, {})
 
   const siteCodes = (result.recordsets[2] || []).map(row => row.site_code)
-  const departments = [...new Set((result.recordsets[3] || []).flatMap(row => [row.department_name, row.sub_department_code]).filter(Boolean))]
+  const departmentNames = [...new Set((result.recordsets[3] || []).map(row => row.department_name).filter(Boolean))]
+  const subDepartmentCodes = [...new Set((result.recordsets[3] || []).map(row => row.sub_department_code).filter(Boolean))]
+  const departments = [...new Set([...departmentNames, ...subDepartmentCodes])]
+  const dataScopeOverride = String(liveAccount.data_scope_override || 'ROLE').toUpperCase()
 
   return {
     userId: liveAccount.user_id,
     username: liveAccount.username,
     name: liveAccount.display_name,
     email: liveAccount.email,
+    laborId: liveAccount.labor_id,
     role: liveAccount.role_name,
     roleCode: liveAccount.role_code,
+    dataScopeOverride,
+    dataScope: normalizeDataScope(dataScopeOverride === 'ROLE' ? liveAccount.role_data_scope : dataScopeOverride),
     permissions,
     siteCodes,
+    departmentNames,
+    subDepartmentCodes,
     departments,
     site: siteCodes.length ? siteCodes.join(', ') : 'All Sites',
     siteScope: siteCodes.length ? siteCodes.join(', ') : 'All Sites',

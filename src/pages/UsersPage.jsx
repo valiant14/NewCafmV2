@@ -14,6 +14,7 @@ import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { scopeRowsForUser } from '../lib/accessControl'
+import { dataScopeLabel, userDataScopeOptions } from '../lib/dataScope'
 
 const emptyUser = {
   userId: '',
@@ -25,6 +26,7 @@ const emptyUser = {
   laborId: '',
   site: '',
   department: 'Civil',
+  dataScopeOverride: 'ROLE',
   status: 'Active',
   lastLogin: ''
 }
@@ -39,6 +41,7 @@ const baseFields = [
   { key: 'laborId', label: 'Linked Labor' },
   { key: 'site', label: 'Site Scope' },
   { key: 'department', label: 'Department Scope' },
+  { key: 'dataScopeOverride', label: 'Data View', options: userDataScopeOptions },
   { key: 'status', label: 'Status', options: ['Active', 'Inactive', 'Locked'] },
   { key: 'lastLogin', label: 'Last Login' }
 ]
@@ -167,6 +170,7 @@ export default function UsersPage({ rows = [], setRows, roleRows = [], laborRows
             { key: 'laborId', label: 'Linked Labor', render: value => value || 'Not linked' },
             { key: 'site', label: 'Site Scope' },
             { key: 'department', label: 'Department Scope' },
+            { key: 'dataScope', label: 'Data View', render: value => dataScopeLabel(value) },
             { key: 'lastLogin', label: 'Last Login' },
             { key: 'status', label: 'Status', render: value => <Badge tone={toneByStatus[value] || 'orange'}>{value}</Badge> }
           ]}

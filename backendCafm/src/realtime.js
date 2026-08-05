@@ -54,8 +54,18 @@ export const broadcastWorkspaceChange = change => {
   const moduleNames = [change?.moduleName, ...(change?.relatedModules || [])]
     .map(value => String(value || '').trim())
     .filter(Boolean)
-  if (moduleNames.length) io.to(moduleNames.map(moduleName => `module:${moduleName}`)).emit('workspace:changed', payload)
-  else io.emit('workspace:changed', payload)
+  const same = (left, right) => String(left || '').trim().toLowerCase() === String(right || '').trim().toLowerCase()
+  for (const socket of io.sockets.sockets.values()) {
+    const isTargetUser = change?.targetUserId && same(change.targetUserId, socket.user?.userId)
+    if (!isTargetUser && !change?.securityContextChanged && moduleNames.length && !moduleNames.some(moduleName => socket.rooms.has(`module:${moduleName}`))) continue
+    const dataScope = String(socket.user?.dataScope || 'DEPARTMENT').toUpperCase()
+    if (dataScope !== 'GLOBAL') {
+      if (change?.siteCode && !(socket.user?.siteCodes || []).some(site => same(site, change.siteCode))) continue
+      if (change?.department && !(socket.user?.departments || []).some(department => same(department, change.department))) continue
+      if (dataScope === 'OWN' && change?.ownerUserId && !same(change.ownerUserId, socket.user?.userId)) continue
+    }
+    socket.emit('workspace:changed', payload)
+  }
 }
 
 export const getRealtimeStats = () => ({

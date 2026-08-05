@@ -8,6 +8,7 @@ import { permissionActions, permissionModules } from '../../config/runtimeDefaul
 import Field from '../ui/Field'
 import Surface, { SurfaceHeader } from '../ui/Surface'
 import TablePanel from '../ui/TablePanel'
+import { dataScopeLabel, roleDataScopeOptions } from '../../lib/dataScope'
 
 const checkClass = active => `mx-auto grid h-6 w-6 place-items-center rounded-lg border text-[10px] font-extrabold ${active ? 'border-[var(--app-primary)] bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'border-[var(--app-line)] text-[var(--app-muted)]'}`
 const isAllActionsSelected = (role, module) => permissionActions.every(action => role.permissions?.[action]?.includes(module))
@@ -71,8 +72,8 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
           )}
           stats={[
             { label: 'User / Group', value: role.user },
-            { label: 'Site Scope', value: role.site },
-            { label: 'Department Scope', value: role.department },
+            { label: 'Data Visibility', value: dataScopeLabel(role.dataScope) },
+            { label: 'Site / Department', value: 'Assigned per user' },
             { label: 'Permissions', value: permissionCount }
           ]}
         />
@@ -85,8 +86,8 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
               {[
                 { icon: UserCog, label: 'Role', value: role.role, note: role.status },
                 { icon: Users, label: 'User / Group', value: role.user, note: 'Assigned principal' },
-                { icon: Building2, label: 'Site', value: role.site, note: 'Access boundary' },
-                { icon: ShieldCheck, label: 'Department', value: role.department, note: 'Permission scope' }
+                { icon: Building2, label: 'Data Visibility', value: dataScopeLabel(role.dataScope), note: 'Transaction boundary' },
+                { icon: ShieldCheck, label: 'Site / Department', value: 'Per user', note: 'Configured on each account' }
               ].map(metric => <MetricCard key={metric.label} {...metric} />)}
             </section>
 
@@ -97,19 +98,18 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
               items={[
                 ['Role', role.role],
                 ['User / Group', role.user],
-                ['Site Scope', role.site],
-                ['Department Scope', role.department],
+                ['Data Visibility', dataScopeLabel(role.dataScope)],
+                ['Site / Department Scope', 'Configured on each user account'],
                 ['Allowed Access', role.scope],
                 ['Status', role.status]
               ]}
             />
             <Surface>
-              <SurfaceHeader eyebrow="Scope defaults" title="Role Site Access" />
+              <SurfaceHeader eyebrow="Scope defaults" title="Transaction Visibility" description="The role controls how far users can see. Site and department assignments stay on each user account." />
               <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Status" value={role.status || 'Draft'} options={['Draft', 'Active', 'Inactive']} onChange={event => updateStatus(event.target.value)} />
+                <Field label="Data Visibility" value={role.dataScope || 'DEPARTMENT'} options={roleDataScopeOptions} onChange={updateField('dataScope')} disabled={disabled} />
                 <Field label="Allowed Access" value={role.scope || ''} onChange={updateField('scope')} disabled={disabled} placeholder="Describe the purpose of this role" />
-                <Field label="Site Scope" value={role.site || ''} onChange={updateField('site')} suggestions={siteOptions} disabled={disabled} placeholder="Select one or more sites" />
-                <Field label="Department Scope" value={role.department || ''} onChange={updateField('department')} suggestions={departmentOptions} disabled={disabled} placeholder="All Departments or HVAC, Civil" />
               </div>
             </Surface>
           </main>
@@ -180,9 +180,9 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
         number={role.role}
         status={role.status}
         description={role.scope}
-        summary={[['User / Group', role.user], ['Site', role.site], ['Department', role.department]]}
+        summary={[['User / Group', role.user], ['Data Visibility', dataScopeLabel(role.dataScope)], ['Site / Department', 'Assigned per user']]}
         sections={[
-          { title: 'Scope Rules', rows: [[['Role', role.role], ['User / Group', role.user], ['Site Scope', role.site], ['Department Scope', role.department]]] },
+          { title: 'Scope Rules', rows: [[['Role', role.role], ['User / Group', role.user], ['Data Visibility', dataScopeLabel(role.dataScope)], ['Site / Department', 'Assigned per user']]] },
           { title: 'Permission Summary', rows: permissionActions.map(action => ([['Action', action], ['Modules', (role.permissions?.[action] || []).join(', ') || '-'], ['Count', role.permissions?.[action]?.length || 0], ['Status', role.status]])) }
         ]}
       />

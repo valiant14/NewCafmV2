@@ -136,6 +136,7 @@ const generatePlan = async (pool, plan) => {
       .input('pm_cycle', sql.NVarChar(120), plan.pm_cycle)
       .input('job_plan_num', sql.NVarChar(80), plan.job_plan_num)
       .input('schedule_rule_name', sql.NVarChar(160), plan.schedule_rule_name || null)
+      .input('created_by_user_id', sql.NVarChar(50), plan.created_by_user_id || null)
       .input('next_date', sql.DateTime2, nextDate)
       .input('lock_resource', sql.NVarChar(255), `pm-generation:${plan.pm_num}`)
       .query(`
@@ -165,21 +166,21 @@ const generatePlan = async (pool, plan) => {
             work_order_num, description, location_code, asset_num, status, work_type, priority,
             site_code, department_name, sub_department_code, assigned_department_name,
             target_start_at, target_finish_at, reported_at,
-            pm_num, pm_cycle, job_plan_num, schedule_rule_name
+            pm_num, pm_cycle, job_plan_num, schedule_rule_name, created_by_user_id
           )
           values (
             @work_order_num, @description, @location_code, @asset_num, @status, @work_type, @priority,
             @site_code, @department_name, @sub_department_code, @department_name,
             @target_at, @target_at, @reported_at,
-            @pm_num, @pm_cycle, @job_plan_num, @schedule_rule_name
+            @pm_num, @pm_cycle, @job_plan_num, @schedule_rule_name, @created_by_user_id
           );
 
           insert into dbo.work_order_tasks (
-            work_order_num, task_sequence, task_description, duration_minutes, site_code, department_name
+            work_order_num, task_sequence, task_description, duration_minutes, site_code, department_name, created_by_user_id
           )
           select
             @work_order_num, task_sequence, task_description,
-            ceiling(isnull(duration_hours, 0) * 60), @site_code, @department_name
+            ceiling(isnull(duration_hours, 0) * 60), @site_code, @department_name, @created_by_user_id
           from dbo.job_plan_tasks
           where job_plan_num = @job_plan_num;
 

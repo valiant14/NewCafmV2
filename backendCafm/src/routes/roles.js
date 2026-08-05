@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import sql from 'mssql'
 import { getPool } from '../db/pool.js'
-import { clearPermissionCache, requirePermission } from '../middleware/auth.js'
+import { clearAccessContextCache, clearPermissionCache, requirePermission } from '../middleware/auth.js'
+import { normalizeDataScope } from '../middleware/scope.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 
 const router = Router()
@@ -9,6 +10,7 @@ const emitChange = (req, payload) => req.app.locals.broadcastWorkspaceChange?.({
   actor: req.user?.userId || req.user?.username || '',
   moduleName: 'Roles & Permissions',
   table: 'dbo.roles',
+  securityContextChanged: true,
   ...payload
 })
 const codeFromName = value => String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'ROLE'
@@ -27,6 +29,7 @@ const rowsToRoles = rows => {
         role_code: row.role_code,
         role_name: row.role_name,
         scope_description: row.scope_description,
+        data_scope: row.data_scope,
         status: row.status,
         permissions: {}
       })
@@ -43,7 +46,7 @@ const readRole = async (pool, roleId) => {
   const result = await pool.request()
     .input('roleId', roleId)
     .query(`
-      select r.role_id, r.role_code, r.role_name, r.scope_description, r.status,
+      select r.role_id, r.role_code, r.role_name, r.scope_description, r.data_scope, r.status,
         p.module_name, p.action_name, p.allowed
       from dbo.roles r
       left join dbo.role_permissions p on p.role_id = r.role_id
@@ -53,16 +56,24 @@ const readRole = async (pool, roleId) => {
   return rowsToRoles(result.recordset)[0] || null
 }
 
-const saveRole = async (pool, roleId, body = {}) => {
+const saveRole = async (pool, roleId, body = {}, actor = {}) => {
+  const currentRole = await readRole(pool, roleId)
+  const dataScope = normalizeDataScope(body.data_scope ?? currentRole?.data_scope)
+  if (dataScope === 'GLOBAL' && normalizeDataScope(actor.dataScope) !== 'GLOBAL') {
+    const error = new Error('Only a global administrator can grant global data access.')
+    error.status = 403
+    throw error
+  }
   const result = await pool.request()
     .input('id', roleId)
     .input('role_code', body.role_code || codeFromName(body.role_name))
     .input('role_name', body.role_name)
     .input('scope_description', body.scope_description || '')
+    .input('data_scope', dataScope)
     .input('status', body.status || 'Active')
     .query(`
       update dbo.roles
-      set role_code = @role_code, role_name = @role_name, scope_description = @scope_description,
+      set role_code = @role_code, role_name = @role_name, scope_description = @scope_description, data_scope = @data_scope,
         status = @status, updated_at = sysutcdatetime()
       output inserted.*
       where role_id = @id
@@ -70,6 +81,7 @@ const saveRole = async (pool, roleId, body = {}) => {
   if (!result.recordset[0]) return null
   await syncPermissions(pool, roleId, body.permissions)
   clearPermissionCache()
+  clearAccessContextCache()
   return readRole(pool, roleId)
 }
 
@@ -159,7 +171,7 @@ const syncPermissions = async (pool, roleId, permissions = {}) => {
 router.get('/', requirePermission('Roles & Permissions', 'view'), asyncHandler(async (req, res) => {
   const pool = await getPool()
   const result = await pool.request().query(`
-    select r.role_id, r.role_code, r.role_name, r.scope_description, r.status,
+    select r.role_id, r.role_code, r.role_name, r.scope_description, r.data_scope, r.status,
       p.module_name, p.action_name, p.allowed
     from dbo.roles r
     left join dbo.role_permissions p on p.role_id = r.role_id
@@ -170,12 +182,18 @@ router.get('/', requirePermission('Roles & Permissions', 'view'), asyncHandler(a
 
 router.post('/', requirePermission('Roles & Permissions', 'create'), asyncHandler(async (req, res) => {
   const pool = await getPool()
+  const dataScope = normalizeDataScope(req.body.data_scope)
+  if (dataScope === 'GLOBAL' && normalizeDataScope(req.user?.dataScope) !== 'GLOBAL') {
+    const error = new Error('Only a global administrator can grant global data access.')
+    error.status = 403
+    throw error
+  }
   const existing = await pool.request()
     .input('role_name', req.body.role_name)
     .query('select role_id from dbo.roles where role_name = @role_name')
   if (existing.recordset[0]) {
     req.params.id = existing.recordset[0].role_id
-    const saved = await saveRole(pool, req.params.id, req.body)
+    const saved = await saveRole(pool, req.params.id, req.body, req.user)
     emitChange(req, { action: 'edit', id: saved?.role_id })
     return res.json(saved)
   }
@@ -183,14 +201,16 @@ router.post('/', requirePermission('Roles & Permissions', 'create'), asyncHandle
     .input('role_code', req.body.role_code || codeFromName(req.body.role_name))
     .input('role_name', req.body.role_name)
     .input('scope_description', req.body.scope_description || '')
+    .input('data_scope', dataScope)
     .input('status', req.body.status || 'Active')
     .query(`
-      insert into dbo.roles(role_code, role_name, scope_description, status)
+      insert into dbo.roles(role_code, role_name, scope_description, data_scope, status)
       output inserted.*
-      values(@role_code, @role_name, @scope_description, @status)
+      values(@role_code, @role_name, @scope_description, @data_scope, @status)
   `)
   await syncPermissions(pool, result.recordset[0].role_id, req.body.permissions)
   clearPermissionCache()
+  clearAccessContextCache()
   emitChange(req, { action: 'create', id: result.recordset[0]?.role_id })
   res.status(201).json(await readRole(pool, result.recordset[0].role_id))
 }))
@@ -199,14 +219,14 @@ router.put('/by-name/:roleName', requirePermission('Roles & Permissions', 'edit'
   const pool = await getPool()
   const roleId = await findRoleByNameOrCode(pool, req.params.roleName)
   if (!roleId) return res.status(404).json({ error: 'NotFound', message: 'Role not found' })
-  const saved = await saveRole(pool, roleId, req.body)
+  const saved = await saveRole(pool, roleId, req.body, req.user)
   emitChange(req, { action: 'edit', id: saved?.role_id })
   res.json(saved)
 }))
 
 router.put('/:id', requirePermission('Roles & Permissions', 'edit'), asyncHandler(async (req, res) => {
   const pool = await getPool()
-  const saved = await saveRole(pool, req.params.id, req.body)
+  const saved = await saveRole(pool, req.params.id, req.body, req.user)
   if (!saved) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
   emitChange(req, { action: 'edit', id: saved?.role_id })
   res.json(saved)

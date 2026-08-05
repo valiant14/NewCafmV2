@@ -596,7 +596,7 @@ const apiMappers = {
     endpoint: '/users',
     key: 'userId',
     apiKey: 'user_id',
-    toApi: row => ({ user_id: toText(row.userId), username: toText(row.username), password: row.password || undefined, display_name: toText(row.name), email: row.email || '', role_id: row.roleId, role: row.role, labor_id: row.laborId || null, site: row.site || 'All Sites', department: row.department || 'All Departments', status: statusText(row.status) })
+    toApi: row => ({ user_id: toText(row.userId), username: toText(row.username), password: row.password || undefined, display_name: toText(row.name), email: row.email || '', role_id: row.roleId, role: row.role, labor_id: row.laborId || null, site: row.site || 'All Sites', department: row.department || 'All Departments', data_scope_override: row.dataScopeOverride || 'ROLE', status: statusText(row.status) })
   },
   roles: {
     endpoint: '/roles',
@@ -607,6 +607,7 @@ const apiMappers = {
       role_code: row.roleCode,
       role_name: toText(row.role),
       scope_description: row.scope || '',
+      data_scope: row.dataScope || 'DEPARTMENT',
       status: statusText(row.status),
       permissions: uniquePermissions(row.permissions)
     })
@@ -1383,6 +1384,7 @@ export default function App() {
       ...account,
       permissions: rolePermissions || {},
       roleStatus: role.status,
+      dataScope: account.dataScope || (account.dataScopeOverride && account.dataScopeOverride !== 'ROLE' ? account.dataScopeOverride : role.dataScope) || user.dataScope,
       siteScope: account.site || role.site,
       departmentScope: account.department || role.department
     } : { ...user, ...account, role: account.role || user.role, siteScope: account.site, departmentScope: account.department }
@@ -1400,6 +1402,8 @@ export default function App() {
       role: effectiveUser.role,
       status: effectiveUser.status,
       permissions: effectiveUser.permissions,
+      dataScope: effectiveUser.dataScope,
+      dataScopeOverride: effectiveUser.dataScopeOverride,
       siteScope: effectiveUser.siteScope,
       departmentScope: effectiveUser.departmentScope
     })
@@ -1516,12 +1520,16 @@ export default function App() {
     if (!nextStatuses.size) return
     saveServiceRequests(rows => rows.map(request => nextStatuses.has(request.sr) ? { ...request, status: nextStatuses.get(request.sr) } : request))
   }, [serviceRequests, allWorkOrders, saveServiceRequests])
-  const siteScopeOptions = useMemo(() => ['All Sites', ...siteRecords.filter(site => site.status !== 'Inactive').map(site => site.name ? `${site.name} / ${site.code}` : site.code)], [siteRecords])
+  const siteScopeOptions = useMemo(() => {
+    const options = deriveSiteOptions({ siteRecords, user: effectiveUser, locations: scopedLocations, assets: scopedAssets, orders: scopedWorkOrders })
+      .map(option => option.label ? `${option.label} / ${option.value}` : option.value)
+    return [...(effectiveUser?.dataScope === 'GLOBAL' ? ['All Sites'] : []), ...new Set(options)]
+  }, [siteRecords, effectiveUser, scopedLocations, scopedAssets, scopedWorkOrders])
   const departmentScopeOptions = useMemo(() => {
-    const activeRows = departmentRecords.filter(department => department.status !== 'Inactive')
-    const values = activeRows.flatMap(department => [department.department, department.description]).filter(Boolean)
-    return ['All Departments', ...new Set(values)]
-  }, [departmentRecords])
+    const options = deriveDepartmentOptions({ departmentRecords, user: effectiveUser, assets: scopedAssets, orders: scopedWorkOrders, locations: scopedLocations })
+      .map(option => option.value)
+    return [...(effectiveUser?.dataScope === 'GLOBAL' ? ['All Departments'] : []), ...new Set(options)]
+  }, [departmentRecords, effectiveUser, scopedAssets, scopedWorkOrders, scopedLocations])
   const workOrderNotifications = buildWorkOrderNotifications(scopedWorkOrders)
   const allowedNavigation = useMemo(() => filterNavigationForUser(navigationItems, effectiveUser), [effectiveUser])
   const fallbackPage = firstAllowedPage(navigationItems, effectiveUser)

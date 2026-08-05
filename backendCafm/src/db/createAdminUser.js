@@ -36,10 +36,11 @@ await pool.request()
       display_name = @displayName,
       email = @email,
       role_id = @roleId,
+      data_scope_override = 'GLOBAL',
       status = 'Active',
       updated_at = sysutcdatetime()
-    when not matched then insert(user_id, username, password_hash, display_name, email, role_id, status)
-      values(@userId, @username, @passwordHash, @displayName, @email, @roleId, 'Active');
+    when not matched then insert(user_id, username, password_hash, display_name, email, role_id, data_scope_override, status)
+      values(@userId, @username, @passwordHash, @displayName, @email, @roleId, 'GLOBAL', 'Active');
   `)
 
 console.log(`Admin user ready: ${username}`)

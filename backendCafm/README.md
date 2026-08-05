@@ -40,6 +40,14 @@ Apply the idempotent high-volume indexes after the schema migrations:
 npm run db:optimize
 ```
 
+Apply and verify transaction ownership and user data isolation on an existing database:
+
+```bash
+npm run db:secure-scope
+npm run db:check-scopes
+npm run api:check-scopes
+```
+
 Default development login:
 
 ```text
@@ -74,7 +82,16 @@ The frontend already exposes an `accessContextForUser()` shape. Backend enforcem
 - allowed sites from `user_site_access`
 - allowed departments/sub-departments from `user_department_access`
 
-Frontend route hiding is not security. SQL/API queries must apply the same scope before returning rows.
+Frontend route hiding is not security. The API enforces the same scope on lists, direct `/:id` reads, creates, edits, and deletes.
+
+Each user has a data-view override with four operational modes:
+
+- `ROLE`: use the role default
+- `DEPARTMENT`: own transactions plus assigned departments, inside assigned sites
+- `OWN`: only transactions owned by the user inside the assigned sites and departments
+- `GLOBAL`: explicit per-user administrator access
+
+Scoped users with no site or department assignment are denied scoped data. Transaction owners are assigned by the API and inherited through linked service request, work order, PR, PO, reservation, and meter records; clients cannot spoof the owner field.
 
 ## Performance Operations
 

@@ -9,6 +9,7 @@ import GenericPrintReport from '../ui/GenericPrintReport'
 import Field from '../ui/Field'
 import Surface, { SurfaceHeader } from '../ui/Surface'
 import TablePanel from '../ui/TablePanel'
+import { dataScopeLabel, userDataScopeOptions } from '../../lib/dataScope'
 
 const userStatuses = ['Active', 'Inactive', 'Locked']
 const toneByStatus = { Active: 'green', Inactive: 'orange', Locked: 'orange' }
@@ -94,7 +95,7 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
             { label: 'Role', value: user.role },
             { label: 'Site', value: user.site },
             { label: 'Department', value: user.department },
-            { label: 'Linked Labor', value: user.laborId || 'Not linked' }
+            { label: 'Data View', value: dataScopeLabel(user.dataScope) }
           ]}
           actions={(
             <div className="min-w-[150px]">
@@ -138,6 +139,7 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
                 <Field label="User ID" value={user.userId} locked />
                 <EditableField label="Username" value={user.username || ''} onCommit={commitField('username')} />
                 <Field label="Status" value={user.status} options={userStatuses} onChange={changeStatus} />
+                <Field label="Data View" value={user.dataScopeOverride || 'ROLE'} options={userDataScopeOptions} onChange={updateField('dataScopeOverride')} />
                 <EditableField label="Name" value={user.name || ''} onCommit={commitField('name')} />
                 <EditableField label="Email" value={user.email || ''} onCommit={commitField('email')} placeholder="name@company.com" />
                 <EditableField label="New Password" value="" type="password" placeholder="Leave blank to keep current" clearOnCommit onCommit={commitField('password')} />
@@ -186,8 +188,9 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
               kicker="ROLE SCOPE"
               title={role?.role || user.role}
               items={[
-                ['Site Scope', role?.site || user.site],
-                ['Department Scope', role?.department || user.department],
+                ['Site Scope', user.site],
+                ['Department Scope', user.department],
+                ['Data View', dataScopeLabel(user.dataScope)],
                 ['Allowed Access', role?.scope],
                 ['Role Status', role?.status]
               ]}
@@ -202,10 +205,10 @@ export default function UserDetailPage({ user, role, labor, roleOptions = [], si
         number={user.username}
         status={user.status}
         description={user.name}
-        summary={[['Role', user.role], ['Site', user.site], ['Department', user.department]]}
+        summary={[['Role', user.role], ['Site', user.site], ['Department', user.department], ['Data View', dataScopeLabel(user.dataScope)]]}
         sections={[
           { title: 'User Information', rows: [[['User ID', user.userId], ['Username', user.username], ['Name', user.name], ['Email', user.email]]] },
-          { title: 'Access Linkage', rows: [[['Role', user.role], ['Labor ID', user.laborId || '-'], ['Site', user.site], ['Department', user.department]]] }
+          { title: 'Access Linkage', rows: [[['Role', user.role], ['Labor ID', user.laborId || '-'], ['Site', user.site], ['Department', user.department], ['Data View', dataScopeLabel(user.dataScope)]]] }
         ]}
       />
     </section>
