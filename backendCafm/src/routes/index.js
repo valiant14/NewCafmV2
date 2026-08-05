@@ -9,6 +9,9 @@ import usersRouter from './users.js'
 import workOrderWorkflowRouter from './workOrderWorkflow.js'
 import { crudRouter } from './crudFactory.js'
 import inventoryStockRouter from './inventoryStock.js'
+import attachmentsRouter from './attachments.js'
+import supplyChainRouter from './supplyChain.js'
+import overviewRouter from './overview.js'
 import { getPermissionCacheStats, requireAuth, requirePermission } from '../middleware/auth.js'
 import { getPool, getPoolStats } from '../db/pool.js'
 import { getPmSchedulerRuntime, getPmSchedulerStatus, runPmSchedulerOnce } from '../services/pmScheduler.js'
@@ -17,6 +20,8 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { getRealtimeStats } from '../realtime.js'
 import { getRuntimeMetrics } from '../services/runtimeMetrics.js'
 import { prepareWorkOrderCreate, validateWorkOrderUpdate } from '../services/workOrderWorkflow.js'
+import { addScopeWhere } from '../middleware/scope.js'
+import { bindParams } from '../utils/sqlParams.js'
 
 const router = Router()
 const ownerColumn = 'created_by_user_id'
@@ -25,6 +30,18 @@ const workOrderScope = {
   ...departmentScope,
   departmentColumns: ['assigned_department_name'],
   subDepartmentColumn: 'sub_department_code'
+}
+
+const validateWorkOrderCommandUpdate = async context => {
+  const currentStatus = String(context.current?.status || '').trim().toUpperCase()
+  const nextStatus = String(context.payload?.status || '').trim().toUpperCase()
+  if (nextStatus === 'CAN' && currentStatus !== 'CAN') {
+    const error = new Error('Use the work-order cancellation command so linked reservations, requisitions, and orders are cancelled atomically.')
+    error.status = 409
+    error.code = 'CommandRequired'
+    throw error
+  }
+  return validateWorkOrderUpdate(context)
 }
 const ownedSource = ({ table, key, payloadKey, scope = departmentScope }) => ({
   table,
@@ -127,6 +144,10 @@ router.get('/health', asyncHandler(async (req, res) => {
 }))
 router.use('/auth', authRouter)
 router.use(requireAuth)
+
+router.use('/attachments', attachmentsRouter)
+router.use('/supply-chain', supplyChainRouter)
+router.use('/overview-snapshot', overviewRouter)
 
 router.get('/pm-scheduler/status', requirePermission('Preventive Maintenance', 'edit'), async (req, res, next) => {
   try {
@@ -234,19 +255,37 @@ router.use('/inventory-stock', inventoryStockRouter)
 
 router.use('/work-order-workflow', workOrderWorkflowRouter)
 
+router.get('/work-order-summary', requirePermission('Work Orders', 'view'), asyncHandler(async (req, res) => {
+  const pool = await getPool()
+  const scoped = addScopeWhere({ user: req.user, ...workOrderScope, ownerColumn })
+  const result = await bindParams(pool.request(), scoped.params).query(`
+    select coalesce(nullif(work_type, ''), 'Other') as work_type, count_big(1) as total
+    from dbo.work_orders
+    where 1 = 1${scoped.where}
+    group by coalesce(nullif(work_type, ''), 'Other')
+  `)
+  const byType = Object.fromEntries(result.recordset.map(row => [row.work_type, Number(row.total)]))
+  res.json({ total: Object.values(byType).reduce((sum, count) => sum + count, 0), byType })
+}))
+
 router.use('/work-orders', crudRouter({
   moduleName: 'Work Orders',
   relatedModules: ['Overview', 'Job Requests', 'Preventive Maintenance', 'Meters'],
   table: 'dbo.work_orders',
   key: 'work_order_num',
-  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'work_group', 'system_name', 'supervisor', 'labor_craft_code', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'ptw_files_json', 'general_files_json', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'held_from_status', 'hold_periods_json', 'created_by_user_id', 'created_at', 'updated_at'],
+  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'work_group', 'system_name', 'supervisor', 'labor_craft_code', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'held_from_status', 'hold_periods_json', 'created_by_user_id', 'created_at', 'updated_at'],
   defaultOrder: 'reported_at desc, work_order_num desc',
+  defaultPageSize: 100,
   scope: workOrderScope,
   ownerColumn,
   ownerSources: [ownedSource({ table: 'dbo.service_requests', key: 'sr_num', payloadKey: 'source_sr_num', scope: workOrderScope })],
   beforeCreate: prepareWorkOrderCreate,
-  beforeUpdate: validateWorkOrderUpdate,
-  additionalUpdatePermission: workOrderUpdatePermission
+  beforeUpdate: validateWorkOrderCommandUpdate,
+  additionalUpdatePermission: workOrderUpdatePermission,
+  searchColumns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'site_code', 'department_name', 'assigned_department_name', 'sub_department_code', 'source_sr_num', 'failure_code', 'problem_code'],
+  filterGroups: { department: ['department_name', 'assigned_department_name', 'sub_department_code'] },
+  prefixFilters: { locationPrefix: 'location_code' },
+  dateFilterColumn: 'reported_at'
 }))
 
 router.use('/work-order-resource-requests', crudRouter({
@@ -302,7 +341,8 @@ router.use('/purchase-requisitions', crudRouter({
   scope: departmentScope,
   ownerColumn,
   ownerSources: [workOrderOwnerSource, ownedSource({ table: 'dbo.work_order_resource_requests', key: 'resource_request_id', payloadKey: 'resource_request_id' })],
-  additionalUpdatePermission: purchaseRequestUpdatePermission
+  additionalUpdatePermission: purchaseRequestUpdatePermission,
+  readOnly: true
 }))
 
 router.use('/purchase-orders', crudRouter({
@@ -315,7 +355,8 @@ router.use('/purchase-orders', crudRouter({
   scope: departmentScope,
   ownerColumn,
   ownerSources: [workOrderOwnerSource, ownedSource({ table: 'dbo.purchase_requisitions', key: 'pr_num', payloadKey: 'pr_num' })],
-  additionalUpdatePermission: purchaseOrderUpdatePermission
+  additionalUpdatePermission: purchaseOrderUpdatePermission,
+  readOnly: true
 }))
 
 router.use('/reservations', crudRouter({
@@ -327,7 +368,8 @@ router.use('/reservations', crudRouter({
   defaultOrder: 'created_at desc, reservation_num desc',
   scope: departmentScope,
   ownerColumn,
-  ownerSources: [workOrderOwnerSource, ownedSource({ table: 'dbo.purchase_requisitions', key: 'pr_num', payloadKey: 'pr_num' }), ownedSource({ table: 'dbo.purchase_orders', key: 'po_num', payloadKey: 'po_num' })]
+  ownerSources: [workOrderOwnerSource, ownedSource({ table: 'dbo.purchase_requisitions', key: 'pr_num', payloadKey: 'pr_num' }), ownedSource({ table: 'dbo.purchase_orders', key: 'po_num', payloadKey: 'po_num' })],
+  readOnly: true
 }))
 
 router.use('/preventive-maintenance', crudRouter({

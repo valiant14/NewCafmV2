@@ -96,7 +96,7 @@ export default function PurchaseRequestsPage({
       return (
         <div className="flex flex-wrap gap-2">
           {canApprove && <Button className="h-8 px-3 text-xs" onClick={() => approveRequest(row)}><CheckCircle2 size={14} />Approve & create PO</Button>}
-          {access.edit && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelRequest(row)}><XCircle size={14} />Cancel</Button>}
+          {access.close && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelRequest(row)}><XCircle size={14} />Cancel</Button>}
         </div>
       )
     }
@@ -105,7 +105,7 @@ export default function PurchaseRequestsPage({
       return (
         <div className="flex flex-wrap gap-2">
           {access.edit && access.close && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => closeRequest(row)}><CheckCircle2 size={14} />Close PR</Button>}
-          {access.edit && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelRequest(row)}><XCircle size={14} />Cancel</Button>}
+          {access.close && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelRequest(row)}><XCircle size={14} />Cancel</Button>}
         </div>
       )
     }

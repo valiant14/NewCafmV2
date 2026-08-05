@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, Printer } from 'lucide-react'
 import CreateWorkOrderModal from '../components/work-orders/CreateWorkOrderModal'
 import WorkOrdersTable from '../components/work-orders/WorkOrdersTable'
@@ -60,7 +60,7 @@ const exportColumns = excelDate => {
 
 const workOrderTemplateHeaders = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTION', 'STATUS', 'WORK TYPE ', 'PRIORTY', 'SITE', 'DEPARTMENT ', 'SUB DEPARTMENT  NAME', 'LOCATION ', 'ASSET', 'TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'FAILURE CODE', 'PROBLEM CODE']
 
-export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRecords = [], departmentRecords = [], onCreate, onImportRows, EditorComponent, excelDate, workflow, access = {} }) {
+export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRecords = [], departmentRecords = [], onCreate, onImportRows, EditorComponent, excelDate, workflow, access = {}, pageMeta, onPageRequest, onLoadDetail }) {
   const { user } = useAuth()
   const routeId = decodeURIComponent(window.location.pathname.split('/work-orders/')[1] || '')
   const [selected, setSelected] = useState(() => {
@@ -74,6 +74,9 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
   const [sort, setSort] = useState({ key: 'WORKORDER', direction: 'asc' })
   const [filters, setFilters] = useScopedFilters(user, rows, ['SITE'])
   const [search, setSearch] = useState('')
+  const firstServerRequest = useRef(true)
+  const requestedDetail = useRef('')
+  const serverMode = Boolean(onPageRequest)
 
   useEffect(() => {
     if (routeId === 'new') {
@@ -86,18 +89,37 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
       setSelected(null)
       return
     }
-    setSelected(rows.find(order => String(order.WORKORDER) === routeId) || null)
-  }, [rows, routeId])
+    const current = rows.find(order => String(order.WORKORDER) === routeId) || null
+    setSelected(current)
+    if (!onLoadDetail || requestedDetail.current === routeId) return
+    requestedDetail.current = routeId
+    onLoadDetail(routeId).then(detail => { if (detail) setSelected(detail) }).catch(() => {})
+  }, [routeId, onLoadDetail])
+  useEffect(() => {
+    if (!selected?.WORKORDER) return
+    const current = rows.find(order => String(order.WORKORDER) === String(selected.WORKORDER))
+    if (current && current !== selected) setSelected(current)
+  }, [rows, selected?.WORKORDER])
+  useEffect(() => {
+    if (!serverMode || selected || creating) return undefined
+    if (firstServerRequest.current && pageMeta?.loaded) {
+      firstServerRequest.current = false
+      return undefined
+    }
+    firstServerRequest.current = false
+    const timer = setTimeout(() => onPageRequest({ page, pageSize, search, sort, type: typeFilter, filters }), 250)
+    return () => clearTimeout(timer)
+  }, [serverMode, selected, creating, pageMeta?.loaded, onPageRequest, page, pageSize, search, sort, typeFilter, filters])
 
   const orderType = order => (order['WORK TYPE'] || order['WORK TYPE '] || order['WORK TYPE  '] || 'CM').trim()
-  const typedRows = rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)
-  const scoped = applyStandardFilters(typedRows, filters, {
+  const typedRows = serverMode ? rows : rows.filter(order => typeFilter === 'All' || orderType(order) === typeFilter)
+  const scoped = serverMode ? typedRows : applyStandardFilters(typedRows, filters, {
     site: ['SITE'],
     department: ['DEPARTMENT ', 'ASSIGNED DEPARTMENT', 'SUB DEPARTMENT  NAME'],
     status: ['STATUS'],
     date: ['TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'REPORTED DATE ']
   })
-  const filtered = filterRows(scoped, search, searchKeys)
+  const filtered = serverMode ? scoped : filterRows(scoped, search, searchKeys)
   const sortValue = (order, key) => {
     if (key === 'WORK TYPE') return orderType(order)
     if (key === 'DESCRIPITION') return order['DESCRIPITION ']
@@ -113,7 +135,7 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
     if (key === 'REPORTED DATE') return order['REPORTED DATE ']
     return order[key]
   }
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = serverMode ? filtered : [...filtered].sort((a, b) => {
     const left = sortValue(a, sort.key) ?? ''
     const right = sortValue(b, sort.key) ?? ''
     const result = String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' })
@@ -123,14 +145,24 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
     setSort(current => current.key === key ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' })
     setPage(1)
   }
-  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
+  const totalRows = serverMode ? Number(pageMeta?.total || 0) : filtered.length
+  const pageCount = Math.max(1, Math.ceil(totalRows / pageSize))
   const currentPage = Math.min(page, pageCount)
-  const paginated = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-  const count = type => rows.filter(order => type === 'All' || orderType(order) === type).length
+  const paginated = serverMode ? sorted : sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const count = type => {
+    if (!serverMode) return rows.filter(order => type === 'All' || orderType(order) === type).length
+    if (type === 'All') return Number(pageMeta?.summary?.total ?? pageMeta?.total ?? 0)
+    return Number(pageMeta?.summary?.byType?.[type] || 0)
+  }
 
-  const openOrder = order => {
+  const openOrder = async order => {
     setSelected(order)
     window.history.pushState({}, '', `/work-orders/${order.WORKORDER || 'new'}`)
+    if (onLoadDetail && order.WORKORDER) {
+      requestedDetail.current = String(order.WORKORDER)
+      const detail = await onLoadDetail(order.WORKORDER).catch(() => null)
+      if (detail) setSelected(detail)
+    }
   }
   const closeOrder = () => {
     setSelected(null)
@@ -195,7 +227,7 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
           currentPage={currentPage}
           pageSize={pageSize}
           pageCount={pageCount}
-          total={filtered.length}
+          total={totalRows}
           onOpen={openOrder}
           onPageChange={setPage}
           onPageSizeChange={value => { setPageSize(value); setPage(1) }}

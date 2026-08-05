@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ChevronRight, ClipboardCheck, FileText, Paperclip, Printer, Upload, X } from 'lucide-react'
+import { Check, ChevronRight, ClipboardCheck, Download, FileText, Paperclip, Printer, Upload, X } from 'lucide-react'
 import Badge from '../ui/Badge'
 import StatusBadge from '../ui/StatusBadge'
 import Alert from '../ui/Alert'
@@ -10,6 +10,7 @@ import { ModalFooter, ModalHeader, ModalPanel } from '../ui/ModalFrame'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { sameDepartment } from '../../lib/departments'
 import Surface, { SurfaceHeader } from '../ui/Surface'
+import useEntityAttachments from '../../hooks/useEntityAttachments'
 
 const tabs = [
   ['Request Details', FileText],
@@ -21,8 +22,10 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
   const [form, setForm] = useState(request)
   const [submitError, setSubmitError] = useState('')
   const [activeTab, setActiveTab] = useState('Request Details')
+  const [pendingFiles, setPendingFiles] = useState([])
 
   const isNew = form.status === 'NEW'
+  const { attachments, loading: attachmentsLoading, error: attachmentError, uploadFiles, removeAttachment, downloadAttachment } = useEntityAttachments('service-request', form.sr, { enabled: !isNew })
   const canSubmit = Boolean(form.description?.trim() && form.site && form.location && form.reportedBy?.trim())
   const canConvert = Boolean(
     form.asset?.trim() &&
@@ -82,7 +85,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
     }
     setSubmitError('')
     try {
-      if (isNew) await onSubmit(form)
+      if (isNew) await onSubmit(form, pendingFiles)
       else setForm(await onApprove(form))
     } catch (error) {
       setSubmitError(error.message || 'Unable to save this Job Request.')
@@ -123,8 +126,13 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
             <Upload size={22} />
             <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
             <span className="text-xs">Photos, PDFs and supporting documents · multiple files supported</span>
-            <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple />
+            <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple onChange={event => {
+              const files = Array.from(event.target.files || [])
+              setPendingFiles(current => [...current, ...files])
+              event.target.value = ''
+            }} />
           </div>
+          {!!pendingFiles.length && <div className="mt-2 grid gap-2">{pendingFiles.map((file, index) => <div className="app-record-row" key={`${file.name}-${file.size}-${index}`}><span className="truncate text-xs font-bold">{file.name}</span><button type="button" className="app-icon-button" aria-label={`Remove ${file.name}`} onClick={() => setPendingFiles(current => current.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button></div>)}</div>}
         </div>
       </div>
 
@@ -228,11 +236,24 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
 
           {activeTab === 'Attachments' && (
             <Section title="Attachments" note="Add photos or documents that help explain the request">
+              {attachmentError && <Alert className="mb-3" tone="danger">{attachmentError}</Alert>}
               <div className="relative grid min-h-28 cursor-pointer place-items-center content-center gap-2 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-hover-bg)] p-5 text-center text-[var(--app-muted)]">
                 <Upload size={25} />
                 <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
                 <span className="text-xs">Photos, PDFs and supporting documents · multiple files supported</span>
-                <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple />
+                <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple disabled={!access.edit} onChange={async event => {
+                  const files = Array.from(event.target.files || [])
+                  event.target.value = ''
+                  if (files.length) await uploadFiles(files, 'General').catch(() => {})
+                }} />
+              </div>
+              <div className="mt-3 app-record-list">
+                {attachments.map(file => <article className="app-record-row" key={file.attachmentId}>
+                  <div className="flex min-w-0 items-center gap-3"><FileText size={16} /><div className="min-w-0"><strong className="block truncate text-sm">{file.name}</strong><span className="text-xs text-[var(--app-muted)]">{file.type} - {file.size}</span></div></div>
+                  <div className="flex items-center gap-2"><button type="button" className="app-icon-button" aria-label={`Download ${file.name}`} onClick={() => downloadAttachment(file)}><Download size={14} /></button>{access.edit && <button type="button" className="app-icon-button" aria-label={`Remove ${file.name}`} onClick={() => removeAttachment(file)}><X size={14} /></button>}</div>
+                </article>)}
+                {attachmentsLoading && <p className="app-record-empty">Loading attachments...</p>}
+                {!attachmentsLoading && !attachments.length && <p className="app-record-empty">No attachments stored for this request.</p>}
               </div>
             </Section>
           )}

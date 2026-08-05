@@ -1,4 +1,5 @@
 import dotenv from 'dotenv'
+import path from 'node:path'
 
 dotenv.config()
 
@@ -25,6 +26,8 @@ export const env = {
   permissionCacheMaxEntries: number(process.env.PERMISSION_CACHE_MAX_ENTRIES, 10000, { min: 100, max: 100000 }),
   listMaxPageSize: number(process.env.LIST_MAX_PAGE_SIZE, 500, { min: 50, max: 5000 }),
   jsonBodyLimit: process.env.JSON_BODY_LIMIT || '10mb',
+  attachmentMaxBytes: number(process.env.ATTACHMENT_MAX_BYTES, 25 * 1024 * 1024, { min: 1024, max: 250 * 1024 * 1024 }),
+  attachmentStoragePath: path.resolve(process.cwd(), process.env.ATTACHMENT_STORAGE_PATH || 'storage/attachments'),
   socketMaxBufferBytes: number(process.env.SOCKET_MAX_BUFFER_BYTES, 1048576, { min: 65536, max: 10485760 }),
   serverKeepAliveTimeoutMs: number(process.env.SERVER_KEEP_ALIVE_TIMEOUT_MS, 65000, { min: 5000, max: 300000 }),
   serverHeadersTimeoutMs: number(process.env.SERVER_HEADERS_TIMEOUT_MS, 66000, { min: 6000, max: 310000 }),

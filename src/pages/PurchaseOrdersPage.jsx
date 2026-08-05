@@ -18,8 +18,7 @@ const purchaseOrderStatuses = ['WAPPR', 'APPR', 'INPRG', 'CLOSE', 'CAN']
 
 export default function PurchaseOrdersPage({
   rows = [],
-  onUpdateOrder,
-  onUpdateRequest
+  onUpdateOrder
 }) {
   const access = useModuleAccess('Purchase Orders')
   const [filters, setFilters] = useState(emptyStandardFilters)
@@ -40,7 +39,6 @@ export default function PurchaseOrdersPage({
       CLOSE: { receivedAt: todayStamp(), closedAt: todayStamp() }
     }[nextStatus] || {}
     onUpdateOrder?.(row.purchaseOrder, { status: nextStatus, ...datePatch })
-    if (nextStatus === 'CLOSE') onUpdateRequest?.(row.purchaseRequest, { status: 'CLOSE', closedAt: todayStamp() })
   }
 
   const rowAction = row => {
@@ -49,7 +47,7 @@ export default function PurchaseOrdersPage({
       return (
         <div className="flex flex-wrap gap-2">
           {access.edit && access.approve && <Button className="h-8 px-3 text-xs" onClick={() => updateOrderStatus(row, 'APPR')}><CheckCircle2 size={14} />Approve PO</Button>}
-          {access.edit && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelOrder(row)}><XCircle size={14} />Cancel</Button>}
+          {access.close && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelOrder(row)}><XCircle size={14} />Cancel</Button>}
         </div>
       )
     }
@@ -58,7 +56,7 @@ export default function PurchaseOrdersPage({
       return (
         <div className="flex flex-wrap gap-2">
           <Button className="h-8 px-3 text-xs" onClick={() => updateOrderStatus(row, 'INPRG')}><Play size={14} />Start processing</Button>
-          <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelOrder(row)}><XCircle size={14} />Cancel</Button>
+          {access.close && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelOrder(row)}><XCircle size={14} />Cancel</Button>}
         </div>
       )
     }
@@ -67,7 +65,7 @@ export default function PurchaseOrdersPage({
       return (
         <div className="flex flex-wrap gap-2">
           {access.edit && access.close && <Button className="h-8 px-3 text-xs" onClick={() => updateOrderStatus(row, 'CLOSE')}><PackageCheck size={14} />Receive & close</Button>}
-          {access.edit && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelOrder(row)}><XCircle size={14} />Cancel</Button>}
+          {access.close && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => cancelOrder(row)}><XCircle size={14} />Cancel</Button>}
         </div>
       )
     }

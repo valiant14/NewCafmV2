@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getPool } from './pool.js'
+import { migrateLegacyWorkOrderAttachments } from './migrateLegacyWorkOrderAttachments.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const sqlDirectory = path.resolve(__dirname, '..', '..', 'sql')
@@ -14,7 +15,6 @@ const migrationFiles = [
   '013_tools_equipment_detail_fields.sql',
   '014_supply_chain_resource_links.sql',
   '015_tools_low_level.sql',
-  '017_work_order_documents.sql',
   '020_work_order_actuals.sql',
   '021_ptw_required_default_yes.sql',
   '022_work_order_planning_permission.sql',
@@ -30,7 +30,10 @@ const migrationFiles = [
   '034_tools_site_scope.sql',
   '035_atomic_record_numbers.sql',
   '036_atomic_business_numbers.sql',
-  '037_work_order_routing_fields.sql'
+  '037_work_order_routing_fields.sql',
+  '038_attachments.sql',
+  '039_supply_chain_command_indexes.sql',
+  '040_work_order_history_indexes.sql'
 ]
 
 const batchesFor = fileName => fs.readFileSync(path.join(sqlDirectory, fileName), 'utf8')
@@ -47,6 +50,9 @@ for (const fileName of migrationFiles) {
   }
   console.log(`Applied ${fileName}`)
 }
+
+const migratedAttachments = await migrateLegacyWorkOrderAttachments(pool)
+if (migratedAttachments) console.log(`Migrated ${migratedAttachments} legacy work-order attachment(s).`)
 
 console.log(`Database migrations complete: ${migrationFiles.length} file(s), ${batchCount} batch(es).`)
 process.exit(0)

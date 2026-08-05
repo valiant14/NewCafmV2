@@ -68,8 +68,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
     setRequestForm({
       quantity,
       source: tool.location || '',
-      site: tool.site || '',
-      department: tool.department || tool.category || ''
+      site: tool.site || ''
     })
     setRequestError('')
     setRequestModalOpen(true)
@@ -86,7 +85,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
       availableQuantity: Number(tool.availableQuantity || 0),
       source: requestForm.source || tool.location || '',
       site: requestForm.site || tool.site || '',
-      department: requestForm.department || tool.department || tool.category || ''
+      department: tool.department || ''
     })
     if (!created) return setRequestError('Unable to create the purchase requisition.')
     setRequestModalOpen(false)

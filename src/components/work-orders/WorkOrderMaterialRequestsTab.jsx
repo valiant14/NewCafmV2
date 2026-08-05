@@ -124,8 +124,7 @@ export default function WorkOrderMaterialRequestsTab({
   purchaseOrders = [],
   workOrderContext = {},
   onCreatePurchaseRequest,
-  onCreateReservation,
-  onUpdateWorkOrder
+  onCreateReservation
 }) {
   const actionResource = async (index, resource) => {
     if (readOnly) return
@@ -182,7 +181,6 @@ export default function WorkOrderMaterialRequestsTab({
     }
     const nextRows = plannedResources.map((row, rowIndex) => rowIndex === index ? linkedResource : row)
     setPlannedResources(nextRows)
-    onUpdateWorkOrder?.(workOrderContext.number, { 'PLANNED RESOURCES': nextRows })
   }
 
   return (

@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import Combobox from '../ui/Combobox'
-import { AlertTriangle, CalendarClock, ClipboardList, Download, FileText, ShieldCheck, UserRound } from 'lucide-react'
+import { AlertTriangle, CalendarClock, ClipboardList, Download, FileText, ShieldCheck, UserRound, X } from 'lucide-react'
 import { DetailHeader, DetailTabs, InfoCard, TimelineCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusOptions, statusTone } from '../../lib/statusMatrix'
 import Alert from '../ui/Alert'
 import Surface, { SurfaceHeader } from '../ui/Surface'
 import useModuleAccess from '../../hooks/useModuleAccess'
+import useEntityAttachments from '../../hooks/useEntityAttachments'
 
 export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
   const access = useModuleAccess('Incidents')
   const [status, setStatus] = useState(incident.status || 'NEW')
   const [activeTab, setActiveTab] = useState('Incident Details')
-  const [attachments, setAttachments] = useState(Array.isArray(incident.attachments) ? incident.attachments : [])
+  const { attachments, loading: attachmentsLoading, error: attachmentError, uploadFiles, removeAttachment, downloadAttachment } = useEntityAttachments('incident', incident.incidentNumber)
   const open = !['RESOLVED', 'CLOSED'].includes(status)
   const reportedDate = incident.reportedDate ? new Date(incident.reportedDate).toLocaleString() : 'Not recorded'
   const changeStatus = value => {
@@ -117,18 +118,19 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
                   type="file"
                   multiple
                   className="hidden"
-                  onChange={event => {
-                    const files = Array.from(event.target.files || []).map(file => ({ name: file.name, type: file.type || 'Document', size: file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB` }))
-                    setAttachments(current => [...current, ...files])
+                  onChange={async event => {
+                    const files = Array.from(event.target.files || [])
                     event.target.value = ''
+                    if (files.length) await uploadFiles(files, 'General').catch(() => {})
                   }}
                 />
               </label>
               ) : null}
             />
+            {attachmentError && <Alert className="mb-3" tone="danger">{attachmentError}</Alert>}
             <div className="app-record-list">
-              {attachments.map((file, index) => (
-                <article className="app-record-row" key={`${file.name}-${index}`}>
+              {attachments.map(file => (
+                <article className="app-record-row" key={file.attachmentId}>
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="app-record-icon"><FileText size={17} /></span>
                     <div className="min-w-0">
@@ -136,12 +138,16 @@ export default function IncidentDetailPage({ incident, onBack, onUpdate }) {
                       <span className="text-xs text-[var(--app-muted)]">{file.type} - {file.size}</span>
                     </div>
                   </div>
-                  <button className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-bold text-[var(--app-muted)]">
-                    <Download size={14} />Download
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => downloadAttachment(file)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-bold text-[var(--app-muted)]">
+                      <Download size={14} />Download
+                    </button>
+                    {access.edit && <button type="button" onClick={() => removeAttachment(file)} className="app-icon-button" aria-label={`Remove ${file.name}`}><X size={14} /></button>}
+                  </div>
                 </article>
               ))}
-              {!attachments.length && <p className="app-record-empty">No attachments stored for this incident.</p>}
+              {attachmentsLoading && <p className="app-record-empty">Loading attachments...</p>}
+              {!attachmentsLoading && !attachments.length && <p className="app-record-empty">No attachments stored for this incident.</p>}
             </div>
           </Surface>
         )}

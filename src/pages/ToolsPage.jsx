@@ -49,7 +49,8 @@ const matchesTool = (tool, value, description) =>
   cleanCode(tool.description) === cleanCode(value) ||
   cleanCode(tool.description) === cleanCode(description)
 
-const toolUsage = (tool, workOrders) => workOrders.flatMap(order => {
+const toolUsage = (tool, workOrders, resourceRequests = []) => {
+  const nested = workOrders.flatMap(order => {
   const resources = Array.isArray(order['PLANNED RESOURCES']) ? order['PLANNED RESOURCES'] : []
   return resources
     .filter(resource => ['Tool', 'Equipment'].includes(resource.type))
@@ -65,7 +66,23 @@ const toolUsage = (tool, workOrders) => workOrders.flatMap(order => {
       department: order?.['DEPARTMENT '] || '',
       source: resource.transactionRef || resource.supplyChainStatus || resource.requestStatus || 'Planned resource'
     }))
-})
+  })
+  const direct = resourceRequests
+    .filter(resource => ['Tool', 'Equipment'].includes(resource.type))
+    .filter(resource => matchesTool(tool, resource.itemCode || resource.item, resource.item))
+    .map(resource => ({
+      reference: resource.resourceRequestId || `${resource.workOrder}-${resource.transactionRef || resource.item}`,
+      workOrder: resource.workOrder,
+      description: resource.item || tool.description,
+      workType: '',
+      quantity: resource.quantity || resource.requestedQuantity || 0,
+      status: resource.requestStatus || '',
+      site: resource.site || '',
+      department: resource.department || '',
+      source: resource.transactionRef || resource.supplyChainStatus || resource.requestStatus || 'Planned resource'
+    }))
+  return [...new Map([...nested, ...direct].map(row => [String(row.reference), row])).values()]
+}
 const activeAllocationsFor = (tool, allocations = []) => allocations.filter(allocation => {
   if (allocation.type === 'Material') return false
   if (String(allocation.reservation || '').startsWith('RSV-')) return false
@@ -124,7 +141,7 @@ const withToolUsage = (row, workOrders, allocations = [], storeRows = []) => {
   }
 }
 
-export default function ToolsPage({ rows = [], setRows, workOrders = [], allocations = [], storeRows = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest }) {
+export default function ToolsPage({ rows = [], setRows, workOrders = [], resourceRequests = [], allocations = [], storeRows = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest }) {
   const access = useModuleAccess('Tools & Equipment')
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
@@ -175,7 +192,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [], allocat
   }
 
   if (selectedTool) {
-    return <ToolDetailPage tool={selectedTool} usageRows={toolUsage(selectedTool, workOrders)} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} onBack={close} onUpdate={updateTool} onCreateRequest={onCreateRequest} />
+    return <ToolDetailPage tool={selectedTool} usageRows={toolUsage(selectedTool, workOrders, resourceRequests)} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} onBack={close} onUpdate={updateTool} onCreateRequest={onCreateRequest} />
   }
 
   return (
