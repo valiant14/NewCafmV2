@@ -144,6 +144,23 @@ export const workflowNextStep = (workflow, value) => {
   return index >= 0 ? steps[index + 1] || null : null
 }
 
+// The furthest status an order can reach on its own from here, following consecutive automatic
+// steps whose requirements are already met. Advancing one hop per render redrew the workflow
+// banner at every intermediate status - the flicker seen when finishing the plan runs an order
+// through Approved and Waiting Schedule on its way to Scheduled.
+export const workflowAutoTarget = (workflow, value, canAdvanceTo) => {
+  const steps = workOrderWorkflowSteps(workflow)
+  let index = steps.findIndex(step => step.statusCode === statusCode(value))
+  let target = ''
+  while (index >= 0 && index + 1 < steps.length) {
+    const next = steps[index + 1]
+    if (!next.isAutomatic || !canAdvanceTo(next.statusCode)) break
+    target = next.statusCode
+    index += 1
+  }
+  return target
+}
+
 export const workflowPreviousStep = (workflow, value) => {
   const steps = workOrderWorkflowSteps(workflow)
   const index = steps.findIndex(step => step.statusCode === statusCode(value))

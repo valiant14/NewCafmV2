@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ChevronRight, ClipboardCheck, FileText, Paperclip, Printer, Upload, X } from 'lucide-react'
+import { Boxes, Building2, Check, ChevronRight, ClipboardCheck, FileText, Flag, MapPin, Paperclip, Printer, Upload, User, X } from 'lucide-react'
 import Badge from '../ui/Badge'
 import StatusBadge from '../ui/StatusBadge'
 import Alert from '../ui/Alert'
@@ -102,30 +102,40 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
         onClose={onBack}
       />
 
-      <div className="overflow-auto px-6 py-5">
+      {/* Grouped into what happened, where, and evidence - the order a reporter thinks in.
+          Where puts its three fields on one row and attachments is a single strip, which is
+          what buys the description its taller box while keeping the form on one screen. */}
+      <div className="grid gap-3 overflow-auto px-6 py-4">
         {submitError && (
-          <Alert className="mb-5" tone="danger" actions={<button className="app-icon-button" onClick={() => setSubmitError('')} aria-label="Dismiss"><X size={14} /></button>}>{submitError}</Alert>
+          <Alert tone="danger" actions={<button className="app-icon-button" onClick={() => setSubmitError('')} aria-label="Dismiss"><X size={14} /></button>}>{submitError}</Alert>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Priority" value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} />
-          <Field label="Reported By" value={form.reportedBy} required onChange={update('reportedBy')} />
-          <div className="md:col-span-2"><Field label="Description" value={form.description} required onChange={update('description')} /></div>
-          <Field label="Site" value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" />
-          <Field label="Location" value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
-          <div className="md:col-span-2"><Field label="Asset" value={form.asset} onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" /></div>
-          <div className="md:col-span-2"><Field label="Long Description" value={form.longDescription} type="textarea" onChange={update('longDescription')} /></div>
-        </div>
-
-        <div className="mt-5">
-          <p className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">Attachments</p>
-          <div className="relative mt-2 grid min-h-28 cursor-pointer place-items-center content-center gap-1.5 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-header-bg)] p-5 text-center text-[var(--app-muted)]">
-            <Upload size={22} />
-            <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
-            <span className="text-xs">Photos, PDFs and supporting documents · multiple files supported</span>
-            <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple />
+        <Section compact icon={FileText} title="What happened" note="Describe the problem and how urgent it is">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Priority" icon={Flag} value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} />
+            <Field label="Reported By" icon={User} value={form.reportedBy} required onChange={update('reportedBy')} />
+            <div className="md:col-span-2"><Field label="Description" icon={FileText} value={form.description} type="textarea" required onChange={update('description')} /></div>
           </div>
-        </div>
+        </Section>
+
+        <Section compact icon={MapPin} title="Where" note="Site and location are required, asset is optional">
+          <div className="grid gap-3 md:grid-cols-3">
+            <Field label="Site" icon={Building2} value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" />
+            <Field label="Location" icon={MapPin} value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
+            <Field label="Asset" icon={Boxes} value={form.asset} onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" />
+          </div>
+        </Section>
+
+        <Section compact icon={Paperclip} title="Attachments" note="Photos, PDFs and supporting documents">
+          {/* A single strip - the file types are named in the section note above, so the drop
+              target only needs to be aimable, not tall. */}
+          <label className="relative flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-header-bg)] p-3 text-center text-[var(--app-muted)]">
+            <Upload size={18} />
+            <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
+            <span className="text-xs">Multiple files supported</span>
+            <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple />
+          </label>
+        </Section>
       </div>
 
       <ModalFooter>

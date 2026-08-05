@@ -500,7 +500,10 @@ main,
   .app-button--danger:hover:not(:disabled) { filter: brightness(.92); }
 
   .app-section--compact { padding: 14px; box-shadow: none; }
-  .app-section-header { border-bottom: 1px solid var(--app-line); margin-bottom: 16px; padding-bottom: 13px; }
+  .app-section-header { align-items: center; border-bottom: 1px solid var(--app-line); display: flex; gap: 10px; margin-bottom: 16px; padding-bottom: 13px; }
+  /* Icons mark a section or a field without competing with the text they label. */
+  .app-section-icon { color: var(--app-primary); flex: 0 0 auto; }
+  .app-field-icon { color: var(--app-muted); flex: 0 0 auto; }
   .app-section--compact .app-section-header { margin-bottom: 13px; padding-bottom: 11px; }
   .app-section-title { color: var(--app-ink); font-size: 14px; font-weight: 750; letter-spacing: 0; line-height: 1.4; margin: 0; }
   .app-section-note { color: var(--app-muted); font-size: 12px; line-height: 1.5; margin: 3px 0 0; }
@@ -634,7 +637,9 @@ main,
     box-shadow: var(--app-shadow-floating);
     display: flex;
     flex-direction: column;
-    max-height: min(88vh, 900px);
+    /* 94vh matches the small-screen rule below, so a modal that only just overflows gets the
+       last few pixels it needs instead of showing a scrollbar for them. */
+    max-height: min(94vh, 960px);
     overflow: hidden;
     width: 100%;
   }

@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Check, Plus, X } from 'lucide-react'
+import { Boxes, Building2, Check, ClipboardList, FileText, Flag, MapPin, Plus, Users, Wrench, X } from 'lucide-react'
 import Button from '../ui/Button'
 import Alert from '../ui/Alert'
-import { Field } from '../ui/FormControls'
+import { Field, Section } from '../ui/FormControls'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
 import { sameDepartment } from '../../lib/departments'
 import { deriveDepartmentOptions, deriveSiteOptions } from '../../lib/referenceFallbacks'
@@ -73,19 +73,37 @@ export default function CreateWorkOrderModal({ rows, assets, locationRows = [], 
           onClose={onCancel}
         />
 
-        <div className="overflow-auto px-6 py-5">
-          {error && <Alert className="mb-5" tone="danger" actions={<button className="app-icon-button" onClick={() => setError('')} aria-label="Dismiss error"><X size={14} /></button>}>{error}</Alert>}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Work Type" value={form.type} required options={workTypes} onChange={update('type')} />
-            <Field label="Priority" value={form.priority} required options={priorities} onChange={update('priority')} />
-            <div className="md:col-span-2"><Field label="Description" value={form.description} required onChange={update('description')} /></div>
-            <Field label="Site" value={form.site} required onChange={changeSite} suggestions={sites} placeholder="Search or select a site" />
-            <Field label="Location" value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
-            <div className="md:col-span-2"><Field label="Asset" value={form.asset} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'Optional - no scoped assets available'} /></div>
-            <Field label="Department" value={form.department} required onChange={changeDepartment} suggestions={departmentOptions} placeholder="Search department" />
-            <Field label="Sub Department" value={form.subDepartment} onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder={form.department ? 'Search sub department' : 'Select department first'} />
-          </div>
-          <div className="mt-5 flex gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-header-bg)] p-4 text-[var(--app-ink)]"><Check size={17} className="text-[var(--app-primary)]" /><div><strong>Configure after creation</strong><span className="block text-xs text-[var(--app-muted)]">Target dates, planning, failure codes, materials, PTW, actuals, meters, and closeout remain inside Work Order Details.</span></div></div>
+        {/* Same three-section shape as the job request intake: what the job is, where it is, and
+            who owns it. Sections and field icons come from the shared components. */}
+        <div className="grid gap-2 overflow-auto px-6 py-3">
+          {error && <Alert tone="danger" actions={<button className="app-icon-button" onClick={() => setError('')} aria-label="Dismiss error"><X size={14} /></button>}>{error}</Alert>}
+
+          <Section compact icon={ClipboardList} title="Work details" note="What needs doing and how urgent it is">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Work Type" icon={Wrench} value={form.type} required options={workTypes} onChange={update('type')} />
+              <Field label="Priority" icon={Flag} value={form.priority} required options={priorities} onChange={update('priority')} />
+              <div className="md:col-span-2"><Field label="Description" icon={FileText} value={form.description} required onChange={update('description')} /></div>
+            </div>
+          </Section>
+
+          <Section compact icon={MapPin} title="Where" note="Site and location are required, asset is optional">
+            <div className="grid gap-3 md:grid-cols-3">
+              <Field label="Site" icon={Building2} value={form.site} required onChange={changeSite} suggestions={sites} placeholder="Search or select a site" />
+              <Field label="Location" icon={MapPin} value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
+              <Field label="Asset" icon={Boxes} value={form.asset} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'Optional - no scoped assets available'} />
+            </div>
+          </Section>
+
+          <Section compact icon={Users} title="Ownership" note="Department responsible for the work">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Department" icon={Users} value={form.department} required onChange={changeDepartment} suggestions={departmentOptions} placeholder="Search department" />
+              <Field label="Sub Department" icon={Users} value={form.subDepartment} onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder={form.department ? 'Search sub department' : 'Select department first'} />
+            </div>
+          </Section>
+
+          <Alert tone="info" icon={Check} title="Configure after creation">
+            Target dates, planning, failure codes, materials, PTW, actuals, meters, and closeout remain inside Work Order Details.
+          </Alert>
         </div>
 
         <ModalFooter>

@@ -2,7 +2,10 @@ import { useId } from 'react'
 import Combobox from './Combobox'
 import { cn } from '../../lib/cn'
 
-export default function Field({ label, value = '', required, locked, disabled = false, type = 'text', options, suggestions, onChange, onBlur, onKeyDown, placeholder, min, max, autoComplete, name }) {
+// `icon` is optional and sits inside the label, which is already a flex row with a gap - so a
+// form can mark its fields without any per-page styling, and the icon size is decided here
+// rather than at each call site.
+export default function Field({ label, icon: Icon, value = '', required, locked, disabled = false, type = 'text', options, suggestions, onChange, onBlur, onKeyDown, placeholder, min, max, autoComplete, name }) {
   const listId=useId()
   const isDisabled = locked || disabled
   const controlClass = cn(
@@ -13,6 +16,7 @@ export default function Field({ label, value = '', required, locked, disabled = 
   return (
     <label className="app-field">
       <span className="app-field-label">
+        {Icon && <Icon size={12} className="app-field-icon" />}
         {label}
         {required && <b className="app-field-required">*</b>}
       </span>

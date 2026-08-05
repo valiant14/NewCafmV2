@@ -44,7 +44,8 @@ import {
   workflowRequirementsForStatus,
   workflowStatusLabel,
   workflowStatusOptions,
-  workflowStepByStatus
+  workflowStepByStatus,
+  workflowAutoTarget
 } from './lib/workOrderWorkflow'
 
 const ServiceRequestsPage = lazy(() => import('./pages/ServiceRequestsPage'))
@@ -1023,14 +1024,17 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
       'STATUS DESCRIPITION': workflowStatusLabel(workflow,next)||maximoWorkOrderStatusDescriptions[next]||next
     })
   }
-  const changeStatus=value=>{
+  // `chained` is set only by the automatic advance, which has already walked the steps one at a
+  // time and checked each one - so the single commit it asks for may skip several statuses.
+  const changeStatus=(value,options)=>{
     const next=normalizeWoStatus(value)
+    const chained=options?.chained===true
     const holdStatuses=['HOLD',HOLD_MATERIAL]
     if(['CLOSE','CAN'].includes(next)&&!canCloseWorkOrder) return
     if((holdStatuses.includes(next)||holdStatuses.includes(selectedStatus))&&!canManageHold) return
     // The select disables invalid options, but guard here too so no other caller can
     // drive the work order off the workflow.
-    if(!canTransitionWorkOrder(selectedStatus,next,heldFrom,workflow)) return
+    if(!chained&&!canTransitionWorkOrder(selectedStatus,next,heldFrom,workflow)) return
     notifyStatusChange(next)
     const wasHold=['HOLD',HOLD_MATERIAL].includes(selectedStatus)
     if(['HOLD',HOLD_MATERIAL].includes(next)) setHeldFrom(selectedStatus)
@@ -1091,14 +1095,15 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
           ?`Moving automatically to ${configuredNextStep.stepName}`
           :`Ready to move to ${configuredNextStep.stepName}`
 
-  const autoAdvanceTo=configuredNextStep?.isAutomatic&&!(configuredNextStep.statusCode==='CLOSE'&&!canCloseWorkOrder)&&!missingFor(configuredNextStep.statusCode).length
-    ?configuredNextStep.statusCode
-    :''
+  // Every automatic step whose requirements are already met is resolved here, so completing the
+  // plan lands on the final status in one move instead of redrawing the banner at each one.
+  const autoAdvanceTo=workflowAutoTarget(workflow,status,code=>
+    !(code==='CLOSE'&&!canCloseWorkOrder)&&!missingFor(code).length)
   useEffect(()=>{
     if(!autoAdvanceTo) return
     // Deferred a tick so a keystroke that completes the last required field is committed
     // before the status moves underneath the field being typed in.
-    const timer=setTimeout(()=>changeStatus(autoAdvanceTo),0)
+    const timer=setTimeout(()=>changeStatus(autoAdvanceTo,{chained:true}),0)
     return ()=>clearTimeout(timer)
   },[autoAdvanceTo])
   useEffect(()=>{
