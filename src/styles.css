@@ -644,11 +644,14 @@ main,
     width: 100%;
   }
 
-  .app-modal-header { align-items: flex-start; background: var(--app-panel); border-bottom: 1px solid var(--app-line); display: flex; gap: 16px; justify-content: space-between; padding: 20px 22px; }
+  /* The header carries the brand tint so a modal reads as its own surface rather than a white
+     box on white, and the eyebrow and close button pick up the primary colour with it. */
+  .app-modal-header { align-items: flex-start; background: var(--app-primary-soft); border-bottom: 1px solid var(--app-line); display: flex; gap: 16px; justify-content: space-between; padding: 20px 22px; }
+  .app-modal-header .app-eyebrow { color: var(--app-primary); }
   .app-modal-title { color: var(--app-ink); font-size: 20px; font-weight: 750; letter-spacing: 0; line-height: 1.25; margin: 3px 0 0; }
   .app-modal-description { color: var(--app-muted); font-size: 12px; line-height: 1.5; margin: 4px 0 0; }
-  .app-modal-close { align-items: center; background: var(--app-panel); border: 1px solid var(--app-line); border-radius: var(--app-radius-control); color: var(--app-muted); display: flex; flex: 0 0 auto; height: 36px; justify-content: center; width: 36px; }
-  .app-modal-close:hover { background: var(--app-soft-bg-hover); color: var(--app-ink); }
+  .app-modal-close { align-items: center; background: var(--app-panel); border: 1px solid var(--app-line); border-radius: var(--app-radius-control); color: var(--app-primary); display: flex; flex: 0 0 auto; height: 36px; justify-content: center; width: 36px; }
+  .app-modal-close:hover { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 28%, var(--app-line)); color: var(--danger); }
   .app-modal-footer { align-items: center; background: var(--app-soft-bg); border-top: 1px solid var(--app-line); bottom: 0; display: flex; gap: 8px; justify-content: flex-end; padding: 13px 22px; position: sticky; }
 
   .app-detail-header { border-bottom: 1px solid var(--app-line); margin-bottom: var(--app-page-gap); padding: 0 0 18px; }

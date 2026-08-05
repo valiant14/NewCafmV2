@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ChevronRight, Plus } from 'lucide-react'
+import { Activity, AlertTriangle, Building2, CalendarClock, ChevronRight, ClipboardList, FileText, Flag, MapPin, Plus, User, Users } from 'lucide-react'
 import IncidentDetailPage from '../components/incidents/IncidentDetailPage'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -178,14 +178,14 @@ export default function IncidentsPage({ rows, setRows, siteRecords = [], departm
           form={form}
           setForm={setForm}
           fields={[
-            { key: 'description', label: 'Description', required: true, full: true },
-            { key: 'site', label: 'Site', required: true, suggestions: siteOptions(siteRecords), placeholder: 'Select a site' },
-            { key: 'department', label: 'Department', required: true, suggestions: departmentOptions(departmentRecords), placeholder: 'Select a department' },
-            { key: 'location', label: 'Location', required: true, suggestions: locationOptions(locationRows), placeholder: 'Select a location' },
-            { key: 'severity', label: 'Severity', required: true, options: ['Low', 'Medium', 'High', 'Critical'] },
-            { key: 'status', label: 'Status', required: true, options: ['NEW', 'INPRG', 'RESOLVED', 'CLOSED'] },
-            { key: 'reportedBy', label: 'Reported By', required: true, suggestions: laborNameOptions(laborRows), placeholder: 'Select who reported it' },
-            { key: 'reportedDate', label: 'Reported Date', type: 'datetime-local' }
+            { key: 'description', label: 'Description', icon: FileText, required: true, fullWidth: true, section: 'What happened', sectionIcon: AlertTriangle, sectionNote: 'Describe the incident and how serious it is' },
+            { key: 'severity', label: 'Severity', icon: Flag, required: true, options: ['Low', 'Medium', 'High', 'Critical'], section: 'What happened' },
+            { key: 'status', label: 'Status', icon: Activity, required: true, options: ['NEW', 'INPRG', 'RESOLVED', 'CLOSED'], section: 'What happened' },
+            { key: 'site', label: 'Site', icon: Building2, required: true, suggestions: siteOptions(siteRecords), placeholder: 'Select a site', section: 'Where', sectionIcon: MapPin, sectionNote: 'Site, location and the department that owns it' },
+            { key: 'location', label: 'Location', icon: MapPin, required: true, suggestions: locationOptions(locationRows), placeholder: 'Select a location', section: 'Where' },
+            { key: 'department', label: 'Department', icon: Users, required: true, suggestions: departmentOptions(departmentRecords), placeholder: 'Select a department', section: 'Where', fullWidth: true },
+            { key: 'reportedBy', label: 'Reported By', icon: User, required: true, suggestions: laborNameOptions(laborRows), placeholder: 'Select who reported it', section: 'Reported', sectionIcon: ClipboardList, sectionNote: 'Who raised it and when' },
+            { key: 'reportedDate', label: 'Reported Date', icon: CalendarClock, type: 'datetime-local', section: 'Reported' }
           ]}
           onClose={() => setModalOpen(false)}
           onSave={addIncident}
