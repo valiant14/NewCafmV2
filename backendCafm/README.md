@@ -52,6 +52,8 @@ Apply the global work-order workflow controls on an existing database:
 
 ```bash
 npm run db:workflow-controls
+npm run db:workflow-designer
+npm run api:check-workflow
 ```
 
 Default development login:
@@ -71,7 +73,7 @@ Change it with `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables befor
 - Assets, locations, labor
 - Service requests
 - Work orders
-- Database-backed global work-order workflow controls
+- Database-backed dynamic work-order stages, transitions, automation, and gate controls
 - Work order resource requests
 - Materials, stores, stock
 - Purchase requisitions

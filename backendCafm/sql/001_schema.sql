@@ -329,8 +329,27 @@ create table dbo.work_order_workflow_settings (
   require_returns_for_close bit not null constraint df_wo_workflow_req_returns default 1,
   updated_by_user_id nvarchar(50) null,
   created_at datetime2 not null constraint df_wo_workflow_created default sysutcdatetime(),
-  updated_at datetime2 not null constraint df_wo_workflow_updated default sysutcdatetime(),
-  constraint ck_wo_workflow_initial_status check (initial_status in ('WAPPR', 'APPR', 'WSCH', 'SCHED'))
+  updated_at datetime2 not null constraint df_wo_workflow_updated default sysutcdatetime()
+);
+go
+
+create table dbo.work_order_workflow_steps (
+  workflow_key nvarchar(40) not null,
+  step_id nvarchar(80) not null,
+  status_code nvarchar(40) not null,
+  step_name nvarchar(160) not null,
+  sequence_no int not null,
+  is_automatic bit not null constraint df_wo_workflow_step_automatic default 0,
+  requirements_json nvarchar(max) not null constraint df_wo_workflow_step_requirements default '[]',
+  badge_tone nvarchar(20) not null constraint df_wo_workflow_step_tone default 'neutral',
+  created_at datetime2 not null constraint df_wo_workflow_step_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_wo_workflow_step_updated default sysutcdatetime(),
+  constraint pk_work_order_workflow_steps primary key (workflow_key, step_id),
+  constraint uq_work_order_workflow_step_status unique (workflow_key, status_code),
+  constraint uq_work_order_workflow_step_sequence unique (workflow_key, sequence_no),
+  constraint fk_work_order_workflow_step_workflow foreign key (workflow_key) references dbo.work_order_workflow_settings(workflow_key) on delete cascade,
+  constraint ck_work_order_workflow_step_requirements check (isjson(requirements_json) = 1),
+  constraint ck_work_order_workflow_step_tone check (badge_tone in ('neutral', 'green', 'blue', 'purple', 'orange', 'red'))
 );
 go
 

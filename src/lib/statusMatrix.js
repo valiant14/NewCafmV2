@@ -1,3 +1,5 @@
+import { workOrderWorkflowSteps } from './workOrderWorkflow'
+
 export const STATUS_MATRIX = {
   serviceRequest: {
     NEW: 'New request created',
@@ -105,30 +107,29 @@ export const statusCode = (application, value) => {
   return GENERIC_STATUS_ALIASES[upper] || upper
 }
 
-// The work order lifecycle is forward-only, with one step back allowed so a misclick can
-// be corrected. HOLD is reachable from any active status and returns to where it came
-// from; CAN is only available before work starts; CLOSE is terminal.
-const workOrderChain = ['WAPPR', 'APPR', 'WSCH', 'SCHED', 'INPRG', 'COMP', 'CLOSE']
-const cancellableBefore = ['WAPPR', 'APPR', 'WSCH', 'SCHED']
 // Both holds behave identically in the state machine. They differ in what they mean -
 // ON_HOLD_MATERIAL says the job is waiting on stock, and it is the one that pauses SLA.
 const holdStatuses = ['HOLD', 'ON_HOLD_MATERIAL']
 
 export const workOrderTransitions = (current, heldFrom = '', workflow = {}) => {
   const status = String(current || '').toUpperCase()
-  if (status === 'CLOSE' || status === 'CAN') return []
+  const steps = workOrderWorkflowSteps(workflow)
+  const terminal = steps.at(-1)?.statusCode || 'CLOSE'
+  if ([terminal, 'CLOSE', 'CAN'].includes(status)) return []
   if (holdStatuses.includes(status)) {
-    // Resume where the hold started; fall back to the front of the chain if unknown.
-    const resume = workOrderChain.includes(String(heldFrom).toUpperCase()) ? String(heldFrom).toUpperCase() : 'WAPPR'
+    const heldStatus = String(heldFrom).toUpperCase()
+    const resume = steps.some(step => step.statusCode === heldStatus) ? heldStatus : (workflow.initialStatus || steps[0]?.statusCode || 'WAPPR')
     return [resume, ...(workflow.allowCancelBeforeStart === false ? [] : ['CAN'])]
   }
-  const index = workOrderChain.indexOf(status)
+  const index = steps.findIndex(step => step.statusCode === status)
   if (index === -1) return [workflow.initialStatus || 'WAPPR']
   const next = []
-  if (workflow.allowBackwardTransition !== false && index > 0) next.push(workOrderChain[index - 1])
-  if (index < workOrderChain.length - 1) next.push(workOrderChain[index + 1])
-  if (workflow.allowHold !== false && status !== 'COMP') next.push(...holdStatuses)
-  if (workflow.allowCancelBeforeStart !== false && cancellableBefore.includes(status)) next.push('CAN')
+  if (workflow.allowBackwardTransition !== false && index > 0) next.push(steps[index - 1].statusCode)
+  if (index < steps.length - 1) next.push(steps[index + 1].statusCode)
+  const completionIndex = steps.findIndex(step => step.statusCode === 'COMP')
+  if (workflow.allowHold !== false && (completionIndex < 0 || index < completionIndex)) next.push(...holdStatuses)
+  const startIndex = steps.findIndex(step => step.statusCode === 'INPRG')
+  if (workflow.allowCancelBeforeStart !== false && (startIndex < 0 || index < startIndex)) next.push('CAN')
   return next
 }
 

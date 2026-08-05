@@ -15,6 +15,7 @@ import TableSearch from '../components/ui/TableSearch'
 import { printWithoutBrowserTitle } from '../lib/print'
 import { applyStandardFilters, optionsFromRows, useScopedFilters } from '../lib/standardFilters'
 import { statusDescription } from '../lib/statusMatrix'
+import { workflowStatusLabel } from '../lib/workOrderWorkflow'
 import { filterRows } from '../lib/tableSearch'
 import { useAuth } from '../providers/AuthProvider'
 
@@ -58,7 +59,7 @@ const exportColumns = excelDate => {
 
 const workOrderTemplateHeaders = ['WORKORDER', 'DESCRIPITION ', 'LONG DESCRIPTION', 'STATUS', 'WORK TYPE ', 'PRIORTY', 'SITE', 'DEPARTMENT ', 'SUB DEPARTMENT  NAME', 'LOCATION ', 'ASSET', 'TARGET START ', 'TARGET FINISH ', 'ACTUAL START ', 'ACTUAL FINISH ', 'FAILURE CODE', 'PROBLEM CODE']
 
-export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRecords = [], departmentRecords = [], onCreate, onImportRows, EditorComponent, excelDate, access = {} }) {
+export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRecords = [], departmentRecords = [], onCreate, onImportRows, EditorComponent, excelDate, workflow, access = {} }) {
   const { user } = useAuth()
   const routeId = decodeURIComponent(window.location.pathname.split('/work-orders/')[1] || '')
   const [selected, setSelected] = useState(() => {
@@ -189,6 +190,7 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
           onPageSizeChange={value => { setPageSize(value); setPage(1) }}
           orderType={orderType}
           excelDate={excelDate}
+          workflow={workflow}
           sort={sort}
           onSort={toggleSort}
         />
@@ -216,7 +218,7 @@ export default function WorkOrdersPage({ rows, assets, locationRows = [], siteRe
             workOrder: order.WORKORDER,
             description: order['DESCRIPITION '],
             type: orderType(order),
-            status: statusDescription('workOrder', order.STATUS) || order.STATUS,
+            status: workflowStatusLabel(workflow, order.STATUS) || statusDescription('workOrder', order.STATUS) || order.STATUS,
             site: order.SITE,
             department: order['DEPARTMENT '],
             targetStart: excelDate(order['TARGET START '])

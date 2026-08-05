@@ -18,6 +18,7 @@
     "db:optimize": "node src/db/runSqlFile.js sql/028_performance_indexes.sql",
     "db:secure-scope": "node src/db/runSqlFile.js sql/030_user_transaction_scope.sql",
     "db:workflow-controls": "node src/db/runSqlFile.js sql/031_work_order_workflow_controls.sql",
+    "db:workflow-designer": "node src/db/runSqlFile.js sql/032_dynamic_work_order_workflow.sql",
     "performance:check": "node src/db/checkPerformance.js"
   },
   "dependencies": {

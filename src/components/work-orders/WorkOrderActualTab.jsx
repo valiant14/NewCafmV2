@@ -99,6 +99,7 @@ function ActualResourceSection({ title, note, rows, icon: Icon, update, onReturn
 export default function WorkOrderActualTab({
   actualsEditable,
   status,
+  nextStatus,
   preparationReady,
   planReady,
   setTab,
@@ -141,17 +142,18 @@ export default function WorkOrderActualTab({
   currentUser
 }) {
   const closed = ['CLOSE', 'CLOSED'].includes(String(status || '').toUpperCase())
+  const next = String(nextStatus || '').toUpperCase()
   if (!actualsEditable) {
     return (
       <div className={lockedClass}>
         <div className={lockedIconClass}><ShieldCheck size={22} /></div>
         <div>
           <strong>Available after work completion</strong>
-          <p>{status === 'SCHED' ? 'Complete Plan and Failure preparation, then select Start Work. When execution is finished, select Resolve / Complete.' : 'When physical work is finished, select Resolve / Complete in the header to unlock execution notes and actual consumption.'}</p>
+          <p>{next === 'INPRG' ? 'Complete Plan and Failure preparation, then select Start Work. When execution is finished, select Resolve / Complete.' : 'When physical work is finished, select Resolve / Complete in the header to unlock execution notes and actual consumption.'}</p>
           <span>Current status: {status}</span>
-          {status === 'SCHED' && !preparationReady && <button className={outlineButtonClass} onClick={() => setTab(planReady ? 'Failure' : 'Plan')}>Complete {planReady ? 'Failure' : 'Plan'} preparation</button>}
-          {status === 'SCHED' && preparationReady && <button className={primaryButtonClass} onClick={() => setWorkStarted(true)}>Start work</button>}
-          {status === 'INPRG' && <button className={primaryButtonClass} onClick={completeWork}>Resolve / complete work</button>}
+          {next === 'INPRG' && !preparationReady && <button className={outlineButtonClass} onClick={() => setTab(planReady ? 'Failure' : 'Plan')}>Complete {planReady ? 'Failure' : 'Plan'} preparation</button>}
+          {next === 'INPRG' && preparationReady && <button className={primaryButtonClass} onClick={() => setWorkStarted(true)}>Start work</button>}
+          {next === 'COMP' && <button className={primaryButtonClass} onClick={completeWork}>Resolve / complete work</button>}
         </div>
       </div>
     )
@@ -160,9 +162,9 @@ export default function WorkOrderActualTab({
   // The preparation stages advance on their own; these three are the points where a person
   // has to decide something, so they stay explicit. Exactly one is offered at a time.
   const step =
-    status === 'SCHED' && showStartAction ? { label: 'Start work', icon: Play, run: () => setWorkStarted(true), ready: preparationReady, blocked: startBlocked || 'Complete start requirements first' }
-    : status === 'INPRG' && showCompleteAction ? { label: 'Resolve / complete work', icon: Check, run: completeWork, ready: completionReady, blocked: completionBlocked || 'Complete execution requirements first' }
-    : status === 'COMP' && showCloseAction ? {
+    next === 'INPRG' && showStartAction ? { label: 'Start work', icon: Play, run: () => setWorkStarted(true), ready: preparationReady, blocked: startBlocked || 'Complete start requirements first' }
+    : next === 'COMP' && showCompleteAction ? { label: 'Resolve / complete work', icon: Check, run: completeWork, ready: completionReady, blocked: completionBlocked || 'Complete execution requirements first' }
+    : next === 'CLOSE' && showCloseAction ? {
       label: 'Close work order', icon: Lock, run: closeWork, ready: actualReady,
       // Returns are named explicitly - "complete the Actual tab" would not tell the
       // technician that a ladder is still in the van.

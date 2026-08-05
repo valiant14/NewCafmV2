@@ -25,6 +25,22 @@ on target.workflow_key = source.workflow_key
 when not matched then insert(workflow_key, workflow_name) values(source.workflow_key, source.workflow_name);
 go
 
+if not exists (select 1 from dbo.work_order_workflow_steps where workflow_key = 'DEFAULT')
+begin
+  insert into dbo.work_order_workflow_steps (
+    workflow_key, step_id, status_code, step_name, sequence_no,
+    is_automatic, requirements_json, badge_tone
+  ) values
+    ('DEFAULT', 'STEP-WAPPR', 'WAPPR', 'Waiting Approval', 10, 0, N'[]', 'orange'),
+    ('DEFAULT', 'STEP-APPR', 'APPR', 'Approved', 20, 1, N'["overview"]', 'green'),
+    ('DEFAULT', 'STEP-WSCH', 'WSCH', 'Waiting Schedule', 30, 1, N'["overview","planned_labor","planned_materials_cm","planned_tools_cm"]', 'purple'),
+    ('DEFAULT', 'STEP-SCHED', 'SCHED', 'Scheduled', 40, 1, N'["overview","planned_labor","planned_materials_cm","planned_tools_cm"]', 'blue'),
+    ('DEFAULT', 'STEP-INPRG', 'INPRG', 'In Progress', 50, 1, N'["overview","planned_labor","planned_materials_cm","planned_tools_cm","ptw","store_issue"]', 'blue'),
+    ('DEFAULT', 'STEP-COMP', 'COMP', 'Completed', 60, 1, N'["store_issue","failure","actual_labor","execution_notes","actual_resources"]', 'green'),
+    ('DEFAULT', 'STEP-CLOSE', 'CLOSE', 'Closed', 70, 0, N'["store_issue","failure","actual_labor","execution_notes","actual_resources","returns"]', 'green');
+end;
+go
+
 merge dbo.sites as target
 using (values ('1031', 'Riyadh', 'Central', 'Riyadh', 'Active')) as source(site_code, site_name, region, city, status)
 on target.site_code = source.site_code

@@ -17,6 +17,8 @@ export default function WorkOrderHeader({
   number,
   workType,
   status,
+  statusDescription,
+  statusTone,
   description,
   isPM,
   statusOptions = [],
@@ -34,7 +36,7 @@ export default function WorkOrderHeader({
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h2 className={titleClass}>{number === 'AUTO' ? 'New work order' : `Work order #${number}`}</h2>
             <Badge tone={isPM ? 'blue' : 'purple'}>{workType}</Badge>
-            <StatusBadge application="workOrder" value={status} />
+            <StatusBadge application="workOrder" value={status} description={statusDescription} tone={statusTone} />
           </div>
           <p className={descriptionClass}>{description || 'Enter work order information'}</p>
         </div>

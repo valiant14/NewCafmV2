@@ -4,6 +4,7 @@ import PriorityBadge from '../ui/PriorityBadge'
 import StatusBadge from '../ui/StatusBadge'
 import TablePanel from '../ui/TablePanel'
 import { isOnHold } from '../../lib/holdPeriods'
+import { workflowStatusLabel, workflowStepByStatus } from '../../lib/workOrderWorkflow'
 
 const cellClass = 'px-4 py-3.5 align-middle text-[var(--app-table-text)]'
 const compactClass = `${cellClass} whitespace-nowrap`
@@ -30,7 +31,10 @@ const columns = [
       <span className="app-cell-note">{textValue(order.ASSET)}</span>
     </div>
   ) },
-  { key: 'status', label: 'Status', sortKey: 'STATUS', className: compactClass, render: order => <StatusBadge application="workOrder" value={order.STATUS} /> },
+  { key: 'status', label: 'Status', sortKey: 'STATUS', className: compactClass, render: (order, { workflow }) => {
+    const step = workflowStepByStatus(workflow, order.STATUS)
+    return <StatusBadge application="workOrder" value={order.STATUS} description={workflowStatusLabel(workflow, order.STATUS)} tone={step?.badgeTone} />
+  } },
   { key: 'type', label: 'Type', sortKey: 'WORK TYPE', className: compactClass, render: (order, { orderType }) => <Badge tone="blue">{orderType(order)}</Badge> },
   { key: 'priority', label: 'Priority', sortKey: 'PRIORTY', className: compactClass, render: order => <PriorityBadge value={order.PRIORTY} /> },
   { key: 'department', label: 'Department', sortKey: 'DEPARTMENT', className: compactClass, render: order => {
@@ -60,10 +64,10 @@ const columns = [
   { key: 'open', label: '', className: compactClass, render: () => <ChevronRight size={17} /> }
 ]
 
-export default function WorkOrdersTable({ rows, currentPage, pageSize, pageCount, total, onOpen, onPageChange, onPageSizeChange, orderType, excelDate, sort, onSort }) {
+export default function WorkOrdersTable({ rows, currentPage, pageSize, pageCount, total, onOpen, onPageChange, onPageSizeChange, orderType, excelDate, workflow, sort, onSort }) {
   const from = total ? ((currentPage - 1) * pageSize) + 1 : 0
   const to = Math.min(currentPage * pageSize, total)
-  const context = { orderType, excelDate }
+  const context = { orderType, excelDate, workflow }
 
   return (
     <TablePanel>

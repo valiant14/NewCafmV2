@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { sql, getPool } from '../db/pool.js'
 import { env } from '../config/env.js'
 import { broadcastWorkspaceChange } from '../realtime.js'
+import { getWorkOrderWorkflow } from './workOrderWorkflow.js'
 
 let timer
 let running = false
@@ -113,9 +114,13 @@ const workOrderNumberFor = plan => {
   return `${prefix}${randomUUID().replaceAll('-', '').slice(0, 20).toUpperCase()}`
 }
 
-const generatePlan = async (pool, plan) => {
+const generatePlan = async (pool, plan, workflow) => {
   const workOrderNum = workOrderNumberFor(plan)
   const nextDate = advancePmUntilFuture(plan)
+  const requestedStatus = String(plan.effective_wo_status || '').trim().toUpperCase()
+  const generatedStatus = workflow.steps.some(step => step.status_code === requestedStatus)
+    ? requestedStatus
+    : workflow.initial_status
   const transaction = new sql.Transaction(pool)
   await transaction.begin()
   try {
@@ -124,7 +129,7 @@ const generatePlan = async (pool, plan) => {
       .input('description', sql.NVarChar(300), plan.description)
       .input('location_code', sql.NVarChar(80), plan.location_code || plan.asset_location_code || null)
       .input('asset_num', sql.NVarChar(80), plan.asset_num || null)
-      .input('status', sql.NVarChar(40), plan.effective_wo_status || 'WSCH')
+      .input('status', sql.NVarChar(40), generatedStatus)
       .input('work_type', sql.NVarChar(40), plan.work_type || 'PM')
       .input('priority', sql.Int, 3)
       .input('site_code', sql.NVarChar(30), plan.site_code)
@@ -232,6 +237,7 @@ export const runPmSchedulerOnce = async () => {
   running = true
   try {
     const pool = await getPool()
+    const workflow = await getWorkOrderWorkflow(pool)
     const due = await pool.request()
       .input('batchSize', sql.Int, env.pmSchedulerBatchSize)
       .query(duePlansSql)
@@ -240,7 +246,7 @@ export const runPmSchedulerOnce = async () => {
     const { results: generated, failures } = await runWithConcurrency(
       due.recordset,
       Math.min(env.pmSchedulerConcurrency, Math.max(1, env.db.pool.max - 2)),
-      plan => generatePlan(pool, plan)
+      plan => generatePlan(pool, plan, workflow)
     )
     failures.forEach(({ id, error }) => console.error(`PM scheduler failed for ${id}:`, error.message))
 
