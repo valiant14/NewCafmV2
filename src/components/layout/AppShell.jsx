@@ -5,6 +5,7 @@ import sederLogo from '../../Assets/seder-logo.svg'
 import { useAuth } from '../../providers/AuthProvider'
 import Button from '../ui/Button'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
+import ThemeToggle from '../ui/ThemeToggle'
 
 export default function AppShell({
   active,
@@ -115,12 +116,13 @@ export default function AppShell({
           <button className="menu-btn mr-3 text-[var(--app-muted)] lg:hidden" onClick={onMobileOpen} aria-label="Open menu">
             <Menu />
           </button>
-          <div className="crumb flex items-center gap-2 text-[length:var(--app-topbar-font-size)] text-[var(--app-muted)]">
+          <div className="crumb flex min-w-0 flex-1 items-center gap-2 text-[length:var(--app-topbar-font-size)] text-[var(--app-muted)]">
             <span className="hidden sm:inline">Seder CAFM</span>
             <ChevronRight size={14} className="hidden sm:block" />
-            <strong className="text-[var(--app-ink)]">{active}</strong>
+            <strong className="truncate text-[var(--app-ink)]">{active}</strong>
           </div>
-          <div className="top-actions ml-auto flex items-center gap-3">
+          <div className="top-actions ml-auto flex shrink-0 items-center gap-3">
+            <ThemeToggle />
             <button className="app-icon-button sla-notification relative" title={`${overdueCount} overdue work orders`} onClick={() => setNotificationsOpen(true)}>
               <Bell size={19} />
               {overdueCount > 0 && <b className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--danger)] px-1 text-[7px] text-white ring-2 ring-[var(--app-panel)]">{overdueCount}</b>}

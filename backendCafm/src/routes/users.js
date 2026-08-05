@@ -71,6 +71,25 @@ const normalizeDepartmentScopes = async (pool, departments) => {
   return result.recordset
 }
 
+const withLaborScopeDefaults = async (pool, { sites, departments, laborId }) => {
+  const requestedSites = parseList(sites).filter(value => !/^all sites$/i.test(value)).map(siteCode).filter(Boolean)
+  const requestedDepartments = parseList(departments).filter(value => !/^all departments$/i.test(value))
+  if ((requestedSites.length && requestedDepartments.length) || !laborId) return { sites, departments }
+  const result = await pool.request()
+    .input('laborId', laborId)
+    .query(`
+      select top 1 site_code, department_name, sub_department_code
+      from dbo.labor
+      where labor_id = @laborId and status = 'Active'
+    `)
+  const labor = result.recordset[0]
+  if (!labor) return { sites, departments }
+  return {
+    sites: requestedSites.length ? sites : labor.site_code || sites,
+    departments: requestedDepartments.length ? departments : labor.sub_department_code || labor.department_name || departments
+  }
+}
+
 const assertAssignableScope = async (pool, actor, { sites, departments, dataScopeOverride, targetUserId, creating = false }) => {
   const actorScope = scopeFromUser(actor)
   if (actorScope.dataScope === 'GLOBAL') return
@@ -189,8 +208,14 @@ const userSelectSql = `
   select u.user_id, u.username, u.display_name, u.email, u.role_id, u.labor_id, u.data_scope_override,
     u.status, u.last_login_at, r.role_name, r.data_scope as role_data_scope,
     case when u.data_scope_override = 'ROLE' then r.data_scope else u.data_scope_override end as effective_data_scope,
-    isnull((select string_agg(s.site_code, ', ') from dbo.user_site_access s where s.user_id = u.user_id), 'All Sites') as site_scope,
-    isnull((select string_agg(coalesce(d.sub_department_code, d.department_name), ', ') from dbo.user_department_access d where d.user_id = u.user_id), 'All Departments') as department_scope
+    case when (case when u.data_scope_override = 'ROLE' then r.data_scope else u.data_scope_override end) = 'GLOBAL'
+      then 'All Sites'
+      else isnull((select string_agg(s.site_code, ', ') from dbo.user_site_access s where s.user_id = u.user_id), '')
+    end as site_scope,
+    case when (case when u.data_scope_override = 'ROLE' then r.data_scope else u.data_scope_override end) = 'GLOBAL'
+      then 'All Departments'
+      else isnull((select string_agg(coalesce(d.sub_department_code, d.department_name), ', ') from dbo.user_department_access d where d.user_id = u.user_id), '')
+    end as department_scope
   from dbo.users u
   join dbo.roles r on r.role_id = u.role_id
   where 1 = 1`
@@ -220,16 +245,21 @@ router.post('/', requirePermission('Users', 'create'), asyncHandler(async (req, 
   }
   const override = normalizeOverride(req.body.data_scope_override)
   const targetDataScope = normalizeDataScope(override === 'ROLE' ? role.data_scope : override)
+  const scopeInputs = await withLaborScopeDefaults(pool, {
+    sites: req.body.site,
+    departments: req.body.department,
+    laborId: req.body.labor_id
+  })
   if (targetDataScope !== 'GLOBAL') {
-    const requestedSites = parseList(req.body.site).filter(value => !/^all sites$/i.test(value)).map(siteCode).filter(Boolean)
-    const requestedDepartments = await normalizeDepartmentScopes(pool, req.body.department)
+    const requestedSites = parseList(scopeInputs.sites).filter(value => !/^all sites$/i.test(value)).map(siteCode).filter(Boolean)
+    const requestedDepartments = await normalizeDepartmentScopes(pool, scopeInputs.departments)
     if (!requestedSites.length || !requestedDepartments.length) {
       return res.status(400).json({ error: 'BadRequest', message: 'Scoped users require at least one site and department.' })
     }
   }
   await assertAssignableScope(pool, req.user, {
-    sites: req.body.site,
-    departments: req.body.department,
+    sites: scopeInputs.sites,
+    departments: scopeInputs.departments,
     dataScopeOverride: req.body.data_scope_override,
     targetUserId: req.body.user_id,
     creating: true
@@ -250,7 +280,7 @@ router.post('/', requirePermission('Users', 'create'), asyncHandler(async (req, 
       output inserted.*
       values(@user_id, @username, @password_hash, @display_name, @email, @role_id, @labor_id, @data_scope_override, @status)
   `)
-  await syncScopes(pool, req.body.user_id, req.body.site, req.body.department)
+  await syncScopes(pool, req.body.user_id, scopeInputs.sites, scopeInputs.departments)
   emitChange(req, { action: 'create', id: result.recordset[0]?.user_id, targetUserId: result.recordset[0]?.user_id })
   res.status(201).json(result.recordset[0])
 }))

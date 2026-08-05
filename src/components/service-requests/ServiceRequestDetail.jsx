@@ -1,5 +1,9 @@
 import { useState } from 'react'
+<<<<<<< HEAD
 import { Boxes, Building2, Check, ChevronRight, ClipboardCheck, FileText, Flag, MapPin, Paperclip, Printer, Upload, User, X } from 'lucide-react'
+=======
+import { Check, ChevronRight, ClipboardCheck, Download, FileText, Paperclip, Printer, Upload, X } from 'lucide-react'
+>>>>>>> 5f78a4e664630e6dbefa466d974eaf4887dd158a
 import Badge from '../ui/Badge'
 import StatusBadge from '../ui/StatusBadge'
 import Alert from '../ui/Alert'
@@ -113,6 +117,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
           <Alert tone="danger" actions={<button className="app-icon-button" onClick={() => setSubmitError('')} aria-label="Dismiss"><X size={14} /></button>}>{submitError}</Alert>
         )}
 
+<<<<<<< HEAD
         <Section compact icon={FileText} title="What happened" note="Describe the problem and how urgent it is">
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Priority" icon={Flag} value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} />
@@ -134,6 +139,24 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
             <Upload size={18} />
             <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
             <span className="text-xs">Multiple files supported</span>
+=======
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Priority" value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} />
+          <Field label="Reported By" value={form.reportedBy} required onChange={update('reportedBy')} />
+          <div className="md:col-span-2"><Field label="Description" value={form.description} required onChange={update('description')} /></div>
+          <Field label="Site" value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" />
+          <Field label="Location" value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
+          <div className="md:col-span-2"><Field label="Asset" value={form.asset} onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" /></div>
+          <div className="md:col-span-2"><Field label="Long Description" value={form.longDescription} type="textarea" onChange={update('longDescription')} /></div>
+        </div>
+
+        <div className="mt-5">
+          <p className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--app-muted)]">Attachments</p>
+          <div className="relative mt-2 grid min-h-28 cursor-pointer place-items-center content-center gap-1.5 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-header-bg)] p-5 text-center text-[var(--app-muted)]">
+            <Upload size={22} />
+            <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
+            <span className="text-xs">Photos, PDFs and supporting documents · multiple files supported</span>
+>>>>>>> 5f78a4e664630e6dbefa466d974eaf4887dd158a
             <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple onChange={event => {
               const files = Array.from(event.target.files || [])
               setPendingFiles(current => [...current, ...files])
@@ -141,7 +164,11 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
             }} />
           </label>
           {!!pendingFiles.length && <div className="mt-2 grid gap-2">{pendingFiles.map((file, index) => <div className="app-record-row" key={`${file.name}-${file.size}-${index}`}><span className="truncate text-xs font-bold">{file.name}</span><button type="button" className="app-icon-button" aria-label={`Remove ${file.name}`} onClick={() => setPendingFiles(current => current.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button></div>)}</div>}
+<<<<<<< HEAD
         </Section>
+=======
+        </div>
+>>>>>>> 5f78a4e664630e6dbefa466d974eaf4887dd158a
       </div>
 
       <ModalFooter>

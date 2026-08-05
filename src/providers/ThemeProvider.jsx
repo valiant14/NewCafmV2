@@ -305,10 +305,12 @@ export function ThemeProvider({ children, defaultTheme = 'light', defaultFontSiz
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme.name
+    document.documentElement.style.colorScheme = theme.name
     Object.entries(theme.tokens).forEach(([key, value]) => {
       document.documentElement.style.setProperty(key, value)
     })
     document.body.style.background = theme.tokens['--app-bg']
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.tokens['--app-sidebar-bg'])
     window.localStorage.setItem(storageKeys.theme, theme.name)
   }, [theme])
 
