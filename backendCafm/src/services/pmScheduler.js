@@ -166,13 +166,15 @@ const generatePlan = async (pool, plan) => {
             work_order_num, description, location_code, asset_num, status, work_type, priority,
             site_code, department_name, sub_department_code, assigned_department_name,
             target_start_at, target_finish_at, reported_at,
-            pm_num, pm_cycle, job_plan_num, schedule_rule_name, created_by_user_id
+            pm_num, pm_cycle, job_plan_num, schedule_rule_name, ptw_required, created_by_user_id
           )
           values (
             @work_order_num, @description, @location_code, @asset_num, @status, @work_type, @priority,
             @site_code, @department_name, @sub_department_code, @department_name,
             @target_at, @target_at, @reported_at,
-            @pm_num, @pm_cycle, @job_plan_num, @schedule_rule_name, @created_by_user_id
+            @pm_num, @pm_cycle, @job_plan_num, @schedule_rule_name,
+            coalesce((select top 1 ptw_required_default from dbo.work_order_workflow_settings where workflow_key = 'DEFAULT'), 1),
+            @created_by_user_id
           );
 
           insert into dbo.work_order_tasks (

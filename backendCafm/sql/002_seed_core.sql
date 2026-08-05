@@ -13,10 +13,16 @@ using (values
   ('Job Plans'), ('Assets'), ('Labor'), ('Locations'), ('Failure Library'), ('Meters'),
   ('Materials'), ('Stores'), ('Tools & Equipment'), ('Reservations'),
   ('Purchase Requisitions'), ('Purchase Orders'), ('Users'), ('Roles & Permissions'),
-  ('Sites'), ('Departments'), ('PM Schedule Rules'), ('SMTP & SMS'), ('Settings')
+  ('Sites'), ('Departments'), ('Work Order Workflow'), ('PM Schedule Rules'), ('SMTP & SMS'), ('Settings')
 ) as source(module_name)
 on target.module_name = source.module_name
 when not matched then insert(module_name) values(source.module_name);
+go
+
+merge dbo.work_order_workflow_settings as target
+using (values ('DEFAULT', 'Standard Work Order Lifecycle')) as source(workflow_key, workflow_name)
+on target.workflow_key = source.workflow_key
+when not matched then insert(workflow_key, workflow_name) values(source.workflow_key, source.workflow_name);
 go
 
 merge dbo.sites as target

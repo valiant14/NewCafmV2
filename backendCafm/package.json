@@ -14,8 +14,10 @@
     "db:check-users": "node src/db/checkUsers.js",
     "db:check-scopes": "node src/db/checkAccessScopes.js",
     "api:check-scopes": "node src/db/checkApiScopes.js",
+    "api:check-workflow": "node src/db/checkWorkflowControls.js",
     "db:optimize": "node src/db/runSqlFile.js sql/028_performance_indexes.sql",
     "db:secure-scope": "node src/db/runSqlFile.js sql/030_user_transaction_scope.sql",
+    "db:workflow-controls": "node src/db/runSqlFile.js sql/031_work_order_workflow_controls.sql",
     "performance:check": "node src/db/checkPerformance.js"
   },
   "dependencies": {

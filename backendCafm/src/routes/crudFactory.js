@@ -251,7 +251,7 @@ const ownerFromAccessibleSource = async (pool, payload, user, sources = []) => {
   return user?.userId || null
 }
 
-export function crudRouter({ table, key, columns, defaultOrder = key, moduleName, relatedModules = [], scope, ownerColumn = null, ownerSources = [] }) {
+export function crudRouter({ table, key, columns, defaultOrder = key, moduleName, relatedModules = [], scope, ownerColumn = null, ownerSources = [], beforeCreate, beforeUpdate }) {
   const router = Router()
   const insertable = columns.filter(column => !generatedColumns.has(column))
   const editable = insertable.filter(column => column !== key)
@@ -335,6 +335,8 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     }
     const resolvedOwner = await ownerFromAccessibleSource(pool, payload, req.user, ownerSources)
     if (ownerColumn && columns.includes(ownerColumn)) payload[ownerColumn] = resolvedOwner
+    if (beforeCreate) payload = await beforeCreate({ pool, payload, req })
+    Object.keys(payload).forEach(column => assertKnownColumn(columns, column))
     const insertColumns = [
       ...insertable.filter(column => payload[column] !== undefined),
       ...(ownerColumn && columns.includes(ownerColumn) && payload[ownerColumn] ? [ownerColumn] : [])
@@ -357,9 +359,18 @@ export function crudRouter({ table, key, columns, defaultOrder = key, moduleName
     payload = await normalizeForeignKeys(pool, payload, { table })
     if (scope) assertPayloadWithinScope({ user: req.user, payload, ...scope })
     await ownerFromAccessibleSource(pool, payload, req.user, ownerSources)
+    const scoped = scope ? addScopeWhere({ user: req.user, ...scope, ownerColumn }) : { where: '', params: {} }
+    if (beforeUpdate) {
+      const existingRequest = bindParams(pool.request(), scoped.params)
+      const existingResult = await existingRequest
+        .input('id', req.params.id)
+        .query(`select ${selectColumns} from ${table} where ${quoteColumn(key)} = @id${scoped.where}`)
+      if (!existingResult.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
+      payload = await beforeUpdate({ pool, payload, current: existingResult.recordset[0], id: req.params.id, req })
+      Object.keys(payload).forEach(column => assertKnownColumn(columns, column))
+    }
     const updateColumns = editable.filter(column => payload[column] !== undefined)
     if (!updateColumns.length) return res.status(400).json({ error: 'BadRequest', message: 'No editable fields supplied' })
-    const scoped = scope ? addScopeWhere({ user: req.user, ...scope, ownerColumn }) : { where: '', params: {} }
     const request = bindParams(pool.request(), {
       ...Object.fromEntries(updateColumns.map(column => [column, payload[column]])),
       ...scoped.params

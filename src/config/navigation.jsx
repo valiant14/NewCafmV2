@@ -18,7 +18,8 @@ import {
   Building2,
   UserCog,
   Users,
-  Wrench
+  Wrench,
+  Workflow
 } from 'lucide-react'
 
 export const navigationItems = [
@@ -45,6 +46,7 @@ export const navigationItems = [
   { section: 'Settings', name: 'Roles & Permissions', path: '/roles-permissions', icon: UserCog },
   { section: 'Settings', name: 'Sites', path: '/sites', icon: Building2 },
   { section: 'Settings', name: 'Departments', path: '/departments', icon: Users },
+  { section: 'Settings', name: 'Work Order Workflow', path: '/work-order-workflow', icon: Workflow },
   { section: 'Settings', name: 'Notifications', path: '/notifications', icon: Bell },
   { section: 'Settings', name: 'SMTP & SMS', path: '/smtp-sms', icon: Mail },
   { section: 'Settings', name: 'PM Schedule Rules', path: '/pm-rules', icon: Repeat }

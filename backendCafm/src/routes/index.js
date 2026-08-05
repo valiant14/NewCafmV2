@@ -6,6 +6,7 @@ import tls from 'node:tls'
 import authRouter from './auth.js'
 import rolesRouter from './roles.js'
 import usersRouter from './users.js'
+import workOrderWorkflowRouter from './workOrderWorkflow.js'
 import { crudRouter } from './crudFactory.js'
 import inventoryStockRouter from './inventoryStock.js'
 import { getPermissionCacheStats, requireAuth, requirePermission } from '../middleware/auth.js'
@@ -15,6 +16,7 @@ import { sendEmailNotification } from '../services/emailSender.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { getRealtimeStats } from '../realtime.js'
 import { getRuntimeMetrics } from '../services/runtimeMetrics.js'
+import { prepareWorkOrderCreate, validateWorkOrderUpdate } from '../services/workOrderWorkflow.js'
 
 const router = Router()
 const ownerColumn = 'created_by_user_id'
@@ -205,16 +207,20 @@ router.use('/storerooms', crudRouter({
 
 router.use('/inventory-stock', inventoryStockRouter)
 
+router.use('/work-order-workflow', workOrderWorkflowRouter)
+
 router.use('/work-orders', crudRouter({
   moduleName: 'Work Orders',
   relatedModules: ['Overview', 'Job Requests', 'Preventive Maintenance', 'Meters'],
   table: 'dbo.work_orders',
   key: 'work_order_num',
-  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'ptw_files_json', 'general_files_json', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'created_by_user_id', 'created_at', 'updated_at'],
+  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'ptw_files_json', 'general_files_json', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'held_from_status', 'hold_periods_json', 'created_by_user_id', 'created_at', 'updated_at'],
   defaultOrder: 'reported_at desc, work_order_num desc',
   scope: workOrderScope,
   ownerColumn,
-  ownerSources: [ownedSource({ table: 'dbo.service_requests', key: 'sr_num', payloadKey: 'source_sr_num', scope: workOrderScope })]
+  ownerSources: [ownedSource({ table: 'dbo.service_requests', key: 'sr_num', payloadKey: 'source_sr_num', scope: workOrderScope })],
+  beforeCreate: prepareWorkOrderCreate,
+  beforeUpdate: validateWorkOrderUpdate
 }))
 
 router.use('/work-order-resource-requests', crudRouter({

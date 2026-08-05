@@ -1,4 +1,5 @@
 import { toLocalDateTimeInput } from '../lib/datetime'
+import { DEFAULT_WORK_ORDER_WORKFLOW, mapWorkOrderWorkflow } from '../lib/workOrderWorkflow'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api'
 const tokenKey = 'seder-cafm-auth-token'
@@ -285,6 +286,8 @@ const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], workOrderTa
   'ACTUAL HOURS': row.actual_hours ?? '',
   'ACTUAL MATERIALS': jsonArrayValue(row.actual_materials_json),
   'ACTUAL TOOLS': jsonArrayValue(row.actual_tools_json),
+  'HELD FROM': row.held_from_status || '',
+  holdPeriods: jsonArrayValue(row.hold_periods_json),
   createdBy: row.created_by_user_id || '',
   'METER ID': meter?.meterId || '',
   'METER READING': meter?.reading ?? '',
@@ -506,7 +509,8 @@ export async function loadWorkspace() {
     jobPlans,
     jobPlanTasks,
     incidents,
-    meters
+    meters,
+    workOrderWorkflow
   ] = await Promise.all([
     safeGet('/sites'),
     safeGet('/departments'),
@@ -534,7 +538,8 @@ export async function loadWorkspace() {
     safeGet('/job-plans'),
     safeGet('/job-plan-tasks'),
     safeGet('/incidents'),
-    safeGet('/meter-readings')
+    safeGet('/meter-readings'),
+    safeGet('/work-order-workflow')
   ])
 
   const roles = rolesRaw.map(mapRole)
@@ -587,6 +592,9 @@ export async function loadWorkspace() {
     jobPlans: jobPlans.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status })),
     jobTasks: jobPlanTasks.map(mapJobTask),
     incidents: incidents.map(mapIncident),
-    meters: mappedMeters
+    meters: mappedMeters,
+    workOrderWorkflow: Array.isArray(workOrderWorkflow)
+      ? DEFAULT_WORK_ORDER_WORKFLOW
+      : mapWorkOrderWorkflow(workOrderWorkflow)
   }
 }

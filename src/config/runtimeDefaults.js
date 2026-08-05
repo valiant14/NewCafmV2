@@ -42,6 +42,7 @@ export const permissionModules = [
   'Roles & Permissions',
   'Sites',
   'Departments',
+  'Work Order Workflow',
   'PM Schedule Rules',
   'SMTP & SMS',
   // Grants access to Notifications.

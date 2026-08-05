@@ -48,6 +48,12 @@ npm run db:check-scopes
 npm run api:check-scopes
 ```
 
+Apply the global work-order workflow controls on an existing database:
+
+```bash
+npm run db:workflow-controls
+```
+
 Default development login:
 
 ```text
@@ -65,6 +71,7 @@ Change it with `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables befor
 - Assets, locations, labor
 - Service requests
 - Work orders
+- Database-backed global work-order workflow controls
 - Work order resource requests
 - Materials, stores, stock
 - Purchase requisitions

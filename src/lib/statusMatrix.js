@@ -114,27 +114,27 @@ const cancellableBefore = ['WAPPR', 'APPR', 'WSCH', 'SCHED']
 // ON_HOLD_MATERIAL says the job is waiting on stock, and it is the one that pauses SLA.
 const holdStatuses = ['HOLD', 'ON_HOLD_MATERIAL']
 
-export const workOrderTransitions = (current, heldFrom = '') => {
+export const workOrderTransitions = (current, heldFrom = '', workflow = {}) => {
   const status = String(current || '').toUpperCase()
   if (status === 'CLOSE' || status === 'CAN') return []
   if (holdStatuses.includes(status)) {
     // Resume where the hold started; fall back to the front of the chain if unknown.
     const resume = workOrderChain.includes(String(heldFrom).toUpperCase()) ? String(heldFrom).toUpperCase() : 'WAPPR'
-    return [resume, 'CAN']
+    return [resume, ...(workflow.allowCancelBeforeStart === false ? [] : ['CAN'])]
   }
   const index = workOrderChain.indexOf(status)
-  if (index === -1) return ['WAPPR']
+  if (index === -1) return [workflow.initialStatus || 'WAPPR']
   const next = []
-  if (index > 0) next.push(workOrderChain[index - 1])
+  if (workflow.allowBackwardTransition !== false && index > 0) next.push(workOrderChain[index - 1])
   if (index < workOrderChain.length - 1) next.push(workOrderChain[index + 1])
-  if (status !== 'COMP') next.push(...holdStatuses)
-  if (cancellableBefore.includes(status)) next.push('CAN')
+  if (workflow.allowHold !== false && status !== 'COMP') next.push(...holdStatuses)
+  if (workflow.allowCancelBeforeStart !== false && cancellableBefore.includes(status)) next.push('CAN')
   return next
 }
 
-export const canTransitionWorkOrder = (from, to, heldFrom) => (
+export const canTransitionWorkOrder = (from, to, heldFrom, workflow) => (
   String(from || '').toUpperCase() === String(to || '').toUpperCase() ||
-  workOrderTransitions(from, heldFrom).includes(String(to || '').toUpperCase())
+  workOrderTransitions(from, heldFrom, workflow).includes(String(to || '').toUpperCase())
 )
 
 export const statusDescription = (application, status) => {

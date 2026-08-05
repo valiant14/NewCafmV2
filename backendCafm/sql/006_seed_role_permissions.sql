@@ -2,7 +2,7 @@ set nocount on;
 go
 
 merge dbo.permission_modules as target
-using (values ('Work Order Planning'), ('PM Schedule Rules')) as source(module_name)
+using (values ('Work Order Planning'), ('Work Order Workflow'), ('PM Schedule Rules')) as source(module_name)
 on target.module_name = source.module_name
 when not matched then insert(module_name) values(source.module_name);
 go

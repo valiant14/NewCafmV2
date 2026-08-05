@@ -279,6 +279,17 @@ create table dbo.work_orders (
   problem_code nvarchar(80) null,
   cause_code nvarchar(80) null,
   remedy_code nvarchar(80) null,
+  ptw_required bit not null constraint df_wo_ptw_required default 1,
+  ptw_files_json nvarchar(max) null,
+  general_files_json nvarchar(max) null,
+  technician_remarks nvarchar(max) null,
+  completion_notes nvarchar(max) null,
+  actual_labor nvarchar(max) null,
+  actual_hours decimal(18,4) null,
+  actual_materials_json nvarchar(max) null,
+  actual_tools_json nvarchar(max) null,
+  held_from_status nvarchar(40) null,
+  hold_periods_json nvarchar(max) null,
   created_by_user_id nvarchar(50) null,
   created_at datetime2 not null constraint df_wo_created default sysutcdatetime(),
   updated_at datetime2 not null constraint df_wo_updated default sysutcdatetime(),
@@ -287,6 +298,39 @@ create table dbo.work_orders (
   constraint fk_wo_asset foreign key (asset_num) references dbo.assets(asset_num),
   constraint fk_wo_source_sr foreign key (source_sr_num) references dbo.service_requests(sr_num),
   constraint fk_wo_sub_department foreign key (sub_department_code) references dbo.departments(sub_department_code)
+);
+go
+
+create table dbo.work_order_workflow_settings (
+  workflow_key nvarchar(40) not null constraint pk_work_order_workflow_settings primary key,
+  workflow_name nvarchar(160) not null,
+  initial_status nvarchar(40) not null constraint df_wo_workflow_initial_status default 'WAPPR',
+  ptw_required_default bit not null constraint df_wo_workflow_ptw_default default 1,
+  allow_ptw_override bit not null constraint df_wo_workflow_ptw_override default 1,
+  allow_manual_status_change bit not null constraint df_wo_workflow_manual_status default 1,
+  allow_backward_transition bit not null constraint df_wo_workflow_backward default 1,
+  allow_hold bit not null constraint df_wo_workflow_hold default 1,
+  allow_cancel_before_start bit not null constraint df_wo_workflow_cancel default 1,
+  auto_approve bit not null constraint df_wo_workflow_auto_approve default 1,
+  auto_schedule bit not null constraint df_wo_workflow_auto_schedule default 1,
+  auto_start bit not null constraint df_wo_workflow_auto_start default 1,
+  auto_complete bit not null constraint df_wo_workflow_auto_complete default 1,
+  auto_close bit not null constraint df_wo_workflow_auto_close default 0,
+  require_overview_for_approval bit not null constraint df_wo_workflow_req_overview default 1,
+  require_planned_labor_for_schedule bit not null constraint df_wo_workflow_req_labor default 1,
+  require_materials_for_cm bit not null constraint df_wo_workflow_req_materials default 1,
+  require_tools_for_cm bit not null constraint df_wo_workflow_req_tools default 1,
+  require_ptw_for_start bit not null constraint df_wo_workflow_req_ptw default 1,
+  require_store_issue_for_start bit not null constraint df_wo_workflow_req_store default 1,
+  require_failure_for_complete bit not null constraint df_wo_workflow_req_failure default 1,
+  require_actual_labor_for_complete bit not null constraint df_wo_workflow_req_actual_labor default 1,
+  require_execution_notes_for_complete bit not null constraint df_wo_workflow_req_notes default 1,
+  require_actual_resources_for_complete bit not null constraint df_wo_workflow_req_actual_resources default 1,
+  require_returns_for_close bit not null constraint df_wo_workflow_req_returns default 1,
+  updated_by_user_id nvarchar(50) null,
+  created_at datetime2 not null constraint df_wo_workflow_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_wo_workflow_updated default sysutcdatetime(),
+  constraint ck_wo_workflow_initial_status check (initial_status in ('WAPPR', 'APPR', 'WSCH', 'SCHED'))
 );
 go
 

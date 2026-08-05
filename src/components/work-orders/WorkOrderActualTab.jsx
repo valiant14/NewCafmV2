@@ -104,6 +104,12 @@ export default function WorkOrderActualTab({
   setTab,
   setWorkStarted,
   completeWork,
+  showStartAction = false,
+  showCompleteAction = false,
+  showCloseAction = true,
+  completionReady = false,
+  completionBlocked = '',
+  startBlocked = '',
   outlineButtonClass,
   primaryButtonClass,
   targetStart,
@@ -128,7 +134,6 @@ export default function WorkOrderActualTab({
   setActualTools,
   updateActualRow,
   workClosed,
-  failureReady = false,
   actualReady = false,
   closeWork,
   returnResource,
@@ -155,9 +160,9 @@ export default function WorkOrderActualTab({
   // The preparation stages advance on their own; these three are the points where a person
   // has to decide something, so they stay explicit. Exactly one is offered at a time.
   const step =
-    status === 'SCHED' ? { label: 'Start work', icon: Play, run: () => setWorkStarted(true), ready: preparationReady, blocked: 'Complete planning before starting work' }
-    : status === 'INPRG' ? { label: 'Resolve / complete work', icon: Check, run: completeWork, ready: failureReady, blocked: 'Complete failure classification first' }
-    : status === 'COMP' ? {
+    status === 'SCHED' && showStartAction ? { label: 'Start work', icon: Play, run: () => setWorkStarted(true), ready: preparationReady, blocked: startBlocked || 'Complete start requirements first' }
+    : status === 'INPRG' && showCompleteAction ? { label: 'Resolve / complete work', icon: Check, run: completeWork, ready: completionReady, blocked: completionBlocked || 'Complete execution requirements first' }
+    : status === 'COMP' && showCloseAction ? {
       label: 'Close work order', icon: Lock, run: closeWork, ready: actualReady,
       // Returns are named explicitly - "complete the Actual tab" would not tell the
       // technician that a ladder is still in the van.
@@ -169,7 +174,7 @@ export default function WorkOrderActualTab({
 
   return (
     <>
-      {step && status === 'COMP' && (
+      {step && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
           <div className="grid gap-1">
             <strong className="text-sm text-[var(--app-ink)]">{step.ready ? `Ready to ${step.label.toLowerCase()}` : 'Not ready yet'}</strong>

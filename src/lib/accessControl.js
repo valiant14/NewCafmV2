@@ -22,6 +22,7 @@ export const pagePermissionAliases = {
   'Roles & Permissions': ['Roles & Permissions', 'Administration'],
   Sites: ['Sites', 'Administration'],
   Departments: ['Departments', 'Administration'],
+  'Work Order Workflow': ['Work Order Workflow', 'Administration'],
   // Notifications is still a settings sub-page. SMTP & SMS and PM Schedule Rules now have
   // their own backend modules, with Administration kept as the top-level bypass.
   Notifications: ['Notifications', 'Settings', 'Administration'],
