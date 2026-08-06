@@ -1,5 +1,0 @@
-<<<<<<<< HEAD:dist/assets/RecordFilterNotice-0F0mgws5.js
-import{i as e,r as t}from"./Surface-DLvcaqzy.js";import{j as n}from"./index-CX3MwyUq.js";var r=e();function i({reference:e,count:i=0,onClear:a,className:o=`mb-3`}){return e?(0,r.jsx)(n,{className:o,tone:i?`info`:`warning`,title:`Showing ${e}`,actions:(0,r.jsx)(t,{variant:`outline`,onClick:a,children:`Show all`}),children:i?`${i} matching record${i===1?``:`s`}, opened from another page.`:`No record here matches that reference - it may be outside your site or department scope.`}):null}export{i as t};
-========
-import{i as e,r as t}from"./Surface-DLvcaqzy.js";import{O as n}from"./index-BTr31_e_.js";var r=e();function i({reference:e,count:i=0,onClear:a,className:o=`mb-3`}){return e?(0,r.jsx)(n,{className:o,tone:i?`info`:`warning`,title:`Showing ${e}`,actions:(0,r.jsx)(t,{variant:`outline`,onClick:a,children:`Show all`}),children:i?`${i} matching record${i===1?``:`s`}, opened from another page.`:`No record here matches that reference - it may be outside your site or department scope.`}):null}export{i as t};
->>>>>>>> b0b549d50a04c9a43587a0e2a6baae114eedfe96:dist/assets/RecordFilterNotice-BsYP3vGj.js
