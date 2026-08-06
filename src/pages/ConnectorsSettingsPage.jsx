@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mail, Plus, Wifi } from 'lucide-react'
+import { Activity, FileText, Hash, KeyRound, Lock, Mail, Plus, Send, Server, User, Wifi } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -32,17 +32,21 @@ const emptyConnector = {
   createdDate: ''
 }
 
+const connector = { section: 'Connector', sectionIcon: Mail, sectionNote: 'What this delivery service is called and whether it is in use', sectionSpan: 'full' }
+const endpoint = { section: 'Endpoint', sectionIcon: Server, sectionNote: 'Where messages are handed off, and how the connection is secured', sectionTone: 'green', sectionSpan: 'full' }
+const credentials = { section: 'Credentials', sectionIcon: KeyRound, sectionNote: 'Stored in the CAFM database - nothing is sent until a delivery service is connected', sectionTone: 'orange', sectionSpan: 'full' }
+
 const fields = [
-  { key: 'name', label: 'Connector Name', required: true, placeholder: 'Primary mail relay' },
-  { key: 'type', label: 'Type', required: true, options: connectorTypes },
-  { key: 'host', label: 'Host / Endpoint', required: true, placeholder: 'smtp.seder.com' },
-  { key: 'port', label: 'Port', type: 'number', placeholder: '587' },
-  { key: 'encryption', label: 'Encryption', options: encryptionModes },
-  { key: 'username', label: 'Username / API Key', placeholder: 'cafm@seder.com' },
-  { key: 'password', label: 'Password / Secret', type: 'password', placeholder: 'Stored in database' },
-  { key: 'sender', label: 'From Address / Sender ID', placeholder: 'no-reply@seder.com or SEDER' },
-  { key: 'notes', label: 'Notes', placeholder: 'Who owns this connector' },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
+  { ...connector, key: 'name', label: 'Connector Name', icon: Mail, required: true, placeholder: 'Primary mail relay' },
+  { ...connector, key: 'type', label: 'Type', icon: Send, required: true, options: connectorTypes },
+  { ...connector, key: 'status', label: 'Status', icon: Activity, options: ['Active', 'Inactive'] },
+  { ...connector, key: 'notes', label: 'Notes', icon: FileText, placeholder: 'Who owns this connector' },
+  { ...endpoint, key: 'host', label: 'Host / Endpoint', icon: Server, required: true, placeholder: 'smtp.seder.com' },
+  { ...endpoint, key: 'port', label: 'Port', icon: Hash, type: 'number', placeholder: '587' },
+  { ...endpoint, key: 'encryption', label: 'Encryption', icon: Lock, options: encryptionModes },
+  { ...credentials, key: 'username', label: 'Username / API Key', icon: User, placeholder: 'cafm@seder.com' },
+  { ...credentials, key: 'password', label: 'Password / Secret', icon: KeyRound, type: 'password', placeholder: 'Stored in database' },
+  { ...credentials, key: 'sender', label: 'From Address / Sender ID', icon: Send, placeholder: 'no-reply@seder.com or SEDER' }
 ]
 
 const exportColumns = [
@@ -141,7 +145,7 @@ export default function ConnectorsSettingsPage({ rows = [], setRows, notify }) {
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <TablePanel>
+      <TablePanel tone="blue">
         {rows.length ? (
           <DataTable
             rows={visibleRows}
@@ -152,9 +156,10 @@ export default function ConnectorsSettingsPage({ rows = [], setRows, notify }) {
               { key: 'name', label: 'Connector', render: value => <strong className="text-[var(--app-ink)]">{value}</strong> },
               { key: 'type', label: 'Type', render: value => <Badge tone={value === 'SMS' ? 'orange' : 'blue'}>{value}</Badge> },
               { key: 'host', label: 'Host / Endpoint', render: value => <span className="mono">{value}</span> },
-              { key: 'port', label: 'Port' },
-              { key: 'encryption', label: 'Encryption' },
-              { key: 'sender', label: 'Sender', render: value => value || 'Not set' },
+              { key: 'port', label: 'Port', render: value => <Badge tone="neutral">{value || '-'}</Badge> },
+              // An unencrypted connector is worth spotting in a list of them.
+              { key: 'encryption', label: 'Encryption', render: value => <Badge tone={/^none$/i.test(String(value)) ? 'orange' : 'green'}>{value || 'None'}</Badge> },
+              { key: 'sender', label: 'Sender', render: value => value || <span className="text-[var(--app-muted)]">Not set</span> },
               { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> },
               { key: 'createdDate', label: 'Created', render: value => value || '-' },
               {
