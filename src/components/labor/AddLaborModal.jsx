@@ -1,3 +1,4 @@
+import { CalendarCheck, Clock, Hash, User, Users, Wrench } from 'lucide-react'
 import MasterRecordModal from '../master-data/MasterRecordModal'
 import { craftCodeOptions, craftNameOptions } from '../../lib/masterOptions'
 
@@ -10,17 +11,21 @@ const buildFields = (department, departmentRecords = [], laborRows = []) => {
     .map(row => row.description || row.subDepartmentCode)
     .filter(Boolean)
 
+  const person = { section: 'Person', sectionIcon: User, sectionNote: 'Who the technician is' }
+  const reporting = { section: 'Reporting', sectionIcon: Users, sectionNote: 'The department that owns this resource', sectionTone: 'purple' }
+  const skills = { section: 'Craft & shift', sectionIcon: Wrench, sectionNote: 'What they are qualified for and when they work', sectionTone: 'green', sectionSpan: 'full' }
+
   return [
-  { label: 'Person ID', key: 'personId', required: true, placeholder: 'LAB-0007' },
-  { label: 'Name', key: 'name', required: true, placeholder: 'Technician full name' },
-  { label: 'Department', key: 'department', options: departmentOptions },
-  { label: 'Sub Department', key: 'subDepartment', options: ['', ...subDepartmentOptions] },
+  { ...person, label: 'Person ID', key: 'personId', icon: Hash, required: true, placeholder: 'LAB-0007' },
+  { ...person, label: 'Name', key: 'name', icon: User, required: true, placeholder: 'Technician full name' },
+  { ...reporting, label: 'Department', key: 'department', icon: Users, options: departmentOptions },
+  { ...reporting, label: 'Sub Department', key: 'subDepartment', icon: Users, options: ['', ...subDepartmentOptions] },
   // Crafts already in use are offered, but a new one can still be typed - this is where a
   // craft first enters the system.
-  { label: 'Craft Code', key: 'craftCode', required: true, suggestions: craftCodeOptions(laborRows), placeholder: 'Select or type a craft code' },
-  { label: 'Craft', key: 'craft', suggestions: craftNameOptions(laborRows), placeholder: 'Select or type a craft name' },
-  { label: 'Shift', key: 'shift', options: ['Day', 'Night'] },
-  { label: 'Availability', key: 'availability', options: ['Available', 'Assigned', 'On Leave'] }
+  { ...skills, label: 'Craft Code', key: 'craftCode', icon: Wrench, required: true, suggestions: craftCodeOptions(laborRows), placeholder: 'Select or type a craft code' },
+  { ...skills, label: 'Craft', key: 'craft', icon: Wrench, suggestions: craftNameOptions(laborRows), placeholder: 'Select or type a craft name' },
+  { ...skills, label: 'Shift', key: 'shift', icon: Clock, options: ['Day', 'Night'] },
+  { ...skills, label: 'Availability', key: 'availability', icon: CalendarCheck, options: ['Available', 'Assigned', 'On Leave'] }
   ]
 }
 
