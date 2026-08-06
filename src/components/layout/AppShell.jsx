@@ -1,7 +1,8 @@
-﻿import { Bell, ChevronDown, ChevronRight, LogOut, Menu, X } from 'lucide-react'
+﻿import { AlertTriangle, Bell, ChevronDown, ChevronRight, Clock, LogOut, Menu, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import sederLogo from '../../Assets/seder-logo.svg'
 import { useAuth } from '../../providers/AuthProvider'
+import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
 import ThemeToggle from '../ui/ThemeToggle'
@@ -19,6 +20,7 @@ export default function AppShell({
   onMobileClose,
   onNavigate,
   onOpenWorkOrders,
+  onOpenWorkOrder,
   children
 }) {
   const { user, logout } = useAuth()
@@ -41,6 +43,14 @@ export default function AppShell({
   )
   const activeLabel = navigation.find(item => item.name === active)?.label || active
   const activeSection = sections.find(([, items]) => items.some(item => item.name === active))?.[0]
+  // Overdue work first - an inbox sorted by work order number buries the ones already late.
+  const overdueCountInList = notifications.filter(item => item.type === 'overdue').length
+  const sortedNotifications = [...notifications].sort((left, right) => Number(right.type === 'overdue') - Number(left.type === 'overdue'))
+  const openNotification = item => {
+    setNotificationsOpen(false)
+    if (onOpenWorkOrder) onOpenWorkOrder(item.workOrder)
+    else onOpenWorkOrders?.()
+  }
   const collapsedForActiveSection = () => Object.fromEntries(
     sections.map(([sectionName]) => [sectionName, activeSection ? sectionName !== activeSection : false])
   )
@@ -183,21 +193,29 @@ export default function AppShell({
               description="Upcoming and overdue work orders generated from target dates and SLA status."
               onClose={() => setNotificationsOpen(false)}
             />
+            {notifications.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 border-b border-[var(--app-line)] px-6 py-3">
+                <Badge tone={overdueCountInList ? 'orange' : 'neutral'}><AlertTriangle size={12} />{overdueCountInList} overdue</Badge>
+                <Badge tone="blue"><Clock size={12} />{notifications.length - overdueCountInList} upcoming</Badge>
+              </div>
+            )}
             <div className="grid max-h-[58vh] gap-3 overflow-auto px-6 py-5">
-              {notifications.length ? notifications.map(item => (
+              {sortedNotifications.length ? sortedNotifications.map(item => (
                 <button
                   key={`${item.type}-${item.workOrder}`}
-                  className="grid gap-2 rounded-2xl border border-[var(--app-line)] bg-[var(--app-table-bg)] p-4 text-left transition hover:bg-[var(--app-table-hover-bg)] md:grid-cols-[140px_1fr_auto] md:items-center"
-                  onClick={() => { setNotificationsOpen(false); onOpenWorkOrders?.() }}
+                  title={`Open work order ${item.workOrder}`}
+                  className={`app-hover-lift ${item.type === 'overdue' ? 'app-hover-lift--orange' : 'app-hover-lift--blue'} grid gap-2 rounded-2xl border bg-[var(--app-table-bg)] p-4 text-left md:grid-cols-[128px_1fr_auto] md:items-center`}
+                  onClick={() => openNotification(item)}
                 >
-                  <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.1em] ${item.type === 'overdue' ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--info-soft)] text-[var(--info)]'}`}>
+                  <Badge tone={item.type === 'overdue' ? 'orange' : 'blue'}>
+                    {item.type === 'overdue' ? <AlertTriangle size={12} /> : <Clock size={12} />}
                     {item.type === 'overdue' ? 'Overdue' : 'Upcoming'}
-                  </span>
+                  </Badge>
                   <span className="grid gap-1">
                     <strong className="text-sm text-[var(--app-ink)]">WO #{item.workOrder} · {item.description}</strong>
                     <small className="text-xs text-[var(--app-muted)]">{item.message}</small>
                   </span>
-                  <ChevronRight size={18} className="text-[var(--app-muted)]" />
+                  <ChevronRight size={18} className="app-hover-chevron text-[var(--app-muted)]" />
                 </button>
               )) : (
                 <div className="grid min-h-40 place-items-center rounded-2xl border border-dashed border-[var(--app-line)] p-6 text-center text-sm text-[var(--app-muted)]">

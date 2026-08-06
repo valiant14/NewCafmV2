@@ -385,13 +385,38 @@ main,
   .app-stat-card [class~="app-stat-value"] { color: color-mix(in srgb, var(--app-stat-accent, var(--app-ink)) 45%, var(--app-ink)); }
 
   .app-stat-card--interactive {
-    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    cursor: pointer;
+    transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
   }
 
-  .app-stat-card--interactive:hover {
-    border-color: color-mix(in srgb, var(--app-primary) 32%, var(--app-line));
-    box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
-    transform: translateY(-1px);
+  .app-stat-card--interactive:hover,
+  .app-stat-card--interactive:focus-visible {
+    background: color-mix(in srgb, var(--app-stat-accent, var(--app-primary)) 12%, var(--app-panel));
+    border-color: color-mix(in srgb, var(--app-stat-accent, var(--app-primary)) 55%, var(--app-line));
+    box-shadow:
+      inset 3px 0 0 var(--app-stat-accent, var(--app-primary)),
+      0 2px 4px rgba(15, 23, 42, .10),
+      0 18px 34px -10px color-mix(in srgb, var(--app-stat-accent, var(--app-primary)) 45%, transparent);
+    outline: none;
+    transform: translateY(-3px);
+  }
+
+  /* The chip and the chevron move with the card, so the whole tile reads as one control. */
+  .app-stat-card--interactive .app-stat-icon,
+  .app-stat-card--interactive .app-stat-chevron {
+    transition: transform 180ms ease, box-shadow 180ms ease, color 180ms ease;
+  }
+
+  .app-stat-card--interactive:hover .app-stat-icon,
+  .app-stat-card--interactive:focus-visible .app-stat-icon {
+    box-shadow: 0 0 16px color-mix(in srgb, var(--app-stat-accent, var(--app-primary)) 45%, transparent);
+    transform: scale(1.08);
+  }
+
+  .app-stat-card--interactive:hover .app-stat-chevron,
+  .app-stat-card--interactive:focus-visible .app-stat-chevron {
+    color: var(--app-stat-accent, var(--app-primary));
+    transform: translateX(3px);
   }
 
   .app-stat-icon {
@@ -438,6 +463,37 @@ main,
     color: var(--app-muted);
     flex: 0 0 auto;
     margin-top: 2px;
+  }
+
+  /* Shared hover lift for a clickable row - the same motion as an interactive stat tile. */
+  .app-hover-lift {
+    border-color: color-mix(in srgb, var(--app-hover-accent, var(--app-line)) 34%, var(--app-line));
+    box-shadow: inset 3px 0 0 var(--app-hover-accent, transparent);
+    transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  .app-hover-lift:hover,
+  .app-hover-lift:focus-visible {
+    background: color-mix(in srgb, var(--app-hover-accent, var(--app-primary)) 12%, var(--app-panel));
+    border-color: color-mix(in srgb, var(--app-hover-accent, var(--app-primary)) 55%, var(--app-line));
+    box-shadow:
+      inset 3px 0 0 var(--app-hover-accent, var(--app-primary)),
+      0 2px 4px rgba(15, 23, 42, .10),
+      0 18px 34px -10px color-mix(in srgb, var(--app-hover-accent, var(--app-primary)) 45%, transparent);
+    outline: none;
+    transform: translateY(-3px);
+  }
+
+  .app-hover-lift--green { --app-hover-accent: var(--app-badge-green-text); }
+  .app-hover-lift--orange { --app-hover-accent: var(--app-badge-orange-text); }
+  .app-hover-lift--blue { --app-hover-accent: var(--app-badge-blue-text); }
+  .app-hover-lift--purple { --app-hover-accent: var(--app-badge-purple-text); }
+
+  .app-hover-chevron { transition: transform 180ms ease, color 180ms ease; }
+  .app-hover-lift:hover .app-hover-chevron,
+  .app-hover-lift:focus-visible .app-hover-chevron {
+    color: var(--app-hover-accent, var(--app-primary));
+    transform: translateX(3px);
   }
 
   .app-alert {
@@ -1246,6 +1302,15 @@ body * {
 
   .app-pulse {
     animation: none !important;
+  }
+
+  .app-stat-card--interactive,
+  .app-stat-card--interactive .app-stat-icon,
+  .app-stat-card--interactive .app-stat-chevron,
+  .app-hover-lift,
+  .app-hover-chevron {
+    transition: none !important;
+    transform: none !important;
   }
 
   .chart-line {

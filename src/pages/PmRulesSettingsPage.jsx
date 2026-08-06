@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ExternalLink, Plus, Repeat, Save } from 'lucide-react'
+import { Activity, CalendarClock, ClipboardList, Clock, ExternalLink, FileText, Hash, Plus, Repeat, Save, Workflow } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
 import Button from '../components/ui/Button'
@@ -49,17 +49,21 @@ const emptyRule = initialStatus => ({
   createdDate: ''
 })
 
+const rule = { section: 'Rule', sectionIcon: Repeat, sectionNote: 'What this rule is called and which schedules it covers', sectionSpan: 'full', sectionColumns: 2 }
+const cadence = { section: 'Cadence', sectionIcon: CalendarClock, sectionNote: 'How often it fires, how far ahead it looks, and at what hour', sectionTone: 'orange', sectionSpan: 'full' }
+const output = { section: 'Generated work order', sectionIcon: ClipboardList, sectionNote: 'How the work orders this rule raises are numbered and where they start', sectionTone: 'green', sectionSpan: 'full' }
+
 const fields = [
-  { key: 'name', label: 'Rule Name', required: true, placeholder: 'Monthly HVAC schedules' },
-  { key: 'frequency', label: 'Every', required: true, type: 'number', placeholder: '1' },
-  { key: 'freqUnit', label: 'Frequency Unit', required: true, options: frequencyUnits },
-  { key: 'leadTimeDays', label: 'Lead Time (Days)', type: 'number', placeholder: '7' },
-  { key: 'horizonDays', label: 'Generation Horizon (Days)', type: 'number', placeholder: '30' },
-  { key: 'triggerHour', label: 'Trigger Hour (0-23)', type: 'number', placeholder: '6' },
-  { key: 'woPrefix', label: 'Work Order Prefix', placeholder: 'PMWO-' },
-  { key: 'defaultWoStatus', label: 'Default WO Status' },
-  { key: 'notes', label: 'Notes', placeholder: 'Which schedules this rule covers' },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
+  { ...rule, key: 'name', label: 'Rule Name', icon: Repeat, required: true, placeholder: 'Monthly HVAC schedules' },
+  { ...rule, key: 'status', label: 'Status', icon: Activity, options: ['Active', 'Inactive'] },
+  { ...rule, key: 'notes', label: 'Notes', icon: FileText, fullWidth: true, placeholder: 'Which schedules this rule covers' },
+  { ...cadence, key: 'frequency', label: 'Every', icon: Repeat, required: true, type: 'number', placeholder: '1' },
+  { ...cadence, key: 'freqUnit', label: 'Frequency Unit', icon: Clock, required: true, options: frequencyUnits },
+  { ...cadence, key: 'leadTimeDays', label: 'Lead Time (Days)', icon: Clock, type: 'number', placeholder: '7' },
+  { ...cadence, key: 'horizonDays', label: 'Generation Horizon (Days)', icon: CalendarClock, type: 'number', placeholder: '30' },
+  { ...cadence, key: 'triggerHour', label: 'Trigger Hour (0-23)', icon: Clock, type: 'number', placeholder: '6' },
+  { ...output, key: 'woPrefix', label: 'Work Order Prefix', icon: Hash, placeholder: 'PMWO-' },
+  { ...output, key: 'defaultWoStatus', label: 'Default WO Status', icon: Workflow }
 ]
 
 const exportColumns = [
@@ -303,7 +307,7 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <TablePanel>
+      <TablePanel tone="orange">
         {rows.length ? (
           <DataTable
             rows={visibleRows}
@@ -312,13 +316,14 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
             pagination
             columns={[
               { key: 'name', label: 'Rule', render: value => <strong className="text-[var(--app-ink)]">{value}</strong> },
-              { key: 'frequency', label: 'Every' },
-              { key: 'freqUnit', label: 'Unit' },
-              { key: 'leadTimeDays', label: 'Lead Time (Days)' },
-              { key: 'horizonDays', label: 'Horizon (Days)' },
-              { key: 'triggerHour', label: 'Trigger Hour', render: (value, row) => usesTriggerHour(row.freqUnit) ? `${String(value ?? 0).padStart(2, '0')}:00` : 'Auto' },
-              { key: 'woPrefix', label: 'WO Prefix', render: value => <span className="mono">{value}</span> },
-              { key: 'defaultWoStatus', label: 'Default WO Status', render: value => workflowStatusLabel(activeWorkflow, value) || value },
+              // The cadence reads as one fact - "every 1 MONTHS" - so the two halves are badged together.
+              { key: 'frequency', label: 'Every', render: value => <Badge tone="orange">{Number(value) || 1}</Badge> },
+              { key: 'freqUnit', label: 'Unit', render: value => <Badge tone="orange">{value || '-'}</Badge> },
+              { key: 'leadTimeDays', label: 'Lead Time (Days)', render: value => <Badge tone="neutral">{Number(value) || 0}</Badge> },
+              { key: 'horizonDays', label: 'Horizon (Days)', render: value => <Badge tone="neutral">{Number(value) || 0}</Badge> },
+              { key: 'triggerHour', label: 'Trigger Hour', render: (value, row) => usesTriggerHour(row.freqUnit) ? <Badge tone="blue">{`${String(value ?? 0).padStart(2, '0')}:00`}</Badge> : <Badge tone="neutral">Auto</Badge> },
+              { key: 'woPrefix', label: 'WO Prefix', render: value => <Badge tone="purple"><span className="mono">{value || '-'}</span></Badge> },
+              { key: 'defaultWoStatus', label: 'Default WO Status', render: value => <Badge tone="green">{workflowStatusLabel(activeWorkflow, value) || value}</Badge> },
               { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> },
               { key: 'createdDate', label: 'Created', render: value => value || '-' }
             ]}
