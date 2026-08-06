@@ -297,7 +297,13 @@ main,
   .app-section > .app-surface-header {
     background: linear-gradient(90deg, color-mix(in srgb, var(--app-section-accent) 24%, var(--app-panel)), color-mix(in srgb, var(--app-section-accent) 6%, var(--app-panel)) 82%);
     border-bottom-color: color-mix(in srgb, var(--app-section-accent) 38%, var(--app-line));
+    border-radius: calc(var(--app-radius-panel) - 1px) calc(var(--app-radius-panel) - 1px) 0 0;
     box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-section-accent) 82%, transparent);
+  }
+
+  .app-section:not(.app-surface--flush) > .app-surface-header:not(.app-surface-header--inset) {
+    margin: -20px -20px 18px;
+    padding: 14px 20px;
   }
 
   .app-section .app-surface-title { color: color-mix(in srgb, var(--app-section-accent) 55%, var(--app-ink)); }
@@ -922,6 +928,7 @@ main,
   .app-surface--flush { padding: 0; }
   .app-surface-header { flex-direction: column; padding: 14px; }
   .app-surface-header--inset { margin: -15px -15px 15px; }
+  .app-section:not(.app-surface--flush) > .app-surface-header:not(.app-surface-header--inset) { margin: -15px -15px 14px; padding: 12px 15px; }
   .app-stat-card { min-height: 104px; padding: 14px; }
   .app-filter-grid { grid-template-columns: 1fr; }
   .app-topbar { height: 58px; padding: 0 14px; }

@@ -136,14 +136,26 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                     <MiniMetric label="WO Status" value={workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus} note={schedule.woStatus || activeWorkflow.initialStatus} />
                   </div>
                 </div>
-                <div className="grid gap-2 rounded-2xl bg-[var(--app-soft-bg)] p-4">
-                  <strong className="text-[var(--app-ink)]">Next output</strong>
-                  <span>Work Type: {plan.workType || 'PM'} - Initial Status: {workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus} - Job Tasks: {tasks.length}</span>
-                  <span>Frequency: every {schedule.frequency} {schedule.freqUnit} at {String(schedule.triggerHour || 0).padStart(2, '0')}:00</span>
+                <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
+                  <span className="flex items-center gap-2 text-[var(--app-ink)]">
+                    <Sparkles size={15} className="text-[var(--app-primary)]" />
+                    <strong>Next output</strong>
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="blue">{plan.workType || 'PM'}</Badge>
+                    <Badge tone={statusTone(schedule.woStatus || activeWorkflow.initialStatus)}>{workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus}</Badge>
+                    <Badge tone="purple">{tasks.length} job task{tasks.length === 1 ? '' : 's'}</Badge>
+                    <Badge tone="green">Every {schedule.frequency} {schedule.freqUnit}</Badge>
+                    <Badge tone="orange">{String(schedule.triggerHour || 0).padStart(2, '0')}:00</Badge>
+                  </div>
                 </div>
-                <div className="grid gap-2 rounded-2xl bg-[var(--app-soft-bg)] p-4">
-                  <strong className="text-[var(--app-ink)]">Last generated cycle</strong>
-                  <span>{plan.lastGeneratedCycle || 'Not generated yet'}</span>
+                {/* Green once a cycle has run, amber while the PM has never produced anything. */}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
+                  <span className="flex items-center gap-2 text-[var(--app-ink)]">
+                    <CalendarClock size={15} className={plan.lastGeneratedCycle ? 'text-[var(--app-badge-green-text)]' : 'text-[var(--app-badge-orange-text)]'} />
+                    <strong>Last generated cycle</strong>
+                  </span>
+                  <Badge tone={plan.lastGeneratedCycle ? 'green' : 'orange'}>{plan.lastGeneratedCycle ? String(plan.lastGeneratedCycle).replace('T', ' ') : 'Not generated yet'}</Badge>
                 </div>
               </div>
             </DetailCard>
