@@ -269,28 +269,6 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
               underneath - the one field still open for editing gets the widest box on the page. */}
           {!isNew && activeTab === 'Request Details' && (
             <div className="grid gap-3">
-<<<<<<< HEAD
-              <Section compact icon={FileText} title="What happened" note="Reported as submitted - locked once the request exists">
-                <div className="grid gap-3 md:grid-cols-3">
-                  <Field label="Priority" icon={Flag} value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} disabled={readOnly} />
-                  <Field label="Request Type" icon={ClipboardCheck} value={form.requestType} required options={['Corrective', 'Service', 'Inspection']} onChange={update('requestType')} disabled={readOnly} />
-                  <Field label="Reported By" icon={User} value={form.reportedBy} required onChange={update('reportedBy')} disabled={readOnly} />
-                  <div className="md:col-span-3"><Field label="Description" icon={FileText} value={form.description} required onChange={update('description')} disabled={readOnly} /></div>
-                </div>
-              </Section>
-
-              <Section compact tone="green" icon={MapPin} title="Where" note="Site, location and the asset involved">
-                <div className="grid gap-3 md:grid-cols-3">
-                  <Field label="Site" icon={Building2} value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" disabled={readOnly} />
-                  <Field label="Location" icon={MapPin} value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" disabled={readOnly} />
-                  <Field label="Asset" icon={Boxes} value={form.asset} onChange={updateAsset} suggestions={assetOptions} placeholder="Optional until CM conversion" disabled={readOnly} />
-                </div>
-              </Section>
-
-              {/* Added after submission, so it stays open for anyone still working the request. */}
-              <Section compact tone="purple" icon={ClipboardCheck} title="Notes" note={`Reported ${form.reportedDate?.replace('T', ' ') || 'Not defined'}`}>
-                <Field label="Long Description" icon={FileText} value={form.longDescription} type="textarea" onChange={update('longDescription')} disabled={readOnly} />
-=======
               <div className="grid items-stretch gap-3 lg:grid-cols-2">
                 <Section compact icon={FileText} title="What happened" note="Reported as submitted - locked once the request exists">
                   <div className="grid gap-3 md:grid-cols-2">
@@ -311,7 +289,6 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
 
               <Section compact tone="purple" icon={ClipboardCheck} title="Notes" note="Detail added while the request is being worked">
                 <Field label="Long Description" icon={FileText} value={form.longDescription} type="textarea" onChange={update('longDescription')} />
->>>>>>> 88a983b685086cc52705353286b65c8ba8b867b6
               </Section>
             </div>
           )}
@@ -328,16 +305,9 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
               </Section>
 
               <Section compact tone="orange" icon={ShieldCheck} title="Classification" note="Set by the reviewer before the request becomes a work order">
-<<<<<<< HEAD
-                <div className="grid gap-3 md:grid-cols-2">
-                  <Field label="Sub Department" icon={Users} value={form.subDepartment || ''} onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Optional sub department" disabled={readOnly} />
-                  <Field label="Failure Code" icon={ShieldCheck} value={form.failureCode} required onChange={updateFailure} suggestions={failureOptions} placeholder="Search code or description" disabled={readOnly} />
-                  <Field label="Problem Code" icon={ShieldCheck} value={form.problemCode || ''} required onChange={update('problemCode')} suggestions={problemOptions} placeholder={form.failureCode ? 'Search matching problem code' : 'Select failure code first'} disabled={readOnly || !form.failureCode} />
-=======
                 <div className="grid gap-3">
                   <Field label="Sub Department" icon={Users} value={form.subDepartment || ''} required onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Search or select a sub department" disabled={readOnly} />
                   <Field label="Failure Code" icon={ShieldCheck} value={form.failureCode} required onChange={update('failureCode')} suggestions={failureOptions} placeholder="Search code or description" disabled={readOnly} />
->>>>>>> 88a983b685086cc52705353286b65c8ba8b867b6
                 </div>
               </Section>
             </div>
