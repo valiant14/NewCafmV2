@@ -22,11 +22,8 @@ const purchaseOrderStatuses = ['WAPPR', 'APPR', 'INPRG', 'CLOSE', 'CAN']
 
 export default function PurchaseOrdersPage({
   rows = [],
-<<<<<<< HEAD
   onOpenWorkOrder,
-=======
   workflow,
->>>>>>> d2e7bff1e758d984014269be7f9c08eefae2b024
   onUpdateOrder
 }) {
   const access = useModuleAccess('Purchase Orders')

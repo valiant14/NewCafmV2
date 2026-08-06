@@ -17,6 +17,8 @@ export default function WorkOrderOverviewTab({
   setPriority,
   description,
   setDescription,
+  longDescription,
+  setLongDescription,
   siteValue,
   changeSite,
   siteOptions,
@@ -58,15 +60,18 @@ export default function WorkOrderOverviewTab({
               <div className="md:col-span-2">
                 <Field label="Description" value={description} required locked={readOnly} onChange={event => setDescription(event.target.value)} />
               </div>
+              <div className="md:col-span-2">
+                <Field label="Long Description" value={longDescription} locked={readOnly} onChange={event => setLongDescription(event.target.value)} type="textarea" />
+              </div>
             </div>
           </Section>
 
           <Section compact tone="green" icon={Boxes} title="Asset & Location" note="Equipment, facility, and project relationship">
             <div className={gridClass}>
-              <Field label="Asset" value={assetValue} locked={readOnly} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'Optional - no scoped assets available'} />
+              <Field label="Asset" value={assetValue} required={workType === 'CM'} locked={readOnly} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'No scoped assets available'} />
               <Field label="Location" value={locationValue} required locked={readOnly} onChange={event => setLocationValue(event.target.value)} suggestions={locationOptions} placeholder="Search or select a location" />
-              <Field label="Asset Description" value={assetDescription} required locked={readOnly} onChange={event => setAssetDescription(event.target.value)} placeholder="Required asset description" />
-              <Field label="Project" value={projectName} required locked />
+              <Field label="Asset Description" value={assetDescription} locked={readOnly} onChange={event => setAssetDescription(event.target.value)} placeholder="Populated from the asset master" />
+              <Field label="Project" value={projectName} locked />
             </div>
           </Section>
         </div>

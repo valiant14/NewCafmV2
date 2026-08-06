@@ -56,11 +56,8 @@ export default function PurchaseRequestsPage({
   storeRows = [],
   siteRecords = [],
   departmentRecords = [],
-<<<<<<< HEAD
   onOpenWorkOrder,
-=======
   workflow,
->>>>>>> d2e7bff1e758d984014269be7f9c08eefae2b024
   onApproveRequest,
   onUpdateRequest,
   onCreateRequest

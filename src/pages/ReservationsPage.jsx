@@ -60,7 +60,7 @@ const cancelledWorkOrders = (workOrders = []) => new Set(
     .filter(Boolean)
 )
 
-export default function ReservationsPage({ rows = [], stockRows = [], workOrders = [], workflow, onUpdate }) {
+export default function ReservationsPage({ rows = [], stockRows = [], workOrders = [], workflow, onOpenWorkOrder, onUpdate }) {
   const access = useModuleAccess('Reservations')
   const cancelled = cancelledWorkOrders(workOrders)
   const isCancelled = row => isCancelledStatus(row.status) || cancelled.has(workOrderKey(row.workOrder))
