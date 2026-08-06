@@ -8,6 +8,7 @@ import DataTable from '../ui/DataTable'
 import Alert from '../ui/Alert'
 import StatCard from '../ui/StatCard'
 import TablePanel from '../ui/TablePanel'
+import RecordLink from '../ui/RecordLink'
 import { SurfaceHeader } from '../ui/Surface'
 import EmptyState from '../ui/EmptyState'
 import GenericPrintReport from '../ui/GenericPrintReport'
@@ -45,7 +46,7 @@ function inspectionState(tool) {
   return { days, dueSoon, overdue, label }
 }
 
-export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests = [], purchaseOrders = [], onBack, onUpdate, onCreateRequest }) {
+export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests = [], purchaseOrders = [], onBack, onUpdate, onCreateRequest, onOpenWorkOrder }) {
   const access = useModuleAccess('Tools & Equipment')
   const purchaseRequestAccess = useModuleAccess('Purchase Requisitions')
   const [tab, setTab] = useState('Tool Details')
@@ -131,16 +132,17 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
         {tab === 'Tool Details' && <main className="space-y-4">
           <section className="grid gap-3 md:grid-cols-4">
             {[
-              { icon: Wrench, label: 'Balance', value: tool.balance ?? tool.quantity, note: `Total ${tool.unit || 'EA'}` },
-              { icon: ClipboardCheck, label: 'Reserved', value: tool.reservedQuantity || 0, note: 'Committed' },
-              { icon: ShieldCheck, label: 'Available', value: availableUnits, note: `Ready ${tool.unit || 'EA'}` },
-              { icon: BarChart3, label: 'Low Level', value: tool.lowLevel || 0, note: 'Restock trigger' }
-            ].map(metric => <StatCard key={metric.label} {...metric} detail={metric.note} tone="blue" />)}
+              { icon: Wrench, label: 'Balance', value: tool.balance ?? tool.quantity, note: `Total ${tool.unit || 'EA'}`, tone: 'blue' },
+              { icon: ClipboardCheck, label: 'Reserved', value: tool.reservedQuantity || 0, note: 'Committed', tone: 'purple' },
+              { icon: ShieldCheck, label: 'Available', value: availableUnits, note: `Ready ${tool.unit || 'EA'}`, tone: availableUnits > 0 ? 'green' : 'orange' },
+              { icon: BarChart3, label: 'Low Level', value: tool.lowLevel || 0, note: 'Restock trigger', tone: 'orange' }
+            ].map(metric => <StatCard key={metric.label} {...metric} detail={metric.note} />)}
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
             <InfoCard
               icon={Wrench}
+              tone="blue"
               kicker="RESOURCE"
               title="Tool Information"
               items={[
@@ -153,6 +155,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
 
             <InfoCard
               icon={MapPin}
+              tone="green"
               kicker="CONTROL"
               title="Stock Position"
               items={[
@@ -165,7 +168,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
             />
           </section>
 
-          <TablePanel className="lg:col-span-2">
+          <TablePanel tone="green" className="lg:col-span-2">
             <SurfaceHeader eyebrow="Store inventory" title={`Held in ${tool.stores || tool.location || 'Tool Store'}`} />
             <DataTable
               rows={[tool]}
@@ -200,14 +203,14 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
         </main>}
 
         {tab === 'Work Order Usage' && (
-          <TablePanel>
+          <TablePanel tone="blue">
             {usageRows.length ? (
               <DataTable
                 rows={usageRows}
                 rowKey="reference"
                 pagination
                 columns={[
-                  { key: 'reference', label: 'Work Order', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
+                  { key: 'reference', label: 'Work Order', render: value => <RecordLink value={value} mono onClick={value && onOpenWorkOrder ? () => onOpenWorkOrder(value) : undefined} /> },
                   { key: 'description', label: 'Description' },
                   { key: 'workType', label: 'Type' },
                   { key: 'quantity', label: 'Requested / Used' },
@@ -227,7 +230,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
           </TablePanel>
         )}
         {tab === 'Procurement History' && (
-          <TablePanel>
+          <TablePanel tone="purple">
             {procurementRows.length ? (
               <DataTable
                 rows={procurementRows}
@@ -237,7 +240,7 @@ export default function ToolDetailPage({ tool, usageRows = [], purchaseRequests 
                   { key: 'recordType', label: 'Type' },
                   { key: 'reference', label: 'Reference', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
                   { key: 'linked', label: 'Linked Record' },
-                  { key: 'workOrder', label: 'Work Order' },
+                  { key: 'workOrder', label: 'Work Order', render: value => <RecordLink value={value} mono onClick={value && onOpenWorkOrder ? () => onOpenWorkOrder(value) : undefined} /> },
                   { key: 'quantity', label: 'Quantity' },
                   { key: 'source', label: 'Store / Location' },
                   { key: 'status', label: 'Status', render: value => <Badge tone={workOrderStatusTone(value)}>{value}</Badge> },

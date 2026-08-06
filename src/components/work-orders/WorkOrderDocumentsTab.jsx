@@ -5,7 +5,7 @@ const workspaceClass = 'grid gap-3 lg:grid-cols-2'
 const ptwCardClass = required => `flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-[var(--app-panel)] p-3 ${required ? 'border-[var(--warning)]' : 'border-[var(--app-line)]'} lg:col-span-2`
 const toggleButtonClass = active => `rounded-lg px-4 py-2 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'bg-[var(--app-panel)] text-[var(--app-primary)] shadow-sm' : 'text-[var(--app-muted)] hover:text-[var(--app-primary)]'}`
 const documentCardClass = 'rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-3 [&>header]:mb-3 [&>header]:flex [&>header]:items-start [&>header]:justify-between [&>header]:gap-3 [&>header]:border-b [&>header]:border-[var(--app-line)] [&>header]:pb-3 [&_header_span]:text-[9px] [&_header_span]:font-extrabold [&_header_span]:uppercase [&_header_span]:tracking-[.12em] [&_header_span]:text-[var(--app-muted)] [&_header_h3]:mt-1 [&_header_h3]:text-base [&_header_h3]:font-extrabold [&_header_h3]:text-[var(--app-ink)] [&_header_p]:mt-1 [&_header_p]:text-xs [&_header_p]:text-[var(--app-muted)]'
-const uploadClass = 'relative mb-4 grid cursor-pointer place-items-center gap-2 rounded-2xl border border-dashed border-[var(--app-field-border)] bg-[var(--app-soft-bg)] p-6 text-center text-[var(--app-muted)]'
+const uploadClass = 'app-upload-zone mb-4 grid cursor-pointer place-items-center gap-2 rounded-2xl border border-dashed border-[var(--app-field-border)] bg-[var(--app-soft-bg)] p-6 text-center text-[var(--app-muted)]'
 const listClass = 'grid overflow-hidden rounded-2xl border border-[var(--app-line)] [&>div]:flex [&>div]:items-center [&>div]:gap-3 [&>div]:border-b [&>div]:border-[var(--app-line)] [&>div]:p-3 [&>div:last-child]:border-b-0 [&_strong]:text-sm [&_strong]:text-[var(--app-ink)] [&_small]:text-xs [&_small]:text-[var(--app-muted)]'
 const actionsClass = 'ml-auto flex shrink-0 items-center gap-2'
 const downloadButtonClass = 'inline-flex h-8 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-bold text-[var(--app-muted)] transition hover:bg-[var(--app-soft-bg-hover)] hover:text-[var(--app-ink)]'
@@ -65,7 +65,7 @@ export default function WorkOrderDocumentsTab({
           </header>
           {!readOnly && <label className={uploadClass}>
             <Upload size={18} />
-            <div><strong>Add PTW documents</strong><span>PDF, DOCX, JPG or PNG · multiple files accepted</span></div>
+            <div className="grid gap-1"><strong className="text-sm text-[var(--app-ink)]">Add PTW documents</strong><span className="text-xs">PDF, DOCX, JPG or PNG · multiple files accepted</span></div>
             <input type="file" multiple onChange={addFiles('PTW')} />
           </label>}
           {ptwFiles.length > 0 && (
@@ -105,7 +105,7 @@ export default function WorkOrderDocumentsTab({
         </header>
         {!readOnly && <label className={uploadClass}>
           <Upload size={18} />
-          <div><strong>Add attachments</strong><span>Choose multiple files if needed</span></div>
+          <div className="grid gap-1"><strong className="text-sm text-[var(--app-ink)]">Add attachments</strong><span className="text-xs">Choose multiple files if needed</span></div>
           <input type="file" multiple onChange={addFiles('General')} />
         </label>}
         <div className={listClass}>

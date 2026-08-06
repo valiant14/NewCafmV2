@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, PackageCheck, Play, XCircle } from 'lucide-react'
+import { CheckCircle2, Package, PackageCheck, Play, XCircle } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -8,6 +8,9 @@ import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import StatusBadge from '../components/ui/StatusBadge'
 import TablePanel from '../components/ui/TablePanel'
+import RecordLink from '../components/ui/RecordLink'
+import RecordFilterNotice from '../components/ui/RecordFilterNotice'
+import { matchesReference, openInventoryItem, useRecordFilter } from '../lib/recordNavigation'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
@@ -19,14 +22,18 @@ const purchaseOrderStatuses = ['WAPPR', 'APPR', 'INPRG', 'CLOSE', 'CAN']
 
 export default function PurchaseOrdersPage({
   rows = [],
+<<<<<<< HEAD
+  onOpenWorkOrder,
+=======
   workflow,
+>>>>>>> d2e7bff1e758d984014269be7f9c08eefae2b024
   onUpdateOrder
 }) {
   const access = useModuleAccess('Purchase Orders')
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [status, setStatus] = useState('All')
   const statusRows = status === 'All' ? rows : rows.filter(row => row.status === status)
-  const visibleRows = applyStandardFilters(statusRows, filters, {
+  const scopedRows = applyStandardFilters(statusRows, filters, {
     site: ['site'],
     department: ['department'],
     status: ['status'],
@@ -36,6 +43,11 @@ export default function PurchaseOrdersPage({
     const step = applicationWorkflowStep(workflow, supplyChainMilestone('PURCHASE_ORDER', value))
     return <StatusBadge application="purchaseOrder" value={value} description={step?.stepName} tone={step?.badgeTone} />
   }
+
+  // A link from another page can point at a single record; it narrows the list on arrival.
+  const [focusReference, clearFocusReference] = useRecordFilter()
+  const focusedRows = focusReference ? scopedRows.filter(row => matchesReference(row, focusReference, ['purchaseOrder', 'purchaseRequest', 'workOrder'])) : scopedRows
+  const visibleRows = focusedRows
 
   const cancelOrder = row => onUpdateOrder?.(row.purchaseOrder, { status: 'CAN', cancelledAt: todayStamp() })
   const updateOrderStatus = (row, nextStatus) => {
@@ -106,6 +118,7 @@ export default function PurchaseOrdersPage({
         departmentOptions={optionsFromRows(rows, ['department'])}
         statusOptions={purchaseOrderStatuses}
       />
+      <RecordFilterNotice reference={focusReference} count={visibleRows.length} onClear={clearFocusReference} />
       <TablePanel>
         {visibleRows.length ? (
           <DataTable
@@ -115,8 +128,15 @@ export default function PurchaseOrdersPage({
             columns={[
               { key: 'purchaseOrder', label: 'PO Number', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
               { key: 'purchaseRequest', label: 'Source PR' },
-              { key: 'workOrder', label: 'Work Order' },
-              { key: 'item', label: 'Item / Description' },
+              { key: 'workOrder', label: 'Work Order', render: value => <RecordLink value={value} mono onClick={value && onOpenWorkOrder ? () => onOpenWorkOrder(value) : undefined} /> },
+              { key: 'item', label: 'Item / Description', render: (value, row) => (
+                <RecordLink
+                  value={value || row.itemCode || 'Unnamed item'}
+                  icon={Package}
+                  onClick={row.itemCode || row.item ? () => openInventoryItem(row) : undefined}
+                  title={`Open ${row.itemCode || value} to request a purchase`}
+                />
+              ) },
               { key: 'quantity', label: 'Quantity' },
               { key: 'source', label: 'Supplier / Store' },
               { key: 'site', label: 'Site' },

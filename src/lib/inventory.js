@@ -88,3 +88,10 @@ export const storeStockRows = (storeCode, materials = [], rows = []) =>
       reorderLevel: Number((row.reorderLevel ?? material.reorderLevel) || 0)
     }
   })
+
+// An item can be addressed by its code or by its description: a link from a reservation carries
+// the code, one from the dashboard snapshot carries only the description.
+export const matchesItemId = (id, ...candidates) => {
+  const wanted = String(id || '').trim().toLowerCase()
+  return Boolean(wanted) && candidates.some(value => String(value || '').trim().toLowerCase() === wanted)
+}

@@ -14,6 +14,8 @@ import WorkOrderOverviewTab from './components/work-orders/WorkOrderOverviewTab'
 import WorkOrderMetersTab from './components/work-orders/WorkOrderMetersTab'
 import WorkOrderHeader, { workOrderOutlineButtonClass, workOrderPrimaryButtonClass } from './components/work-orders/WorkOrderHeader'
 import WorkOrderTabs from './components/work-orders/WorkOrderTabs'
+import WorkOrderDatesBar from './components/work-orders/WorkOrderDatesBar'
+import { pathWithRecordFilter } from './lib/recordNavigation'
 import AppState from './components/ui/AppState'
 import Alert from './components/ui/Alert'
 import Toast from './components/ui/Toast'
@@ -1285,7 +1287,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   },[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterId,waterMeterId,energyMeterId,meterReading,waterConsumption,energyConsumption,meterReadingDate,selectedStatus,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
     <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={workflowStatusLabel(workflow,status)||maximoWorkOrderStatusDescriptions[status]||status} statusTone={workflowStepByStatus(workflow,status)?.badgeTone} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} statusOptions={statusSelectOptions} onStatusChange={changeStatus} close={close} printWorkOrder={printWorkOrder} workClosed={workClosed} statusLocked={!canEditWorkOrder||!workflow.allowManualStatusChange} />
-    <WorkOrderTabs tabs={visibleWorkOrderTabs} active={tab} onChange={setTab} alertTabs={tabAlerts} />
+    <WorkOrderTabs tabs={visibleWorkOrderTabs} active={tab} onChange={setTab} alertTabs={tabAlerts} meta={<WorkOrderDatesBar readOnly={!canEditWorkOrder} isPM={isPM} reportedDate={reportedDateValue} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} actualFinish={actualFinish} />} />
     <WorkOrderWorkflowNotice status={status} missing={workflowMissing} nextStep={workflowNextStepText} />
     <div className={workOrderBodyClass}>
       {tab==='Overview' && <WorkOrderOverviewTab readOnly={!canEditWorkOrder} projectName={projectName} sourceRequest={sourceRequest} number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} systemValue={systemValue} setSystemValue={setSystemValue} systemOptions={systemOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={reportedDateValue} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
@@ -1752,8 +1754,11 @@ export default function App() {
     import: canDo(moduleName, 'import')
   }), [canDo])
   const activePage = canNavigate(active) ? active : fallbackPage
-  const navigate = name => {
+  // `options.reference` lets a link land on a list page already narrowed to one record.
+  const navigate = (name, options = {}) => {
     if (!canNavigate(name)) {
+      // Say why. Landing on a different page with no explanation reads as a broken link.
+      notify(`No access to ${name}.`, 'error')
       const fallback = fallbackPage || 'Overview'
       const fallbackPath = pathForPage(fallback)
       setActive(fallback)
@@ -1764,7 +1769,7 @@ export default function App() {
       return
     }
     const path = pathForPage(name)
-    setActive(name); setRoutePath(path); setSearch(''); setMobileOpen(false); window.history.pushState({},'',path)
+    setActive(name); setRoutePath(path); setSearch(''); setMobileOpen(false); window.history.pushState({},'',pathWithRecordFilter(path, options.reference))
   }
   useEffect(() => {
     if (!isAuthenticated || !effectiveUser) return
@@ -1870,7 +1875,9 @@ export default function App() {
     setServiceRequests(rows => upsertLocalRecord(rows, result.serviceRequest, 'sr'))
     return result
   }
-  const openConvertedWorkOrder=(number, sourceRequest)=>{if(!canNavigate('Work Orders')) return navigate(fallbackPage);syncWorkOrderFailureFromRequest(number, sourceRequest);setActive('Work Orders');setSearch('');window.history.pushState({},'',`/work-orders/${number}`)}
+  // A role without Work Orders access - a supply chain manager, say - now gets told why nothing
+  // happened. Bouncing them to a different page looked like the click had broken the app.
+  const openConvertedWorkOrder=(number, sourceRequest)=>{if(!canNavigate('Work Orders')){notify(`No access to Work Orders, so ${number||'this work order'} cannot be opened.`,'error');return}syncWorkOrderFailureFromRequest(number, sourceRequest);setActive('Work Orders');setSearch('');window.history.pushState({},'',`/work-orders/${number}`)}
   // Deep link carries the target number so the tab only applies to that order, never
   // to whichever work order the user opens next.
   const [workOrderDeepLink,setWorkOrderDeepLink]=useState(null)
@@ -2155,12 +2162,19 @@ export default function App() {
       {key:'FAILURE CLASS ID',label:'Class',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Class description'},{key:'problemCount',label:'Problems'},{key:'causeCount',label:'Causes'},{key:'remedyCount',label:'Remedies'}
     ]}/>,
     'Labor': <LaborPage rows={laborRecords} setRows={saveLabor} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} laborRows={laborRecords}/>,
-    'Materials': <MaterialsPage rows={materialRecords} setRows={saveMaterials} stockRows={stockRecords} storeRows={storeRecords} workOrders={scopedWorkOrders} resourceRequests={workOrderResourceRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} onCreateRequest={createPurchaseRequest} onUpdateStock={(storeCode,itemCode,patch)=>upsertStockRecord(storeCode,itemCode,patch)}/>,
+    'Materials': <MaterialsPage onOpenWorkOrder={openConvertedWorkOrder} rows={materialRecords} setRows={saveMaterials} stockRows={stockRecords} storeRows={storeRecords} workOrders={scopedWorkOrders} resourceRequests={workOrderResourceRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} onCreateRequest={createPurchaseRequest} onUpdateStock={(storeCode,itemCode,patch)=>upsertStockRecord(storeCode,itemCode,patch)}/>,
     'Stores': <StoresPage materials={materialRecords} tools={toolRecords} stockRows={stockRecords} storeRows={storeRecords} setStoreRows={saveStores} locationRows={locationRecords} siteRecords={siteRecords} scopeUser={effectiveUser}/>,
+<<<<<<< HEAD
+    'Purchase Requisitions': <PurchaseRequestsPage onOpenWorkOrder={openConvertedWorkOrder} rows={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} materials={materialRecords} tools={toolRecords} storeRows={storeRecords} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
+    'Purchase Orders': <PurchaseOrdersPage onOpenWorkOrder={openConvertedWorkOrder} rows={scopedPurchaseOrders} onUpdateOrder={updatePurchaseOrder}/>,
+    'Reservations': <ReservationsPage onOpenWorkOrder={openConvertedWorkOrder} rows={scopedReservations} stockRows={stockRecords} workOrders={allWorkOrders} onUpdate={updateReservation}/>,
+    'Tools & Equipment': <ToolsPage onOpenWorkOrder={openConvertedWorkOrder} rows={toolRecords} setRows={saveTools} workOrders={scopedWorkOrders} resourceRequests={workOrderResourceRecords} allocations={scopedReservations} storeRows={storeRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} onCreateRequest={createPurchaseRequest}/>,
+=======
     'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} materials={materialRecords} tools={toolRecords} storeRows={storeRecords} siteRecords={siteRecords} departmentRecords={departmentRecords} workflow={applicationWorkflows.SUPPLY_CHAIN} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
     'Purchase Orders': <PurchaseOrdersPage rows={scopedPurchaseOrders} workflow={applicationWorkflows.SUPPLY_CHAIN} onUpdateOrder={updatePurchaseOrder}/>,
     'Reservations': <ReservationsPage rows={scopedReservations} stockRows={stockRecords} workOrders={allWorkOrders} workflow={applicationWorkflows.SUPPLY_CHAIN} onUpdate={updateReservation}/>,
     'Tools & Equipment': <ToolsPage rows={toolRecords} setRows={saveTools} workOrders={scopedWorkOrders} resourceRequests={workOrderResourceRecords} allocations={scopedReservations} storeRows={storeRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} onCreateRequest={createPurchaseRequest}/>,
+>>>>>>> d2e7bff1e758d984014269be7f9c08eefae2b024
     'Users': <UsersPage rows={userRecords} setRows={saveUsers} roleRows={rolePermissionRecords} laborRows={laborRecords} scopeUser={effectiveUser} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
     'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={saveRoles} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
     'Sites': <SitesSettingsPage rows={siteRecords} setRows={saveSites}/>,

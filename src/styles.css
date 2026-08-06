@@ -291,6 +291,46 @@ main,
 
   .app-surface-header--inset { margin: -20px -20px 20px; }
 
+  /* Scoped to a toned surface, so every untoned panel in the app keeps its plain header. Inside
+     one, the header band and the table's heading row take the accent - the same band, chip and
+     border language the Section cards use. */
+  .app-section > .app-surface-header {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--app-section-accent) 24%, var(--app-panel)), color-mix(in srgb, var(--app-section-accent) 6%, var(--app-panel)) 82%);
+    border-bottom-color: color-mix(in srgb, var(--app-section-accent) 38%, var(--app-line));
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-section-accent) 82%, transparent);
+  }
+
+  .app-section .app-surface-title { color: color-mix(in srgb, var(--app-section-accent) 55%, var(--app-ink)); }
+
+  /* A link to another record: a quiet chip that lights up on hover, not an underlined blue word.
+     It mixes from the panel's accent, so the same component looks at home in a green stock table
+     and a purple procurement one. */
+  .app-record-link {
+    align-items: center;
+    background: color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 22%, transparent);
+    border-radius: 999px;
+    color: color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 72%, var(--app-ink));
+    display: inline-flex;
+    font-weight: 750;
+    gap: 6px;
+    max-width: 100%;
+    min-width: 0;
+    padding: 3px 9px;
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  }
+
+  .app-record-link:hover {
+    background: color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 20%, transparent);
+    border-color: color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 46%, transparent);
+    color: var(--app-section-accent, var(--app-primary));
+  }
+
+  .app-record-link > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app-record-link > svg { flex: 0 0 auto; opacity: .6; }
+  .app-record-link:hover > svg { opacity: 1; }
+  .app-section .data-table-heading { background: color-mix(in srgb, var(--app-section-accent) 12%, var(--app-table-header-bg)); color: color-mix(in srgb, var(--app-section-accent) 45%, var(--app-table-heading)); }
+
   .app-surface-title {
     color: var(--app-ink);
     font-size: 15px;
@@ -304,12 +344,15 @@ main,
     font-size: 12px;
   }
 
+  /* Same accent treatment as a Section card: stripe, tinted border and a wash of the tone over
+     the body. The fallbacks resolve to the untinted values, so a StatCard with no tone renders
+     exactly as it did before. */
   .app-stat-card {
     align-items: flex-start;
-    background: var(--app-panel);
-    border: 1px solid var(--app-line);
+    background: color-mix(in srgb, var(--app-stat-accent, var(--app-panel)) 5%, var(--app-panel));
+    border: 1px solid color-mix(in srgb, var(--app-stat-accent, var(--app-line)) 34%, var(--app-line));
     border-radius: var(--app-radius-panel);
-    box-shadow: var(--app-shadow-panel);
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-stat-accent, transparent) 85%, transparent), var(--app-shadow-panel);
     display: flex;
     gap: 12px;
     min-height: 112px;
@@ -318,6 +361,14 @@ main,
     position: relative;
     width: 100%;
   }
+
+  .app-stat-card--green { --app-stat-accent: var(--app-badge-green-text); }
+  .app-stat-card--orange { --app-stat-accent: var(--app-badge-orange-text); }
+  .app-stat-card--blue { --app-stat-accent: var(--app-badge-blue-text); }
+  .app-stat-card--purple { --app-stat-accent: var(--app-badge-purple-text); }
+  .app-stat-card--red { --app-stat-accent: var(--danger); }
+  /* The value is the point of the card, so it carries the tone too. */
+  .app-stat-card [class~="app-stat-value"] { color: color-mix(in srgb, var(--app-stat-accent, var(--app-ink)) 45%, var(--app-ink)); }
 
   .app-stat-card--interactive {
     transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
@@ -341,10 +392,14 @@ main,
     width: 36px;
   }
 
-  .app-stat-icon--green { background: var(--app-badge-green-bg); color: var(--app-badge-green-text); }
-  .app-stat-icon--orange { background: var(--app-badge-orange-bg); color: var(--app-badge-orange-text); }
-  .app-stat-icon--blue { background: var(--app-badge-blue-bg); color: var(--app-badge-blue-text); }
-  .app-stat-icon--purple { background: var(--app-badge-purple-bg); color: var(--app-badge-purple-text); }
+  /* Built from the badge *text* colour, like the section chips: the badge backgrounds go muddy
+     on a dark panel where the text colours stay lit. */
+  .app-stat-card [class~="app-stat-icon"] {
+    background: color-mix(in srgb, var(--app-stat-accent, var(--app-badge-neutral-text)) 20%, var(--app-panel));
+    border: 1px solid color-mix(in srgb, var(--app-stat-accent, var(--app-badge-neutral-text)) 40%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--app-stat-accent, transparent) 28%, transparent);
+    color: var(--app-stat-accent, var(--app-badge-neutral-text));
+  }
 
   .app-stat-value {
     color: var(--app-ink);
@@ -732,6 +787,17 @@ main,
      font scale. `position: relative` anchors the alert dot a tab may carry. */
   .app-detail-tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--app-muted); flex: 0 0 auto; font-size: var(--app-tab-font-size); min-height: 46px; padding: 9px 14px; position: relative; }
   .app-detail-tab:hover { color: var(--app-primary); }
+  /* The record's dates ride the right end of the tab row - visible from every tab without
+     spending a card on them. The row already scrolls horizontally when space runs out. */
+  .app-detail-tabs-meta { align-items: center; display: flex; flex: 0 0 auto; gap: 18px; margin-left: auto; padding: 4px 8px 4px 16px; }
+  .app-detail-date { display: grid; gap: 2px; }
+  .app-detail-date > span { color: var(--app-muted); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+  .app-detail-date > strong { color: var(--app-muted); font-size: 12px; font-weight: 650; white-space: nowrap; }
+  /* Editable targets look like the text beside them until touched - a quiet border on hover
+     and focus is what says "this one you can change". */
+  .app-detail-date input { background: transparent; border: 1px solid transparent; border-radius: 6px; color: var(--app-ink); font-size: 12px; font-weight: 700; padding: 0 2px; }
+  .app-detail-date input:hover { border-color: var(--app-field-border); }
+  .app-detail-date input:focus { border-color: var(--app-field-focus); outline: none; }
   .app-detail-tab--active { border-bottom-color: var(--app-primary); color: var(--app-primary); font-weight: 750; }
 
   .app-metric-card { background: var(--app-soft-bg); border-radius: var(--app-radius-panel); padding: 13px; }
@@ -739,7 +805,9 @@ main,
   .app-metric-card small { color: var(--app-muted); display: block; font-size: 10px; margin-top: 3px; }
   .app-info-card-header { align-items: center; border-bottom: 1px solid var(--app-line); display: flex; gap: 10px; margin-bottom: 15px; padding-bottom: 13px; }
   .app-info-card-header h2 { color: var(--app-ink); font-size: 14px; font-weight: 750; margin: 2px 0 0; }
-  .app-info-field { background: var(--app-soft-bg); border-radius: var(--app-radius-panel); padding: 11px 12px; }
+  /* Inside a toned card the value tiles pick up its accent through the cascade; on an untoned
+     one the fallback is the plain soft background they always had. */
+  .app-info-field { background: color-mix(in srgb, var(--app-section-accent, var(--app-soft-bg)) 7%, var(--app-soft-bg)); border: 1px solid color-mix(in srgb, var(--app-section-accent, var(--app-line)) 16%, transparent); border-radius: var(--app-radius-panel); padding: 11px 12px; }
   .app-info-field dd { color: var(--app-ink); font-size: 13px; font-weight: 700; margin: 4px 0 0; overflow-wrap: anywhere; }
   .app-timeline-row { align-items: center; background: var(--app-soft-bg); border-radius: var(--app-radius-panel); display: grid; gap: 12px; grid-template-columns: auto minmax(0, 1fr) auto; padding: 12px; }
 
@@ -1066,6 +1134,22 @@ main,
 .rounded-2xl,
 .rounded-3xl {
   border-radius: var(--app-radius-panel);
+}
+
+/* A drop zone's file input is the click target, not a control to look at. The native
+   "Choose Files / No file chosen" widget cannot be themed - it renders as a black slab in the
+   dark theme - so it is stretched invisibly over the whole zone instead. */
+.app-upload-zone {
+  position: relative;
+}
+
+.app-upload-zone input[type="file"] {
+  cursor: pointer;
+  height: 100%;
+  inset: 0;
+  opacity: 0;
+  position: absolute;
+  width: 100%;
 }
 
 .app-record-list {

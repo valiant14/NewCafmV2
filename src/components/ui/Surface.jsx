@@ -7,13 +7,16 @@ const elementFor = {
   div: 'div'
 }
 
+// `tone` opts a surface into the same accent treatment as Section and InfoCard - stripe, tinted
+// border, tinted header band and table headings - using the badge palette names.
 export default function Surface({
   as = 'section',
   children,
   className,
   flush = false,
   interactive = false,
-  subtle = false
+  subtle = false,
+  tone
 }) {
   const Component = elementFor[as] || 'section'
 
@@ -24,6 +27,7 @@ export default function Surface({
         flush && 'app-surface--flush',
         subtle && 'app-surface--subtle',
         interactive && 'app-surface--interactive',
+        tone && `app-section app-section--${tone}`,
         className
       )}
     >

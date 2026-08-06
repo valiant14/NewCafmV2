@@ -177,7 +177,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
             <Upload size={18} />
             <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
             <span className="text-xs">Multiple files supported</span>
-            <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple onChange={event => {
+            <input type="file" multiple onChange={event => {
               const files = Array.from(event.target.files || [])
               setPendingFiles(current => [...current, ...files])
               event.target.value = ''
@@ -222,18 +222,31 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
           </div>
         </header>
 
+        {/* The shared detail-tab classes, same as the work order record - and the same meta slot
+            on the right, so the facts that never change ride the tab row instead of costing a
+            card of their own. */}
         {!isNew && (
-          <nav className="flex flex-wrap gap-2 border-b border-[var(--app-line)]">
+          <nav className="app-detail-tabs" role="tablist">
             {tabs.map(([tab, Icon]) => (
               <button
                 key={tab}
-                className={`inline-flex items-center gap-2 px-3 py-3 text-xs transition ${activeTab === tab ? 'font-extrabold text-[var(--app-primary)] shadow-[inset_0_-2px_0_var(--app-primary)]' : 'text-[var(--app-muted)] hover:text-[var(--app-ink)]'}`}
+                type="button"
+                className={`app-detail-tab inline-flex items-center gap-2 ${activeTab === tab ? 'app-detail-tab--active' : ''}`}
                 onClick={() => setActiveTab(tab)}
+                role="tab"
+                aria-selected={activeTab === tab}
               >
                 <Icon size={14} />
                 {tab}
               </button>
             ))}
+            <div className="app-detail-tabs-meta">
+              <span className="app-detail-date"><span>Reported</span><strong>{form.reportedDate?.replace('T', ' ') || 'Not defined'}</strong></span>
+              <span className="app-detail-date"><span>Request Type</span><strong>{form.requestType || 'Service'}</strong></span>
+              {form.convertedWorkOrder && (
+                <span className="app-detail-date"><span>Work Order</span><strong>{form.convertedWorkOrder}</strong></span>
+              )}
+            </div>
           </nav>
         )}
 
@@ -252,8 +265,11 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
             <Alert tone="danger" actions={<button className="app-icon-button" onClick={() => setSubmitError('')} aria-label="Dismiss error"><X size={14} /></button>}>{submitError}</Alert>
           )}
 
+          {/* The reported facts share the top row in two columns, then Notes runs the full width
+              underneath - the one field still open for editing gets the widest box on the page. */}
           {!isNew && activeTab === 'Request Details' && (
             <div className="grid gap-3">
+<<<<<<< HEAD
               <Section compact icon={FileText} title="What happened" note="Reported as submitted - locked once the request exists">
                 <div className="grid gap-3 md:grid-cols-3">
                   <Field label="Priority" icon={Flag} value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} disabled={readOnly} />
@@ -274,26 +290,54 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
               {/* Added after submission, so it stays open for anyone still working the request. */}
               <Section compact tone="purple" icon={ClipboardCheck} title="Notes" note={`Reported ${form.reportedDate?.replace('T', ' ') || 'Not defined'}`}>
                 <Field label="Long Description" icon={FileText} value={form.longDescription} type="textarea" onChange={update('longDescription')} disabled={readOnly} />
+=======
+              <div className="grid items-stretch gap-3 lg:grid-cols-2">
+                <Section compact icon={FileText} title="What happened" note="Reported as submitted - locked once the request exists">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="Priority" icon={Flag} value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} disabled={readOnly} />
+                    <Field label="Reported By" icon={User} value={form.reportedBy} required onChange={update('reportedBy')} disabled={readOnly} />
+                    <div className="md:col-span-2"><Field label="Description" icon={FileText} value={form.description} required onChange={update('description')} disabled={readOnly} /></div>
+                  </div>
+                </Section>
+
+                <Section compact tone="green" icon={MapPin} title="Where" note="Site, location and the asset involved">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="Site" icon={Building2} value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" disabled={readOnly} />
+                    <Field label="Location" icon={MapPin} value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" disabled={readOnly} />
+                    <div className="md:col-span-2"><Field label="Asset" icon={Boxes} value={form.asset} required onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" disabled={readOnly} /></div>
+                  </div>
+                </Section>
+              </div>
+
+              <Section compact tone="purple" icon={ClipboardCheck} title="Notes" note="Detail added while the request is being worked">
+                <Field label="Long Description" icon={FileText} value={form.longDescription} type="textarea" onChange={update('longDescription')} />
+>>>>>>> 88a983b685086cc52705353286b65c8ba8b867b6
               </Section>
             </div>
           )}
 
           {!isNew && activeTab === 'Department Review' && (
-            <div className="grid gap-3">
+            <div className="grid items-start gap-3 lg:grid-cols-2">
               {/* Routing is settled when the request is raised - a technician reads it, a role with
-                  edit rights can re-route. Classification below is the reviewer's own entry. */}
+                  edit rights can re-route. Classification beside it is the reviewer's own entry. */}
               <Section compact tone="purple" icon={Users} title="Routing" note="Which department owns the work and who it is assigned to">
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3">
                   <Field label="Department" icon={Users} value={form.department} required onChange={updateDepartment} suggestions={departmentOptions} placeholder="Search or select a department" disabled={readOnly} />
                   <Field label="Assigned Department" icon={Users} value={form.assignedDepartment || form.department} required onChange={update('assignedDepartment')} suggestions={departmentOptions} placeholder="Search or select an assigned department" disabled={readOnly} />
                 </div>
               </Section>
 
               <Section compact tone="orange" icon={ShieldCheck} title="Classification" note="Set by the reviewer before the request becomes a work order">
+<<<<<<< HEAD
                 <div className="grid gap-3 md:grid-cols-2">
                   <Field label="Sub Department" icon={Users} value={form.subDepartment || ''} onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Optional sub department" disabled={readOnly} />
                   <Field label="Failure Code" icon={ShieldCheck} value={form.failureCode} required onChange={updateFailure} suggestions={failureOptions} placeholder="Search code or description" disabled={readOnly} />
                   <Field label="Problem Code" icon={ShieldCheck} value={form.problemCode || ''} required onChange={update('problemCode')} suggestions={problemOptions} placeholder={form.failureCode ? 'Search matching problem code' : 'Select failure code first'} disabled={readOnly || !form.failureCode} />
+=======
+                <div className="grid gap-3">
+                  <Field label="Sub Department" icon={Users} value={form.subDepartment || ''} required onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Search or select a sub department" disabled={readOnly} />
+                  <Field label="Failure Code" icon={ShieldCheck} value={form.failureCode} required onChange={update('failureCode')} suggestions={failureOptions} placeholder="Search code or description" disabled={readOnly} />
+>>>>>>> 88a983b685086cc52705353286b65c8ba8b867b6
                 </div>
               </Section>
             </div>
@@ -305,11 +349,11 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
               {/* A drop zone that refuses the file it invites you to pick is worse than no drop
                   zone, so a reader gets the list on its own. */}
               {access.edit && (
-                <div className="relative grid min-h-28 cursor-pointer place-items-center content-center gap-2 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-hover-bg)] p-5 text-center text-[var(--app-muted)]">
+                <div className="app-upload-zone grid min-h-28 cursor-pointer place-items-center content-center gap-2 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-hover-bg)] p-5 text-center text-[var(--app-muted)]">
                   <Upload size={25} />
                   <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
                   <span className="text-xs">Photos, PDFs and supporting documents · multiple files supported</span>
-                  <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple onChange={async event => {
+                  <input type="file" multiple onChange={async event => {
                     const files = Array.from(event.target.files || [])
                     event.target.value = ''
                     if (files.length) await uploadFiles(files, 'General').catch(() => {})

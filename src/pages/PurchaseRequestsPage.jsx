@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Plus, ShoppingCart, XCircle } from 'lucide-react'
+import { CheckCircle2, Package, Plus, ShoppingCart, XCircle } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -8,6 +8,9 @@ import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import StatusBadge from '../components/ui/StatusBadge'
 import TablePanel from '../components/ui/TablePanel'
+import RecordLink from '../components/ui/RecordLink'
+import RecordFilterNotice from '../components/ui/RecordFilterNotice'
+import { matchesReference, openInventoryItem, useRecordFilter } from '../lib/recordNavigation'
 import ExportExcelButton from '../components/ui/ExportExcelButton'
 import MasterRecordModal from '../components/master-data/MasterRecordModal'
 import StandardFilters from '../components/ui/StandardFilters'
@@ -53,7 +56,11 @@ export default function PurchaseRequestsPage({
   storeRows = [],
   siteRecords = [],
   departmentRecords = [],
+<<<<<<< HEAD
+  onOpenWorkOrder,
+=======
   workflow,
+>>>>>>> d2e7bff1e758d984014269be7f9c08eefae2b024
   onApproveRequest,
   onUpdateRequest,
   onCreateRequest
@@ -79,12 +86,17 @@ export default function PurchaseRequestsPage({
   })
   const requestRows = requestStatus === 'All' ? rowsWithPo : rowsWithPo.filter(row => row.status === requestStatus)
 
-  const visibleRows = applyStandardFilters(requestRows, filters, {
+  const scopedRows = applyStandardFilters(requestRows, filters, {
     site: ['site'],
     department: ['department'],
     status: ['status'],
     date: ['createdAt']
   })
+
+  // A link from another page can point at a single record; it narrows the list on arrival.
+  const [focusReference, clearFocusReference] = useRecordFilter()
+  const focusedRows = focusReference ? scopedRows.filter(row => matchesReference(row, focusReference, ['purchaseRequest', 'workOrder', 'purchaseOrder'])) : scopedRows
+  const visibleRows = focusedRows
 
   const approveRequest = async row => onApproveRequest?.(row)
   const closeRequest = row => onUpdateRequest?.(row.purchaseRequest, { status: 'CLOSE', closedAt: todayStamp() })
@@ -152,6 +164,7 @@ export default function PurchaseRequestsPage({
         departmentOptions={optionsFromRows(rowsWithPo, ['department'])}
         statusOptions={purchaseRequisitionStatuses}
       />
+      <RecordFilterNotice reference={focusReference} count={visibleRows.length} onClear={clearFocusReference} />
       <TablePanel>
         {visibleRows.length ? (
           <DataTable
@@ -160,8 +173,15 @@ export default function PurchaseRequestsPage({
             pagination
             columns={[
               { key: 'purchaseRequest', label: 'PR Number', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
-              { key: 'workOrder', label: 'Work Order' },
-              { key: 'item', label: 'Item / Description' },
+              { key: 'workOrder', label: 'Work Order', render: value => <RecordLink value={value} mono onClick={value && onOpenWorkOrder ? () => onOpenWorkOrder(value) : undefined} /> },
+              { key: 'item', label: 'Item / Description', render: (value, row) => (
+                <RecordLink
+                  value={value || row.itemCode || 'Unnamed item'}
+                  icon={Package}
+                  onClick={row.itemCode || row.item ? () => openInventoryItem(row) : undefined}
+                  title={`Open ${row.itemCode || value} to request a purchase`}
+                />
+              ) },
               // The figure is the shortfall, so show the arithmetic behind it - an approver
               // seeing "1" against a job that plans 2 needs to know why.
               { key: 'quantity', label: 'Quantity', render: (value, row) => (
