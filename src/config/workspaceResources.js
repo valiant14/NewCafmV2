@@ -83,7 +83,8 @@ const overviewTables = new Set([
 
 export const resourcesForWorkspaceChange = change => {
   const table = String(change?.table || '').toLowerCase()
-  return [...new Set([...(tableResources[table] || []), ...(overviewTables.has(table) ? ['overviewSnapshot'] : [])])]
+  const closedWorkOrder = table === 'dbo.work_orders' && String(change?.status || '').toUpperCase() === 'CLOSE'
+  return [...new Set([...(tableResources[table] || []), ...(overviewTables.has(table) ? ['overviewSnapshot'] : []), ...(closedWorkOrder ? ['serviceRequests'] : [])])]
 }
 
 export const workOrderChildTables = new Set([

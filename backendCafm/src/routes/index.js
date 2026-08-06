@@ -8,6 +8,7 @@ import rolesRouter from './roles.js'
 import usersRouter from './users.js'
 import workOrderWorkflowRouter from './workOrderWorkflow.js'
 import applicationWorkflowsRouter from './applicationWorkflows.js'
+import serviceRequestCommandsRouter from './serviceRequestCommands.js'
 import { crudRouter } from './crudFactory.js'
 import inventoryStockRouter from './inventoryStock.js'
 import attachmentsRouter from './attachments.js'
@@ -79,8 +80,9 @@ const purchaseRequestUpdatePermission = statusTransitionPermission({ approve: ['
 const purchaseOrderUpdatePermission = statusTransitionPermission({ approve: ['APPR'], close: ['CLOSE'] })
 const serviceRequestUpdatePermission = ({ payload, current }) => {
   const converted = payload.converted_work_order_num && payload.converted_work_order_num !== current?.converted_work_order_num
-  const resolved = normalizedStatus(payload.status) === 'RESOLVED' && normalizedStatus(current?.status) !== 'RESOLVED'
-  return converted || resolved ? 'approve' : null
+  const closed = normalizedStatus(payload.status) === 'CLOSED' && normalizedStatus(current?.status) !== 'CLOSED'
+  if (closed) return 'close'
+  return converted ? 'approve' : null
 }
 
 const testTcpConnection = ({ host, port, secure }) => new Promise((resolve, reject) => {
@@ -276,7 +278,7 @@ router.use('/work-orders', crudRouter({
   relatedModules: ['Overview', 'Job Requests', 'Preventive Maintenance', 'Meters'],
   table: 'dbo.work_orders',
   key: 'work_order_num',
-  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'work_group', 'system_name', 'supervisor', 'labor_craft_code', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'held_from_status', 'hold_periods_json', 'created_by_user_id', 'created_at', 'updated_at'],
+  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'work_group', 'system_name', 'supervisor', 'labor_craft_code', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'completed_at', 'closed_at', 'closed_by_user_id', 'closed_by_name', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'held_from_status', 'hold_periods_json', 'created_by_user_id', 'created_at', 'updated_at'],
   defaultOrder: 'reported_at desc, work_order_num desc',
   defaultPageSize: 100,
   scope: workOrderScope,
@@ -322,12 +324,13 @@ router.use('/work-order-tasks', crudRouter({
   ownerSources: [workOrderOwnerSource]
 }))
 
+router.use('/service-requests', serviceRequestCommandsRouter)
 router.use('/service-requests', crudRouter({
   moduleName: 'Job Requests',
   relatedModules: ['Overview', 'Work Orders'],
   table: 'dbo.service_requests',
   key: 'sr_num',
-  columns: ['sr_num', 'description', 'long_description', 'site_code', 'location_code', 'asset_num', 'department_name', 'sub_department_code', 'assigned_department_name', 'reported_by', 'reported_at', 'priority', 'request_type', 'failure_code', 'status', 'converted_work_order_num', 'created_by_user_id', 'created_at', 'updated_at'],
+  columns: ['sr_num', 'description', 'long_description', 'site_code', 'location_code', 'asset_num', 'department_name', 'sub_department_code', 'assigned_department_name', 'reported_by', 'reported_at', 'priority', 'request_type', 'failure_code', 'problem_code', 'status', 'converted_work_order_num', 'created_by_user_id', 'created_at', 'updated_at'],
   defaultOrder: 'reported_at desc, sr_num desc',
   scope: workOrderScope,
   ownerColumn,

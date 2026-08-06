@@ -45,7 +45,7 @@ end;
 
 merge dbo.application_workflows as target
 using (values
-  ('JOB_REQUEST', 'Job Requests', 'Job Request Lifecycle', 'WAPPR', cast(1 as bit), cast(0 as bit), cast(1 as bit), cast(1 as bit)),
+  ('JOB_REQUEST', 'Job Requests', 'Job Request Lifecycle', 'NEW', cast(1 as bit), cast(0 as bit), cast(1 as bit), cast(1 as bit)),
   ('SUPPLY_CHAIN', 'Supply Chain', 'Supply Chain Fulfilment', 'REQUESTED', cast(0 as bit), cast(0 as bit), cast(1 as bit), cast(1 as bit))
 ) as source(workflow_key, module_name, workflow_name, initial_status, allow_manual_status_change, allow_backward_transition, allow_cancel, is_active)
 on target.workflow_key = source.workflow_key
@@ -63,9 +63,10 @@ begin
     workflow_key, step_id, status_code, step_name, sequence_no,
     is_automatic, requirements_json, badge_tone
   ) values
-    ('JOB_REQUEST', 'STEP-WAPPR', 'WAPPR', 'Waiting for Review', 10, 0, '[]', 'orange'),
-    ('JOB_REQUEST', 'STEP-CONVERTED', 'CONVERTED', 'Converted to Work Order', 20, 0, '["request_details","site_location","department_routing","failure_classification","linked_work_order"]', 'blue'),
-    ('JOB_REQUEST', 'STEP-RESOLVED', 'RESOLVED', 'Resolved', 30, 1, '["linked_work_order_closed"]', 'green');
+    ('JOB_REQUEST', 'STEP-NEW', 'NEW', 'New', 10, 0, '["request_details","site_location","responsible_department"]', 'purple'),
+    ('JOB_REQUEST', 'STEP-WAPPR', 'WAPPR', 'Department Review / Waiting Approval', 20, 0, '["request_details","site_location","responsible_department"]', 'orange'),
+    ('JOB_REQUEST', 'STEP-INPRG', 'INPRG', 'CM Work Order In Progress', 30, 0, '["department_routing","asset","failure_classification","linked_work_order"]', 'blue'),
+    ('JOB_REQUEST', 'STEP-CLOSED', 'CLOSED', 'Closed', 40, 1, '["linked_work_order_closed"]', 'green');
 end;
 
 if not exists (select 1 from dbo.application_workflow_steps where workflow_key = 'SUPPLY_CHAIN')

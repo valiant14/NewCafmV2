@@ -1,5 +1,5 @@
 export const WORK_ORDER_REQUIREMENTS = Object.freeze([
-  { id: 'overview', label: 'Complete overview', description: 'Description, site, location, ownership, and target dates.', tab: 'Overview' },
+  { id: 'overview', label: 'Complete overview', description: 'Description, work type, priority, site, location, responsible department, and CM asset.', tab: 'Overview' },
   { id: 'planned_labor', label: 'Planned labor', description: 'Craft, estimated hours, and assigned crew.', tab: 'Plan' },
   { id: 'planned_materials_cm', label: 'Corrective materials', description: 'At least one planned material for corrective work.', tab: 'Plan' },
   { id: 'planned_tools_cm', label: 'Corrective tools', description: 'At least one planned tool or equipment item for corrective work.', tab: 'Plan' },

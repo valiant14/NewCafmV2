@@ -3,13 +3,10 @@ import { workOrderWorkflowSteps } from './workOrderWorkflow'
 export const STATUS_MATRIX = {
   serviceRequest: {
     NEW: 'New request created',
-    QUEUED: 'Waiting for review',
-    INPRG: 'In Progress',
-    CONVERTED: 'Converted to Work Order',
-    RESOLVED: 'Resolved',
+    WAPPR: 'Department Review / Waiting Approval',
+    INPRG: 'CM Work Order In Progress',
     CLOSED: 'Closed',
-    CAN: 'Cancelled',
-    WAPPR: 'Waiting for Approval'
+    CAN: 'Cancelled'
   },
   workOrder: {
     WAPPR: 'Waiting for Approval',
@@ -75,7 +72,7 @@ export const STATUS_MATRIX = {
 export const statusOptions = application => Object.keys(STATUS_MATRIX[application] || {})
 
 const STATUS_ALIASES = {
-  serviceRequest: { APPROVED: 'CONVERTED' },
+  serviceRequest: { APPROVED: 'INPRG', CONVERTED: 'INPRG', RESOLVED: 'CLOSED', QUEUED: 'WAPPR' },
   preventiveMaintenance: { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE', DRAFT: 'DRAFT' },
   incident: { OPEN: 'NEW', 'UNDER REVIEW': 'INPRG' },
   purchaseRequisition: { 'PURCHASE REQUESTED': 'WAPPR', REQUESTED: 'WAPPR', APPROVED: 'APPR', CLOSED: 'CLOSE', CANCELLED: 'CAN' },

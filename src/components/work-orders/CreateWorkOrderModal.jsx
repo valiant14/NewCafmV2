@@ -50,6 +50,7 @@ export default function CreateWorkOrderModal({ rows, assets, locationRows = [], 
     !form.description.trim() && 'Description',
     !form.site && 'Site',
     !form.location && 'Location',
+    form.type === 'CM' && !form.asset && 'Asset',
     !form.department && 'Department'
   ].filter(Boolean)
 
@@ -86,11 +87,11 @@ export default function CreateWorkOrderModal({ rows, assets, locationRows = [], 
             </div>
           </Section>
 
-          <Section compact tone="green" icon={MapPin} title="Where" note="Site and location are required, asset is optional">
+          <Section compact tone="green" icon={MapPin} title="Where" note={form.type === 'CM' ? 'Site, location, and asset are required for corrective work' : 'Site and location are required'}>
             <div className="grid gap-3 md:grid-cols-3">
               <Field label="Site" icon={Building2} value={form.site} required onChange={changeSite} suggestions={sites} placeholder="Search or select a site" />
               <Field label="Location" icon={MapPin} value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
-              <Field label="Asset" icon={Boxes} value={form.asset} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'Optional - no scoped assets available'} />
+              <Field label="Asset" icon={Boxes} value={form.asset} required={form.type === 'CM'} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'No scoped assets available'} />
             </div>
           </Section>
 

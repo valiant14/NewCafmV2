@@ -29,6 +29,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { attachmentApi } from '../services/api'
 
 const blankRequest = () => ({
+  __isNew: true,
   sr: 'AUTO',
   description: '',
   longDescription: '',
@@ -36,14 +37,17 @@ const blankRequest = () => ({
   location: '',
   asset: '',
   department: '',
+  subDepartment: '',
+  assignedDepartment: '',
   reportedBy: '',
   reportedDate: nowLocalDateTime(),
   priority: 'Medium',
   requestType: 'Service',
   failureCode: '',
+  problemCode: '',
   status: 'NEW'
 })
-const templateHeaders = Object.keys(blankRequest()).filter(key => key !== 'sr')
+const templateHeaders = Object.keys(blankRequest()).filter(key => !['sr', '__isNew'].includes(key))
 
 const exportColumns = [
   { key: 'sr', label: 'SR Number' },
@@ -60,11 +64,12 @@ const exportColumns = [
   { key: 'priority', label: 'Priority' },
   { key: 'requestType', label: 'Request Type' },
   { key: 'failureCode', label: 'Failure Code' },
+  { key: 'problemCode', label: 'Problem Code' },
   { key: 'status', label: 'Status' },
   { key: 'convertedWorkOrder', label: 'Converted Work Order' }
 ]
 
-export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, workflow, access = {}, notify }) {
+export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, failureRecords = [], workflow, access = {}, notify }) {
   const { user } = useAuth()
   const activeWorkflow = normalizeApplicationWorkflow(workflow || DEFAULT_APPLICATION_WORKFLOWS.JOB_REQUEST, 'JOB_REQUEST')
   const requestFromPath = () => {
@@ -75,7 +80,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useScopedFilters(user, requests)
-  const convertedIndex = activeWorkflow.steps.findIndex(step => step.statusCode === 'CONVERTED')
+  const convertedIndex = activeWorkflow.steps.findIndex(step => step.requirements?.includes('linked_work_order'))
   const convertedStatuses = activeWorkflow.steps.slice(Math.max(0, convertedIndex)).map(step => step.statusCode)
   const reviewStatuses = activeWorkflow.steps.slice(0, convertedIndex < 0 ? activeWorkflow.steps.length : convertedIndex).map(step => step.statusCode)
   const tabRows = tab === 'All' ? requests : requests.filter(request => tab === 'Awaiting Review' ? reviewStatuses.includes(request.status) : convertedStatuses.includes(request.status))
@@ -99,7 +104,14 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   const submit = async (request, files = []) => {
     // blankRequest() stamps when the form is constructed - which is route-evaluation
     // time - so the reported time is taken again at the moment of submission.
-    const submitted = { ...request, __isNew: true, reportedDate: nowLocalDateTime(), sr: 'AUTO', status: activeWorkflow.initialStatus, requestType: 'Service' }
+    const submitted = {
+      ...request,
+      __isNew: true,
+      assignedDepartment: request.assignedDepartment || request.department,
+      reportedDate: nowLocalDateTime(),
+      sr: 'AUTO',
+      status: activeWorkflow.initialStatus
+    }
     if (!access.create) return request
     await setRequests(list => [...list, submitted])
     const failedUploads = []
@@ -115,12 +127,14 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   }
   const approve = async request => {
     if (!access.approve) return request
-    const createdWorkOrder = await onConvert(request)
+    const result = await onConvert(request)
+    const createdWorkOrder = result?.workOrder || result
     if (!createdWorkOrder?.WORKORDER) return request
-    const updated = { ...request, status: 'CONVERTED', convertedWorkOrder: createdWorkOrder.WORKORDER }
-    await setRequests(list => list.map(item => item.sr === updated.sr ? updated : item))
+    const updated = result?.serviceRequest || { ...request, status: 'INPRG', convertedWorkOrder: createdWorkOrder.WORKORDER }
+    if (!result?.serviceRequest) await setRequests(list => list.map(item => item.sr === updated.sr ? updated : item))
     setSelected(updated)
     window.history.replaceState({}, '', `/job-requests/${updated.sr}`)
+    notify?.(`CM work order #${createdWorkOrder.WORKORDER} created and linked.`, 'success')
     return updated
   }
   const advance = async (request, status) => {
@@ -137,7 +151,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
         eyebrow="REQUEST INTAKE"
         title="Job Requests"
         description="Submit, review, approve, and convert job requests into Corrective Maintenance work orders."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={templateHeaders} fileName="Job_Requests_Template.xlsx" /><ExportExcelButton module="Job Requests" rows={visible} columns={exportColumns} />{access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => { const importedAt = Date.now(); const normalized = rows.map((row, index) => { const suppliedStatus = String(row.status || '').trim().toUpperCase(); return { ...blankRequest(), ...row, ...(row.sr ? {} : { __isNew: true }), status: applicationWorkflowStep(activeWorkflow, suppliedStatus)?.statusCode || normalizeStatus('serviceRequest', suppliedStatus, activeWorkflow.initialStatus), sr: row.sr || `SR-PENDING-${importedAt}-${index + 1}` } }); return setRequests(current => mergeImportedRows(current, normalized, 'sr')) }} />}{access.create && <Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button>}</div>}
+        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={templateHeaders} fileName="Job_Requests_Template.xlsx" /><ExportExcelButton module="Job Requests" rows={visible} columns={exportColumns} />{access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => { const importedAt = Date.now(); const normalized = rows.map((row, index) => { const suppliedStatus = String(row.status || '').trim().toUpperCase(); return { ...blankRequest(), ...row, __isNew: !row.sr, status: applicationWorkflowStep(activeWorkflow, suppliedStatus)?.statusCode || normalizeStatus('serviceRequest', suppliedStatus, activeWorkflow.initialStatus), sr: row.sr || `SR-PENDING-${importedAt}-${index + 1}` } }); return setRequests(current => mergeImportedRows(current, normalized, 'sr')) }} />}{access.create && <Button onClick={() => open(blankRequest())}><Plus size={17} />New job request</Button>}</div>}
       />
       <ImportNotice fileName={imported} subject="job request" onClear={() => setImported('')} />
       <IndexTabs
@@ -146,7 +160,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
         tabs={[
           { key: 'All', label: 'All Job Requests', count: requests.length },
           { key: 'Awaiting Review', label: 'Awaiting Review', count: requests.filter(request => reviewStatuses.includes(request.status)).length },
-          { key: 'Converted', label: 'Converted / Resolved', count: requests.filter(request => convertedStatuses.includes(request.status)).length }
+          { key: 'Converted', label: 'Work Order / Closed', count: requests.filter(request => convertedStatuses.includes(request.status)).length }
         ]}
       />
       <StandardFilters
@@ -177,8 +191,8 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     </>
   )
 
-  const detailProps = { assets, workOrders, siteRecords, departmentRecords, failureOptions, workflow: activeWorkflow, onBack: close, onSubmit: submit, onApprove: approve, onAdvance: advance, onOpenWorkOrder, access }
-  if (selected?.status === 'NEW') return <>{listView}<ModalOverlay><ServiceRequestDetail modal request={selected} {...detailProps} /></ModalOverlay></>
+  const detailProps = { assets, workOrders, siteRecords, departmentRecords, failureOptions, failureRecords, workflow: activeWorkflow, onBack: close, onSubmit: submit, onApprove: approve, onAdvance: advance, onOpenWorkOrder, access }
+  if (selected?.__isNew) return <>{listView}<ModalOverlay><ServiceRequestDetail modal request={selected} {...detailProps} /></ModalOverlay></>
   if (selected) return <ServiceRequestDetail request={selected} {...detailProps} />
   return listView
 }

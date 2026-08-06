@@ -215,14 +215,39 @@ const readWorkOrderContext = async (pool, workOrderNumber) => {
 
 const missingOverview = order => [
   !text(order.description) && 'Description',
+  !text(order.work_type) && 'Work type',
+  !positive(order.priority) && 'Priority',
   !text(order.site_code) && 'Site',
   !text(order.location_code) && 'Location',
+  statusCode(order.work_type || 'CM') === 'CM' && !text(order.asset_num) && 'Asset',
   !text(order.department_name) && 'Department',
   !text(order.assigned_department_name) && 'Assigned department',
-  !order.target_start_at && 'Target start',
-  !order.target_finish_at && 'Target finish',
   order.target_start_at && order.target_finish_at && new Date(order.target_finish_at) < new Date(order.target_start_at) && 'Target finish before target start'
 ].filter(Boolean)
+
+const statusTimestampPatch = (status, order, user) => {
+  const next = statusCode(status)
+  const now = new Date()
+  return {
+    ...(next === 'INPRG' && !order.actual_start_at ? { actual_start_at: now } : {}),
+    ...(['COMP', 'CLOSE'].includes(next) && !order.actual_finish_at ? { actual_finish_at: now } : {}),
+    ...(['COMP', 'CLOSE'].includes(next) && !order.completed_at ? { completed_at: now } : {}),
+    ...(next === 'CLOSE' && !order.closed_at ? { closed_at: now } : {}),
+    ...(next === 'CLOSE' && !order.closed_by_user_id ? { closed_by_user_id: user?.userId || null } : {}),
+    ...(next === 'CLOSE' && !order.closed_by_name ? { closed_by_name: user?.name || user?.username || user?.userId || null } : {})
+  }
+}
+
+const withoutServerCloseout = payload => {
+  const {
+    completed_at: _completedAt,
+    closed_at: _closedAt,
+    closed_by_user_id: _closedByUserId,
+    closed_by_name: _closedByName,
+    ...editable
+  } = payload
+  return editable
+}
 
 const resourceIsReturned = row => {
   const quantity = Number(row.quantity || row.issuedQuantity || row.taken || 0)
@@ -280,6 +305,7 @@ const missingForStatus = async (pool, workOrderNumber, order, target, workflow) 
 }
 
 export const prepareWorkOrderCreate = async ({ pool, payload }) => {
+  payload = withoutServerCloseout(payload)
   const workflow = await getWorkOrderWorkflow(pool)
   const requestedStatus = statusCode(payload.status)
   if (requestedStatus && !stepForStatus(workflow, requestedStatus)) {
@@ -287,16 +313,24 @@ export const prepareWorkOrderCreate = async ({ pool, payload }) => {
     error.status = 400
     throw error
   }
-  return {
+  const prepared = {
     ...payload,
     status: requestedStatus || workflow.initial_status,
     ptw_required: payload.ptw_required === undefined ? workflow.ptw_required_default : payload.ptw_required,
     held_from_status: payload.held_from_status || null,
     hold_periods_json: payload.hold_periods_json || null
   }
+  const missing = missingOverview(prepared)
+  if (missing.length) {
+    const error = workflowError('Cannot create work order', missing)
+    error.status = 400
+    throw error
+  }
+  return prepared
 }
 
-export const validateWorkOrderUpdate = async ({ pool, payload, current, id }) => {
+export const validateWorkOrderUpdate = async ({ pool, payload, current, id, req }) => {
+  payload = withoutServerCloseout(payload)
   const workflow = await getWorkOrderWorkflow(pool)
   const previous = statusCode(current.status)
   let next = statusCode(payload.status ?? current.status)
@@ -307,11 +341,7 @@ export const validateWorkOrderUpdate = async ({ pool, payload, current, id }) =>
     const automaticOrder = { ...current, ...payload, status: next }
     const automaticMissing = await missingForStatus(pool, id, automaticOrder, next, workflow)
     if (automaticMissing.length) return payload
-    const timestampPatch = next === 'INPRG' && !automaticOrder.actual_start_at
-      ? { actual_start_at: new Date() }
-      : ['COMP', 'CLOSE'].includes(next) && !automaticOrder.actual_finish_at
-        ? { actual_finish_at: new Date() }
-        : {}
+    const timestampPatch = statusTimestampPatch(next, automaticOrder, req?.user)
     return { ...payload, ...timestampPatch, status: next }
   }
   const allowed = allowedWorkOrderTransitions(previous, workflow, current.held_from_status)
@@ -319,5 +349,5 @@ export const validateWorkOrderUpdate = async ({ pool, payload, current, id }) =>
   const merged = { ...current, ...payload, status: next }
   const missing = await missingForStatus(pool, id, merged, next, workflow)
   if (missing.length) throw workflowError(`Cannot move work order to ${next}`, missing)
-  return payload
+  return { ...payload, ...statusTimestampPatch(next, merged, req?.user), status: next }
 }

@@ -82,10 +82,10 @@ export default function WorkOrderOverviewTab({
 
         <Section compact tone="green" icon={Boxes} title="Asset & Location" note="Equipment, facility, and project relationship">
           <div className={gridClass}>
-            <Field label="Asset" value={assetValue} locked={readOnly} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'Optional - no scoped assets available'} />
+            <Field label="Asset" value={assetValue} required={workType === 'CM'} locked={readOnly} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'No scoped assets available'} />
             <Field label="Location" value={locationValue} required locked={readOnly} onChange={event => setLocationValue(event.target.value)} suggestions={locationOptions} placeholder="Search or select a location" />
-            <Field label="Asset Description" value={assetDescription} required locked={readOnly} onChange={event => setAssetDescription(event.target.value)} placeholder="Required asset description" />
-            <Field label="Project" value={projectName} required locked />
+            <Field label="Asset Description" value={assetDescription} locked={readOnly} onChange={event => setAssetDescription(event.target.value)} placeholder="Populated from the asset master" />
+            <Field label="Project" value={projectName} locked />
           </div>
         </Section>
       </div>
@@ -119,8 +119,8 @@ export default function WorkOrderOverviewTab({
             <Field label="Reported Date" value={reportedDate} type="datetime-local" locked />
             {/* Work cannot be scheduled to start before it was reported, and cannot finish
                 before it starts - the pickers refuse those dates rather than only warning. */}
-            <Field label="Target Start" value={targetStart} required onChange={event => setTargetStart(event.target.value)} type="datetime-local" locked={readOnly || isPM} min={reportedDate} />
-            <Field label="Target Finish" value={targetFinish} required locked={readOnly} onChange={event => setTargetFinish(event.target.value)} type="datetime-local" min={targetStart || reportedDate} />
+            <Field label="Target Start" value={targetStart} onChange={event => setTargetStart(event.target.value)} type="datetime-local" locked={readOnly || isPM} min={reportedDate} />
+            <Field label="Target Finish" value={targetFinish} locked={readOnly} onChange={event => setTargetFinish(event.target.value)} type="datetime-local" min={targetStart || reportedDate} />
             <Field label="Actual Start" value={actualStart} onChange={event => setActualStart(event.target.value)} type="datetime-local" disabled />
             <Field label="Actual Finish" value={actualFinish} onChange={event => setActualFinish(event.target.value)} type="datetime-local" disabled />
             <Field label="SLA Met?" value={slaLabel} locked />

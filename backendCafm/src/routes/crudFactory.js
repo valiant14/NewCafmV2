@@ -373,6 +373,7 @@ const emitChange = (req, payload, row = {}) => {
     ownerUserId: row.created_by_user_id || null,
     siteCode: row.site_code || req.body?.site_code || null,
     department: row.department_name || req.body?.department_name || null,
+    status: row.status || null,
     ...payload
   })
 }

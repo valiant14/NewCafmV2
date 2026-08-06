@@ -5,20 +5,21 @@ export const APPLICATION_WORKFLOW_DEFINITIONS = Object.freeze({
     workflow_key: 'JOB_REQUEST',
     module_name: 'Job Requests',
     workflow_name: 'Job Request Lifecycle',
-    initial_status: 'WAPPR',
+    initial_status: 'NEW',
     allow_manual_status_change: true,
     allow_backward_transition: false,
     allow_cancel: true,
     is_active: true,
-    protected_statuses: ['WAPPR', 'CONVERTED', 'RESOLVED'],
+    protected_statuses: ['NEW', 'WAPPR', 'INPRG', 'CLOSED'],
     requirement_ids: [
-      'request_details', 'site_location', 'department_routing', 'asset',
+      'request_details', 'site_location', 'responsible_department', 'department_routing', 'asset',
       'failure_classification', 'linked_work_order', 'linked_work_order_closed'
     ],
     steps: [
-      { step_id: 'STEP-WAPPR', status_code: 'WAPPR', step_name: 'Waiting for Review', sequence_no: 10, is_automatic: false, requirements: [], badge_tone: 'orange' },
-      { step_id: 'STEP-CONVERTED', status_code: 'CONVERTED', step_name: 'Converted to Work Order', sequence_no: 20, is_automatic: false, requirements: ['request_details', 'site_location', 'department_routing', 'failure_classification', 'linked_work_order'], badge_tone: 'blue' },
-      { step_id: 'STEP-RESOLVED', status_code: 'RESOLVED', step_name: 'Resolved', sequence_no: 30, is_automatic: true, requirements: ['linked_work_order_closed'], badge_tone: 'green' }
+      { step_id: 'STEP-NEW', status_code: 'NEW', step_name: 'New', sequence_no: 10, is_automatic: false, requirements: ['request_details', 'site_location', 'responsible_department'], badge_tone: 'purple' },
+      { step_id: 'STEP-WAPPR', status_code: 'WAPPR', step_name: 'Department Review / Waiting Approval', sequence_no: 20, is_automatic: false, requirements: ['request_details', 'site_location', 'responsible_department'], badge_tone: 'orange' },
+      { step_id: 'STEP-INPRG', status_code: 'INPRG', step_name: 'CM Work Order In Progress', sequence_no: 30, is_automatic: false, requirements: ['department_routing', 'asset', 'failure_classification', 'linked_work_order'], badge_tone: 'blue' },
+      { step_id: 'STEP-CLOSED', status_code: 'CLOSED', step_name: 'Closed', sequence_no: 40, is_automatic: true, requirements: ['linked_work_order_closed'], badge_tone: 'green' }
     ]
   }),
   SUPPLY_CHAIN: Object.freeze({
@@ -56,6 +57,8 @@ let cacheExpiresAt = 0
 
 const text = value => String(value ?? '').trim()
 const statusCode = value => text(value).toUpperCase().replace(/[^A-Z0-9_]/g, '')
+const serviceRequestPriorities = new Set(['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY'])
+const serviceRequestTypes = new Set(['CORRECTIVE', 'SERVICE', 'INSPECTION'])
 const listFromJson = value => {
   if (Array.isArray(value)) return value
   if (!value) return []
@@ -170,19 +173,25 @@ const jobRequestRequirementGaps = async (pool, request, requirements) => {
     if (requirement === 'request_details') {
       add(!text(request.description), 'Description')
       add(!text(request.priority), 'Priority')
+      add(!text(request.request_type), 'Request type')
       add(!text(request.reported_by), 'Reported by')
+      add(text(request.priority) && !serviceRequestPriorities.has(text(request.priority).toUpperCase()), 'Valid priority')
+      add(text(request.request_type) && !serviceRequestTypes.has(text(request.request_type).toUpperCase()), 'Valid request type')
     }
     if (requirement === 'site_location') {
       add(!text(request.site_code), 'Site')
       add(!text(request.location_code), 'Location')
     }
+    if (requirement === 'responsible_department') add(!text(request.department_name), 'Department')
     if (requirement === 'department_routing') {
       add(!text(request.department_name), 'Department')
-      add(!text(request.sub_department_code), 'Sub department')
       add(!text(request.assigned_department_name), 'Assigned department')
     }
     if (requirement === 'asset') add(!text(request.asset_num), 'Asset')
-    if (requirement === 'failure_classification') add(!text(request.failure_code), 'Failure code')
+    if (requirement === 'failure_classification') {
+      add(!text(request.failure_code), 'Failure code')
+      add(!text(request.problem_code), 'Problem code')
+    }
     if (requirement === 'linked_work_order') add(!text(request.converted_work_order_num), 'Linked work order')
     if (requirement === 'linked_work_order_closed') {
       if (!text(request.converted_work_order_num)) {
@@ -201,14 +210,22 @@ const jobRequestRequirementGaps = async (pool, request, requirements) => {
 export const prepareServiceRequestCreate = async ({ pool, payload }) => {
   const workflow = await getApplicationWorkflow('JOB_REQUEST', pool)
   if (!workflow) return payload
-  const requested = statusCode(payload.status)
-  const effectiveStatus = !requested || requested === 'NEW' ? workflow.initial_status : requested
-  if (!applicationWorkflowStep(workflow, effectiveStatus) && effectiveStatus !== 'CAN') {
-    const error = new Error(`Status ${effectiveStatus} is not part of the active Job Request workflow.`)
+  const effectiveStatus = workflow.initial_status
+  const prepared = {
+    ...payload,
+    assigned_department_name: text(payload.assigned_department_name) || text(payload.department_name),
+    converted_work_order_num: null,
+    reported_at: new Date(),
+    status: effectiveStatus
+  }
+  const initialStep = applicationWorkflowStep(workflow, effectiveStatus)
+  const missing = await jobRequestRequirementGaps(pool, prepared, initialStep?.requirements || [])
+  if (missing.length) {
+    const error = workflowError('Cannot create Job Request', missing)
     error.status = 400
     throw error
   }
-  return { ...payload, status: effectiveStatus }
+  return prepared
 }
 
 export const validateServiceRequestUpdate = async ({ pool, payload, current }) => {
@@ -218,7 +235,8 @@ export const validateServiceRequestUpdate = async ({ pool, payload, current }) =
   const previous = statusCode(current.status)
   const next = statusCode(payload.status)
   if (!next || next === previous) return payload
-  const semanticConversion = next === 'CONVERTED' && text(payload.converted_work_order_num || current.converted_work_order_num)
+  const semanticConversion = applicationWorkflowStep(workflow, next)?.requirements.includes('linked_work_order')
+    && text(payload.converted_work_order_num || current.converted_work_order_num)
   if (!semanticConversion && !allowedApplicationTransitions(previous, workflow).includes(next)) {
     throw workflowError(`Job Request transition ${previous} to ${next} is not allowed`)
   }

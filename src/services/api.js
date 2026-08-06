@@ -309,6 +309,9 @@ export const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], work
   'TARGET FINISH ': dateValue(row.target_finish_at),
   'ACTUAL START ': dateValue(row.actual_start_at),
   'ACTUAL FINISH ': dateValue(row.actual_finish_at),
+  'COMPLETED AT': dateValue(row.completed_at),
+  'CLOSED AT': dateValue(row.closed_at),
+  'CLOSED BY': row.closed_by_name || row.closed_by_user_id || '',
   'REPORTED DATE ': dateValue(row.reported_at),
   'SOURCE SR': row.source_sr_num || '',
   'PM NUMBER': row.pm_num || '',
@@ -360,6 +363,7 @@ const mapServiceRequest = row => ({
   priority: row.priority || '',
   requestType: row.request_type || '',
   failureCode: row.failure_code || '',
+  problemCode: row.problem_code || '',
   status: row.status,
   convertedWorkOrder: row.converted_work_order_num || '',
   createdBy: row.created_by_user_id || ''
@@ -755,6 +759,17 @@ export const supplyChainApi = {
       ...result,
       workOrder: mapWorkOrder(result.workOrder),
       inventoryStocks: (result.inventoryStocks || []).map(mapInventoryStock)
+    }
+  }
+}
+
+export const serviceRequestApi = {
+  convertToCorrectiveWorkOrder: async serviceRequestNumber => {
+    const result = await api.post(`/service-requests/${encodeURIComponent(serviceRequestNumber)}/convert`, {})
+    return {
+      ...result,
+      serviceRequest: mapServiceRequest(result.serviceRequest),
+      workOrder: mapWorkOrder(result.workOrder)
     }
   }
 }

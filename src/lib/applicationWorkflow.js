@@ -6,20 +6,21 @@ export const APPLICATION_WORKFLOW_DEFINITIONS = {
   JOB_REQUEST: {
     key: 'JOB_REQUEST',
     label: 'Job Requests',
-    description: 'Control intake review, CM conversion, and resolution after the linked work order closes.',
-    protectedStatuses: ['WAPPR', 'CONVERTED', 'RESOLVED'],
+    description: 'Control request intake, department review, CM conversion, and closure with the linked work order.',
+    protectedStatuses: ['NEW', 'WAPPR', 'INPRG', 'CLOSED'],
     presets: [
-      { code: 'WAPPR', label: 'Waiting for Review', tone: 'orange' },
-      { code: 'REVIEW', label: 'Department Review', tone: 'purple' },
-      { code: 'CONVERTED', label: 'Converted to Work Order', tone: 'blue' },
-      { code: 'RESOLVED', label: 'Resolved', tone: 'green' }
+      { code: 'NEW', label: 'New', tone: 'purple' },
+      { code: 'WAPPR', label: 'Department Review / Waiting Approval', tone: 'orange' },
+      { code: 'INPRG', label: 'CM Work Order In Progress', tone: 'blue' },
+      { code: 'CLOSED', label: 'Closed', tone: 'green' }
     ],
     requirements: [
-      { id: 'request_details', label: 'Request details', section: 'Request', description: 'Description, priority, and reporter are complete.' },
+      { id: 'request_details', label: 'Request details', section: 'Request', description: 'Description, priority, request type, and reporter are complete.' },
       { id: 'site_location', label: 'Site and location', section: 'Request', description: 'A valid site and service location are selected.' },
-      { id: 'department_routing', label: 'Department routing', section: 'Review', description: 'Department, sub-department, and assignee routing are complete.' },
+      { id: 'responsible_department', label: 'Responsible department', section: 'Request', description: 'The department responsible for reviewing the request is selected.' },
+      { id: 'department_routing', label: 'Department routing', section: 'Review', description: 'Department and assigned department routing are complete; sub-department is optional.' },
       { id: 'asset', label: 'Related asset', section: 'Review', description: 'A maintainable asset is linked to the request.' },
-      { id: 'failure_classification', label: 'Failure classification', section: 'Review', description: 'The reviewer selected a failure class.' },
+      { id: 'failure_classification', label: 'Failure classification', section: 'Review', description: 'The reviewer selected matching failure and problem codes.' },
       { id: 'linked_work_order', label: 'Linked work order', section: 'Conversion', description: 'A corrective work order has been created and linked.' },
       { id: 'linked_work_order_closed', label: 'Work order closed', section: 'Resolution', description: 'The linked work order reached its closed stage.' }
     ]
@@ -57,15 +58,16 @@ const defaults = {
     workflowKey: 'JOB_REQUEST',
     moduleName: 'Job Requests',
     workflowName: 'Job Request Lifecycle',
-    initialStatus: 'WAPPR',
+    initialStatus: 'NEW',
     allowManualStatusChange: true,
     allowBackwardTransition: false,
     allowCancel: true,
     isActive: true,
     steps: [
-      { stepId: 'STEP-WAPPR', statusCode: 'WAPPR', stepName: 'Waiting for Review', sequence: 10, isAutomatic: false, requirements: [], badgeTone: 'orange' },
-      { stepId: 'STEP-CONVERTED', statusCode: 'CONVERTED', stepName: 'Converted to Work Order', sequence: 20, isAutomatic: false, requirements: ['request_details', 'site_location', 'department_routing', 'failure_classification', 'linked_work_order'], badgeTone: 'blue' },
-      { stepId: 'STEP-RESOLVED', statusCode: 'RESOLVED', stepName: 'Resolved', sequence: 30, isAutomatic: true, requirements: ['linked_work_order_closed'], badgeTone: 'green' }
+      { stepId: 'STEP-NEW', statusCode: 'NEW', stepName: 'New', sequence: 10, isAutomatic: false, requirements: ['request_details', 'site_location', 'responsible_department'], badgeTone: 'purple' },
+      { stepId: 'STEP-WAPPR', statusCode: 'WAPPR', stepName: 'Department Review / Waiting Approval', sequence: 20, isAutomatic: false, requirements: ['request_details', 'site_location', 'responsible_department'], badgeTone: 'orange' },
+      { stepId: 'STEP-INPRG', statusCode: 'INPRG', stepName: 'CM Work Order In Progress', sequence: 30, isAutomatic: false, requirements: ['department_routing', 'asset', 'failure_classification', 'linked_work_order'], badgeTone: 'blue' },
+      { stepId: 'STEP-CLOSED', statusCode: 'CLOSED', stepName: 'Closed', sequence: 40, isAutomatic: true, requirements: ['linked_work_order_closed'], badgeTone: 'green' }
     ]
   },
   SUPPLY_CHAIN: {

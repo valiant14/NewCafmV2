@@ -25,35 +25,43 @@ const tabs = [
   ['Attachments', Paperclip]
 ]
 
-export default function ServiceRequestDetail({ request, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, workflow, onBack, onSubmit, onApprove, onAdvance, onOpenWorkOrder, modal = false, access = {} }) {
+export default function ServiceRequestDetail({ request, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, failureRecords = [], workflow, onBack, onSubmit, onApprove, onAdvance, onOpenWorkOrder, modal = false, access = {} }) {
   const [form, setForm] = useState(request)
   const [submitError, setSubmitError] = useState('')
   const [activeTab, setActiveTab] = useState('Request Details')
   const [pendingFiles, setPendingFiles] = useState([])
   const activeWorkflow = normalizeApplicationWorkflow(workflow || DEFAULT_APPLICATION_WORKFLOWS.JOB_REQUEST, 'JOB_REQUEST')
 
-  const isNew = form.status === 'NEW'
+  const isNew = Boolean(form.__isNew || form.sr === 'AUTO')
   const nextStep = isNew ? null : applicationWorkflowNextStep(activeWorkflow, form.status)
-  const conversionStep = nextStep?.statusCode === 'CONVERTED'
+  const conversionStep = Boolean(nextStep?.requirements?.includes('linked_work_order'))
   const manualNextStep = nextStep && !nextStep.isAutomatic && (activeWorkflow.allowManualStatusChange || conversionStep) ? nextStep : null
   const { attachments, loading: attachmentsLoading, error: attachmentError, uploadFiles, removeAttachment, downloadAttachment } = useEntityAttachments('service-request', form.sr, { enabled: !isNew })
   // A submitted request is a record of what was reported, not a draft. Only a role with edit
   // rights on Job Requests may change it afterwards - a reporter can read it but not rewrite it.
   const readOnly = !isNew && !access.edit
-  const canSubmit = Boolean(form.description?.trim() && form.site && form.location && form.reportedBy?.trim())
+  const canSubmit = Boolean(
+    form.description?.trim() &&
+    form.site &&
+    form.location &&
+    form.department?.trim() &&
+    form.reportedBy?.trim() &&
+    form.priority &&
+    form.requestType
+  )
   const canConvert = Boolean(
     form.asset?.trim() &&
     form.department?.trim() &&
-    form.subDepartment?.trim() &&
     (form.assignedDepartment || form.department)?.trim() &&
-    form.failureCode?.trim()
+    form.failureCode?.trim() &&
+    form.problemCode?.trim()
   )
   const missingConversionFields = [
     !form.asset?.trim() && 'Asset',
     !form.department?.trim() && 'Department',
-    !form.subDepartment?.trim() && 'Sub Department',
     !(form.assignedDepartment || form.department)?.trim() && 'Assigned Department',
-    !form.failureCode?.trim() && 'Failure Code'
+    !form.failureCode?.trim() && 'Failure Code',
+    !form.problemCode?.trim() && 'Problem Code'
   ].filter(Boolean)
 
   const update = key => event => setForm({ ...form, [key]: event.target.value })
@@ -70,6 +78,11 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
   const subDepartmentOptions = departmentRecords
     .filter(department => department.status !== 'Inactive' && sameDepartment(department.department, form.department))
     .map(department => ({ value: department.subDepartmentCode, label: department.description }))
+  const matchingFailures = failureRecords.filter(row => !form.failureCode || String(row['FAILURE CLASS ID'] || '').trim() === String(form.failureCode || '').trim())
+  const problemOptions = [...new Map(matchingFailures
+    .filter(row => String(row['PROBLEM CODE'] || '').trim())
+    .map(row => [String(row['PROBLEM CODE']).trim(), { value: String(row['PROBLEM CODE']).trim(), label: String(row['PC - DESCRIPTION'] || '').trim() }])
+  ).values()]
 
   const updateSite = event => setForm({ ...form, site: event.target.value, location: '', asset: '' })
   const updateAsset = event => {
@@ -88,15 +101,23 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
     subDepartment: '',
     assignedDepartment: form.assignedDepartment || event.target.value
   })
+  const updateFailure = event => {
+    const failureCode = event.target.value
+    const firstProblem = failureRecords.find(row =>
+      String(row['FAILURE CLASS ID'] || '').trim() === String(failureCode || '').trim() &&
+      String(row['PROBLEM CODE'] || '').trim()
+    )
+    setForm({ ...form, failureCode, problemCode: firstProblem ? String(firstProblem['PROBLEM CODE']).trim() : '' })
+  }
 
   const handlePrimary = async () => {
     if (isNew && !access.create) return setSubmitError('You do not have create access for Job Requests.')
     if (!isNew && conversionStep && !access.approve) return setSubmitError('You do not have approve access for Job Requests.')
     if (!isNew && !conversionStep && !access.edit) return setSubmitError('You do not have edit access for Job Requests.')
-    if (isNew && !canSubmit) return setSubmitError('Complete Description, Site, Location, and Reported By before submitting.')
+    if (isNew && !canSubmit) return setSubmitError('Complete Description, Priority, Request Type, Site, Location, Department, and Reported By before submitting.')
     if (!isNew && conversionStep && !canConvert) {
       setActiveTab(form.asset?.trim() ? 'Department Review' : 'Request Details')
-      return setSubmitError('Complete Asset, Department, Sub Department, Assigned Department, and Failure Code before converting to CM.')
+      return setSubmitError('Complete Asset, Department, Assigned Department, Failure Code, and Problem Code before converting to CM.')
     }
     setSubmitError('')
     try {
@@ -130,10 +151,12 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
         )}
 
         <Section compact icon={FileText} title="What happened" note="Describe the problem and how urgent it is">
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-3">
             <Field label="Priority" icon={Flag} value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} />
+            <Field label="Request Type" icon={ClipboardCheck} value={form.requestType} required options={['Corrective', 'Service', 'Inspection']} onChange={update('requestType')} />
             <Field label="Reported By" icon={User} value={form.reportedBy} required onChange={update('reportedBy')} />
-            <div className="md:col-span-2"><Field label="Description" icon={FileText} value={form.description} type="textarea" required onChange={update('description')} /></div>
+            <div className="md:col-span-3"><Field label="Description" icon={FileText} value={form.description} required onChange={update('description')} /></div>
+            <div className="md:col-span-3"><Field label="Long Description" icon={FileText} value={form.longDescription} type="textarea" onChange={update('longDescription')} /></div>
           </div>
         </Section>
 
@@ -143,6 +166,10 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
             <Field label="Location" icon={MapPin} value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
             <Field label="Asset" icon={Boxes} value={form.asset} onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" />
           </div>
+        </Section>
+
+        <Section compact tone="purple" icon={Users} title="Responsibility" note="Requests are assigned to the responsible department">
+          <Field label="Department" icon={Users} value={form.department} required onChange={updateDepartment} suggestions={departmentOptions} placeholder="Search or select a department" />
         </Section>
 
         <Section compact tone="purple" icon={Paperclip} title="Attachments" note="Photos, PDFs and supporting documents">
@@ -188,7 +215,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button variant="outline" onClick={() => printWithoutBrowserTitle()}><Printer size={15} /> Print</Button>
                 {form.convertedWorkOrder && <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder, form)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>}
-                {!form.convertedWorkOrder && conversionStep && access.approve && access.edit && <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} /> Approve & convert to CM</Button>}
+                {!form.convertedWorkOrder && conversionStep && access.approve && <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} /> Approve & create CM</Button>}
                 {manualNextStep && !conversionStep && access.edit && <Button onClick={handlePrimary}><Check size={15} /> Move to {manualNextStep.stepName}</Button>}
               </div>
             )}
@@ -228,10 +255,11 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
           {!isNew && activeTab === 'Request Details' && (
             <div className="grid gap-3">
               <Section compact icon={FileText} title="What happened" note="Reported as submitted - locked once the request exists">
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-3">
                   <Field label="Priority" icon={Flag} value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} disabled={readOnly} />
+                  <Field label="Request Type" icon={ClipboardCheck} value={form.requestType} required options={['Corrective', 'Service', 'Inspection']} onChange={update('requestType')} disabled={readOnly} />
                   <Field label="Reported By" icon={User} value={form.reportedBy} required onChange={update('reportedBy')} disabled={readOnly} />
-                  <div className="md:col-span-2"><Field label="Description" icon={FileText} value={form.description} required onChange={update('description')} disabled={readOnly} /></div>
+                  <div className="md:col-span-3"><Field label="Description" icon={FileText} value={form.description} required onChange={update('description')} disabled={readOnly} /></div>
                 </div>
               </Section>
 
@@ -239,13 +267,13 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
                 <div className="grid gap-3 md:grid-cols-3">
                   <Field label="Site" icon={Building2} value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" disabled={readOnly} />
                   <Field label="Location" icon={MapPin} value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" disabled={readOnly} />
-                  <Field label="Asset" icon={Boxes} value={form.asset} required onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" disabled={readOnly} />
+                  <Field label="Asset" icon={Boxes} value={form.asset} onChange={updateAsset} suggestions={assetOptions} placeholder="Optional until CM conversion" disabled={readOnly} />
                 </div>
               </Section>
 
               {/* Added after submission, so it stays open for anyone still working the request. */}
               <Section compact tone="purple" icon={ClipboardCheck} title="Notes" note={`Reported ${form.reportedDate?.replace('T', ' ') || 'Not defined'}`}>
-                <Field label="Long Description" icon={FileText} value={form.longDescription} type="textarea" onChange={update('longDescription')} />
+                <Field label="Long Description" icon={FileText} value={form.longDescription} type="textarea" onChange={update('longDescription')} disabled={readOnly} />
               </Section>
             </div>
           )}
@@ -263,8 +291,9 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
 
               <Section compact tone="orange" icon={ShieldCheck} title="Classification" note="Set by the reviewer before the request becomes a work order">
                 <div className="grid gap-3 md:grid-cols-2">
-                  <Field label="Sub Department" icon={Users} value={form.subDepartment || ''} required onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Search or select a sub department" />
-                  <Field label="Failure Code" icon={ShieldCheck} value={form.failureCode} required onChange={update('failureCode')} suggestions={failureOptions} placeholder="Search code or description" />
+                  <Field label="Sub Department" icon={Users} value={form.subDepartment || ''} onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Optional sub department" disabled={readOnly} />
+                  <Field label="Failure Code" icon={ShieldCheck} value={form.failureCode} required onChange={updateFailure} suggestions={failureOptions} placeholder="Search code or description" disabled={readOnly} />
+                  <Field label="Problem Code" icon={ShieldCheck} value={form.problemCode || ''} required onChange={update('problemCode')} suggestions={problemOptions} placeholder={form.failureCode ? 'Search matching problem code' : 'Select failure code first'} disabled={readOnly || !form.failureCode} />
                 </div>
               </Section>
             </div>
@@ -312,7 +341,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
           sections={[
             { title: 'Request Information', rows: [[['Request Number', form.sr], ['Request Type', form.requestType || 'Service'], ['Status', form.status], ['Priority', form.priority]], [['Description', form.description], ['Long Description', form.longDescription], ['Reported By', form.reportedBy], ['Reported Date', form.reportedDate]]] },
             { title: 'Location and Asset', rows: [[['Site', form.site], ['Location', form.location], ['Asset', form.asset], ['Converted Work Order', form.convertedWorkOrder]]] },
-            { title: 'Department Review', rows: [[['Department', form.department], ['Sub Department', form.subDepartment], ['Assigned Department', form.assignedDepartment || form.department], ['Failure Code', form.failureCode]]] }
+            { title: 'Department Review', rows: [[['Department', form.department], ['Sub Department', form.subDepartment], ['Assigned Department', form.assignedDepartment || form.department], ['Failure Code', form.failureCode]], [['Problem Code', form.problemCode]]] }
           ]}
         />
       )}

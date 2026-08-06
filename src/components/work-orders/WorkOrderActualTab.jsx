@@ -117,6 +117,9 @@ export default function WorkOrderActualTab({
   targetStart,
   targetFinish,
   actualFinish,
+  completionDate,
+  closedAt,
+  closedBy,
   setActualFinish,
   slaBreachedNow,
   slaLabel,
@@ -262,10 +265,10 @@ export default function WorkOrderActualTab({
 
       <Section compact tone="green" icon={ShieldCheck} title="Automatic Closeout" note="System populated when the work order is closed">
         <div className={closeoutGridClass}>
-          <div className={closeoutCardClass}><span>Completion Date</span><strong>{actualFinish ? new Date(actualFinish).toLocaleString() : 'Pending'}</strong></div>
-          <div className={closeoutCardClass}><span>Closed By</span><strong>{workClosed ? (currentUser?.name || currentUser?.username || 'Current user') : 'Pending'}</strong></div>
+          <div className={closeoutCardClass}><span>Completion Date</span><strong>{completionDate || actualFinish ? new Date(completionDate || actualFinish).toLocaleString() : 'Pending'}</strong></div>
+          <div className={closeoutCardClass}><span>Closed By</span><strong>{workClosed ? (closedBy || currentUser?.name || currentUser?.username || 'Current user') : 'Pending'}</strong></div>
           <div className={closeoutCardClass}><span>Close Status</span><strong>{workClosed ? 'CLOSE' : 'Pending'}</strong></div>
-          <div className={closeoutCardClass}><span>Asset History Update</span><strong>{workClosed ? 'Updated automatically' : 'Pending close'}</strong></div>
+          <div className={closeoutCardClass}><span>Asset History Update</span><strong>{workClosed && (closedAt || actualFinish) ? 'Updated automatically' : 'Pending close'}</strong></div>
         </div>
       </Section>
     </>
