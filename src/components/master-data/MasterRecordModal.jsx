@@ -58,7 +58,7 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
         )}
 
         {sections.length > 1 || sections[0]?.name ? (
-          <div className="grid items-start gap-3 overflow-auto px-4 py-4 sm:px-6 lg:grid-cols-2">
+          <div className="grid items-stretch gap-3 overflow-auto px-4 py-4 sm:px-6 lg:grid-cols-2">
             {sections.map(section => {
               const wide = section.span === 'full' || sections.length === 1
               return (
