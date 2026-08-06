@@ -45,12 +45,10 @@ try {
     `)
 
   const token = jwt.sign({ userId }, env.jwtSecret, { expiresIn: '2m' })
-  const routingFields = {
-    work_group: 'CHECK-GROUP',
-    system_name: 'CHECK-SYSTEM',
-    supervisor: 'CHECK-SUPERVISOR',
-    labor_craft_code: 'CHECK-CRAFT'
-  }
+  // System, Work Group, and Supervisor are validated foreign routing masters now. This
+  // permission check owns no business master data, so use an ordinary editable field here;
+  // the dedicated work-group planning check covers routing relationships with live masters.
+  const routingFields = { labor_craft_code: 'CHECK-CRAFT' }
   const routingResponse = await fetch(`${baseUrl}/work-orders/${encodeURIComponent(workOrderNumber)}`, {
     method: 'PUT',
     headers: {

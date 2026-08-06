@@ -16,7 +16,7 @@ const buildFields = (form, siteRecords = [], departmentRecords = [], workGroupRe
     .filter(row => String(row.status || 'Active').toLowerCase() !== 'inactive')
     .filter(row => !form.site || row.site === form.site)
     .filter(row => !form.department || sameDepartment(row.department, form.department))
-    .filter(row => !form.subDepartment || !row.subDepartment || row.subDepartment === form.subDepartment)
+    .filter(row => !row.subDepartment || row.subDepartment === form.subDepartment)
     .map(row => ({ value: row.code, label: row.name }))
 
   const person = { section: 'Person', sectionIcon: User, sectionNote: 'Who the technician is' }

@@ -1793,6 +1793,30 @@ export default function App() {
   const saveDepartments = useMemo(() => guardSave('Departments', rawSaveDepartments), [guardSave, rawSaveDepartments])
   const saveSystems = useMemo(() => guardSave('Routing Masters Systems', rawSaveSystems), [guardSave, rawSaveSystems])
   const saveWorkGroups = useMemo(() => guardSave('Routing Masters Work Groups', rawSaveWorkGroups), [guardSave, rawSaveWorkGroups])
+  const saveWorkGroupMembers = useCallback(async (workGroupCode, memberIds) => {
+    if (!canDo('Routing Masters', 'edit') || !canDo('Labor', 'edit')) {
+      const error = new Error('Routing Masters and Labor edit permissions are required to change Work Group members.')
+      notify(error.message, 'error')
+      throw error
+    }
+    try {
+      const saved = await api.put(`/work-groups/${encodeURIComponent(workGroupCode)}/members`, {
+        member_labor_ids: Array.isArray(memberIds) ? memberIds : []
+      })
+      const selected = new Set((saved.member_labor_ids || []).map(value => String(value).toLowerCase()))
+      setLaborRecords(current => current.map(person => {
+        const personId = String(person.personId || '').toLowerCase()
+        if (selected.has(personId)) return { ...person, workGroup: workGroupCode }
+        if (person.workGroup === workGroupCode) return { ...person, workGroup: '' }
+        return person
+      }))
+      notify(`${saved.member_labor_ids?.length || 0} Labor record${saved.member_labor_ids?.length === 1 ? '' : 's'} linked to ${workGroupCode}.`, 'success')
+      return saved
+    } catch (error) {
+      notify(error.message || 'Unable to link Work Group members.', 'error')
+      throw error
+    }
+  }, [canDo, notify])
   const saveJobPlans = useMemo(() => guardSave('Job Plans', rawSaveJobPlans), [guardSave, rawSaveJobPlans])
   const saveJobTasks = useMemo(() => guardSave('Job Plan Tasks', rawSaveJobTasks), [guardSave, rawSaveJobTasks])
   const saveUsers = useMemo(() => guardSave('Users', rawSaveUsers), [guardSave, rawSaveUsers])
@@ -2277,7 +2301,7 @@ export default function App() {
     'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={saveRoles} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
     'Sites': <SitesSettingsPage rows={siteRecords} setRows={saveSites}/>,
     'Departments': <DepartmentsSettingsPage rows={departmentRecords} setRows={saveDepartments}/>,
-    'Routing Masters': <RoutingMastersSettingsPage systems={systemRecords} setSystems={saveSystems} workGroups={workGroupRecords} setWorkGroups={saveWorkGroups} sites={siteRecords} departments={departmentRecords} labor={laborRecords}/>,
+    'Routing Masters': <RoutingMastersSettingsPage systems={systemRecords} setSystems={saveSystems} workGroups={workGroupRecords} setWorkGroups={saveWorkGroups} saveWorkGroupMembers={saveWorkGroupMembers} sites={siteRecords} departments={departmentRecords} labor={laborRecords}/>,
     'Work Order Workflow': <WorkOrderWorkflowSettingsPage workflow={workOrderWorkflow} applicationWorkflows={applicationWorkflows} onSave={saveWorkOrderWorkflow} onSaveApplication={saveApplicationWorkflow} canEdit={canDo('Work Order Workflow', 'edit')}/>,
     'Notifications': <NotificationsSettingsPage rows={notificationRuleRecords} setRows={saveNotificationRules}/>,
     'SMTP & SMS': <ConnectorsSettingsPage rows={connectorRecords} setRows={saveConnectors}/>,

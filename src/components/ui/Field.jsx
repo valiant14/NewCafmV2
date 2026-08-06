@@ -1,11 +1,12 @@
 import { useId } from 'react'
 import Combobox from './Combobox'
+import MultiSelect from './MultiSelect'
 import { cn } from '../../lib/cn'
 
 // `icon` is optional and sits inside the label, which is already a flex row with a gap - so a
 // form can mark its fields without any per-page styling, and the icon size is decided here
 // rather than at each call site.
-export default function Field({ label, icon: Icon, value = '', required, locked, disabled = false, type = 'text', options, suggestions, onChange, onBlur, onKeyDown, placeholder, min, max, autoComplete, name }) {
+export default function Field({ label, icon: Icon, value = '', required, locked, disabled = false, type = 'text', options, suggestions, multiple = false, onChange, onBlur, onKeyDown, placeholder, min, max, autoComplete, name }) {
   const listId=useId()
   const isDisabled = locked || disabled
   const controlClass = cn(
@@ -22,7 +23,16 @@ export default function Field({ label, icon: Icon, value = '', required, locked,
       </span>
       {/* A fixed set of choices uses the same styled picker as a searchable list, so every
           dropdown looks and behaves alike instead of falling back to the browser's menu. */}
-      {options ? (
+      {multiple ? (
+        <MultiSelect
+          className={controlClass}
+          value={value}
+          options={options || []}
+          onChange={onChange}
+          placeholder={placeholder}
+          disabled={isDisabled}
+        />
+      ) : options ? (
         <Combobox
           inputId={listId}
           picker

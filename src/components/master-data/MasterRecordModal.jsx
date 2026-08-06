@@ -20,6 +20,7 @@ function MasterRecordField({ field, value, onChange }) {
         type={field.type}
         options={field.options}
         suggestions={field.suggestions}
+        multiple={field.multiple}
         placeholder={field.placeholder}
         min={field.min}
         onChange={event => onChange(field.key, event.target.value)}
@@ -41,7 +42,9 @@ const groupFields = fields => fields.reduce((groups, field) => {
 export default function MasterRecordModal({ title, note, fields, form, setForm, onClose, onSave, submitLabel = 'Create record', error = '' }) {
   const { error: notifyError } = useToast()
   const requiredFields = fields.filter(field => field.required)
-  const valid = requiredFields.every(field => String(form[field.key] ?? '').trim())
+  const valid = requiredFields.every(field => Array.isArray(form[field.key])
+    ? form[field.key].length > 0
+    : String(form[field.key] ?? '').trim())
   const sections = groupFields(fields)
 
   useEffect(() => {

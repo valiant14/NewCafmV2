@@ -1,4 +1,4 @@
-import { sameDepartment } from './departments'
+import { sameDepartment } from './departments.js'
 
 const text = value => String(value || '').trim()
 const sameText = (left, right) => text(left).toLowerCase() === text(right).toLowerCase()

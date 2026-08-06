@@ -63,7 +63,7 @@ const result = await pool.request().query(`
       work_group.work_group_code is null
       or isnull(labor.site_code, '') <> work_group.site_code
       or lower(ltrim(rtrim(isnull(labor.department_name, '')))) <> lower(ltrim(rtrim(work_group.department_name)))
-      or (work_group.sub_department_code is not null and labor.sub_department_code is not null and labor.sub_department_code <> work_group.sub_department_code)
+      or (work_group.sub_department_code is not null and isnull(labor.sub_department_code, '') <> work_group.sub_department_code)
     );
 
   select count_big(1) as planned_labor_outside_team

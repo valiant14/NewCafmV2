@@ -9,6 +9,7 @@ import usersRouter from './users.js'
 import workOrderWorkflowRouter from './workOrderWorkflow.js'
 import applicationWorkflowsRouter from './applicationWorkflows.js'
 import serviceRequestCommandsRouter from './serviceRequestCommands.js'
+import workGroupTeamsRouter from './workGroupTeams.js'
 import { crudRouter } from './crudFactory.js'
 import inventoryStockRouter from './inventoryStock.js'
 import attachmentsRouter from './attachments.js'
@@ -239,6 +240,8 @@ router.use('/labor', crudRouter({
   beforeCreate: validateLaborRouting,
   beforeUpdate: validateLaborRouting
 }))
+
+router.use('/work-groups', workGroupTeamsRouter)
 
 router.use('/work-groups', crudRouter({
   moduleName: 'Routing Masters',

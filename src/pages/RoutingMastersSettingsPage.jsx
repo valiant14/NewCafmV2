@@ -38,6 +38,7 @@ const emptyWorkGroup = {
   department: '',
   subDepartment: '',
   supervisorId: '',
+  memberIds: [],
   status: 'Active'
 }
 
@@ -56,7 +57,7 @@ const identitySection = {
 
 const optionRows = rows => ['', ...rows]
 
-const fieldOptions = ({ form, sites, departments, labor, type }) => {
+const fieldOptions = ({ form, sites, departments, labor, type, canEditLabor, editing }) => {
   const siteChoices = sites
     .filter(row => row.status !== 'Inactive')
     .map(row => ({ value: row.code, label: row.name }))
@@ -73,9 +74,21 @@ const fieldOptions = ({ form, sites, departments, labor, type }) => {
     .filter(person => !form.department || sameDepartment(person.department, form.department))
     .filter(person => !form.subDepartment || !person.subDepartment || person.subDepartment === form.subDepartment)
     .map(person => ({ value: person.personId, label: `${person.name}${person.craft ? ` / ${person.craft}` : ''}` }))
+  const memberChoices = labor
+    .filter(person => String(person.status || 'Active').toLowerCase() !== 'inactive')
+    .filter(person => !form.site || person.site === form.site)
+    .filter(person => !form.department || sameDepartment(person.department, form.department))
+    .filter(person => !form.subDepartment || person.subDepartment === form.subDepartment)
+    .map(person => ({
+      value: person.personId,
+      label: person.name,
+      detail: [person.personId, person.craft, person.workGroup && person.workGroup !== form.code ? `Currently ${person.workGroup}` : '']
+        .filter(Boolean)
+        .join(' / ')
+    }))
 
   const common = [
-    { ...identitySection, key: 'code', label: type === SYSTEMS ? 'System Code' : 'Work Group Code', icon: Hash, required: true, placeholder: type === SYSTEMS ? 'SYS-HVAC' : 'WG-CIVIL-01' },
+    { ...identitySection, key: 'code', label: type === SYSTEMS ? 'System Code' : 'Work Group Code', icon: Hash, required: true, locked: Boolean(editing), placeholder: type === SYSTEMS ? 'SYS-HVAC' : 'WG-CIVIL-01' },
     { ...identitySection, key: 'name', label: type === SYSTEMS ? 'System Name' : 'Work Group Name', icon: type === SYSTEMS ? Workflow : Users, required: true, placeholder: type === SYSTEMS ? 'HVAC' : 'Civil Response Team' },
     { ...scopeSection, key: 'site', label: 'Site', icon: Building2, required: true, options: optionRows(siteChoices) },
     { ...scopeSection, key: 'department', label: 'Department', icon: Users, required: true, options: optionRows(departmentChoices) },
@@ -100,6 +113,23 @@ const fieldOptions = ({ form, sites, departments, labor, type }) => {
     required: true,
     options: optionRows(supervisorChoices)
   })
+  common.push({
+    section: 'Team Members',
+    sectionIcon: Users,
+    sectionNote: canEditLabor
+      ? 'Labor selected here is linked to this Work Group when the record is saved'
+      : 'Labor edit permission is required to change team membership',
+    sectionTone: 'blue',
+    sectionSpan: 'full',
+    key: 'memberIds',
+    label: 'Labor Team',
+    icon: Users,
+    multiple: true,
+    fullWidth: true,
+    locked: !canEditLabor,
+    options: memberChoices,
+    placeholder: memberChoices.length ? 'Select labor team members' : 'No Labor matches this routing scope'
+  })
   return common
 }
 
@@ -110,11 +140,13 @@ export default function RoutingMastersSettingsPage({
   setSystems,
   workGroups = [],
   setWorkGroups,
+  saveWorkGroupMembers,
   sites = [],
   departments = [],
   labor = []
 }) {
   const access = useModuleAccess('Routing Masters')
+  const laborAccess = useModuleAccess('Labor')
   const [type, setType] = useState(SYSTEMS)
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [imported, setImported] = useState('')
@@ -131,7 +163,10 @@ export default function RoutingMastersSettingsPage({
     status: ['status']
   })
 
-  const fields = useMemo(() => fieldOptions({ form, sites, departments, labor, type }), [form, sites, departments, labor, type])
+  const fields = useMemo(
+    () => fieldOptions({ form, sites, departments, labor, type, canEditLabor: laborAccess.edit, editing }),
+    [form, sites, departments, labor, type, laborAccess.edit, editing]
+  )
 
   const changeType = value => {
     setType(value)
@@ -144,9 +179,9 @@ export default function RoutingMastersSettingsPage({
 
   const updateForm = update => setForm(current => {
     const next = typeof update === 'function' ? update(current) : update
-    if (next.site !== current.site) return { ...next, department: '', subDepartment: '', supervisorId: '' }
-    if (next.department !== current.department) return { ...next, subDepartment: '', supervisorId: '' }
-    if (next.subDepartment !== current.subDepartment) return { ...next, supervisorId: '' }
+    if (next.site !== current.site) return { ...next, department: '', subDepartment: '', supervisorId: '', memberIds: [] }
+    if (next.department !== current.department) return { ...next, subDepartment: '', supervisorId: '', memberIds: [] }
+    if (next.subDepartment !== current.subDepartment) return { ...next, supervisorId: '', memberIds: [] }
     return next
   })
 
@@ -159,7 +194,13 @@ export default function RoutingMastersSettingsPage({
 
   const openEdit = row => {
     setEditing(row.code)
-    setForm({ ...empty, ...row })
+    setForm({
+      ...empty,
+      ...row,
+      memberIds: type === WORK_GROUPS
+        ? labor.filter(person => person.workGroup === row.code).map(person => person.personId)
+        : []
+    })
     setError('')
     setModalOpen(true)
   }
@@ -172,12 +213,25 @@ export default function RoutingMastersSettingsPage({
       setError(`${type === SYSTEMS ? 'System' : 'Work group'} code already exists.`)
       return
     }
-    const record = { ...form, code, name }
-    const result = await setRows?.(current => editing
-      ? current.map(row => row.code === editing ? record : row)
-      : [record, ...current]
-    )
-    if (!result?.__saveError) setModalOpen(false)
+    const { memberIds = [], ...recordFields } = form
+    const record = { ...recordFields, code, name }
+    setError('')
+    try {
+      const result = await setRows?.(current => editing
+        ? current.map(row => row.code === editing ? record : row)
+        : [record, ...current]
+      )
+      if (result?.__saveError) {
+        setError(result.error?.message || `Unable to save ${type === SYSTEMS ? 'System' : 'Work Group'}.`)
+        return
+      }
+      if (type === WORK_GROUPS && laborAccess.edit && saveWorkGroupMembers) {
+        await saveWorkGroupMembers(code, memberIds)
+      }
+      setModalOpen(false)
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to link the Work Group and Labor team.')
+    }
   }
 
   const normalizeImportRows = importedRows => importedRows.map(row => {
@@ -291,7 +345,7 @@ export default function RoutingMastersSettingsPage({
           title={`${editing ? 'Edit' : 'Add'} ${type === SYSTEMS ? 'system' : 'work group'}`}
           note={type === SYSTEMS
             ? 'Systems are filtered by the selected Work Order site and department.'
-            : 'Work Groups control routing and can automatically select a default supervisor.'}
+            : 'Assign the default supervisor and Labor team together. Team membership is saved directly to Labor.'}
           fields={fields}
           form={form}
           setForm={updateForm}

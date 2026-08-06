@@ -37,7 +37,8 @@ const findWorkGroup = async (pool, { value, site, department, subDepartment }) =
     .input('department', department)
     .input('subDepartment', subDepartment)
     .query(`
-      select top 1 work_group_code, work_group_name, default_supervisor_labor_id
+      select top 1 work_group_code, work_group_name, site_code, department_name,
+        sub_department_code, default_supervisor_labor_id
       from dbo.work_groups
       where (work_group_code = @value or work_group_name = @value)
         and upper(ltrim(rtrim(status))) <> 'INACTIVE'
@@ -230,6 +231,10 @@ export const validateLaborRouting = async ({ pool, payload, current = {} }) => {
     subDepartment: scopeValue(payload, current, 'sub_department_code')
   })
   if (!match) throw badRequest('Select an active Work Group in the same site, department, and sub-department as this Labor record.')
+  const laborSubDepartment = scopeValue(payload, current, 'sub_department_code')
+  if (text(match.sub_department_code) && !sameText(match.sub_department_code, laborSubDepartment)) {
+    throw badRequest('Select a Labor sub-department that matches the selected Work Group.')
+  }
   return { ...next, work_group_code: match.work_group_code }
 }
 
