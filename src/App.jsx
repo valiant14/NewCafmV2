@@ -15,6 +15,7 @@ import WorkOrderMetersTab from './components/work-orders/WorkOrderMetersTab'
 import WorkOrderHeader, { workOrderOutlineButtonClass, workOrderPrimaryButtonClass } from './components/work-orders/WorkOrderHeader'
 import WorkOrderTabs from './components/work-orders/WorkOrderTabs'
 import WorkOrderDatesBar from './components/work-orders/WorkOrderDatesBar'
+import { Clock, ClipboardList, FileText, ListChecks, ListOrdered, ShieldCheck } from 'lucide-react'
 import { pathWithRecordFilter } from './lib/recordNavigation'
 import AppState from './components/ui/AppState'
 import Alert from './components/ui/Alert'
@@ -2140,12 +2141,12 @@ export default function App() {
     'Meters': <MetersPage rows={meterRecords} setRows={saveMeters} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} />,
     'Locations': <LocationsPage rows={scopedLocations} setRows={saveLocations} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords}/>,
     'Job Plans': selectedJobPlan ? <JobPlanDetailPage plan={selectedJobPlan} tasks={jobTaskRecords.filter(task=>task.JPNUM===selectedJobPlan.JPNUM)} workOrders={relatedJobPlanWorkOrders.rows} onBack={()=>{setSelectedJobPlan(null);window.history.pushState({},'','/job-plans')}} onUpdate={updateJobPlan}/> : <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobPlanSummaryRows} onCreate={createJobPlan} onImport={importJobPlans} access={accessFor('Job Plans')} search={search} setSearch={setSearch} action="New job plan" modalTitle="Add job plan" modalNote="Create a job plan task line with sequence, instructions, and estimated duration." modalFields={[
-      { key: 'JPNUM', label: 'Job Plan', required: true, suggestions: jobPlanOptions(jobTaskRecords), placeholder: 'Select a plan or type a new number' },
-      { key: 'DESCRIPTION', label: 'Plan Description', required: true, full: true },
-      { key: 'JOB TASK SEQUENCE', label: 'Task Sequence', required: true, type: 'number', defaultValue: 10 },
-      { key: 'JOB TASK DESCRIPTION', label: 'Task Description', required: true, full: true },
-      { key: 'TASK DURATION IN HOUR', label: 'Duration in Hours', required: true, type: 'number', defaultValue: 1 },
-      { key: 'status', label: 'Status', required: true, options: ['DRAFT', 'ACTIVE', 'INACTIVE'], defaultValue: 'ACTIVE' }
+      { key: 'JPNUM', label: 'Job Plan', icon: ClipboardList, required: true, suggestions: jobPlanOptions(jobTaskRecords), placeholder: 'Select a plan or type a new number', section: 'Plan', sectionIcon: ClipboardList, sectionNote: 'The plan this task line belongs to - pick an existing one or name a new plan' },
+      { key: 'DESCRIPTION', label: 'Plan Description', icon: FileText, required: true, section: 'Plan' },
+      { key: 'status', label: 'Status', icon: ShieldCheck, required: true, options: ['DRAFT', 'ACTIVE', 'INACTIVE'], defaultValue: 'ACTIVE', section: 'Plan', fullWidth: true },
+      { key: 'JOB TASK SEQUENCE', label: 'Task Sequence', icon: ListOrdered, required: true, type: 'number', defaultValue: 10, section: 'Task line', sectionIcon: ListChecks, sectionNote: 'One step of the plan: what to do, in what order, and how long it takes', sectionTone: 'green' },
+      { key: 'TASK DURATION IN HOUR', label: 'Duration in Hours', icon: Clock, required: true, type: 'number', defaultValue: 1, section: 'Task line' },
+      { key: 'JOB TASK DESCRIPTION', label: 'Task Description', icon: FileText, required: true, type: 'textarea', fullWidth: true, section: 'Task line', placeholder: 'What the technician has to do at this step' }
     ]} mapFormToRow={form => ({ ...form, status: form.status || 'ACTIVE', 'TASK DURATION IN HOUR': Number(form['TASK DURATION IN HOUR'] || 0) })} statusTabs={['DRAFT', 'ACTIVE', 'INACTIVE']} rowKey="JPNUM" onRowClick={row=>{setSelectedJobPlan(row);window.history.pushState({},'',`/job-plans/${row.JPNUM}`)}} columns={[
       {key:'JPNUM',label:'Plan',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Plan description'},{key:'taskCount',label:'Tasks'},{key:'totalMinutes',label:'Duration',render:v=>`${v} min`},{key:'status',label:'Status',render:v=>v||'ACTIVE'}
     ]}/>,

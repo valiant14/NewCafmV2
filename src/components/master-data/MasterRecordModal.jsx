@@ -8,7 +8,7 @@ import Section from '../ui/Section'
 // same label, icon, picker and textarea treatment - instead of a second implementation of them.
 function MasterRecordField({ field, value, onChange }) {
   return (
-    <div className={field.fullWidth ? 'md:col-span-2' : ''}>
+    <div className={field.fullWidth || field.full ? 'md:col-span-2' : ''}>
       <Field
         label={field.label}
         icon={field.icon}
@@ -32,7 +32,7 @@ const groupFields = fields => fields.reduce((groups, field) => {
   const name = field.section || ''
   const current = groups.at(-1)
   if (current && current.name === name) current.fields.push(field)
-  else groups.push({ name, icon: field.sectionIcon, note: field.sectionNote, fields: [field] })
+  else groups.push({ name, icon: field.sectionIcon, note: field.sectionNote, tone: field.sectionTone, fields: [field] })
   return groups
 }, [])
 
@@ -60,7 +60,7 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
         {sections.length > 1 || sections[0]?.name ? (
           <div className="grid gap-3 overflow-auto px-4 py-4 sm:px-6">
             {sections.map(section => (
-              <Section compact key={section.name} icon={section.icon} title={section.name} note={section.note}>
+              <Section compact key={section.name} tone={section.tone} icon={section.icon} title={section.name} note={section.note}>
                 <div className="grid gap-3 md:grid-cols-2">
                   {section.fields.map(field => (
                     <MasterRecordField key={field.key} field={field} value={form[field.key]} onChange={updateField} />
@@ -70,10 +70,14 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 overflow-auto px-4 py-4 sm:gap-5 sm:px-6 sm:py-5 md:grid-cols-2">
-            {fields.map(field => (
-              <MasterRecordField key={field.key} field={field} value={form[field.key]} onChange={updateField} />
-            ))}
+          <div className="grid gap-3 overflow-auto px-4 py-4 sm:px-6">
+            <Section compact tone="blue">
+              <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
+                {fields.map(field => (
+                  <MasterRecordField key={field.key} field={field} value={form[field.key]} onChange={updateField} />
+                ))}
+              </div>
+            </Section>
           </div>
         )}
 
