@@ -18,9 +18,9 @@ function MiniMetric({ label, value, note }) {
   return <MetricCard label={label} value={value} note={note} />
 }
 
-function DetailCard({ icon: Icon, eyebrow, title, children }) {
+function DetailCard({ icon: Icon, eyebrow, title, tone, children }) {
   return (
-    <Surface>
+    <Surface tone={tone}>
       <SurfaceHeader eyebrow={eyebrow} title={title} actions={Icon ? <span className="app-record-icon"><Icon size={18} /></span> : null} />
       {children}
     </Surface>
@@ -109,8 +109,8 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
         <DetailTabs tabs={['PM Details', 'Job Plan', generatedTab]} active={activeTab} onChange={setActiveTab} />
 
         {activeTab === 'PM Details' && (
-          <div className="grid gap-5 xl:grid-cols-2">
-            <DetailCard icon={UserRoundCheck} eyebrow="RESPONSIBILITY" title="Ownership">
+          <div className="grid items-start gap-5 xl:grid-cols-2">
+            <DetailCard icon={UserRoundCheck} tone="purple" eyebrow="RESPONSIBILITY" title="Ownership">
               <FieldGrid rows={[
                 ['Person Group', plan.personGroup || 'Not assigned'],
                 ['Department', plan.department || 'Not configured'],
@@ -121,7 +121,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
               ]} />
             </DetailCard>
 
-            <DetailCard icon={Sparkles} eyebrow="GENERATION" title="Automatic Work Order Behavior">
+            <DetailCard icon={Sparkles} tone="blue" eyebrow="GENERATION" title="Automatic Work Order Behavior">
               <div className="grid gap-3 text-sm text-[var(--app-muted)]">
                 <p>Generated Work Orders inherit asset, location, site, department, job plan, and all job tasks from this PM and the linked asset master.</p>
                 <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4">
@@ -151,7 +151,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
         )}
 
         {activeTab === 'Job Plan' && (
-          <DetailCard icon={Settings2} eyebrow="JOB PLAN" title="Execution Package">
+          <DetailCard icon={Settings2} tone="green" eyebrow="JOB PLAN" title="Execution Package">
             <div className="mb-4 grid gap-3 md:grid-cols-3">
               <MiniMetric label="JPNUM" value={plan.jobPlan} note={linkedPlan?.description || 'Job plan reference from Excel'} />
               <MiniMetric label="Tasks" value={tasks.length} note="All matching task rows" />
@@ -178,7 +178,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
         )}
 
         {activeTab === generatedTab && (
-          <DetailCard icon={FileSpreadsheet} eyebrow="HISTORY" title="Generated Work Orders">
+          <DetailCard icon={FileSpreadsheet} tone="orange" eyebrow="HISTORY" title="Generated Work Orders">
             <div className="mb-4 flex justify-end">
               <Badge tone={history.length ? 'green' : 'neutral'}>{history.length} records</Badge>
             </div>
