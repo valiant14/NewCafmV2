@@ -7,6 +7,7 @@ import authRouter from './auth.js'
 import rolesRouter from './roles.js'
 import usersRouter from './users.js'
 import workOrderWorkflowRouter from './workOrderWorkflow.js'
+import applicationWorkflowsRouter from './applicationWorkflows.js'
 import { crudRouter } from './crudFactory.js'
 import inventoryStockRouter from './inventoryStock.js'
 import attachmentsRouter from './attachments.js'
@@ -20,6 +21,7 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { getRealtimeStats } from '../realtime.js'
 import { getRuntimeMetrics } from '../services/runtimeMetrics.js'
 import { prepareWorkOrderCreate, validateWorkOrderUpdate } from '../services/workOrderWorkflow.js'
+import { prepareServiceRequestCreate, validateServiceRequestUpdate } from '../services/applicationWorkflows.js'
 import { addScopeWhere } from '../middleware/scope.js'
 import { bindParams } from '../utils/sqlParams.js'
 
@@ -254,6 +256,7 @@ router.use('/storerooms', crudRouter({
 router.use('/inventory-stock', inventoryStockRouter)
 
 router.use('/work-order-workflow', workOrderWorkflowRouter)
+router.use('/application-workflows', applicationWorkflowsRouter)
 
 router.get('/work-order-summary', requirePermission('Work Orders', 'view'), asyncHandler(async (req, res) => {
   const pool = await getPool()
@@ -328,7 +331,9 @@ router.use('/service-requests', crudRouter({
   defaultOrder: 'reported_at desc, sr_num desc',
   scope: workOrderScope,
   ownerColumn,
-  additionalUpdatePermission: serviceRequestUpdatePermission
+  additionalUpdatePermission: serviceRequestUpdatePermission,
+  beforeCreate: prepareServiceRequestCreate,
+  beforeUpdate: validateServiceRequestUpdate
 }))
 
 router.use('/purchase-requisitions', crudRouter({

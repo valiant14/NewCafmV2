@@ -11,6 +11,13 @@ import GenericPrintReport from '../ui/GenericPrintReport'
 import { sameDepartment } from '../../lib/departments'
 import Surface, { SurfaceHeader } from '../ui/Surface'
 import useEntityAttachments from '../../hooks/useEntityAttachments'
+import {
+  DEFAULT_APPLICATION_WORKFLOWS,
+  applicationWorkflowLabel,
+  applicationWorkflowNextStep,
+  applicationWorkflowTone,
+  normalizeApplicationWorkflow
+} from '../../lib/applicationWorkflow'
 
 const tabs = [
   ['Request Details', FileText],
@@ -18,13 +25,17 @@ const tabs = [
   ['Attachments', Paperclip]
 ]
 
-export default function ServiceRequestDetail({ request, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, onBack, onSubmit, onApprove, onOpenWorkOrder, modal = false, access = {} }) {
+export default function ServiceRequestDetail({ request, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, workflow, onBack, onSubmit, onApprove, onAdvance, onOpenWorkOrder, modal = false, access = {} }) {
   const [form, setForm] = useState(request)
   const [submitError, setSubmitError] = useState('')
   const [activeTab, setActiveTab] = useState('Request Details')
   const [pendingFiles, setPendingFiles] = useState([])
+  const activeWorkflow = normalizeApplicationWorkflow(workflow || DEFAULT_APPLICATION_WORKFLOWS.JOB_REQUEST, 'JOB_REQUEST')
 
   const isNew = form.status === 'NEW'
+  const nextStep = isNew ? null : applicationWorkflowNextStep(activeWorkflow, form.status)
+  const conversionStep = nextStep?.statusCode === 'CONVERTED'
+  const manualNextStep = nextStep && !nextStep.isAutomatic && (activeWorkflow.allowManualStatusChange || conversionStep) ? nextStep : null
   const { attachments, loading: attachmentsLoading, error: attachmentError, uploadFiles, removeAttachment, downloadAttachment } = useEntityAttachments('service-request', form.sr, { enabled: !isNew })
   // A submitted request is a record of what was reported, not a draft. Only a role with edit
   // rights on Job Requests may change it afterwards - a reporter can read it but not rewrite it.
@@ -80,16 +91,18 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
 
   const handlePrimary = async () => {
     if (isNew && !access.create) return setSubmitError('You do not have create access for Job Requests.')
-    if (!isNew && !access.approve) return setSubmitError('You do not have approve access for Job Requests.')
+    if (!isNew && conversionStep && !access.approve) return setSubmitError('You do not have approve access for Job Requests.')
+    if (!isNew && !conversionStep && !access.edit) return setSubmitError('You do not have edit access for Job Requests.')
     if (isNew && !canSubmit) return setSubmitError('Complete Description, Site, Location, and Reported By before submitting.')
-    if (!isNew && !canConvert) {
+    if (!isNew && conversionStep && !canConvert) {
       setActiveTab(form.asset?.trim() ? 'Department Review' : 'Request Details')
       return setSubmitError('Complete Asset, Department, Sub Department, Assigned Department, and Failure Code before converting to CM.')
     }
     setSubmitError('')
     try {
       if (isNew) await onSubmit(form, pendingFiles)
-      else setForm(await onApprove(form))
+      else if (conversionStep) setForm(await onApprove(form))
+      else if (manualNextStep) setForm(await onAdvance(form, manualNextStep.statusCode))
     } catch (error) {
       setSubmitError(error.message || 'Unable to save this Job Request.')
     }
@@ -164,7 +177,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
               {!isNew && <p className="text-[9px] font-extrabold uppercase tracking-[.18em] text-[var(--app-muted)]">Job request · {form.requestType?.toUpperCase() || 'SERVICE'}</p>}
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <h1 className="text-3xl font-extrabold text-[var(--app-ink)]">{form.sr === 'AUTO' ? 'New job request' : form.sr}</h1>
-                <StatusBadge application="serviceRequest" value={form.status} />
+                <StatusBadge application="serviceRequest" value={form.status} description={applicationWorkflowLabel(activeWorkflow, form.status)} tone={applicationWorkflowTone(activeWorkflow, form.status)} />
               </div>
               <p className="mt-2 max-w-3xl text-sm text-[var(--app-muted)]">{isNew ? 'Tell us what happened and where.' : form.description}</p>
             </div>
@@ -174,11 +187,9 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
             ) : (
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button variant="outline" onClick={() => printWithoutBrowserTitle()}><Printer size={15} /> Print</Button>
-                {form.convertedWorkOrder ? (
-                  <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder, form)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>
-                ) : (
-                  access.approve && access.edit ? <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} /> Approve & convert to CM</Button> : null
-                )}
+                {form.convertedWorkOrder && <Button onClick={() => onOpenWorkOrder(form.convertedWorkOrder, form)}>Open WO #{form.convertedWorkOrder} <ChevronRight size={15} /></Button>}
+                {!form.convertedWorkOrder && conversionStep && access.approve && access.edit && <Button onClick={handlePrimary} disabled={!canConvert}><Check size={15} /> Approve & convert to CM</Button>}
+                {manualNextStep && !conversionStep && access.edit && <Button onClick={handlePrimary}><Check size={15} /> Move to {manualNextStep.stepName}</Button>}
               </div>
             )}
           </div>
@@ -199,7 +210,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
           </nav>
         )}
 
-        {!isNew && !form.convertedWorkOrder && !canConvert && (
+        {!isNew && conversionStep && !form.convertedWorkOrder && !canConvert && (
           <Alert
             tone="warning"
             title="Complete required information before CM conversion"

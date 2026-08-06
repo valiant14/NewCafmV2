@@ -14,6 +14,7 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
 import useModuleAccess from '../hooks/useModuleAccess'
+import { applicationWorkflowStep, supplyChainMilestone } from '../lib/applicationWorkflow'
 
 const todayStamp = () => nowLocalDate()
 const purchaseRequisitionStatuses = ['WAPPR', 'APPR', 'CLOSE', 'CAN']
@@ -52,6 +53,7 @@ export default function PurchaseRequestsPage({
   storeRows = [],
   siteRecords = [],
   departmentRecords = [],
+  workflow,
   onApproveRequest,
   onUpdateRequest,
   onCreateRequest
@@ -64,6 +66,10 @@ export default function PurchaseRequestsPage({
   const [filters, setFilters] = useState(emptyStandardFilters)
   const [requestStatus, setRequestStatus] = useState('All')
   const requestFields = buildRequestFields({ siteRecords, departmentRecords, materials, tools, storeRows })
+  const renderWorkflowStatus = value => {
+    const step = applicationWorkflowStep(workflow, supplyChainMilestone('PURCHASE_REQUISITION', value))
+    return <StatusBadge application="purchaseRequisition" value={value} description={step?.stepName} tone={step?.badgeTone} />
+  }
 
   const linkedPoFor = row => purchaseOrders.find(order => order.purchaseRequest === row.purchaseRequest) || null
   const rowsWithPo = rows.map(row => {
@@ -167,7 +173,7 @@ export default function PurchaseRequestsPage({
               { key: 'purchaseOrder', label: 'Linked PO', render: value => value || 'Not created' },
               { key: 'site', label: 'Site' },
               { key: 'department', label: 'Department' },
-              { key: 'status', label: 'Status', render: value => <StatusBadge application="purchaseRequisition" value={value} /> },
+              { key: 'status', label: 'Status', render: renderWorkflowStatus },
               { key: 'createdAt', label: 'Created' },
               { key: 'action', label: 'Next Step', sortable: false, render: (_, row) => requestAction(row) }
             ]}

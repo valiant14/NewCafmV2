@@ -392,6 +392,41 @@ create table dbo.work_order_workflow_steps (
 );
 go
 
+create table dbo.application_workflows (
+  workflow_key nvarchar(40) not null constraint pk_application_workflows primary key,
+  module_name nvarchar(80) not null,
+  workflow_name nvarchar(160) not null,
+  initial_status nvarchar(40) not null,
+  allow_manual_status_change bit not null constraint df_application_workflow_manual default 1,
+  allow_backward_transition bit not null constraint df_application_workflow_backward default 0,
+  allow_cancel bit not null constraint df_application_workflow_cancel default 1,
+  is_active bit not null constraint df_application_workflow_active default 1,
+  updated_by_user_id nvarchar(50) null,
+  created_at datetime2 not null constraint df_application_workflow_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_application_workflow_updated default sysutcdatetime()
+);
+go
+
+create table dbo.application_workflow_steps (
+  workflow_key nvarchar(40) not null,
+  step_id nvarchar(80) not null,
+  status_code nvarchar(40) not null,
+  step_name nvarchar(160) not null,
+  sequence_no int not null,
+  is_automatic bit not null constraint df_application_workflow_step_automatic default 0,
+  requirements_json nvarchar(max) not null constraint df_application_workflow_step_requirements default '[]',
+  badge_tone nvarchar(20) not null constraint df_application_workflow_step_tone default 'neutral',
+  created_at datetime2 not null constraint df_application_workflow_step_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_application_workflow_step_updated default sysutcdatetime(),
+  constraint pk_application_workflow_steps primary key (workflow_key, step_id),
+  constraint uq_application_workflow_step_status unique (workflow_key, status_code),
+  constraint uq_application_workflow_step_sequence unique (workflow_key, sequence_no),
+  constraint fk_application_workflow_step_workflow foreign key (workflow_key) references dbo.application_workflows(workflow_key) on delete cascade,
+  constraint ck_application_workflow_step_requirements check (isjson(requirements_json) = 1),
+  constraint ck_application_workflow_step_tone check (badge_tone in ('neutral', 'green', 'blue', 'purple', 'orange', 'red'))
+);
+go
+
 alter table dbo.service_requests add constraint fk_sr_converted_wo foreign key (converted_work_order_num) references dbo.work_orders(work_order_num);
 go
 

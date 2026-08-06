@@ -7,14 +7,20 @@ import Field from '../components/ui/Field'
 import PageHeader from '../components/ui/PageHeader'
 import Surface, { SurfaceHeader } from '../components/ui/Surface'
 import ToggleField from '../components/ui/ToggleField'
+import { DetailTabs } from '../components/ui/DetailScaffold'
 import {
   PROTECTED_WORK_ORDER_STATUSES,
   WORK_ORDER_REQUIREMENTS,
   WORK_ORDER_STAGE_PRESETS,
   normalizeWorkOrderWorkflow
 } from '../lib/workOrderWorkflow'
+import {
+  APPLICATION_WORKFLOW_DEFINITIONS,
+  DEFAULT_APPLICATION_WORKFLOWS,
+  normalizeApplicationWorkflow
+} from '../lib/applicationWorkflow'
 
-const policyControls = [
+const workOrderPolicyControls = [
   ['allowManualStatusChange', 'Manual status control', 'Authorized users can choose an allowed next stage from the work order.'],
   ['allowBackwardTransition', 'One-step correction', 'Allow a work order to return to the immediately previous configured stage.'],
   ['allowHold', 'Hold statuses', 'Allow operational and material holds before completion.'],
@@ -22,6 +28,29 @@ const policyControls = [
   ['ptwRequiredDefault', 'PTW required by default', 'New work orders start with Permit to Work set to Yes.'],
   ['allowPtwOverride', 'Permit exception', 'Authorized editors can mark an individual work order as not requiring PTW.']
 ]
+
+const applicationPolicyControls = [
+  ['isActive', 'Workflow enforcement', 'Apply the configured stages and gates to new and updated transactions.'],
+  ['allowManualStatusChange', 'Manual status control', 'Authorized users can advance a record to the next configured stage.'],
+  ['allowBackwardTransition', 'One-step correction', 'Allow an authorized user to return to the immediately previous stage.'],
+  ['allowCancel', 'Cancellation', 'Allow active transactions to leave the normal path through a cancelled state.']
+]
+
+const workflowTabs = [
+  { key: 'WORK_ORDER', label: 'Work Orders' },
+  { key: 'JOB_REQUEST', label: 'Job Requests' },
+  { key: 'SUPPLY_CHAIN', label: 'Supply Chain' }
+]
+
+const workOrderDefinition = {
+  key: 'WORK_ORDER',
+  label: 'Work Orders',
+  description: 'Control planning, permits, execution, completion, and closeout for every work order.',
+  protectedStatuses: PROTECTED_WORK_ORDER_STATUSES,
+  requirements: WORK_ORDER_REQUIREMENTS,
+  presets: WORK_ORDER_STAGE_PRESETS,
+  policyControls: workOrderPolicyControls
+}
 
 const toneOptions = [
   { value: 'neutral', label: 'Neutral' },
@@ -32,34 +61,39 @@ const toneOptions = [
   { value: 'red', label: 'Stopped' }
 ]
 
-const statusSuggestions = WORK_ORDER_STAGE_PRESETS.map(stage => ({ value: stage.code, label: stage.label }))
 const cleanCode = value => String(value || '').toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 20)
 
-const nextAvailableStage = steps => {
+const nextAvailableStage = (steps, definition) => {
   const used = new Set(steps.map(step => step.statusCode))
-  const preset = WORK_ORDER_STAGE_PRESETS.find(stage => !used.has(stage.code) && !PROTECTED_WORK_ORDER_STATUSES.includes(stage.code))
+  const preset = definition.presets.find(stage => !used.has(stage.code) && !definition.protectedStatuses.includes(stage.code))
   if (preset) return preset
   let suffix = 1
   while (used.has(`REVIEW${suffix}`)) suffix += 1
   return { code: `REVIEW${suffix}`, label: `Review ${suffix}`, tone: 'purple' }
 }
 
-const protectedOrderIsValid = steps => {
-  const positions = PROTECTED_WORK_ORDER_STATUSES.map(status => steps.findIndex(step => step.statusCode === status))
-  return positions.every((position, index) => position >= 0 && (index === 0 || position > positions[index - 1])) && steps.at(-1)?.statusCode === 'CLOSE'
+const protectedOrderIsValid = (steps, protectedStatuses) => {
+  const positions = protectedStatuses.map(status => steps.findIndex(step => step.statusCode === status))
+  return positions.every((position, index) => position >= 0 && (index === 0 || position > positions[index - 1])) && steps.at(-1)?.statusCode === protectedStatuses.at(-1)
 }
 
-const canMoveStage = (steps, index, direction) => {
+const canMoveStage = (steps, index, direction, protectedStatuses) => {
   const destination = index + direction
   if (destination < 0 || destination >= steps.length) return false
   const next = [...steps]
   const [stage] = next.splice(index, 1)
   next.splice(destination, 0, stage)
-  return protectedOrderIsValid(next)
+  return protectedOrderIsValid(next, protectedStatuses)
 }
 
-export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdit = false }) {
-  const normalized = useMemo(() => normalizeWorkOrderWorkflow(workflow), [workflow])
+export default function WorkOrderWorkflowSettingsPage({ workflow, applicationWorkflows = DEFAULT_APPLICATION_WORKFLOWS, onSave, onSaveApplication, canEdit = false }) {
+  const [activeWorkflowKey, setActiveWorkflowKey] = useState('WORK_ORDER')
+  const definition = activeWorkflowKey === 'WORK_ORDER'
+    ? workOrderDefinition
+    : { ...APPLICATION_WORKFLOW_DEFINITIONS[activeWorkflowKey], policyControls: applicationPolicyControls }
+  const normalized = useMemo(() => activeWorkflowKey === 'WORK_ORDER'
+    ? normalizeWorkOrderWorkflow(workflow)
+    : normalizeApplicationWorkflow(applicationWorkflows[activeWorkflowKey], activeWorkflowKey), [activeWorkflowKey, applicationWorkflows, workflow])
   const [form, setForm] = useState(normalized)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -70,6 +104,7 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
   useEffect(() => setForm(normalized), [normalized])
   const changed = JSON.stringify(form) !== JSON.stringify(normalized)
   const steps = form.steps || []
+  const statusSuggestions = definition.presets.map(stage => ({ value: stage.code, label: stage.label }))
 
   const setValue = (key, value) => {
     setError('')
@@ -89,9 +124,10 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
   )))
 
   const addStage = () => setSteps(current => {
-    const preset = nextAvailableStage(current)
-    const closeIndex = current.findIndex(step => step.statusCode === 'CLOSE')
-    const insertAt = closeIndex < 0 ? current.length : closeIndex
+    const preset = nextAvailableStage(current, definition)
+    const finalStatus = definition.protectedStatuses.at(-1)
+    const finalIndex = current.findIndex(step => step.statusCode === finalStatus)
+    const insertAt = finalIndex < 0 ? current.length : finalIndex
     const next = [...current]
     next.splice(insertAt, 0, {
       stepId: `STEP-${preset.code}-${Date.now()}`,
@@ -115,7 +151,7 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
     const next = [...current]
     const [stage] = next.splice(index, 1)
     next.splice(destination, 0, stage)
-    if (!protectedOrderIsValid(next)) return current
+    if (!protectedOrderIsValid(next, definition.protectedStatuses)) return current
     return next.map((step, stepIndex) => ({ ...step, sequence: (stepIndex + 1) * 10 }))
   })
 
@@ -133,8 +169,8 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
     const next = [...steps]
     const [stage] = next.splice(sourceIndex, 1)
     next.splice(targetIndex, 0, stage)
-    if (!protectedOrderIsValid(next)) {
-      setError('That drop would break the protected SCHED, INPRG, COMP, CLOSE order.')
+    if (!protectedOrderIsValid(next, definition.protectedStatuses)) {
+      setError(`That drop would break the protected ${definition.protectedStatuses.join(', ')} order.`)
       return clearDrag()
     }
     setSteps(next.map((step, index) => ({ ...step, sequence: (index + 1) * 10 })))
@@ -176,14 +212,14 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
 
   const validate = () => {
     if (!form.workflowName.trim()) return 'Workflow name is required.'
-    if (steps.length < 4) return 'Add at least four workflow stages.'
+    if (steps.length < definition.protectedStatuses.length) return `Add at least ${definition.protectedStatuses.length} workflow stages.`
     const codes = steps.map(step => cleanCode(step.statusCode))
     if (codes.some(code => code.length < 2)) return 'Every stage needs a 2-20 character status code.'
     if (new Set(codes).size !== codes.length) return 'Every workflow status code must be unique.'
     if (steps.some(step => !step.stepName.trim())) return 'Every stage needs a display name.'
-    if (!protectedOrderIsValid(steps)) return 'SCHED, INPRG, COMP, and CLOSE must remain in order, with CLOSE last.'
+    if (!protectedOrderIsValid(steps, definition.protectedStatuses)) return `${definition.protectedStatuses.join(', ')} must remain in order, with ${definition.protectedStatuses.at(-1)} last.`
     const manualStagesWithoutActions=steps.slice(1).filter(step=>!step.isAutomatic&&!['INPRG','COMP','CLOSE'].includes(step.statusCode))
-    if (!form.allowManualStatusChange&&manualStagesWithoutActions.length) return `Enable manual status control or automate these transitions: ${manualStagesWithoutActions.map(step=>step.statusCode).join(', ')}.`
+    if (activeWorkflowKey === 'WORK_ORDER' && !form.allowManualStatusChange && manualStagesWithoutActions.length) return `Enable manual status control or automate these transitions: ${manualStagesWithoutActions.map(step=>step.statusCode).join(', ')}.`
     return ''
   }
 
@@ -197,11 +233,13 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
     setSaving(true)
     setError('')
     try {
-      await onSave?.({
+      const nextWorkflow = {
         ...form,
         initialStatus: steps[0].statusCode,
         steps: steps.map((step, index) => ({ ...step, sequence: (index + 1) * 10, isAutomatic: index > 0 && step.isAutomatic }))
-      })
+      }
+      if (activeWorkflowKey === 'WORK_ORDER') await onSave?.(nextWorkflow)
+      else await onSaveApplication?.(activeWorkflowKey, nextWorkflow)
     } catch (saveError) {
       setError(saveError.message || 'Unable to save workflow controls.')
     } finally {
@@ -213,8 +251,8 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
     <section className="space-y-5">
       <PageHeader
         eyebrow="SETTINGS"
-        title="Work Order Workflow"
-        description="Design the stage path, transition behavior, and entry requirements applied to every work order."
+        title="Workflow Controls"
+        description="Design the governed lifecycle for maintenance requests, work execution, and supply fulfilment."
         actions={(
           <div className="flex items-center gap-2">
             {changed && <Badge tone="orange">Unsaved changes</Badge>}
@@ -223,19 +261,21 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
         )}
       />
 
-      {!canEdit && <Alert tone="warning" title="Read-only workflow">Your role can view this workflow but cannot change the global configuration.</Alert>}
+      <DetailTabs tabs={workflowTabs.map(tab => tab.label)} active={definition.label} onChange={label => setActiveWorkflowKey(workflowTabs.find(tab => tab.label === label)?.key || 'WORK_ORDER')} />
+
+      {!canEdit && <Alert tone="warning" title="Read-only workflow">Your role can view workflow controls but cannot change the global configuration.</Alert>}
       {error && <Alert tone="danger" title="Workflow not saved">{error}</Alert>}
 
       <Surface>
         <SurfaceHeader
           eyebrow="WORKFLOW DESIGNER"
-          title="Stages"
-          description="The first row is the creation status. Move or add review stages; protected execution stages keep the work-order lifecycle valid."
+          title={`${definition.label} Stages`}
+          description={`The first row is the creation status. Move or add review stages; protected ${definition.label.toLowerCase()} milestones remain in their valid order.`}
           actions={<Button variant="outline" onClick={addStage} disabled={!canEdit}><Plus size={15} />Add stage</Button>}
         />
         <div className="border-t border-[var(--app-line)]">
           {steps.map((step, index) => {
-            const protectedStage = PROTECTED_WORK_ORDER_STATUSES.includes(step.statusCode)
+            const protectedStage = definition.protectedStatuses.includes(step.statusCode)
             return (
               <div
                 key={step.stepId}
@@ -274,9 +314,9 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
                 <Field label="Badge Color" value={step.badgeTone} options={toneOptions} disabled={!canEdit} onChange={event => updateStep(index, 'badgeTone', event.target.value)} />
                 <div className="flex h-10 items-center justify-end gap-1">
                   {index === 0 && <Badge tone="blue">Initial</Badge>}
-                  {step.statusCode === 'CLOSE' && <Badge tone="green">Final</Badge>}
-                  <Button variant="ghost" className="!h-9 !w-9 !p-0" title="Move stage up" aria-label="Move stage up" disabled={!canEdit || !canMoveStage(steps,index,-1)} onClick={() => moveStage(index, -1)}><ArrowUp size={15} /></Button>
-                  <Button variant="ghost" className="!h-9 !w-9 !p-0" title="Move stage down" aria-label="Move stage down" disabled={!canEdit || !canMoveStage(steps,index,1)} onClick={() => moveStage(index, 1)}><ArrowDown size={15} /></Button>
+                  {step.statusCode === definition.protectedStatuses.at(-1) && <Badge tone="green">Final</Badge>}
+                  <Button variant="ghost" className="!h-9 !w-9 !p-0" title="Move stage up" aria-label="Move stage up" disabled={!canEdit || !canMoveStage(steps,index,-1,definition.protectedStatuses)} onClick={() => moveStage(index, -1)}><ArrowUp size={15} /></Button>
+                  <Button variant="ghost" className="!h-9 !w-9 !p-0" title="Move stage down" aria-label="Move stage down" disabled={!canEdit || !canMoveStage(steps,index,1,definition.protectedStatuses)} onClick={() => moveStage(index, 1)}><ArrowDown size={15} /></Button>
                   <Button variant="ghost" className="!h-9 !w-9 !p-0" title={protectedStage ? 'Protected operational stage' : 'Remove stage'} aria-label="Remove stage" disabled={!canEdit || protectedStage || index === 0} onClick={() => removeStage(index)}><Trash2 size={15} /></Button>
                 </div>
               </div>
@@ -289,7 +329,7 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
         <SurfaceHeader
           eyebrow="TRANSITIONS"
           title="Movement & Requirements"
-          description="Configure how each next stage is reached and exactly which work-order data blocks entry."
+          description={`Configure how each next stage is reached and exactly which ${definition.label.toLowerCase()} data blocks entry.`}
           actions={<Workflow size={18} className="text-[var(--app-primary)]" />}
         />
         <div className="border-t border-[var(--app-line)]">
@@ -321,12 +361,12 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
                   <fieldset disabled={!canEdit}>
                     <legend className="mb-2 text-[10px] font-bold uppercase text-[var(--app-muted)]">Required before entering {step.statusCode}</legend>
                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                      {WORK_ORDER_REQUIREMENTS.map(requirement => {
+                      {definition.requirements.map(requirement => {
                         const selected = step.requirements.includes(requirement.id)
                         return (
                           <label key={requirement.id} className={`flex min-h-16 cursor-pointer items-start gap-3 rounded-lg border p-3 transition ${selected ? 'border-[var(--app-primary)] bg-[var(--app-panel)]' : 'border-[var(--app-line)] bg-transparent hover:bg-[var(--app-panel)]'}`}>
                             <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--app-primary)]" checked={selected} onChange={() => toggleRequirement(index, requirement.id)} />
-                            <span className="min-w-0"><strong className="block text-xs text-[var(--app-ink)]">{requirement.label}</strong><small className="mt-1 block text-[10px] leading-4 text-[var(--app-muted)]">{requirement.tab} · {requirement.description}</small></span>
+                            <span className="min-w-0"><strong className="block text-xs text-[var(--app-ink)]">{requirement.label}</strong><small className="mt-1 block text-[10px] leading-4 text-[var(--app-muted)]">{requirement.tab || requirement.section} · {requirement.description}</small></span>
                           </label>
                         )
                       })}
@@ -354,7 +394,7 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, onSave, canEdi
         <Surface>
           <SurfaceHeader eyebrow="GLOBAL POLICY" title="Exceptions & Defaults" description="These controls apply around the configured stage path." />
           <div className="grid gap-3 p-4 md:grid-cols-2">
-            {policyControls.map(([key, label, description]) => <ToggleField key={key} label={label} description={description} checked={form[key]} disabled={!canEdit} onChange={value => setValue(key, value)} />)}
+            {definition.policyControls.map(([key, label, description]) => <ToggleField key={key} label={label} description={description} checked={form[key]} disabled={!canEdit} onChange={value => setValue(key, value)} />)}
           </div>
         </Surface>
       </div>

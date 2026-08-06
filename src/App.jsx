@@ -50,6 +50,12 @@ import {
   workflowStepByStatus,
   workflowAutoTarget
 } from './lib/workOrderWorkflow'
+import {
+  DEFAULT_APPLICATION_WORKFLOWS,
+  applicationWorkflowNextStep,
+  applicationWorkflowToApi,
+  normalizeApplicationWorkflow
+} from './lib/applicationWorkflow'
 
 const ServiceRequestsPage = lazy(() => import('./pages/ServiceRequestsPage'))
 const WorkOrdersPage = lazy(() => import('./pages/WorkOrdersPage'))
@@ -1322,6 +1328,7 @@ export default function App() {
   const [connectorRecords,setConnectorRecords]=useState([])
   const [notificationRuleRecords,setNotificationRuleRecords]=useState([])
   const [workOrderWorkflow,setWorkOrderWorkflow]=useState(DEFAULT_WORK_ORDER_WORKFLOW)
+  const [applicationWorkflows,setApplicationWorkflows]=useState(DEFAULT_APPLICATION_WORKFLOWS)
   const [purchaseRequests,setPurchaseRequests]=useState([])
   const [purchaseOrders,setPurchaseOrders]=useState([])
   const [reservations,setReservations]=useState([])
@@ -1400,6 +1407,7 @@ export default function App() {
     if (Object.hasOwn(data, 'connectors')) setConnectorRecords(data.connectors)
     if (Object.hasOwn(data, 'notificationRules')) setNotificationRuleRecords(data.notificationRules)
     if (Object.hasOwn(data, 'workOrderWorkflow')) setWorkOrderWorkflow(normalizeWorkOrderWorkflow(data.workOrderWorkflow))
+    if (Object.hasOwn(data, 'applicationWorkflows')) setApplicationWorkflows(data.applicationWorkflows)
     if (Object.hasOwn(data, 'purchaseRequests')) setPurchaseRequests(data.purchaseRequests)
     if (Object.hasOwn(data, 'purchaseOrders')) setPurchaseOrders(data.purchaseOrders)
     if (Object.hasOwn(data, 'reservations')) setReservations(data.reservations)
@@ -1436,6 +1444,7 @@ export default function App() {
     setPmRuleRecords([])
     setConnectorRecords([])
     setNotificationRuleRecords([])
+    setApplicationWorkflows(DEFAULT_APPLICATION_WORKFLOWS)
     setPurchaseRequests([])
     setPurchaseOrders([])
     setReservations([])
@@ -1613,6 +1622,25 @@ export default function App() {
       throw error
     }
   }, [canDo, notify])
+  const saveApplicationWorkflow = useCallback(async (workflowKey, nextWorkflow) => {
+    if (!canDo('Work Order Workflow', 'edit')) {
+      const error = new Error('No edit access for Workflow Controls. Ask an administrator to update your role permissions.')
+      notify(error.message, 'error')
+      throw error
+    }
+    try {
+      const saved = normalizeApplicationWorkflow(
+        await api.put(`/application-workflows/${workflowKey}`, applicationWorkflowToApi(nextWorkflow)),
+        workflowKey
+      )
+      setApplicationWorkflows(current => ({ ...current, [workflowKey]: saved }))
+      notify(`${saved.moduleName} workflow controls saved and applied.`, 'success')
+      return saved
+    } catch (error) {
+      notify(error.message || 'Unable to save workflow controls.', 'error')
+      throw error
+    }
+  }, [canDo, notify])
   const guardSave = useCallback((moduleName, saveFn) => update => {
     const permissionModule = moduleName === 'Job Plan Tasks' ? 'Job Plans' : moduleName
     const beforeRows = moduleName === 'Assets' ? assetRecords
@@ -1708,12 +1736,13 @@ export default function App() {
       if (!request.convertedWorkOrder || ['CLOSED', 'CAN'].includes(String(request.status || '').toUpperCase())) return
       const linkedWorkOrder = allWorkOrders.find(order => String(order.WORKORDER) === String(request.convertedWorkOrder))
       if (!linkedWorkOrder) return
-      const nextStatus = String(linkedWorkOrder.STATUS || '').toUpperCase() === 'CLOSE' ? 'RESOLVED' : 'CONVERTED'
-      if (request.status !== nextStatus) nextStatuses.set(request.sr, nextStatus)
+      if (String(linkedWorkOrder.STATUS || '').toUpperCase() !== 'CLOSE') return
+      const nextStep = applicationWorkflowNextStep(applicationWorkflows.JOB_REQUEST, request.status)
+      if (nextStep?.isAutomatic && request.status !== nextStep.statusCode) nextStatuses.set(request.sr, nextStep.statusCode)
     })
     if (!nextStatuses.size) return
     saveServiceRequests(rows => rows.map(request => nextStatuses.has(request.sr) ? { ...request, status: nextStatuses.get(request.sr) } : request))
-  }, [serviceRequests, allWorkOrders, saveServiceRequests])
+  }, [serviceRequests, allWorkOrders, applicationWorkflows.JOB_REQUEST, saveServiceRequests])
   const siteScopeOptions = useMemo(() => {
     const options = deriveSiteOptions({ siteRecords, user: effectiveUser, locations: scopedLocations, assets: scopedAssets, orders: scopedWorkOrders })
       .map(option => option.label ? `${option.label} / ${option.value}` : option.value)
@@ -2122,7 +2151,7 @@ export default function App() {
   }
   const createWorkOrder=async form=>{if(!canDo('Work Orders','create')){notify('No create access for Work Orders.','error');return null}const created={'WORKORDER':'AUTO','__isNew':true,'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':toLocationPriority(form.priority),'ASSET':form.asset,'STATUS':workOrderWorkflow.initialStatus,'WORK TYPE ':form.type,'STATUS DESCRIPITION':workflowStatusLabel(workOrderWorkflow,workOrderWorkflow.initialStatus)||workOrderWorkflow.initialStatus,'DEPARTMENT ':form.department||'','SUB DEPARTMENT  NAME':form.subDepartment||'','ASSIGNED DEPARTMENT':form.department||'','ASSET DESCRIPTION':assetDescriptionFromMaster(form.asset, assetRecords),'SYSTEM':assetFromMaster(form.asset, assetRecords)?.system||'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':nowLocalDateTime(),'PTW REQUIRED':workOrderWorkflow.ptwRequiredDefault};const result=await saveWorkOrders(rows=>[...rows,created]);if(result?.__saveError)return null;notify(`Work order #${created.WORKORDER} created.`,'success');return created}
   const pages = {
-    'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions} access={accessFor('Job Requests')} notify={notify}/>,
+    'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions} workflow={applicationWorkflows.JOB_REQUEST} access={accessFor('Job Requests')} notify={notify}/>,
     'Incidents': <IncidentsPage rows={scopedIncidents} setRows={saveIncidents} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} laborRows={laborRecords}/>,
     'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} pageMeta={workOrderPageMeta} onPageRequest={requestWorkOrderPage} onLoadDetail={loadWorkOrderById} EditorComponent={props => {
       const detailContext = workOrderContext.workOrder === String(props.order.WORKORDER) ? workOrderContext : null
@@ -2157,15 +2186,15 @@ export default function App() {
     'Labor': <LaborPage rows={laborRecords} setRows={saveLabor} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} laborRows={laborRecords}/>,
     'Materials': <MaterialsPage rows={materialRecords} setRows={saveMaterials} stockRows={stockRecords} storeRows={storeRecords} workOrders={scopedWorkOrders} resourceRequests={workOrderResourceRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} onCreateRequest={createPurchaseRequest} onUpdateStock={(storeCode,itemCode,patch)=>upsertStockRecord(storeCode,itemCode,patch)}/>,
     'Stores': <StoresPage materials={materialRecords} tools={toolRecords} stockRows={stockRecords} storeRows={storeRecords} setStoreRows={saveStores} locationRows={locationRecords} siteRecords={siteRecords} scopeUser={effectiveUser}/>,
-    'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} materials={materialRecords} tools={toolRecords} storeRows={storeRecords} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
-    'Purchase Orders': <PurchaseOrdersPage rows={scopedPurchaseOrders} onUpdateOrder={updatePurchaseOrder}/>,
-    'Reservations': <ReservationsPage rows={scopedReservations} stockRows={stockRecords} workOrders={allWorkOrders} onUpdate={updateReservation}/>,
+    'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} materials={materialRecords} tools={toolRecords} storeRows={storeRecords} siteRecords={siteRecords} departmentRecords={departmentRecords} workflow={applicationWorkflows.SUPPLY_CHAIN} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
+    'Purchase Orders': <PurchaseOrdersPage rows={scopedPurchaseOrders} workflow={applicationWorkflows.SUPPLY_CHAIN} onUpdateOrder={updatePurchaseOrder}/>,
+    'Reservations': <ReservationsPage rows={scopedReservations} stockRows={stockRecords} workOrders={allWorkOrders} workflow={applicationWorkflows.SUPPLY_CHAIN} onUpdate={updateReservation}/>,
     'Tools & Equipment': <ToolsPage rows={toolRecords} setRows={saveTools} workOrders={scopedWorkOrders} resourceRequests={workOrderResourceRecords} allocations={scopedReservations} storeRows={storeRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} onCreateRequest={createPurchaseRequest}/>,
     'Users': <UsersPage rows={userRecords} setRows={saveUsers} roleRows={rolePermissionRecords} laborRows={laborRecords} scopeUser={effectiveUser} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
     'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={saveRoles} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
     'Sites': <SitesSettingsPage rows={siteRecords} setRows={saveSites}/>,
     'Departments': <DepartmentsSettingsPage rows={departmentRecords} setRows={saveDepartments}/>,
-    'Work Order Workflow': <WorkOrderWorkflowSettingsPage workflow={workOrderWorkflow} onSave={saveWorkOrderWorkflow} canEdit={canDo('Work Order Workflow', 'edit')}/>,
+    'Work Order Workflow': <WorkOrderWorkflowSettingsPage workflow={workOrderWorkflow} applicationWorkflows={applicationWorkflows} onSave={saveWorkOrderWorkflow} onSaveApplication={saveApplicationWorkflow} canEdit={canDo('Work Order Workflow', 'edit')}/>,
     'Notifications': <NotificationsSettingsPage rows={notificationRuleRecords} setRows={saveNotificationRules}/>,
     'SMTP & SMS': <ConnectorsSettingsPage rows={connectorRecords} setRows={saveConnectors} notify={notify}/>,
     'PM Schedule Rules': <PmRulesSettingsPage rows={pmRuleRecords} setRows={savePmRules} pmSchedules={pmScheduleRecords} workOrders={scopedWorkOrders} workflow={workOrderWorkflow}/>

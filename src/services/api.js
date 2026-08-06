@@ -1,5 +1,6 @@
 import { toLocalDateTimeInput } from '../lib/datetime'
 import { DEFAULT_WORK_ORDER_WORKFLOW, mapWorkOrderWorkflow } from '../lib/workOrderWorkflow'
+import { mapApplicationWorkflows } from '../lib/applicationWorkflow'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api'
 const tokenKey = 'seder-cafm-auth-token'
@@ -674,10 +675,11 @@ const resourceDefinitions = {
   jobTasks: ['/job-plan-tasks', rows => rows.map(mapJobTask)],
   incidents: ['/incidents', rows => rows.map(mapIncident)],
   meters: ['/meter-readings', rows => rows.map(mapMeter)],
-  workOrderWorkflow: ['/work-order-workflow', value => Array.isArray(value) ? DEFAULT_WORK_ORDER_WORKFLOW : mapWorkOrderWorkflow(value)]
+  workOrderWorkflow: ['/work-order-workflow', value => Array.isArray(value) ? DEFAULT_WORK_ORDER_WORKFLOW : mapWorkOrderWorkflow(value)],
+  applicationWorkflows: ['/application-workflows', mapApplicationWorkflows]
 }
 
-export const WORKSPACE_RESOURCE_KEYS = ['overviewSnapshot', 'sites', 'departments', 'roles', 'users', 'assets', 'locations', 'labor', 'materials', 'storerooms', 'inventoryStock', 'tools', 'failureCodes', 'workOrders', 'workOrderResources', 'workOrderPlannedLabor', 'workOrderTasks', 'serviceRequests', 'purchaseRequests', 'purchaseOrders', 'reservations', 'pmSchedules', 'pmRules', 'connectors', 'notificationRules', 'jobPlans', 'jobTasks', 'incidents', 'meters', 'workOrderWorkflow']
+export const WORKSPACE_RESOURCE_KEYS = ['overviewSnapshot', 'sites', 'departments', 'roles', 'users', 'assets', 'locations', 'labor', 'materials', 'storerooms', 'inventoryStock', 'tools', 'failureCodes', 'workOrders', 'workOrderResources', 'workOrderPlannedLabor', 'workOrderTasks', 'serviceRequests', 'purchaseRequests', 'purchaseOrders', 'reservations', 'pmSchedules', 'pmRules', 'connectors', 'notificationRules', 'jobPlans', 'jobTasks', 'incidents', 'meters', 'workOrderWorkflow', 'applicationWorkflows']
 
 export async function loadWorkspace({ resources = [], workOrderQuery = {} } = {}) {
   const selected = [...new Set(resources)].filter(resource => resourceDefinitions[resource] || resource === 'workOrders')

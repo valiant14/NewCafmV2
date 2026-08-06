@@ -1,6 +1,6 @@
 const pageResources = {
   Overview: ['overviewSnapshot', 'workOrders'],
-  'Job Requests': ['serviceRequests', 'assets', 'locations', 'sites', 'departments', 'failureCodes'],
+  'Job Requests': ['serviceRequests', 'assets', 'locations', 'sites', 'departments', 'failureCodes', 'applicationWorkflows'],
   'Work Orders': ['workOrders', 'assets', 'locations', 'sites', 'departments', 'workOrderWorkflow'],
   'Preventive Maintenance': ['pmSchedules', 'pmRules', 'assets', 'locations', 'jobPlans', 'jobTasks', 'sites', 'departments', 'storerooms', 'labor', 'workOrderWorkflow'],
   Incidents: ['incidents', 'sites', 'departments'],
@@ -10,17 +10,17 @@ const pageResources = {
   Locations: ['locations', 'sites', 'departments'],
   'Failure Library': ['failureCodes'],
   Meters: ['meters', 'assets', 'locations', 'sites', 'departments', 'workOrders'],
-  Stores: ['storerooms', 'inventoryStock', 'materials', 'tools', 'reservations', 'sites'],
-  Materials: ['materials', 'inventoryStock', 'storerooms', 'purchaseRequests', 'purchaseOrders', 'reservations', 'workOrderResources'],
-  'Tools & Equipment': ['tools', 'storerooms', 'purchaseRequests', 'purchaseOrders', 'reservations', 'workOrderResources'],
-  Reservations: ['reservations', 'inventoryStock', 'materials', 'tools', 'storerooms', 'workOrderResources'],
-  'Purchase Requisitions': ['purchaseRequests', 'purchaseOrders', 'workOrderResources', 'materials', 'tools', 'storerooms'],
-  'Purchase Orders': ['purchaseOrders', 'purchaseRequests', 'reservations', 'inventoryStock', 'materials', 'tools', 'storerooms', 'workOrderResources'],
+  Stores: ['storerooms', 'inventoryStock', 'materials', 'tools', 'reservations', 'sites', 'applicationWorkflows'],
+  Materials: ['materials', 'inventoryStock', 'storerooms', 'purchaseRequests', 'purchaseOrders', 'reservations', 'workOrderResources', 'applicationWorkflows'],
+  'Tools & Equipment': ['tools', 'storerooms', 'purchaseRequests', 'purchaseOrders', 'reservations', 'workOrderResources', 'applicationWorkflows'],
+  Reservations: ['reservations', 'inventoryStock', 'materials', 'tools', 'storerooms', 'workOrderResources', 'applicationWorkflows'],
+  'Purchase Requisitions': ['purchaseRequests', 'purchaseOrders', 'workOrderResources', 'materials', 'tools', 'storerooms', 'applicationWorkflows'],
+  'Purchase Orders': ['purchaseOrders', 'purchaseRequests', 'reservations', 'inventoryStock', 'materials', 'tools', 'storerooms', 'workOrderResources', 'applicationWorkflows'],
   Users: ['users', 'roles', 'sites', 'departments', 'labor'],
   'Roles & Permissions': ['roles'],
   Sites: ['sites'],
   Departments: ['departments'],
-  'Work Order Workflow': ['workOrderWorkflow'],
+  'Work Order Workflow': ['workOrderWorkflow', 'applicationWorkflows'],
   Notifications: ['notificationRules'],
   'SMTP & SMS': ['connectors'],
   'PM Schedule Rules': ['pmRules', 'pmSchedules']
@@ -70,7 +70,9 @@ const tableResources = {
   'dbo.incidents': ['incidents'],
   'dbo.meter_readings': ['meters'],
   'dbo.work_order_workflow': ['workOrderWorkflow'],
-  'dbo.work_order_workflow_steps': ['workOrderWorkflow']
+  'dbo.work_order_workflow_steps': ['workOrderWorkflow'],
+  'dbo.application_workflows': ['applicationWorkflows'],
+  'dbo.application_workflow_steps': ['applicationWorkflows']
 }
 
 const overviewTables = new Set([
