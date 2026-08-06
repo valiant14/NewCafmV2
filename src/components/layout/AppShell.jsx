@@ -204,7 +204,7 @@ export default function AppShell({
                 <button
                   key={`${item.type}-${item.workOrder}`}
                   title={`Open work order ${item.workOrder}`}
-                  className={`grid gap-2 rounded-2xl border bg-[var(--app-table-bg)] p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,.06)] transition hover:bg-[var(--app-table-hover-bg)] md:grid-cols-[128px_1fr_auto] md:items-center ${item.type === 'overdue' ? 'border-[color:color-mix(in_srgb,var(--app-badge-orange-text)_38%,var(--app-line))] shadow-[inset_3px_0_0_var(--app-badge-orange-text)]' : 'border-[var(--app-line)] shadow-[inset_3px_0_0_var(--app-badge-blue-text)]'}`}
+                  className={`app-hover-lift ${item.type === 'overdue' ? 'app-hover-lift--orange' : 'app-hover-lift--blue'} grid gap-2 rounded-2xl border bg-[var(--app-table-bg)] p-4 text-left md:grid-cols-[128px_1fr_auto] md:items-center`}
                   onClick={() => openNotification(item)}
                 >
                   <Badge tone={item.type === 'overdue' ? 'orange' : 'blue'}>
@@ -215,7 +215,7 @@ export default function AppShell({
                     <strong className="text-sm text-[var(--app-ink)]">WO #{item.workOrder} · {item.description}</strong>
                     <small className="text-xs text-[var(--app-muted)]">{item.message}</small>
                   </span>
-                  <ChevronRight size={18} className="text-[var(--app-muted)]" />
+                  <ChevronRight size={18} className="app-hover-chevron text-[var(--app-muted)]" />
                 </button>
               )) : (
                 <div className="grid min-h-40 place-items-center rounded-2xl border border-dashed border-[var(--app-line)] p-6 text-center text-sm text-[var(--app-muted)]">
