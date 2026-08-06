@@ -105,6 +105,7 @@ create table dbo.labor (
   department_name nvarchar(160) null,
   sub_department_code nvarchar(50) null,
   site_code nvarchar(30) null,
+  work_group_code nvarchar(80) null,
   availability nvarchar(40) null,
   status nvarchar(30) not null constraint df_labor_status default 'Active',
   created_at datetime2 not null constraint df_labor_created default sysutcdatetime(),
@@ -131,6 +132,13 @@ go
 
 create unique index uq_work_groups_scope_name on dbo.work_groups(site_code, department_name, work_group_name);
 create index ix_work_groups_scope_status on dbo.work_groups(site_code, department_name, sub_department_code, status) include(work_group_code, work_group_name, default_supervisor_labor_id);
+go
+
+alter table dbo.labor with check
+  add constraint fk_labor_work_group foreign key (work_group_code) references dbo.work_groups(work_group_code);
+create index ix_labor_team_scope
+  on dbo.labor(work_group_code, site_code, department_name, sub_department_code, status)
+  include(labor_id, display_name, craft_code, craft_name, availability);
 go
 
 create table dbo.users (

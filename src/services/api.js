@@ -209,6 +209,7 @@ const mapLabor = row => ({
   department: row.department_name || '',
   subDepartment: row.sub_department_code || '',
   site: row.site_code || '',
+  workGroup: row.work_group_code || '',
   availability: row.availability || '',
   status: row.status || 'Active'
 })

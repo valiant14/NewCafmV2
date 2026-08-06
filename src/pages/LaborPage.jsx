@@ -24,6 +24,7 @@ const empty = {
   site: '',
   department: '',
   subDepartment: '',
+  workGroup: '',
   shift: 'Day',
   availability: 'Available'
 }
@@ -48,7 +49,16 @@ const laborPastWork = (labor, workOrders) => workOrders
     targetFinish: order['TARGET FINISH '] || order['TARGET START '] || '-'
   }))
 
-export default function LaborPage({ rows = [], setRows, workOrders = [], siteRecords = [], departmentRecords = [] }) {
+const laborRouting = (labor, workGroups, laborRows) => {
+  const group = workGroups.find(row => row.code === labor?.workGroup)
+  const supervisor = laborRows.find(row => row.personId === group?.supervisorId)
+  return {
+    workGroupName: group ? `${group.code} / ${group.name}` : '',
+    supervisorName: supervisor ? `${supervisor.name} / ${supervisor.personId}` : ''
+  }
+}
+
+export default function LaborPage({ rows = [], setRows, workOrders = [], siteRecords = [], departmentRecords = [], workGroupRecords = [] }) {
   const access = useModuleAccess('Labor')
   const [adding, setAdding] = useState(false)
   const [editingPersonId, setEditingPersonId] = useState('')
@@ -109,7 +119,7 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], siteRec
 
   const save = async () => {
     if (!form.personId || !form.name || !form.craftCode || !form.site || !form.department) return
-    const record = { ...form }
+    const { teamSupervisor: _teamSupervisor, ...record } = form
     const result = await setRows?.(current => editingPersonId
       ? current.map(row => row.personId === editingPersonId ? record : row)
       : [...current, record]
@@ -126,10 +136,11 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], siteRec
       setForm={setForm}
       siteRecords={siteRecords}
       departmentRecords={departmentRecords}
+      workGroupRecords={workGroupRecords}
       laborRows={rows}
       lockPersonId={Boolean(editingPersonId)}
       title={editingPersonId ? 'Edit labor resource' : 'Add labor resource'}
-      note="Assign the labor resource to a site and department so Work Order routing can offer valid supervisors."
+      note="Assign site, department, and Work Group membership for controlled Work Order planning."
       submitLabel={editingPersonId ? 'Save labor' : 'Create labor'}
       onClose={closeModal}
       onSave={save}
@@ -137,9 +148,10 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], siteRec
   )
 
   if (selected) {
+    const routing = laborRouting(selected, workGroupRecords, rows)
     return (
       <>
-        <LaborDetailPage labor={selected} pastWork={laborPastWork(selected, workOrders)} onBack={close} onUpdate={updateLabor} onEdit={access.edit ? beginEdit : undefined} />
+        <LaborDetailPage labor={selected} workGroupName={routing.workGroupName} supervisorName={routing.supervisorName} pastWork={laborPastWork(selected, workOrders)} onBack={close} onUpdate={updateLabor} onEdit={access.edit ? beginEdit : undefined} />
         {laborModal}
       </>
     )
@@ -194,6 +206,8 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], siteRec
             { key: 'site', label: 'Site' },
             { key: 'department', label: 'Department' },
             { key: 'subDepartment', label: 'Sub Department' },
+            { key: 'workGroup', label: 'Work Group', render: (_, row) => laborRouting(row, workGroupRecords, rows).workGroupName || '-' },
+            { key: 'supervisor', label: 'Supervisor', render: (_, row) => laborRouting(row, workGroupRecords, rows).supervisorName || '-' },
             { key: 'shift', label: 'Shift' },
             { key: 'availability', label: 'Availability', render: value => <Badge tone={value === 'Available' ? 'green' : 'orange'}>{value}</Badge> }
           ]}

@@ -1,0 +1,1 @@
+import{i as e}from"./Surface-I7wHN53M.js";import{Et as t,nt as n}from"./index-BH6iuy9J.js";var r=e();function i({locked:e,...n}){return e?null:(0,r.jsx)(t,{...n})}function a(e){return(0,r.jsx)(n,{...e})}export{a as n,i as t};

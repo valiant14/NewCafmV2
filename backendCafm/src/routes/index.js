@@ -25,7 +25,7 @@ import { getRealtimeStats } from '../realtime.js'
 import { getRuntimeMetrics } from '../services/runtimeMetrics.js'
 import { prepareWorkOrderCreate, validateWorkOrderUpdate } from '../services/workOrderWorkflow.js'
 import { prepareServiceRequestCreate, validateServiceRequestUpdate } from '../services/applicationWorkflows.js'
-import { validateAssetSystem, validateWorkGroupMaster, validateWorkOrderRouting } from '../services/routingMasters.js'
+import { validateAssetSystem, validateLaborRouting, validatePlannedLaborAssignment, validateWorkGroupMaster, validateWorkOrderRouting } from '../services/routingMasters.js'
 import { addScopeWhere, applyScopeDefaults, assertPayloadWithinScope } from '../middleware/scope.js'
 import { bindParams } from '../utils/sqlParams.js'
 
@@ -234,8 +234,10 @@ router.use('/labor', crudRouter({
   moduleName: 'Labor',
   table: 'dbo.labor',
   key: 'labor_id',
-  columns: ['labor_id', 'display_name', 'craft_code', 'craft_name', 'department_name', 'sub_department_code', 'site_code', 'availability', 'status', 'created_at', 'updated_at'],
-  scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
+  columns: ['labor_id', 'display_name', 'craft_code', 'craft_name', 'department_name', 'sub_department_code', 'site_code', 'work_group_code', 'availability', 'status', 'created_at', 'updated_at'],
+  scope: { siteColumn: 'site_code', departmentColumn: 'department_name' },
+  beforeCreate: validateLaborRouting,
+  beforeUpdate: validateLaborRouting
 }))
 
 router.use('/work-groups', crudRouter({
@@ -340,13 +342,16 @@ router.use('/work-order-resource-requests', crudRouter({
 }))
 
 router.use('/work-order-planned-labor', crudRouter({
-  moduleName: 'Work Orders',
+  moduleName: 'Work Order Planning',
+  relatedModules: ['Work Orders', 'Labor'],
   table: 'dbo.work_order_planned_labor',
   key: 'planned_labor_id',
   columns: ['planned_labor_id', 'work_order_num', 'line_order', 'craft_name', 'estimated_hours', 'assigned_crew', 'site_code', 'department_name', 'created_by_user_id', 'created_at', 'updated_at'],
   scope: departmentScope,
   ownerColumn,
-  ownerSources: [workOrderOwnerSource]
+  ownerSources: [workOrderOwnerSource],
+  beforeCreate: validatePlannedLaborAssignment,
+  beforeUpdate: validatePlannedLaborAssignment
 }))
 
 router.use('/work-order-tasks', crudRouter({

@@ -19,7 +19,7 @@ const toneByStatus = {
 
 const laborStatuses = ['Available', 'Assigned', 'On Leave']
 
-export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate, onEdit }) {
+export default function LaborDetailPage({ labor, workGroupName = '', supervisorName = '', pastWork = [], onBack, onUpdate, onEdit }) {
   const access = useModuleAccess('Labor')
   const [tab, setTab] = useState('Labor Details')
   const closedStatuses = new Set(['COMP', 'COMPLETED', 'CLOSE', 'CLOSED', 'CAN', 'CANCELLED'])
@@ -105,7 +105,9 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
                 ['Craft', labor.craft],
                 ['Site', labor.site],
                 ['Department', labor.department],
-                ['Sub Department', labor.subDepartment]
+                ['Sub Department', labor.subDepartment],
+                ['Work Group', workGroupName || 'Not assigned'],
+                ['Supervisor', supervisorName || 'Not assigned']
               ]}
             />
           </section>
@@ -144,10 +146,10 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
         number={labor.personId}
         status={labor.availability}
         description={`${labor.name} - ${labor.craft}`}
-        summary={[['Site', labor.site], ['Department', labor.department], ['Craft Code', labor.craftCode]]}
+        summary={[['Site', labor.site], ['Department', labor.department], ['Work Group', workGroupName || 'Not assigned'], ['Supervisor', supervisorName || 'Not assigned']]}
         sections={[
           { title: 'Labor Information', rows: [[['Name', labor.name], ['Person ID', labor.personId], ['Shift', labor.shift], ['Availability', labor.availability]]] },
-          { title: 'Craft and Responsibility', rows: [[['Craft Code', labor.craftCode], ['Craft', labor.craft], ['Site', labor.site], ['Department', labor.department], ['Sub Department', labor.subDepartment]]] },
+          { title: 'Craft and Responsibility', rows: [[['Craft Code', labor.craftCode], ['Craft', labor.craft], ['Site', labor.site], ['Department', labor.department], ['Sub Department', labor.subDepartment], ['Work Group', workGroupName || 'Not assigned'], ['Supervisor', supervisorName || 'Not assigned']]] },
           { title: 'Workload Context', rows: [[['Open Work', openWork], ['Recorded Hours', recordedHours], ['Completed Work', completedWork.length], ['Next Action', nextAssignment]]] }
         ]}
       />

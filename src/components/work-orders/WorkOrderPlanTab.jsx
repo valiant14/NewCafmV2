@@ -1,4 +1,5 @@
 import { Boxes, ListChecks, Lock, Plus, ShieldCheck, Users, X } from 'lucide-react'
+import Combobox from '../ui/Combobox'
 import Section from '../ui/Section'
 
 const workspaceClass = 'grid gap-3'
@@ -35,6 +36,8 @@ export default function WorkOrderPlanTab({
   setPlannedTasks,
   plannedCraftOptions,
   plannedCrewOptions,
+  plannedLaborRouteSummary,
+  onPlannedCrewChange,
   materialMaster,
   toolMaster,
   updatePlanRow,
@@ -43,14 +46,13 @@ export default function WorkOrderPlanTab({
 }) {
   return (
     <div className={workspaceClass}>
-      <Section compact tone="purple" icon={Users} title="Planned Labor" note={isPM ? 'Generated from the linked job plan' : 'Add the crafts, crews, and estimated hours required'}>
+      <Section compact tone="purple" icon={Users} title="Planned Labor" note={plannedLaborRouteSummary}>
         {!isPM && (
-          <button className={addButtonClass} disabled={readOnly} onClick={() => setPlannedLabor(rows => [...rows, { craft: '', hours: '', crew: '' }])}>
+          <button className={addButtonClass} disabled={readOnly || !plannedCrewOptions.length} onClick={() => setPlannedLabor(rows => [...rows, { craft: '', hours: '', crew: '' }])}>
             <Plus size={15} />Add labor
           </button>
         )}
         <datalist id="planned-craft-options">{plannedCraftOptions.map(item => <option value={item.value} key={item.value}>{item.label}</option>)}</datalist>
-        <datalist id="planned-crew-options">{plannedCrewOptions.map(item => <option value={item.value} key={item.value}>{item.label}</option>)}</datalist>
         <div className={tableClass}>
           <div className={isPM ? laborHeadClass : editableLaborHeadClass}>
             <span>Labor craft</span>
@@ -58,14 +60,18 @@ export default function WorkOrderPlanTab({
             <span>Assigned crew</span>
             {!isPM && <span />}
           </div>
-          {plannedLabor.map((row, index) => (
-            <div className={isPM ? laborRowClass : editableLaborRowClass} key={index}>
-              <input value={row.craft} list="planned-craft-options" readOnly={readOnly || isPM} onChange={event => updatePlanRow(setPlannedLabor, index, 'craft', event.target.value)} placeholder="Search craft code or description" />
-              <input value={row.hours} readOnly={readOnly || isPM} type="number" onChange={event => updatePlanRow(setPlannedLabor, index, 'hours', event.target.value)} placeholder="Hours" />
-              <input value={row.crew} list="planned-crew-options" readOnly={readOnly} onChange={event => updatePlanRow(setPlannedLabor, index, 'crew', event.target.value)} placeholder="Assign technician or crew" />
-              {!isPM && <button disabled={readOnly} onClick={() => setPlannedLabor(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
-            </div>
-          ))}
+          {plannedLabor.map((row, index) => {
+            const craft = String(row.craft || '').trim().toLowerCase()
+            const crewOptions = plannedCrewOptions.filter(option => !craft || String(option.craft || '').trim().toLowerCase() === craft)
+            return (
+              <div className={isPM ? laborRowClass : editableLaborRowClass} key={index}>
+                <input value={row.craft} list="planned-craft-options" readOnly={readOnly || isPM} onChange={event => updatePlanRow(setPlannedLabor, index, 'craft', event.target.value)} placeholder="Search craft code or description" />
+                <input value={row.hours} readOnly={readOnly || isPM} type="number" onChange={event => updatePlanRow(setPlannedLabor, index, 'hours', event.target.value)} placeholder="Hours" />
+                <Combobox picker className="w-full" value={row.crew} suggestions={crewOptions} disabled={readOnly} onChange={event => onPlannedCrewChange?.(index, event.target.value)} placeholder={plannedCrewOptions.length ? 'Select team member' : 'No eligible team labor'} />
+                {!isPM && <button disabled={readOnly} onClick={() => setPlannedLabor(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
+              </div>
+            )
+          })}
         </div>
       </Section>
 

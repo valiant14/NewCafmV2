@@ -16,6 +16,25 @@ const dueFromSql = `
   left join dbo.assets asset on asset.asset_num = pm.asset_num
   join dbo.job_plans job_plan on job_plan.job_plan_num = pm.job_plan_num
   outer apply (
+    select top 1 work_group.work_group_code, work_group.default_supervisor_labor_id
+    from dbo.work_groups work_group
+    where (work_group.work_group_code = pm.person_group or work_group.work_group_name = pm.person_group)
+      and upper(ltrim(rtrim(work_group.status))) <> 'INACTIVE'
+      and work_group.site_code = pm.site_code
+      and lower(ltrim(rtrim(work_group.department_name))) = lower(ltrim(rtrim(pm.department_name)))
+      and (pm.sub_department_code is null or work_group.sub_department_code is null or work_group.sub_department_code = pm.sub_department_code)
+    order by case when work_group.work_group_code = pm.person_group then 0 else 1 end, work_group.work_group_code
+  ) routing_group
+  outer apply (
+    select top 1 labor.labor_id
+    from dbo.labor labor
+    where (labor.labor_id = coalesce(pm.supervisor, pm.lead_person) or labor.display_name = coalesce(pm.supervisor, pm.lead_person))
+      and upper(ltrim(rtrim(labor.status))) <> 'INACTIVE'
+      and labor.site_code = pm.site_code
+      and lower(ltrim(rtrim(labor.department_name))) = lower(ltrim(rtrim(pm.department_name)))
+    order by case when labor.labor_id = coalesce(pm.supervisor, pm.lead_person) then 0 else 1 end, labor.labor_id
+  ) routing_supervisor
+  outer apply (
     select convert(decimal(18,4), isnull(sum(isnull(task.duration_hours, 0) * 60), 0)) as total_minutes
     from dbo.job_plan_tasks task
     where task.job_plan_num = pm.job_plan_num
@@ -62,6 +81,8 @@ const duePlanColumnsSql = `
   job_plan.required_tools_json,
   job_plan.safety_instructions,
   job_plan.checklist_json,
+  routing_group.work_group_code as routing_work_group_code,
+  coalesce(routing_group.default_supervisor_labor_id, routing_supervisor.labor_id) as routing_supervisor_labor_id,
   case
     when job_plan.estimated_duration_minutes > 0 then job_plan.estimated_duration_minutes
     else task_duration.total_minutes
@@ -150,8 +171,8 @@ const generatePlan = async (pool, plan, workflow) => {
       .input('site_code', sql.NVarChar(30), plan.site_code)
       .input('department_name', sql.NVarChar(160), plan.department_name || null)
       .input('sub_department_code', sql.NVarChar(50), plan.sub_department_code || null)
-      .input('work_group', sql.NVarChar(160), plan.person_group || null)
-      .input('supervisor', sql.NVarChar(160), plan.supervisor || plan.lead_person || null)
+      .input('work_group', sql.NVarChar(160), plan.routing_work_group_code || null)
+      .input('supervisor', sql.NVarChar(160), plan.routing_supervisor_labor_id || null)
       .input('store_code', sql.NVarChar(80), plan.store_code || null)
       .input('target_at', sql.DateTime2, plan.next_date)
       .input('target_finish_at', sql.DateTime2, targetFinish)

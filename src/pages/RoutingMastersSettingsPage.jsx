@@ -97,6 +97,7 @@ const fieldOptions = ({ form, sites, departments, labor, type }) => {
     key: 'supervisorId',
     label: 'Default Supervisor',
     icon: UserRoundCheck,
+    required: true,
     options: optionRows(supervisorChoices)
   })
   return common
@@ -166,7 +167,7 @@ export default function RoutingMastersSettingsPage({
   const save = async () => {
     const code = String(form.code || '').trim()
     const name = String(form.name || '').trim()
-    if (!code || !name || !form.site || !form.department) return
+    if (!code || !name || !form.site || !form.department || (type === WORK_GROUPS && !form.supervisorId)) return
     if (rows.some(row => row.code === code && row.code !== editing)) {
       setError(`${type === SYSTEMS ? 'System' : 'Work group'} code already exists.`)
       return
@@ -193,7 +194,7 @@ export default function RoutingMastersSettingsPage({
       supervisorId: type === WORK_GROUPS ? (supervisor?.personId || supervisorValue || '') : undefined,
       status: pick(row, ['status', 'Status'], 'Active')
     }
-  }).filter(row => row.code && row.name && row.site && row.department)
+  }).filter(row => row.code && row.name && row.site && row.department && (type === SYSTEMS || row.supervisorId))
 
   const importRows = async importedRows => {
     const normalized = normalizeImportRows(importedRows)
@@ -279,6 +280,7 @@ export default function RoutingMastersSettingsPage({
             { key: 'department', label: 'Department' },
             { key: 'subDepartment', label: 'Sub Department', render: value => value || 'All' },
             { key: 'supervisorId', label: 'Default Supervisor', render: (_, row) => supervisorName(row, labor) || '-' },
+            { key: 'teamMembers', label: 'Team Members', render: (_, row) => labor.filter(person => person.workGroup === row.code).length },
             { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> }
           ]}
         />

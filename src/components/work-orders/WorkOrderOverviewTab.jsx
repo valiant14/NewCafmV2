@@ -83,8 +83,8 @@ export default function WorkOrderOverviewTab({
               <Field label="Sub Department" value={subDepartment} locked={readOnly} onChange={event => { setSubDepartment(event.target.value); setSystemValue(''); changeWorkGroup({ target: { value: '' } }) }} suggestions={subDepartmentOptions} placeholder="Search sub department" />
               <Field label="Assigned Department" value={assignedDepartment} required locked={readOnly} onChange={event => { setAssignedDepartment(event.target.value); changeWorkGroup({ target: { value: '' } }) }} suggestions={departmentOptions} placeholder="Search assigned department" />
               <Field label="System" value={systemValue} locked={readOnly} onChange={event => setSystemValue(event.target.value)} options={systemOptions} placeholder="Select a configured system" />
-              <Field label="Work Group" value={workGroup} locked={readOnly} onChange={changeWorkGroup} options={workGroupOptions} placeholder="Select a configured work group" />
-              <Field label="Supervisor" value={supervisor} locked={readOnly} onChange={event => setSupervisor(event.target.value)} options={supervisorOptions} placeholder="Select an eligible supervisor" />
+              <Field label="Work Group" value={workGroup} required locked={readOnly} onChange={changeWorkGroup} options={workGroupOptions} placeholder="Select a configured work group" />
+              <Field label="Supervisor" value={supervisor} required locked={readOnly || Boolean(workGroup)} disabled={!workGroup} onChange={event => setSupervisor(event.target.value)} options={supervisorOptions} placeholder="Assigned by the selected Work Group" />
             </div>
           </Section>
 

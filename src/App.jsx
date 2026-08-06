@@ -26,7 +26,7 @@ import { useToast } from './providers/ToastProvider'
 import { nowLocalDateTime } from './lib/datetime'
 import { printWithoutBrowserTitle } from './lib/print'
 import { sameDepartment } from './lib/departments'
-import { routingRecordByValue, supervisorOptionsForScope, supervisorValueForWorkGroup, systemOptionsForScope, workGroupOptionsForScope } from './lib/routingMasters'
+import { laborForSupervisorTeam, routingRecordByValue, supervisorOptionsForWorkGroup, supervisorValueForWorkGroup, systemOptionsForScope, workGroupOptionsForScope } from './lib/routingMasters'
 import { storeLabel, storesHolding, totalAvailable } from './lib/inventory'
 import { readProjectName } from './lib/projectSettings'
 import { canTransitionWorkOrder, statusCode, statusDescription, statusOptions, workOrderTransitions } from './lib/statusMatrix'
@@ -558,7 +558,7 @@ const apiMappers = {
     endpoint: '/labor',
     key: 'personId',
     apiKey: 'labor_id',
-    toApi: row => ({ labor_id: toText(row.personId), display_name: toText(row.name), craft_code: row.craftCode || '', craft_name: row.craft || '', department_name: row.department || '', sub_department_code: row.subDepartment || '', site_code: row.site || null, availability: row.availability || 'Available', status: statusText(row.status) })
+    toApi: row => ({ labor_id: toText(row.personId), display_name: toText(row.name), craft_code: row.craftCode || '', craft_name: row.craft || '', department_name: row.department || '', sub_department_code: row.subDepartment || '', site_code: row.site || null, work_group_code: row.workGroup || null, availability: row.availability || 'Available', status: statusText(row.status) })
   },
   materials: {
     endpoint: '/materials',
@@ -837,16 +837,27 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const subDepartmentOptions=masterSubDepartments.length?masterSubDepartments:(selectedDepartment?.subDepartments||departments.flatMap(item=>item.subDepartments)).map(item=>({value:item.name,label:item.code}))
   const systemOptions=['',...systemOptionsForScope(systemRecords,{site:siteValue,department,subDepartment})]
   const workGroupOptions=['',...workGroupOptionsForScope(workGroupRecords,{site:siteValue,department:assignedDepartment,subDepartment})]
-  const supervisorOptions=['',...supervisorOptionsForScope(laborRecords,{site:siteValue,department:assignedDepartment,subDepartment})]
+  const selectedWorkGroup=routingRecordByValue(workGroupRecords,workGroup)
+  const supervisorOptions=['',...supervisorOptionsForWorkGroup(laborRecords,workGroupRecords,workGroup,{site:siteValue,department:assignedDepartment,subDepartment})]
+  const plannedTeamLabor=laborForSupervisorTeam(laborRecords,workGroupRecords,{workGroup,supervisor,site:siteValue,department:assignedDepartment,subDepartment})
   const laborCraftOptions=[...new Map(laborRecords.map(person=>[person.craftCode,{value:person.craftCode,label:person.craft}])).values()]
-  const plannedCraftOptions=[...new Map(laborRecords.map(person=>[person.craft,{value:person.craft,label:person.craftCode}])).values()]
-  const plannedCrewOptions=laborRecords.map(person=>({value:person.name,label:`${person.personId} · ${person.craft} · ${person.availability}`}))
+  const plannedCraftOptions=[...new Map(plannedTeamLabor.filter(person=>person.craft).map(person=>[person.craft,{value:person.craft,label:person.craftCode}])).values()]
+  const plannedCrewOptions=plannedTeamLabor.map(person=>({value:person.personId,label:[person.name,person.craft,person.availability].filter(Boolean).join(' / '),craft:person.craft,craftCode:person.craftCode}))
+  const plannedSupervisor=laborRecords.find(person=>cleanText(person.personId)===cleanText(supervisor)||cleanText(person.name)===cleanText(supervisor))
+  const plannedLaborRouteSummary=selectedWorkGroup
+    ? `${selectedWorkGroup.code} / ${selectedWorkGroup.name} / ${plannedSupervisor?.name||'Supervisor not assigned'} / ${plannedTeamLabor.length} team member${plannedTeamLabor.length===1?'':'s'}`
+    : 'Work Group and Supervisor not assigned'
   const assetsForSite=assetRecords.filter(a=>!siteValue||String(a.site)===siteValue)
   const assetOptions=assetsForSite.map(a=>({value:a.assetnum,label:a.description?.trim()}))
   const locationOptions=[...new Set([...assetsForSite.map(a=>a.location),...workOrderRows.filter(o=>!siteValue||String(o.SITE)===siteValue).map(o=>o['LOCATION '])].filter(Boolean))].sort()
   const changeSite=e=>{setSiteValue(e.target.value);setAssetValue('');setLocationValue('');setSystemValue('');setWorkGroup('');setSupervisor('')}
   const changeAsset=e=>{const value=e.target.value;setAssetValue(value);const match=assetRecords.find(a=>cleanText(a.assetnum)===cleanText(value));setAssetDescription(match?.description?.trim()||'');if(match?.location)setLocationValue(match.location);if(match?.site&&String(match.site)!==siteValue){setSiteValue(String(match.site));setWorkGroup('');setSupervisor('')}setSystemValue(match?.system||'')}
   const changeWorkGroup=e=>{const value=e.target.value;setWorkGroup(value);const group=routingRecordByValue(workGroupRecords,value);setSupervisor(supervisorValueForWorkGroup(group,laborRecords))}
+  const updatePlannedCrew=(index,value)=>setPlannedLabor(rows=>rows.map((row,rowIndex)=>{
+    if(rowIndex!==index) return row
+    const person=laborRecords.find(entry=>cleanText(entry.personId)===cleanText(value)||cleanText(entry.name)===cleanText(value))
+    return {...row,crew:person?.personId||value,...(!isPM&&person?.craft?{craft:person.craft}:{})}
+  }))
   const matchingFailures=failureCodeRecords.filter(row=>!failureClass||cleanText(row['FAILURE CLASS ID'])===cleanText(failureClass))
   const failureClassOptions=uniqueCodeOptions(failureCodeRecords,'FAILURE CLASS ID','DESCRIPTION')
   const problemOptions=uniqueCodeOptions(matchingFailures,'PROBLEM CODE','PC - DESCRIPTION')
@@ -955,7 +966,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const plannedLaborReady=plannedLabor.some(row=>cleanText(row.craft)&&Number(row.hours)>0&&cleanText(row.crew))
   const plannedMaterialsReady=plannedResources.some(row=>row.type==='Material'&&row.item&&Number(row.quantity)>0)
   const plannedToolsReady=plannedResources.some(row=>['Tool','Equipment'].includes(row.type)&&row.item&&Number(row.quantity)>0)
-  const plannedLaborRequirementMissing=[!plannedLaborReady&&'Plan: labor, estimated hours, and assigned crew'].filter(Boolean)
+  const plannedLaborRequirementMissing=[!workGroup&&'Plan: work group',!supervisor&&'Plan: supervisor',!plannedLaborReady&&'Plan: labor, estimated hours, and assigned crew'].filter(Boolean)
   const plannedMaterialsRequirementMissing=[isCM&&!plannedMaterialsReady&&'Plan: required materials'].filter(Boolean)
   const plannedToolsRequirementMissing=[isCM&&!plannedToolsReady&&'Plan: required tools'].filter(Boolean)
   const planMissing=[
@@ -1140,11 +1151,18 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const plannedCraftCode=()=>{
     const named=plannedLabor.find(row=>row.crew||row.craft)
     if(!named) return ''
-    const person=laborRecords.find(entry=>entry.name===named.crew)
+    const person=laborRecords.find(entry=>cleanText(entry.personId)===cleanText(named.crew)||cleanText(entry.name)===cleanText(named.crew))
     if(person?.craftCode) return person.craftCode
     return laborRecords.find(entry=>entry.craft===named.craft)?.craftCode||''
   }
-  const plannedCrewName=()=>[...new Set(plannedLabor.map(row=>row.crew).filter(Boolean))].join(', ')
+  const plannedCrewName=()=>[...new Set(plannedLabor.map(row=>{
+    const person=laborRecords.find(entry=>cleanText(entry.personId)===cleanText(row.crew)||cleanText(entry.name)===cleanText(row.crew))
+    return person?.name||row.crew
+  }).filter(Boolean))].join(', ')
+  const plannedLaborForDisplay=plannedLabor.map(row=>{
+    const person=laborRecords.find(entry=>cleanText(entry.personId)===cleanText(row.crew)||cleanText(entry.name)===cleanText(row.crew))
+    return {...row,crew:person?.name||row.crew}
+  })
   const plannedTotalHours=()=>{
     const total=plannedLabor.reduce((sum,row)=>sum+(Number(row.hours)||0),0)
     return total?String(total):''
@@ -1315,14 +1333,14 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     <WorkOrderWorkflowNotice status={status} missing={workflowMissing} nextStep={workflowNextStepText} />
     <div className={workOrderBodyClass}>
       {tab==='Overview' && <WorkOrderOverviewTab readOnly={!canEditWorkOrder} projectName={projectName} sourceRequest={sourceRequest} number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} changeWorkGroup={changeWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} systemValue={systemValue} setSystemValue={setSystemValue} systemOptions={systemOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={reportedDateValue} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
-      {tab==='Plan' && <WorkOrderPlanTab readOnly={!canEditWorkOrder} isPM={isPM} tasksLocked={tasksFromJobPlan} jobPlanNumber={jobPlanNumber} estimatedDuration={order['ESTIMATED DURATION']} safetyInstructions={order['SAFETY INSTRUCTIONS']} checklist={order.CHECKLIST||[]} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialRecords} toolMaster={toolRecords} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} updatePlannedResourceField={updatePlannedResourceField} />}
+      {tab==='Plan' && <WorkOrderPlanTab readOnly={!canEditWorkOrder} isPM={isPM} tasksLocked={tasksFromJobPlan} jobPlanNumber={jobPlanNumber} estimatedDuration={order['ESTIMATED DURATION']} safetyInstructions={order['SAFETY INSTRUCTIONS']} checklist={order.CHECKLIST||[]} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} plannedLaborRouteSummary={plannedLaborRouteSummary} onPlannedCrewChange={updatePlannedCrew} materialMaster={materialRecords} toolMaster={toolRecords} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} updatePlannedResourceField={updatePlannedResourceField} />}
       {tab==='Actual' && <WorkOrderActualTab readOnly={!canEditWorkOrder} actualsEditable={actualsEditable} status={status} nextStatus={nextInChain} preparationReady={startReady} planReady={planReady} setTab={setTab} setWorkStarted={value=>{if(value&&startReady)changeStatus('INPRG')}} completeWork={completeWork} showStartAction={!workflowStepByStatus(workflow,'INPRG')?.isAutomatic} showCompleteAction={!workflowStepByStatus(workflow,'COMP')?.isAutomatic} showCloseAction={canCloseWorkOrder&&!workflowStepByStatus(workflow,'CLOSE')?.isAutomatic} completionReady={completionReady} completionBlocked={missingFor('COMP').join(', ')} startBlocked={missingFor('INPRG').join(', ')} outlineButtonClass={workOrderOutlineButtonClass} primaryButtonClass={workOrderPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} completionDate={order['COMPLETED AT']} closedAt={order['CLOSED AT']} closedBy={order['CLOSED BY']} setActualFinish={changeActualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} actualHours={actualHours} setActualHours={changeActualHours} actualStart={actualStart} setActualStart={changeActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} actualReady={actualReady} closeWork={closeWork} returnResource={returnResource} outstanding={outstandingReturnRows} currentUser={user} />}
       {tab==='Failure' && <WorkOrderFailureTab readOnly={!canEditWorkOrder} isCM={isCM} causeApplicable={causeApplicable} remedyApplicable={remedyApplicable} failureClass={failureClass} changeFailure={changeFailure} failureClassOptions={failureClassOptions} problemCode={problemCode} setProblemCode={setProblemCode} setCauseCode={setCauseCode} setRemedyCode={setRemedyCode} problemOptions={problemOptions} causeCode={causeCode} causeOptions={causeOptions} remedyCode={remedyCode} remedyOptions={remedyOptions} failureDescription={failureDescription} problemDescription={problemDescription} causeDescription={causeDescription} remedyDescription={remedyDescription} failureCount={failureCodeRecords.length} />}
       {tab==='Material Requests' && <WorkOrderMaterialRequestsTab readOnly={!canEditWorkOrder} resourceRequests={resourceRequests} plannedResources={plannedResources} setPlannedResources={setPlannedResources} updatePlanRow={updatePlanRow} getAvailability={resourceAvailability} materialBlocked={materialBlocked} primaryButtonClass={workOrderPrimaryButtonClass} outlineButtonClass={workOrderOutlineButtonClass} setTab={setTab} materials={materialRecords} reservations={reservationRecords} purchaseRequests={purchaseRequestRecords} purchaseOrders={purchaseOrderRecords} workOrderContext={{ number, site: siteValue, department: department || assignedDepartment, assignedDepartment }} onCreatePurchaseRequest={onCreatePurchaseRequest} onCreateReservation={onCreateReservation} />}
       {tab==='PTW & Files' && <WorkOrderDocumentsTab readOnly={!canEditWorkOrder} ptwRequired={ptwRequired} setPtwRequired={setPtwRequired} allowPtwOverride={workflow.allowPtwOverride} ptwFiles={ptwFiles} generalFiles={generalFiles} addFiles={addFiles} removeFile={removeFile} downloadFile={downloadFile} />}
       {tab==='Meters' && <WorkOrderMetersTab readOnly={!canEditWorkOrder} workOrderNumber={number} assetValue={assetValue} siteValue={siteValue} department={department} meterRows={meterRecords} meterId={meterId} setMeterId={setMeterId} meterReading={meterReading} setMeterReading={setMeterReading} meterReadingDate={meterReadingDate} setMeterReadingDate={setMeterReadingDate} />}
     </div>
-  </div><WorkOrderPrintReport sourceRequest={sourceRequest} systemValue={systemValue} number={number} description={description || order['DESCRIPITION '] || 'Work order'} workType={workType} status={status} priority={priority} siteValue={siteValue} department={department} subDepartment={subDepartment} assignedDepartment={assignedDepartment} locationValue={locationValue} assetValue={assetValue} assetDescription={assetDescription} targetStart={targetStart} targetFinish={targetFinish} actualStart={actualStart} actualFinish={actualFinish} slaLabel={slaLabel} jobPlan={jobPlanNumber} estimatedDuration={order['ESTIMATED DURATION']} safetyInstructions={order['SAFETY INSTRUCTIONS']} checklist={order.CHECKLIST||[]} pmNumber={order['PM NUMBER']} pmCycle={order['PM CYCLE']} plannedTasks={plannedTasks} plannedLabor={plannedLabor} plannedResources={plannedResources} ptwRequired={ptwRequired} ptwFiles={ptwFiles} generalFiles={generalFiles} meterReading={meterReading} waterConsumption={waterConsumption} energyConsumption={energyConsumption} meterReadingDate={meterReadingDate} failureClass={failureClass} problemCode={problemCode} causeCode={causeCode} remedyCode={remedyCode} technicianRemarks={technicianRemarks} completionNotes={completionNotes} actualLabor={actualLabor} actualHours={actualHours} actualMaterials={actualMaterials} actualTools={actualTools} /></div>
+  </div><WorkOrderPrintReport sourceRequest={sourceRequest} systemValue={systemValue} number={number} description={description || order['DESCRIPITION '] || 'Work order'} workType={workType} status={status} priority={priority} siteValue={siteValue} department={department} subDepartment={subDepartment} assignedDepartment={assignedDepartment} locationValue={locationValue} assetValue={assetValue} assetDescription={assetDescription} targetStart={targetStart} targetFinish={targetFinish} actualStart={actualStart} actualFinish={actualFinish} slaLabel={slaLabel} jobPlan={jobPlanNumber} estimatedDuration={order['ESTIMATED DURATION']} safetyInstructions={order['SAFETY INSTRUCTIONS']} checklist={order.CHECKLIST||[]} pmNumber={order['PM NUMBER']} pmCycle={order['PM CYCLE']} plannedTasks={plannedTasks} plannedLabor={plannedLaborForDisplay} plannedResources={plannedResources} ptwRequired={ptwRequired} ptwFiles={ptwFiles} generalFiles={generalFiles} meterReading={meterReading} waterConsumption={waterConsumption} energyConsumption={energyConsumption} meterReadingDate={meterReadingDate} failureClass={failureClass} problemCode={problemCode} causeCode={causeCode} remedyCode={remedyCode} technicianRemarks={technicianRemarks} completionNotes={completionNotes} actualLabor={actualLabor} actualHours={actualHours} actualMaterials={actualMaterials} actualTools={actualTools} /></div>
 }
 
 export default function App() {
@@ -2248,7 +2266,7 @@ export default function App() {
     ]} mapFormToRow={form => ({ ...form })} onCreate={form => saveFailureCodes(rows => [{ ...form }, ...rows])} onImport={importFailureCodes} access={accessFor('Failure Library')} rowKey="FAILURE CLASS ID" onRowClick={row=>{setSelectedFailureClass(row);window.history.pushState({},'',`/failure-library/${encodeURIComponent(row['FAILURE CLASS ID'])}`)}} columns={[
       {key:'FAILURE CLASS ID',label:'Class',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Class description'},{key:'problemCount',label:'Problems'},{key:'causeCount',label:'Causes'},{key:'remedyCount',label:'Remedies'}
     ]}/>,
-    'Labor': <LaborPage rows={laborRecords} setRows={saveLabor} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} laborRows={laborRecords}/>,
+    'Labor': <LaborPage rows={laborRecords} setRows={saveLabor} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} workGroupRecords={workGroupRecords}/>,
     'Materials': <MaterialsPage onOpenWorkOrder={openConvertedWorkOrder} rows={materialRecords} setRows={saveMaterials} stockRows={stockRecords} storeRows={storeRecords} workOrders={scopedWorkOrders} resourceRequests={workOrderResourceRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} onCreateRequest={createPurchaseRequest} onUpdateStock={(storeCode,itemCode,patch)=>upsertStockRecord(storeCode,itemCode,patch)}/>,
     'Stores': <StoresPage materials={materialRecords} tools={toolRecords} stockRows={stockRecords} storeRows={storeRecords} setStoreRows={saveStores} locationRows={locationRecords} siteRecords={siteRecords} scopeUser={effectiveUser}/>,
     'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} materials={materialRecords} tools={toolRecords} storeRows={storeRecords} siteRecords={siteRecords} departmentRecords={departmentRecords} workflow={applicationWorkflows.SUPPLY_CHAIN} onOpenWorkOrder={openConvertedWorkOrder} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
