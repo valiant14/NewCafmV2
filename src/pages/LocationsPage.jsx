@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, MapPin, Plus } from 'lucide-react'
+import { Activity, Building2, ChevronRight, ClipboardList, DoorOpen, FileText, Flag, Hash, Layers, MapPin, Plus } from 'lucide-react'
 import { locationsMaster as locationSeed } from '../config/runtimeDefaults'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -26,18 +26,22 @@ import useRelatedWorkOrders from '../hooks/useRelatedWorkOrders'
 import Badge from '../components/ui/Badge'
 import { buildingCategoryOptions, buildingOptions, priorityDescriptionOptions, siteOptions, withSuggestions } from '../lib/masterOptions'
 
+const placement = { section: 'Placement', sectionIcon: Building2, sectionNote: 'Site and building come first - the location code is generated from them', sectionTone: 'green' }
+const codeParts = { section: 'Code', sectionIcon: Hash, sectionNote: 'The generated code and the floor and room that complete it' }
+const details = { section: 'Details', sectionIcon: ClipboardList, sectionNote: 'How the location is described and how critical it is', sectionTone: 'purple', sectionSpan: 'full' }
+
 const locationFields = [
-  { key: 'location', label: 'Location', required: true, placeholder: 'Fill site and building to generate' },
-  { key: 'floorCode', label: 'Floor (for the code)', placeholder: '00' },
-  { key: 'roomCode', label: 'Room / Zone (for the code)', placeholder: '054' },
-  { key: 'description', label: 'Description', required: true },
-  { key: 'type', label: 'Type', options: ['Building', 'Floor', 'Room', 'Zone', 'Store', 'External'] },
-  { key: 'status', label: 'Status', options: ['OPERATING', 'PLANNED', 'DECOMMISSIONED'] },
-  { key: 'priority', label: 'Priority', options: ['1', '2', '3'], placeholder: 'Select priority' },
-  { key: 'priority  description', label: 'Priority Description', placeholder: 'VIP / Royal / Standard' },
-  { key: 'site', label: 'Site', required: true, placeholder: 'Select a site' },
-  { key: 'builiding', label: 'Building', placeholder: 'Building code' },
-  { key: 'builiding category', label: 'Building Category', placeholder: 'Building category' }
+  { ...placement, key: 'site', label: 'Site', icon: Building2, required: true, placeholder: 'Select a site' },
+  { ...placement, key: 'builiding', label: 'Building', icon: Building2, placeholder: 'Building code' },
+  { ...placement, key: 'builiding category', label: 'Building Category', icon: Layers, placeholder: 'Building category' },
+  { ...codeParts, key: 'location', label: 'Location', icon: MapPin, required: true, fullWidth: true, placeholder: 'Fill site and building to generate' },
+  { ...codeParts, key: 'floorCode', label: 'Floor (for the code)', icon: Layers, placeholder: '00' },
+  { ...codeParts, key: 'roomCode', label: 'Room / Zone (for the code)', icon: DoorOpen, placeholder: '054' },
+  { ...details, key: 'description', label: 'Description', icon: FileText, required: true },
+  { ...details, key: 'type', label: 'Type', icon: Layers, options: ['Building', 'Floor', 'Room', 'Zone', 'Store', 'External'] },
+  { ...details, key: 'status', label: 'Status', icon: Activity, options: ['OPERATING', 'PLANNED', 'DECOMMISSIONED'] },
+  { ...details, key: 'priority', label: 'Priority', icon: Flag, options: ['1', '2', '3'], placeholder: 'Select priority' },
+  { ...details, key: 'priority  description', label: 'Priority Description', icon: Flag, placeholder: 'VIP / Royal / Standard' }
 ]
 
 const emptyLocation = {
