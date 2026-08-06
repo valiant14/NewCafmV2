@@ -108,14 +108,14 @@ export function FocusCard({ icon: Icon, eyebrow, title, description, progress = 
   )
 }
 
-export function MetricCard({ icon: Icon, label, value, note }) {
+export function MetricCard({ icon: Icon, label, value, note, pulse = false }) {
   return (
     <article className="app-metric-card">
       <div className="flex items-start gap-3">
         {Icon && <Icon className="mt-0.5 text-[var(--app-muted)]" size={17} />}
         <div>
           <span className="app-stat-label">{label}</span>
-          <strong>{value || '-'}</strong>
+          <strong><span className={pulse ? 'app-pulse' : undefined}>{value || '-'}</span></strong>
           {note && <small>{note}</small>}
         </div>
       </div>

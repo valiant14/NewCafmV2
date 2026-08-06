@@ -1132,6 +1132,21 @@ main,
   transition: width 800ms ease-out, stroke-dasharray 900ms ease-out;
 }
 
+/* Two beats then a rest, like a heartbeat - for a figure that represents something the system
+   does on a clock. Scaling from the left keeps the number aligned with the label above it. */
+@keyframes app-heartbeat {
+  0%, 60%, 100% { transform: scale(1); }
+  12% { transform: scale(1.09); }
+  24% { transform: scale(1); }
+  36% { transform: scale(1.05); }
+}
+
+.app-pulse {
+  animation: app-heartbeat 2.6s ease-in-out infinite;
+  display: inline-block;
+  transform-origin: left center;
+}
+
 /* Legacy feature views still use Tailwind radius utilities. Keep their geometry aligned
    with the shared operational design until each view is fully migrated. */
 .rounded-xl,
@@ -1208,6 +1223,10 @@ body * {
   .meter-bar-fill,
   .donut-arc {
     transition: none !important;
+  }
+
+  .app-pulse {
+    animation: none !important;
   }
 
   .chart-line {

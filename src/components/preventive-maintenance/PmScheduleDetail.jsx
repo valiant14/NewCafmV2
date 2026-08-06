@@ -14,8 +14,8 @@ import useModuleAccess from '../../hooks/useModuleAccess'
 
 const normalize = value => String(value || '').trim()
 
-function MiniMetric({ label, value, note }) {
-  return <MetricCard label={label} value={value} note={note} />
+function MiniMetric({ label, value, note, pulse = false }) {
+  return <MetricCard label={label} value={value} note={note} pulse={pulse} />
 }
 
 function DetailCard({ icon: Icon, eyebrow, title, tone, children }) {
@@ -132,7 +132,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                   <div className="grid gap-2 md:grid-cols-4">
                     <MiniMetric label="Every" value={`${schedule.frequency} ${schedule.freqUnit}`} note={selectedRule ? 'From rule' : 'Direct PM'} />
                     <MiniMetric label="Lead Time" value={`${schedule.leadTime} days`} note="Due soon window" />
-                    <MiniMetric label="Trigger Hour" value={`${String(schedule.triggerHour || 0).padStart(2, '0')}:00`} note="Generation starts after" />
+                    <MiniMetric label="Trigger Hour" value={`${String(schedule.triggerHour || 0).padStart(2, '0')}:00`} note="Generation starts after" pulse />
                     <MiniMetric label="WO Status" value={workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus} note={schedule.woStatus || activeWorkflow.initialStatus} />
                   </div>
                 </div>
