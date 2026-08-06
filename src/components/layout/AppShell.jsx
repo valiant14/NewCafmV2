@@ -39,6 +39,7 @@ export default function AppShell({
     () => [...new Map(navigation.map(item => [item.section, navigation.filter(navItem => navItem.section === item.section)]))],
     [navigation]
   )
+  const activeLabel = navigation.find(item => item.name === active)?.label || active
   const activeSection = sections.find(([, items]) => items.some(item => item.name === active))?.[0]
   const collapsedForActiveSection = () => Object.fromEntries(
     sections.map(([sectionName]) => [sectionName, activeSection ? sectionName !== activeSection : false])
@@ -99,7 +100,7 @@ export default function AppShell({
                       className={`app-navigation-item ${selected ? 'active' : ''}`}
                     >
                       <Icon size={18} />
-                      <span>{item.name}</span>
+                      <span>{item.label || item.name}</span>
                     </button>
                   )
                 })}
@@ -118,7 +119,7 @@ export default function AppShell({
           <div className="crumb flex min-w-0 flex-1 items-center gap-2 text-[length:var(--app-topbar-font-size)] text-[var(--app-muted)]">
             <span className="hidden sm:inline">Seder CAFM</span>
             <ChevronRight size={14} className="hidden sm:block" />
-            <strong className="truncate text-[var(--app-ink)]">{active}</strong>
+            <strong className="truncate text-[var(--app-ink)]">{activeLabel}</strong>
           </div>
           <div className="top-actions ml-auto flex shrink-0 items-center gap-3">
             <ThemeToggle />

@@ -15,13 +15,18 @@ import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
 import useModuleAccess from '../hooks/useModuleAccess'
+import { applicationWorkflowStep, supplyChainMilestone } from '../lib/applicationWorkflow'
 
 const todayStamp = () => nowLocalDate()
 const purchaseOrderStatuses = ['WAPPR', 'APPR', 'INPRG', 'CLOSE', 'CAN']
 
 export default function PurchaseOrdersPage({
   rows = [],
+<<<<<<< HEAD
   onOpenWorkOrder,
+=======
+  workflow,
+>>>>>>> d2e7bff1e758d984014269be7f9c08eefae2b024
   onUpdateOrder
 }) {
   const access = useModuleAccess('Purchase Orders')
@@ -34,6 +39,10 @@ export default function PurchaseOrdersPage({
     status: ['status'],
     date: ['createdAt']
   })
+  const renderWorkflowStatus = value => {
+    const step = applicationWorkflowStep(workflow, supplyChainMilestone('PURCHASE_ORDER', value))
+    return <StatusBadge application="purchaseOrder" value={value} description={step?.stepName} tone={step?.badgeTone} />
+  }
 
   // A link from another page can point at a single record; it narrows the list on arrival.
   const [focusReference, clearFocusReference] = useRecordFilter()
@@ -132,7 +141,7 @@ export default function PurchaseOrdersPage({
               { key: 'source', label: 'Supplier / Store' },
               { key: 'site', label: 'Site' },
               { key: 'department', label: 'Department' },
-              { key: 'status', label: 'Status', render: value => <StatusBadge application="purchaseOrder" value={value} /> },
+              { key: 'status', label: 'Status', render: renderWorkflowStatus },
               { key: 'createdAt', label: 'Created' },
               { key: 'action', label: 'Next Step', sortable: false, render: (_, row) => rowAction(row) }
             ]}

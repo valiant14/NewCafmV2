@@ -1,0 +1,1 @@
+import{i as e}from"./Surface-CXjCA785.js";import{K as t,gt as n}from"./index-t0ypllMT.js";var r=e();function i({locked:e,...t}){return e?null:(0,r.jsx)(n,{...t})}function a(e){return(0,r.jsx)(t,{...e})}export{a as n,i as t};

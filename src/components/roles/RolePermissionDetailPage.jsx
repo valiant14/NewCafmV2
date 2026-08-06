@@ -13,6 +13,7 @@ import useModuleAccess from '../../hooks/useModuleAccess'
 
 const checkClass = active => `mx-auto grid h-6 w-6 place-items-center rounded-lg border text-[10px] font-extrabold ${active ? 'border-[var(--app-primary)] bg-[var(--app-badge-green-bg)] text-[var(--app-badge-green-text)]' : 'border-[var(--app-line)] text-[var(--app-muted)]'}`
 const isAllActionsSelected = (role, module) => permissionActions.every(action => role.permissions?.[action]?.includes(module))
+const moduleLabel = module => module === 'Work Order Workflow' ? 'Workflow Controls' : module
 
 export default function RolePermissionDetailPage({ role, siteOptions = [], departmentOptions = [], onBack, onUpdate }) {
   const access = useModuleAccess('Roles & Permissions')
@@ -154,9 +155,9 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
                           className="inline-flex items-center gap-2 rounded-xl px-2 py-1 text-left font-bold text-[var(--app-ink)] transition hover:bg-[var(--app-table-header-bg)] disabled:cursor-not-allowed disabled:opacity-50"
                           onClick={() => toggleModule(module)}
                           disabled={disabled}
-                          title={`Select all actions for ${module}`}
+                          title={`Select all actions for ${moduleLabel(module)}`}
                         >
-                          <span>{module}</span>
+                          <span>{moduleLabel(module)}</span>
                           <span className={checkClass(isAllActionsSelected(role, module))}>{isAllActionsSelected(role, module) ? <Check size={12} /> : <Minus size={12} />}</span>
                         </button>
                       </td>

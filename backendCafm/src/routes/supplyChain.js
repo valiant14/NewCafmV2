@@ -4,6 +4,7 @@ import { assertPermission, requirePermission } from '../middleware/auth.js'
 import { addScopeWhere, applyScopeDefaults, assertPayloadWithinScope } from '../middleware/scope.js'
 import { bindParams } from '../utils/sqlParams.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
+import { getApplicationWorkflow } from '../services/applicationWorkflows.js'
 
 const router = Router()
 const departmentScope = { siteColumn: 'site_code', departmentColumn: 'department_name', ownerColumn: 'created_by_user_id' }
@@ -455,13 +456,16 @@ router.post('/purchase-requisitions/:prNumber/approve-create-po', asyncHandler(a
 
 router.post('/purchase-requisitions/:prNumber/transition', asyncHandler(async (req, res) => {
   const status = String(req.body.status || '').toUpperCase()
+  const workflow = await getApplicationWorkflow('SUPPLY_CHAIN')
   if (!status) throw httpError(400, 'Status is required.')
+  if (status === 'CAN' && workflow?.is_active && !workflow.allow_cancel) throw httpError(409, 'Supply Chain workflow does not allow cancellation.')
   if (status === 'APPR') throw httpError(400, 'Use Approve and Create PO so approval and PO creation are atomic.', 'CommandRequired')
   if (!['WAPPR', 'CLOSE', 'CAN'].includes(status)) throw httpError(400, `Unsupported purchase requisition status: ${status}.`)
   await assertPermission(req.user, 'Purchase Requisitions', ['APPR'].includes(status) ? 'approve' : ['CLOSE', 'CAN'].includes(status) ? 'close' : 'edit')
   const purchaseRequisition = await withTransaction(async transaction => {
     const current = await selectScopedPr(transaction, req.user, req.params.prNumber, true)
     if (['CLOSE', 'CAN'].includes(current.status) && status !== current.status) throw httpError(409, `Purchase requisition ${current.pr_num} is already ${current.status}.`)
+    if (status === 'WAPPR' && current.status === 'APPR' && workflow?.is_active && !workflow.allow_backward_transition) throw httpError(409, 'Supply Chain workflow does not allow backward transitions.')
     const updated = await requestFor(transaction, { prNumber: current.pr_num, status }).query(`
       update dbo.purchase_requisitions
       set status = @status,
@@ -488,7 +492,9 @@ router.post('/purchase-requisitions/:prNumber/transition', asyncHandler(async (r
 
 router.post('/purchase-orders/:poNumber/transition', asyncHandler(async (req, res) => {
   const status = String(req.body.status || '').toUpperCase()
+  const workflow = await getApplicationWorkflow('SUPPLY_CHAIN')
   if (!status) throw httpError(400, 'Status is required.')
+  if (status === 'CAN' && workflow?.is_active && !workflow.allow_cancel) throw httpError(409, 'Supply Chain workflow does not allow cancellation.')
   if (status === 'CLOSE') throw httpError(400, 'Use the receive command to close and post a purchase order.')
   if (!['WAPPR', 'APPR', 'INPRG', 'CAN'].includes(status)) throw httpError(400, `Unsupported purchase order status: ${status}.`)
   await assertPermission(req.user, 'Purchase Orders', status === 'APPR' ? 'approve' : status === 'CAN' ? 'close' : 'edit')
@@ -496,8 +502,8 @@ router.post('/purchase-orders/:poNumber/transition', asyncHandler(async (req, re
     const current = await selectScopedPo(transaction, req.user, req.params.poNumber, true)
     const allowed = {
       WAPPR: ['WAPPR', 'APPR', 'CAN'],
-      APPR: ['APPR', 'INPRG', 'CAN'],
-      INPRG: ['INPRG', 'CAN'],
+      APPR: ['APPR', 'INPRG', 'CAN', ...(workflow?.is_active && workflow.allow_backward_transition ? ['WAPPR'] : [])],
+      INPRG: ['INPRG', 'CAN', ...(workflow?.is_active && workflow.allow_backward_transition ? ['APPR'] : [])],
       CAN: ['CAN'],
       CLOSE: ['CLOSE']
     }[String(current.status).toUpperCase()] || []
@@ -626,6 +632,7 @@ router.post('/purchase-orders/:poNumber/receive', asyncHandler(async (req, res) 
 }))
 
 router.post('/reservations/:reservationNumber/transition', requirePermission('Reservations', 'edit'), asyncHandler(async (req, res) => {
+  const workflow = await getApplicationWorkflow('SUPPLY_CHAIN')
   const result = await withTransaction(async transaction => {
     const scoped = addScopeWhere({ user: req.user, ...departmentScope })
     const currentResult = await requestFor(transaction, { ...scoped.params, reservationNumber: req.params.reservationNumber }).query(`
@@ -640,6 +647,12 @@ router.post('/reservations/:reservationNumber/transition', requirePermission('Re
     const delivered = Number(req.body.delivered_quantity ?? current.delivered_quantity)
     const status = String(req.body.status || current.status).toUpperCase()
     if (!['ENTERED', 'STAGED', 'COMPLETE', 'CANCELLED', 'CAN'].includes(status)) throw httpError(400, `Unsupported reservation status: ${status}.`)
+    if (['CANCELLED', 'CAN'].includes(status) && workflow?.is_active && !workflow.allow_cancel) throw httpError(409, 'Supply Chain workflow does not allow cancellation.')
+    const currentStatus = String(current.status || '').toUpperCase()
+    const reservationOrder = ['ENTERED', 'STAGED', 'COMPLETE']
+    const currentIndex = reservationOrder.indexOf(currentStatus)
+    const nextIndex = reservationOrder.indexOf(status)
+    if (currentIndex >= 0 && nextIndex >= 0 && nextIndex < currentIndex && workflow?.is_active && !workflow.allow_backward_transition) throw httpError(409, 'Supply Chain workflow does not allow backward transitions.')
     if ([arranged, released, delivered].some(value => !Number.isFinite(value) || value < 0 || value > quantity)) throw httpError(400, 'Reservation quantities must be between zero and the reserved quantity.')
     if (released > arranged || delivered > released) throw httpError(400, 'Delivered quantity cannot exceed released quantity, and released quantity cannot exceed arranged quantity.')
     if (arranged < Number(current.arranged_quantity) || released < Number(current.released_quantity) || delivered < Number(current.delivered_quantity)) throw httpError(409, 'Arranged, released, and delivered quantities cannot be reduced.')

@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { statusDescription } from '../lib/statusMatrix'
 import useModuleAccess from '../hooks/useModuleAccess'
+import { applicationWorkflowStep, supplyChainMilestone } from '../lib/applicationWorkflow'
 
 const nextQuantity = row => {
   const requested = Number(row.quantity || 0)
@@ -59,7 +60,11 @@ const cancelledWorkOrders = (workOrders = []) => new Set(
     .filter(Boolean)
 )
 
+<<<<<<< HEAD
 export default function ReservationsPage({ rows = [], stockRows = [], workOrders = [], onUpdate, onOpenWorkOrder }) {
+=======
+export default function ReservationsPage({ rows = [], stockRows = [], workOrders = [], workflow, onUpdate }) {
+>>>>>>> d2e7bff1e758d984014269be7f9c08eefae2b024
   const access = useModuleAccess('Reservations')
   const cancelled = cancelledWorkOrders(workOrders)
   const isCancelled = row => isCancelledStatus(row.status) || cancelled.has(workOrderKey(row.workOrder))
@@ -74,6 +79,10 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
     status: ['status'],
     date: ['createdAt']
   })
+  const renderWorkflowStatus = value => {
+    const step = applicationWorkflowStep(workflow, supplyChainMilestone('RESERVATION', value))
+    return <StatusBadge application="inventoryUsage" value={value} description={step?.stepName} tone={step?.badgeTone} />
+  }
 
   // A link from another page can point at a single record; it narrows the list on arrival.
   const [focusReference, clearFocusReference] = useRecordFilter()
@@ -196,7 +205,7 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
               { key: 'source', label: 'Store / Source' },
               { key: 'status', label: 'Status', render: (value, row) => isCancelled(row)
                 ? <StatusBadge application="inventoryUsage" value="CANCELLED" />
-                : <StatusBadge application="inventoryUsage" value={value} /> },
+                : renderWorkflowStatus(value) },
               { key: 'action', label: 'Next Step', sortable: false, render: (_, row) => actionFor(row) }
             ]}
           />
