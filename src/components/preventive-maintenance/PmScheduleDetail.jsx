@@ -14,13 +14,13 @@ import useModuleAccess from '../../hooks/useModuleAccess'
 
 const normalize = value => String(value || '').trim()
 
-function MiniMetric({ label, value, note }) {
-  return <MetricCard label={label} value={value} note={note} />
+function MiniMetric({ label, value, note, pulse = false }) {
+  return <MetricCard label={label} value={value} note={note} pulse={pulse} />
 }
 
-function DetailCard({ icon: Icon, eyebrow, title, children }) {
+function DetailCard({ icon: Icon, eyebrow, title, tone, children }) {
   return (
-    <Surface>
+    <Surface tone={tone}>
       <SurfaceHeader eyebrow={eyebrow} title={title} actions={Icon ? <span className="app-record-icon"><Icon size={18} /></span> : null} />
       {children}
     </Surface>
@@ -115,8 +115,8 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
         <DetailTabs tabs={['PM Details', 'Job Plan', generatedTab]} active={activeTab} onChange={setActiveTab} />
 
         {activeTab === 'PM Details' && (
-          <div className="grid gap-5 xl:grid-cols-2">
-            <DetailCard icon={UserRoundCheck} eyebrow="RESPONSIBILITY" title="Ownership">
+          <div className="grid items-start gap-5 xl:grid-cols-2">
+            <DetailCard icon={UserRoundCheck} tone="purple" eyebrow="RESPONSIBILITY" title="Ownership">
               <FieldGrid rows={[
                 ['Person Group', plan.personGroup || 'Not assigned'],
                 ['Department', plan.department || 'Not configured'],
@@ -127,7 +127,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
               ]} />
             </DetailCard>
 
-            <DetailCard icon={Sparkles} eyebrow="GENERATION" title="Automatic Work Order Behavior">
+            <DetailCard icon={Sparkles} tone="blue" eyebrow="GENERATION" title="Automatic Work Order Behavior">
               <div className="grid gap-3 text-sm text-[var(--app-muted)]">
                 <p>Generated Work Orders inherit asset, location, site, department, job plan, and all job tasks from this PM and the linked asset master.</p>
                 <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-panel)] p-4">
@@ -138,6 +138,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                   <div className="grid gap-2 md:grid-cols-4">
                     <MiniMetric label="Every" value={`${schedule.frequency} ${schedule.freqUnit}`} note={selectedRule ? 'From rule' : 'Direct PM'} />
                     <MiniMetric label="Lead Time" value={`${schedule.leadTime} days`} note="Due soon window" />
+<<<<<<< HEAD
                     <MiniMetric label="Trigger Hour" value={`${String(schedule.triggerHour || 0).padStart(2, '0')}:00`} note="Generation starts after" />
                     <MiniMetric label="WO Status" value={pmWorkOrderStatusLabel(schedule.woStatus, workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus)} note={schedule.woStatus || activeWorkflow.initialStatus} />
                   </div>
@@ -146,10 +147,32 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                   <strong className="text-[var(--app-ink)]">Next output</strong>
                   <span>Work Type: {plan.workType || 'PM'} - Initial Status: {pmWorkOrderStatusLabel(schedule.woStatus, workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus)} - Job Tasks: {tasks.length}</span>
                   <span>Frequency: every {schedule.frequency} {schedule.freqUnit} at {String(schedule.triggerHour || 0).padStart(2, '0')}:00</span>
+=======
+                    <MiniMetric label="Trigger Hour" value={`${String(schedule.triggerHour || 0).padStart(2, '0')}:00`} note="Generation starts after" pulse />
+                    <MiniMetric label="WO Status" value={workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus} note={schedule.woStatus || activeWorkflow.initialStatus} />
+                  </div>
                 </div>
-                <div className="grid gap-2 rounded-2xl bg-[var(--app-soft-bg)] p-4">
-                  <strong className="text-[var(--app-ink)]">Last generated cycle</strong>
-                  <span>{plan.lastGeneratedCycle || 'Not generated yet'}</span>
+                <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
+                  <span className="flex items-center gap-2 text-[var(--app-ink)]">
+                    <Sparkles size={15} className="text-[var(--app-primary)]" />
+                    <strong>Next output</strong>
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="blue">{plan.workType || 'PM'}</Badge>
+                    <Badge tone={statusTone(schedule.woStatus || activeWorkflow.initialStatus)}>{workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus}</Badge>
+                    <Badge tone="purple">{tasks.length} job task{tasks.length === 1 ? '' : 's'}</Badge>
+                    <Badge tone="green">Every {schedule.frequency} {schedule.freqUnit}</Badge>
+                    <Badge tone="orange">{String(schedule.triggerHour || 0).padStart(2, '0')}:00</Badge>
+                  </div>
+>>>>>>> b0b549d50a04c9a43587a0e2a6baae114eedfe96
+                </div>
+                {/* Green once a cycle has run, amber while the PM has never produced anything. */}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
+                  <span className="flex items-center gap-2 text-[var(--app-ink)]">
+                    <CalendarClock size={15} className={plan.lastGeneratedCycle ? 'text-[var(--app-badge-green-text)]' : 'text-[var(--app-badge-orange-text)]'} />
+                    <strong>Last generated cycle</strong>
+                  </span>
+                  <Badge tone={plan.lastGeneratedCycle ? 'green' : 'orange'}>{plan.lastGeneratedCycle ? String(plan.lastGeneratedCycle).replace('T', ' ') : 'Not generated yet'}</Badge>
                 </div>
               </div>
             </DetailCard>
@@ -157,7 +180,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
         )}
 
         {activeTab === 'Job Plan' && (
-          <DetailCard icon={Settings2} eyebrow="JOB PLAN" title="Execution Package">
+          <DetailCard icon={Settings2} tone="green" eyebrow="JOB PLAN" title="Execution Package">
             <div className="mb-4 grid gap-3 md:grid-cols-3">
               <MiniMetric label="JPNUM" value={plan.jobPlan} note={linkedPlan?.description || 'Job plan reference from Excel'} />
               <MiniMetric label="Tasks" value={tasks.length} note="All matching task rows" />
@@ -211,7 +234,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
         )}
 
         {activeTab === generatedTab && (
-          <DetailCard icon={FileSpreadsheet} eyebrow="HISTORY" title="Generated Work Orders">
+          <DetailCard icon={FileSpreadsheet} tone="orange" eyebrow="HISTORY" title="Generated Work Orders">
             <div className="mb-4 flex justify-end">
               <Badge tone={history.length ? 'green' : 'neutral'}>{history.length} records</Badge>
             </div>

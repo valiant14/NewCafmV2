@@ -297,7 +297,13 @@ main,
   .app-section > .app-surface-header {
     background: linear-gradient(90deg, color-mix(in srgb, var(--app-section-accent) 24%, var(--app-panel)), color-mix(in srgb, var(--app-section-accent) 6%, var(--app-panel)) 82%);
     border-bottom-color: color-mix(in srgb, var(--app-section-accent) 38%, var(--app-line));
+    border-radius: calc(var(--app-radius-panel) - 1px) calc(var(--app-radius-panel) - 1px) 0 0;
     box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-section-accent) 82%, transparent);
+  }
+
+  .app-section:not(.app-surface--flush) > .app-surface-header:not(.app-surface-header--inset) {
+    margin: -20px -20px 18px;
+    padding: 14px 20px;
   }
 
   .app-section .app-surface-title { color: color-mix(in srgb, var(--app-section-accent) 55%, var(--app-ink)); }
@@ -352,7 +358,11 @@ main,
     background: color-mix(in srgb, var(--app-stat-accent, var(--app-panel)) 5%, var(--app-panel));
     border: 1px solid color-mix(in srgb, var(--app-stat-accent, var(--app-line)) 34%, var(--app-line));
     border-radius: var(--app-radius-panel);
-    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-stat-accent, transparent) 85%, transparent), var(--app-shadow-panel);
+    /* A lifted shadow so the metric row reads as raised tiles above the cards below it. */
+    box-shadow:
+      inset 3px 0 0 color-mix(in srgb, var(--app-stat-accent, transparent) 85%, transparent),
+      0 1px 2px rgba(15, 23, 42, .08),
+      0 12px 24px -6px rgba(15, 23, 42, .16);
     display: flex;
     gap: 12px;
     min-height: 112px;
@@ -563,10 +573,18 @@ main,
        so each card carries its hue instead of being a dark box with a coloured lid. */
     background: color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 4%, var(--app-panel));
     border-color: color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 34%, var(--app-line));
-    /* The accent runs the card's full left edge, stacked with the panel shadow it replaces. */
-    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 90%, transparent), var(--app-shadow-panel);
+    /* The accent runs the card's full left edge, stacked with the lift that replaces the
+       default panel shadow. */
+    box-shadow:
+      inset 3px 0 0 color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 90%, transparent),
+      0 1px 2px rgba(15, 23, 42, .08),
+      0 12px 24px -6px rgba(15, 23, 42, .16);
   }
-  .app-section.app-section--compact { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 90%, transparent); }
+  .app-section.app-section--compact {
+    box-shadow:
+      inset 3px 0 0 color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 90%, transparent),
+      0 1px 2px rgba(15, 23, 42, .07);
+  }
   /* The header is a tinted band, not a plain rule, so a long form reads as a stack of labelled
      cards instead of one grey wall. The negative margins pull it out to the card edge, so they
      mirror the padding of .app-surface and its compact variant. */
@@ -769,9 +787,8 @@ main,
   .app-detail-back:hover { color: var(--app-primary); }
   .app-detail-title-row { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 3px; }
   .app-detail-title { color: var(--app-ink); font-size: var(--app-page-title-font-size, 30px); font-weight: 750; letter-spacing: 0; line-height: 1.15; margin: 0; }
-  .app-detail-stats { border-top: 1px solid var(--app-line); display: grid; gap: 1px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 18px; padding-top: 14px; }
-  .app-detail-stat { border-left: 1px solid var(--app-line); min-width: 0; padding: 2px 16px; }
-  .app-detail-stat:first-child { border-left: 0; padding-left: 0; }
+  .app-detail-stats { border-top: 1px solid var(--app-line); display: grid; gap: 10px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 18px; padding-top: 14px; }
+  .app-detail-stat { background: var(--app-panel); border: 1px solid var(--app-line); border-radius: var(--app-radius-panel); box-shadow: 0 1px 2px rgba(15, 23, 42, .08), 0 12px 24px -6px rgba(15, 23, 42, .16); min-width: 0; padding: 11px 14px; }
   .app-detail-stat strong { color: var(--app-ink); display: block; font-size: 13px; font-weight: 750; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .app-detail-stat small { color: var(--app-muted); display: block; font-size: 10px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -800,14 +817,16 @@ main,
   .app-detail-date input:focus { border-color: var(--app-field-focus); outline: none; }
   .app-detail-tab--active { border-bottom-color: var(--app-primary); color: var(--app-primary); font-weight: 750; }
 
-  .app-metric-card { background: var(--app-soft-bg); border-radius: var(--app-radius-panel); padding: 13px; }
+  /* Raised like the stat tiles it sits alongside: a panel background with a contact shadow and
+     a soft drop, so the metric row reads above the cards below it instead of sinking into them. */
+  .app-metric-card { background: var(--app-panel); border: 1px solid var(--app-line); border-radius: var(--app-radius-panel); box-shadow: 0 1px 2px rgba(15, 23, 42, .08), 0 12px 24px -6px rgba(15, 23, 42, .16); padding: 13px; }
   .app-metric-card strong { color: var(--app-ink); display: block; font-size: 16px; margin-top: 4px; }
   .app-metric-card small { color: var(--app-muted); display: block; font-size: 10px; margin-top: 3px; }
   .app-info-card-header { align-items: center; border-bottom: 1px solid var(--app-line); display: flex; gap: 10px; margin-bottom: 15px; padding-bottom: 13px; }
   .app-info-card-header h2 { color: var(--app-ink); font-size: 14px; font-weight: 750; margin: 2px 0 0; }
   /* Inside a toned card the value tiles pick up its accent through the cascade; on an untoned
      one the fallback is the plain soft background they always had. */
-  .app-info-field { background: color-mix(in srgb, var(--app-section-accent, var(--app-soft-bg)) 7%, var(--app-soft-bg)); border: 1px solid color-mix(in srgb, var(--app-section-accent, var(--app-line)) 16%, transparent); border-radius: var(--app-radius-panel); padding: 11px 12px; }
+  .app-info-field { background: color-mix(in srgb, var(--app-section-accent, var(--app-soft-bg)) 7%, var(--app-soft-bg)); border: 1px solid color-mix(in srgb, var(--app-section-accent, var(--app-line)) 16%, transparent); border-radius: var(--app-radius-panel); box-shadow: 0 1px 2px rgba(15, 23, 42, .07), 0 6px 14px -4px rgba(15, 23, 42, .14); padding: 11px 12px; }
   .app-info-field dd { color: var(--app-ink); font-size: 13px; font-weight: 700; margin: 4px 0 0; overflow-wrap: anywhere; }
   .app-timeline-row { align-items: center; background: var(--app-soft-bg); border-radius: var(--app-radius-panel); display: grid; gap: 12px; grid-template-columns: auto minmax(0, 1fr) auto; padding: 12px; }
 
@@ -917,6 +936,7 @@ main,
   .app-surface--flush { padding: 0; }
   .app-surface-header { flex-direction: column; padding: 14px; }
   .app-surface-header--inset { margin: -15px -15px 15px; }
+  .app-section:not(.app-surface--flush) > .app-surface-header:not(.app-surface-header--inset) { margin: -15px -15px 14px; padding: 12px 15px; }
   .app-stat-card { min-height: 104px; padding: 14px; }
   .app-filter-grid { grid-template-columns: 1fr; }
   .app-topbar { height: 58px; padding: 0 14px; }
@@ -934,7 +954,6 @@ main,
   .app-detail-heading { flex-direction: column; gap: 14px; }
   .app-detail-heading .app-page-actions { justify-content: flex-start; }
   .app-detail-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .app-detail-stat:nth-child(odd) { border-left: 0; padding-left: 0; }
   .app-profile-strip { grid-template-columns: auto minmax(0, 1fr); }
   .app-profile-stat { border-left: 0; border-top: 1px solid var(--app-line); grid-column: 1 / -1; padding: 12px 0 0; }
   .app-timeline-row { align-items: start; grid-template-columns: auto minmax(0, 1fr); }
@@ -1128,6 +1147,21 @@ main,
   transition: width 800ms ease-out, stroke-dasharray 900ms ease-out;
 }
 
+/* Two beats then a rest, like a heartbeat - for a figure that represents something the system
+   does on a clock. Scaling from the left keeps the number aligned with the label above it. */
+@keyframes app-heartbeat {
+  0%, 60%, 100% { transform: scale(1); }
+  12% { transform: scale(1.09); }
+  24% { transform: scale(1); }
+  36% { transform: scale(1.05); }
+}
+
+.app-pulse {
+  animation: app-heartbeat 2.6s ease-in-out infinite;
+  display: inline-block;
+  transform-origin: left center;
+}
+
 /* Legacy feature views still use Tailwind radius utilities. Keep their geometry aligned
    with the shared operational design until each view is fully migrated. */
 .rounded-xl,
@@ -1204,6 +1238,10 @@ body * {
   .meter-bar-fill,
   .donut-arc {
     transition: none !important;
+  }
+
+  .app-pulse {
+    animation: none !important;
   }
 
   .chart-line {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Gauge, Plus } from 'lucide-react'
+import { Activity, Boxes, Building2, CalendarClock, Gauge, Hash, MapPin, Plus, Ruler, ShieldCheck, Users } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -37,17 +37,20 @@ const templateHeaders = Object.keys(emptyMeter)
 // Stamped when the form opens rather than when the module loads, so a session left open
 // past midnight does not file readings under yesterday.
 const blankMeter = () => ({ ...emptyMeter, readingDate: nowLocalDate() })
+const meter = { section: 'Meter', sectionIcon: Gauge, sectionNote: 'Which meter this reading belongs to and what it measures', sectionSpan: 'full' }
+const capture = { section: 'Reading', sectionIcon: Activity, sectionNote: 'The value recorded and when it was taken', sectionTone: 'green', sectionSpan: 'full' }
+
 const fields = [
-  { key: 'meterId', label: 'Meter ID', required: true, placeholder: 'Enter meter ID' },
-  { key: 'asset', label: 'Asset', required: true },
-  { key: 'location', label: 'Location', required: true },
-  { key: 'site', label: 'Site', required: true },
-  { key: 'department', label: 'Department', required: true },
-  { key: 'meterType', label: 'Meter Type', options: ['General', 'Water', 'Energy', 'Distance'] },
-  { key: 'reading', label: 'Reading', required: true, type: 'number' },
-  { key: 'unit', label: 'Unit', placeholder: 'kWh / m3 / km' },
-  { key: 'readingDate', label: 'Reading Date', type: 'date', required: true },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive', 'Needs Review'] }
+  { ...meter, key: 'meterId', label: 'Meter ID', icon: Hash, required: true, placeholder: 'Enter meter ID' },
+  { ...meter, key: 'meterType', label: 'Meter Type', icon: Gauge, options: ['General', 'Water', 'Energy', 'Distance'] },
+  { ...meter, key: 'asset', label: 'Asset', icon: Boxes, required: true },
+  { ...meter, key: 'location', label: 'Location', icon: MapPin, required: true },
+  { ...meter, key: 'site', label: 'Site', icon: Building2, required: true },
+  { ...meter, key: 'department', label: 'Department', icon: Users, required: true },
+  { ...capture, key: 'reading', label: 'Reading', icon: Activity, required: true, type: 'number' },
+  { ...capture, key: 'unit', label: 'Unit', icon: Ruler, placeholder: 'kWh / m3 / km' },
+  { ...capture, key: 'readingDate', label: 'Reading Date', icon: CalendarClock, type: 'date', required: true },
+  { ...capture, key: 'status', label: 'Status', icon: ShieldCheck, options: ['Active', 'Inactive', 'Needs Review'] }
 ]
 
 export default function MetersPage({ rows = [], setRows, assets = [], workOrders = [], siteRecords = [], departmentRecords = [], locationRows = [] }) {
