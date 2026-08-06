@@ -116,7 +116,7 @@ export default function PurchaseOrdersPage({
         statusOptions={purchaseOrderStatuses}
       />
       <RecordFilterNotice reference={focusReference} count={visibleRows.length} onClear={clearFocusReference} />
-      <TablePanel>
+      <TablePanel tone="purple">
         {visibleRows.length ? (
           <DataTable
             rows={visibleRows}
@@ -124,7 +124,7 @@ export default function PurchaseOrdersPage({
             pagination
             columns={[
               { key: 'purchaseOrder', label: 'PO Number', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
-              { key: 'purchaseRequest', label: 'Source PR' },
+              { key: 'purchaseRequest', label: 'Source PR', render: value => value ? <Badge tone="blue">{value}</Badge> : <span className="text-[var(--app-muted)]">-</span> },
               { key: 'workOrder', label: 'Work Order', render: value => <RecordLink value={value} mono onClick={value && onOpenWorkOrder ? () => onOpenWorkOrder(value) : undefined} /> },
               { key: 'item', label: 'Item / Description', render: (value, row) => (
                 <RecordLink
@@ -134,7 +134,7 @@ export default function PurchaseOrdersPage({
                   title={`Open ${row.itemCode || value} to request a purchase`}
                 />
               ) },
-              { key: 'quantity', label: 'Quantity' },
+              { key: 'quantity', label: 'Quantity', render: value => <Badge tone="blue">{Number(value) || 0}</Badge> },
               { key: 'source', label: 'Supplier / Store' },
               { key: 'site', label: 'Site' },
               { key: 'department', label: 'Department' },
