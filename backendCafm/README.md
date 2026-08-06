@@ -73,14 +73,32 @@ allocation, and incident references, then removes its temporary records.
 `api:check-transitions` verifies work-order routing-field persistence and that edit access alone cannot close a Work Order;
 its temporary role, user, and Work Order are removed after every run.
 
-Default development login:
+Create an administrator by supplying an explicit password:
 
-```text
-username: admin
-password: admin123
+```powershell
+$env:ADMIN_USERNAME='admin'
+$env:ADMIN_PASSWORD='<a unique password of at least 12 characters>'
+npm run db:create-admin
 ```
 
-Change it with `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables before running the script.
+The script refuses blank, short, or implicit default passwords.
+
+Before production, set a unique `CONNECTOR_SECRET_KEY` of at least 32 characters and encrypt any existing SMTP/SMS credentials:
+
+```powershell
+$env:CONNECTOR_SECRET_KEY='<a unique secret of at least 32 characters>'
+npm run db:encrypt-connectors
+```
+
+Keep this key stable and outside source control. Changing or losing it prevents encrypted connector credentials from being read.
+
+Run the production preflight after setting the deployment environment:
+
+```bash
+npm run production:check
+```
+
+It checks active credentials, user scopes, transaction ownership, connector encryption, and SQL connection security without changing business data.
 
 ## Included Modules
 

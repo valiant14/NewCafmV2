@@ -14,7 +14,8 @@ import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import useModuleAccess from '../hooks/useModuleAccess'
-import { pick, upsertImportRows } from '../services/importRows'
+import { pick } from '../services/importRows'
+import { mergeImportedRows } from '../lib/importRows'
 
 const emptyDepartment = {
   subDepartmentCode: '',
@@ -93,18 +94,7 @@ export default function DepartmentsSettingsPage({ rows = [], setRows }) {
 
   const importRows = async importedRows => {
     const normalized = normalizeImportRows(importedRows)
-    await upsertImportRows({
-      rows: normalized,
-      endpoint: '/departments',
-      key: 'sub_department_code',
-      mapRow: row => ({
-        sub_department_code: row.subDepartmentCode,
-        department_name: row.department,
-        description: row.description,
-        status: row.status || 'Active'
-      })
-    })
-    setRows?.(normalized)
+    await setRows?.(current => mergeImportedRows(current, normalized, 'subDepartmentCode'))
   }
 
   return (

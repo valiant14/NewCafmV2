@@ -1,8 +1,10 @@
+import { useEffect } from 'react'
 import { AlertTriangle, Check } from 'lucide-react'
 import Button from '../ui/Button'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalFrame'
 import Field from '../ui/Field'
 import Section from '../ui/Section'
+import { useToast } from '../../providers/ToastProvider'
 
 // Rendered by the shared Field so a master-data form looks and behaves like every other form -
 // same label, icon, picker and textarea treatment - instead of a second implementation of them.
@@ -37,9 +39,14 @@ const groupFields = fields => fields.reduce((groups, field) => {
 }, [])
 
 export default function MasterRecordModal({ title, note, fields, form, setForm, onClose, onSave, submitLabel = 'Create record', error = '' }) {
+  const { error: notifyError } = useToast()
   const requiredFields = fields.filter(field => field.required)
   const valid = requiredFields.every(field => String(form[field.key] ?? '').trim())
   const sections = groupFields(fields)
+
+  useEffect(() => {
+    if (error) notifyError(error)
+  }, [error, notifyError])
 
   const updateField = (key, value) => {
     setForm(current => ({ ...current, [key]: value }))

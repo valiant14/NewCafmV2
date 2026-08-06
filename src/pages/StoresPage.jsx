@@ -19,6 +19,7 @@ import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../component
 import { isUsableStore, storeLocation, storeStockRows, storeSummary } from '../lib/inventory'
 import { scopeRowsForUser } from '../lib/accessControl'
 import { useAuth } from '../providers/AuthProvider'
+import { useToastError } from '../providers/ToastProvider'
 import useModuleAccess from '../hooks/useModuleAccess'
 import { mergeImportedRows } from '../lib/importRows'
 
@@ -165,6 +166,7 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
   const [drill, setDrill] = useState(null)
   const [form, setForm] = useState(emptyStore)
   const [error, setError] = useState('')
+  useToastError(error)
   const routeId = decodeURIComponent(window.location.pathname.split('/stores/')[1] || '')
   const activeSites = siteRecords.filter(site => site.status !== 'Inactive')
   const siteOptions = activeSites.map(site => ({ value: site.code, label: site.name || '' }))

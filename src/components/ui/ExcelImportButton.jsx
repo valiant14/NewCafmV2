@@ -4,6 +4,7 @@ import { FileSpreadsheet } from 'lucide-react'
 import Button from './Button'
 import Alert from './Alert'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from './ModalFrame'
+import { useToast } from '../../providers/ToastProvider'
 
 const parseCsv = text => {
   const rows = []
@@ -43,6 +44,7 @@ const parseCsv = text => {
 }
 
 export default function ExcelImportButton({ fileName, onFile, onImport, label = 'Import Excel' }) {
+  const { error: notifyError, success: notifySuccess } = useToast()
   const [result, setResult] = useState(null)
   const allowed = ['xlsx', 'xls', 'csv']
 
@@ -54,6 +56,7 @@ export default function ExcelImportButton({ fileName, onFile, onImport, label = 
 
     const extension = file.name.split('.').pop()?.toLowerCase()
     if (!allowed.includes(extension)) {
+      notifyError('Please upload an Excel or CSV file only.')
       setResult({
         type: 'error',
         title: 'Import failed',
@@ -76,6 +79,7 @@ export default function ExcelImportButton({ fileName, onFile, onImport, label = 
       if (!onImport) throw new Error('This import button is not connected to a save handler yet.')
       onFile?.(file.name, rows)
       await onImport(rows, file)
+      notifySuccess(`${rows.length} row${rows.length === 1 ? '' : 's'} imported from ${file.name}.`)
       setResult({
         type: 'success',
         title: 'Excel import completed',
@@ -84,6 +88,7 @@ export default function ExcelImportButton({ fileName, onFile, onImport, label = 
         rows: rows.length
       })
     } catch (error) {
+      notifyError(error.message || 'The file could not be parsed.')
       setResult({
         type: 'error',
         title: 'Import failed',

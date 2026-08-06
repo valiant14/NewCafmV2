@@ -22,6 +22,7 @@ import { pmWorkOrderStatusLabel } from '../lib/pmGeneration'
 import useModuleAccess from '../hooks/useModuleAccess'
 import useRelatedWorkOrders from '../hooks/useRelatedWorkOrders'
 import { mergeImportedRows } from '../lib/importRows'
+import { useToastError } from '../providers/ToastProvider'
 
 // Same enum the PM schedule form uses, so a rule can never describe a frequency the
 // schedules themselves cannot hold.
@@ -109,6 +110,7 @@ function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], 
   const statusOptions = pmWoStatusOptions(workflow)
   const [form, setForm] = useState({ ...emptyRule(workflow.initialStatus), ...rule })
   const [error, setError] = useState('')
+  useToastError(error)
   const relatedPm = pmSchedules.filter(pm => normalize(pm.scheduleRule).toLowerCase() === normalize(rule.name).toLowerCase())
   const relatedPmNumbers = new Set(relatedPm.map(pm => pm.pmNumber))
   const historyRows = workOrders.filter(order => relatedPmNumbers.has(order['PM NUMBER']))
@@ -220,6 +222,7 @@ export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = 
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(() => emptyRule(activeWorkflow.initialStatus))
   const [error, setError] = useState('')
+  useToastError(error)
   const tabRows = tab === 'All' ? rows : rows.filter(row => row.status === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, { status: ['status'], date: ['createdDate'] })
   const routeId = decodeURIComponent(routePath.split('/pm-rules/')[1] || '')

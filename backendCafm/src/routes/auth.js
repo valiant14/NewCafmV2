@@ -9,6 +9,50 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 
 const router = Router()
 const isActive = value => String(value || '').trim().toLowerCase() === 'active'
+const loginAttempts = new Map()
+let lastLoginAttemptPrune = 0
+
+const loginAttemptKey = req => `${req.ip || req.socket?.remoteAddress || 'unknown'}\u0000${String(req.body?.username || '').trim().toLowerCase()}`
+
+const pruneLoginAttempts = now => {
+  if (now - lastLoginAttemptPrune < 60000 && loginAttempts.size <= env.authLoginMaxKeys) return
+  lastLoginAttemptPrune = now
+  for (const [key, attempt] of loginAttempts) {
+    if (attempt.resetAt <= now) loginAttempts.delete(key)
+  }
+  while (loginAttempts.size > env.authLoginMaxKeys) loginAttempts.delete(loginAttempts.keys().next().value)
+}
+
+const rateLimitLogin = (req, res, next) => {
+  const now = Date.now()
+  pruneLoginAttempts(now)
+  const key = loginAttemptKey(req)
+  const attempt = loginAttempts.get(key)
+  if (attempt && attempt.resetAt > now && attempt.count >= env.authLoginMaxAttempts) {
+    const retryAfter = Math.max(1, Math.ceil((attempt.resetAt - now) / 1000))
+    res.set('Retry-After', String(retryAfter))
+    return res.status(429).json({ error: 'TooManyRequests', message: 'Too many login attempts. Try again later.' })
+  }
+  req.loginAttemptKey = key
+  next()
+}
+
+const recordLoginFailure = req => {
+  const now = Date.now()
+  const key = req.loginAttemptKey || loginAttemptKey(req)
+  const current = loginAttempts.get(key)
+  const attempt = current && current.resetAt > now
+    ? { count: current.count + 1, resetAt: current.resetAt }
+    : { count: 1, resetAt: now + env.authLoginWindowMs }
+  loginAttempts.delete(key)
+  loginAttempts.set(key, attempt)
+  pruneLoginAttempts(now)
+}
+
+const rejectLogin = (req, res, message = 'Invalid credentials') => {
+  recordLoginFailure(req)
+  return res.status(401).json({ error: 'Unauthorized', message })
+}
 
 const sessionPayloadForAccount = async (pool, account) => {
   const result = await pool.request()
@@ -69,7 +113,7 @@ const sessionPayloadForAccount = async (pool, account) => {
   }
 }
 
-router.post('/login', asyncHandler(async (req, res) => {
+router.post('/login', rateLimitLogin, asyncHandler(async (req, res) => {
   const { username, password } = req.body || {}
   if (!username || !password) return res.status(400).json({ error: 'BadRequest', message: 'Username and password are required' })
 
@@ -83,17 +127,18 @@ router.post('/login', asyncHandler(async (req, res) => {
       where u.username = ltrim(rtrim(@username))
     `)
   const account = result.recordset[0]
-  if (!account) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' })
-  if (!isActive(account.status)) return res.status(401).json({ error: 'Unauthorized', message: 'User account is inactive' })
-  if (!account.role_id) return res.status(401).json({ error: 'Unauthorized', message: 'User account has no role' })
+  if (!account) return rejectLogin(req, res)
+  if (!isActive(account.status)) return rejectLogin(req, res, 'User account is inactive')
+  if (!account.role_id) return rejectLogin(req, res, 'User account has no role')
 
   const ok = await bcrypt.compare(password, account.password_hash)
-  if (!ok) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' })
+  if (!ok) return rejectLogin(req, res)
 
   const tokenPayload = await sessionPayloadForAccount(pool, account)
-  if (!tokenPayload) return res.status(401).json({ error: 'Unauthorized', message: 'User account has no active role' })
+  if (!tokenPayload) return rejectLogin(req, res, 'User account has no active role')
 
   const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: env.jwtExpiresIn })
+  loginAttempts.delete(req.loginAttemptKey)
   res.json({ token, user: tokenPayload })
 }))
 

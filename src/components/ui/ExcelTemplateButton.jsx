@@ -1,14 +1,21 @@
 import * as XLSX from 'xlsx'
 import { Download } from 'lucide-react'
+import { useToast } from '../../providers/ToastProvider'
 export default function ExcelTemplateButton({ headers = [], fileName = 'Import_Template.xlsx', sampleRows = [], label = 'Export template' }) {
+  const { error, success } = useToast()
   const download = () => {
-    const worksheet = XLSX.utils.json_to_sheet(
-      sampleRows.length ? sampleRows : [Object.fromEntries(headers.map(header => [header, '']))],
-      { header: headers }
-    )
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template')
-    XLSX.writeFile(workbook, fileName)
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(
+        sampleRows.length ? sampleRows : [Object.fromEntries(headers.map(header => [header, '']))],
+        { header: headers }
+      )
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Template')
+      XLSX.writeFile(workbook, fileName)
+      success(`${fileName} downloaded.`)
+    } catch (downloadError) {
+      error(downloadError.message || 'Unable to export the import template.')
+    }
   }
 
   return (

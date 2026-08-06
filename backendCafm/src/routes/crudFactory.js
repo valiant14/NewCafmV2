@@ -403,12 +403,13 @@ const ownerFromAccessibleSource = async (pool, payload, user, sources = []) => {
   return user?.userId || null
 }
 
-export function crudRouter({ table, key, columns, defaultOrder = key, defaultPageSize = null, moduleName, relatedModules = [], scope, ownerColumn = null, ownerSources = [], beforeCreate, beforeUpdate, additionalUpdatePermission, searchColumns = [], filterGroups = {}, prefixFilters = {}, dateFilterColumn = null, readOnly = false }) {
+export function crudRouter({ table, key, columns, defaultOrder = key, defaultPageSize = null, moduleName, relatedModules = [], scope, ownerColumn = null, ownerSources = [], beforeCreate, beforeUpdate, additionalUpdatePermission, transformResponse, hasTriggers = false, searchColumns = [], filterGroups = {}, prefixFilters = {}, dateFilterColumn = null, readOnly = false }) {
   const router = Router()
   const insertable = columns.filter(column => !generatedColumns.has(column))
   const editable = insertable.filter(column => column !== key)
   const selectColumns = columns.map(quoteColumn).join(', ')
   const permit = action => moduleName ? requirePermission(moduleName, action) : (req, res, next) => next()
+  const presentRow = row => row && transformResponse ? transformResponse(row) : row
 
   router.get('/', permit('view'), asyncHandler(async (req, res) => {
     const pool = await getPool()
@@ -498,7 +499,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, defaultPag
       res.set('X-Page-Offset', String(offset))
     }
     if (includeTotal) res.set('X-Total-Count', String(result.recordsets[1]?.[0]?.total || 0))
-    res.json(result.recordset)
+    res.json(result.recordset.map(presentRow))
   }))
 
   router.get('/:id', permit('view'), asyncHandler(async (req, res) => {
@@ -509,7 +510,7 @@ export function crudRouter({ table, key, columns, defaultOrder = key, defaultPag
       .input('id', req.params.id)
       .query(`select ${selectColumns} from ${table} where ${quoteColumn(key)} = @id${scoped.where}`)
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
-    res.json(result.recordset[0])
+    res.json(presentRow(result.recordset[0]))
   }))
 
   if (readOnly) {
@@ -542,14 +543,21 @@ export function crudRouter({ table, key, columns, defaultOrder = key, defaultPag
       ...(ownerColumn && columns.includes(ownerColumn) && payload[ownerColumn] ? [ownerColumn] : [])
     ]
     if (!insertColumns.length) return res.status(400).json({ error: 'BadRequest', message: 'No fields supplied' })
+    if (hasTriggers && payload[key] === undefined) {
+      return res.status(400).json({ error: 'BadRequest', message: `${key} is required for this resource` })
+    }
     const request = bindParams(pool.request(), Object.fromEntries(insertColumns.map(column => [column, payload[column]])))
-    const result = await request.query(`
+    const result = await request.query(hasTriggers ? `
+      insert into ${table} (${insertColumns.join(', ')})
+      values (${insertColumns.map(column => `@${column}`).join(', ')});
+      select ${selectColumns} from ${table} where ${quoteColumn(key)} = @${key};
+    ` : `
       insert into ${table} (${insertColumns.join(', ')})
       output inserted.*
       values (${insertColumns.map(column => `@${column}`).join(', ')})
     `)
     emitChange(req, { moduleName, relatedModules, table, action: 'create', key, id: result.recordset[0]?.[key] }, result.recordset[0])
-    res.status(201).json(result.recordset[0])
+    res.status(201).json(presentRow(result.recordset[0]))
   }))
 
   router.put('/:id', permit('edit'), asyncHandler(async (req, res) => {
@@ -585,7 +593,12 @@ export function crudRouter({ table, key, columns, defaultOrder = key, defaultPag
     })
     request.input('id', req.params.id)
     const timestampUpdate = columns.includes('updated_at') ? ', updated_at = sysutcdatetime()' : ''
-    const result = await request.query(`
+    const result = await request.query(hasTriggers ? `
+      update ${table}
+      set ${updateColumns.map(column => `${column} = @${column}`).join(', ')}${timestampUpdate}
+      where ${quoteColumn(key)} = @id${scoped.where};
+      select ${selectColumns} from ${table} where ${quoteColumn(key)} = @id${scoped.where};
+    ` : `
       update ${table}
       set ${updateColumns.map(column => `${column} = @${column}`).join(', ')}${timestampUpdate}
       output inserted.*
@@ -593,19 +606,24 @@ export function crudRouter({ table, key, columns, defaultOrder = key, defaultPag
     `)
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
     emitChange(req, { moduleName, relatedModules, table, action: 'edit', key, id: result.recordset[0]?.[key] }, result.recordset[0])
-    res.json(result.recordset[0])
+    res.json(presentRow(result.recordset[0]))
   }))
 
   router.delete('/:id', permit('edit'), asyncHandler(async (req, res) => {
     const pool = await getPool()
     const scoped = scope ? addScopeWhere({ user: req.user, ...scope, ownerColumn }) : { where: '', params: {} }
     const request = bindParams(pool.request(), scoped.params)
-    const result = await request
-      .input('id', req.params.id)
-      .query(`delete from ${table} output deleted.* where ${quoteColumn(key)} = @id${scoped.where}`)
+    request.input('id', req.params.id)
+    const result = await request.query(hasTriggers ? `
+      set xact_abort on;
+      begin transaction;
+      select ${selectColumns} from ${table} where ${quoteColumn(key)} = @id${scoped.where};
+      delete from ${table} where ${quoteColumn(key)} = @id${scoped.where};
+      commit transaction;
+    ` : `delete from ${table} output deleted.* where ${quoteColumn(key)} = @id${scoped.where}`)
     if (!result.recordset[0]) return res.status(404).json({ error: 'NotFound', message: 'Record not found' })
     emitChange(req, { moduleName, relatedModules, table, action: 'delete', key, id: result.recordset[0]?.[key] }, result.recordset[0])
-    res.json({ deleted: result.recordset[0] })
+    res.json({ deleted: presentRow(result.recordset[0]) })
   }))
 
   return router

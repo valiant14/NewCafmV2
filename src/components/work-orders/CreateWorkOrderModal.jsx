@@ -7,6 +7,7 @@ import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../ui/ModalF
 import { sameDepartment } from '../../lib/departments'
 import { deriveDepartmentOptions, deriveSiteOptions } from '../../lib/referenceFallbacks'
 import { useAuth } from '../../providers/AuthProvider'
+import { useToastError } from '../../providers/ToastProvider'
 import { workOrderPriorities } from '../../lib/priority'
 
 const workTypes = ['CM', 'PM', 'Incident']
@@ -16,6 +17,7 @@ export default function CreateWorkOrderModal({ rows, assets, locationRows = [], 
   // The priority is stored as its code, so the form holds '3' rather than '3 - Medium'.
   const [form, setForm] = useState({ type: 'CM', description: '', priority: priorities[2].value, site: '', location: '', asset: '', department: '', subDepartment: '' })
   const [error, setError] = useState('')
+  useToastError(error)
   const { user } = useAuth()
   const update = key => event => setForm({ ...form, [key]: event.target.value })
   const sites = deriveSiteOptions({ siteRecords, user, locations: locationRows, assets, orders: rows })
