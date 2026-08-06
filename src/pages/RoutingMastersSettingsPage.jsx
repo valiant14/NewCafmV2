@@ -45,13 +45,17 @@ const scopeSection = {
   section: 'Scope',
   sectionIcon: Building2,
   sectionNote: 'Where this routing record can be selected',
-  sectionTone: 'green'
+  sectionTone: 'green',
+  sectionSpan: 'full',
+  sectionColumns: 2
 }
 
 const identitySection = {
   section: 'Identity',
   sectionIcon: Hash,
-  sectionNote: 'Stable code and readable name used throughout maintenance records'
+  sectionNote: 'Stable code and readable name used throughout maintenance records',
+  sectionSpan: 'full',
+  sectionColumns: 2
 }
 
 const optionRows = rows => ['', ...rows]
