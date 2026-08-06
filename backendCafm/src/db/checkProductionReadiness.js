@@ -5,6 +5,7 @@ import { closePool, getPool } from './pool.js'
 const issues = []
 const warnings = []
 const commonPasswords = ['admin123', 'password', 'Password123!', 'ChangeMe123!']
+const unsafeJwtSecrets = new Set(['dev-only-secret', 'change-this-before-production'])
 const pool = await getPool()
 
 try {
@@ -57,7 +58,7 @@ try {
   if (configuredConnectors > encryptedConnectors) {
     issues.push(`${configuredConnectors - encryptedConnectors} connector credential(s) remain unencrypted.`)
   }
-  if (configuredConnectors && String(env.connectorSecretKey || '').length < 32) {
+  if (String(env.connectorSecretKey || '').length < 32) {
     issues.push('CONNECTOR_SECRET_KEY is missing or shorter than 32 characters.')
   }
 
@@ -65,8 +66,14 @@ try {
     if (Number(row.missing_owner || 0)) issues.push(`${row.entity} has ${Number(row.missing_owner)} record(s) without an owner.`)
   }
 
-  if (env.nodeEnv !== 'production') warnings.push('NODE_ENV is not production for this check.')
-  if (/localhost|127\.0\.0\.1/i.test(env.corsOrigin)) warnings.push('CORS_ORIGIN still points to localhost.')
+  if (env.nodeEnv !== 'production') issues.push('NODE_ENV must be production before deployment.')
+  if (String(env.jwtSecret || '').length < 32 || unsafeJwtSecrets.has(String(env.jwtSecret || ''))) {
+    issues.push('JWT_SECRET must be a unique value of at least 32 characters.')
+  }
+  if (!process.env.CORS_ORIGIN || /localhost|127\.0\.0\.1/i.test(env.corsOrigin)) {
+    issues.push('CORS_ORIGIN must be set to the deployed frontend origin.')
+  }
+  if (!String(env.db.password || '')) issues.push('MSSQL_PASSWORD is required.')
   if (String(env.db.user || '').toLowerCase() === 'sa') issues.push('MSSQL_USER must be a dedicated least-privilege application login, not sa.')
   if (!env.db.options.encrypt) issues.push('MSSQL_ENCRYPT must be true in production.')
   if (env.db.options.trustServerCertificate) warnings.push('MSSQL_TRUST_SERVER_CERTIFICATE should be false when a trusted SQL certificate is available.')
