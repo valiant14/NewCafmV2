@@ -1,1 +1,0 @@
-import{i as e}from"./Surface-DLvcaqzy.js";import{X as t,bt as n}from"./index-BTr31_e_.js";var r=e();function i({locked:e,...t}){return e?null:(0,r.jsx)(n,{...t})}function a(e){return(0,r.jsx)(t,{...e})}export{a as n,i as t};

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, BarChart3, ChevronRight, ClipboardList, Package, PackageCheck, Plus, Warehouse } from 'lucide-react'
+import { AlertTriangle, BarChart3, Building2, ChevronRight, ClipboardList, Hash, Package, PackageCheck, Plus, ShieldCheck, Warehouse } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import Combobox from '../components/ui/Combobox'
@@ -54,11 +54,14 @@ const emptyStore = {
   status: 'Active'
 }
 // Site options come from the site master and preserve the selected site code.
+const identity = { section: 'Store', sectionIcon: Warehouse, sectionNote: 'How the storeroom is identified on stock and purchase records' }
+const placement = { section: 'Placement', sectionIcon: Building2, sectionNote: 'Which site it belongs to, and whether it can be issued from', sectionTone: 'green' }
+
 const storeFieldsFor = siteOptions => [
-  { key: 'code', label: 'Store Code', required: true, placeholder: 'Enter warehouse code' },
-  { key: 'name', label: 'Store Name', required: true, placeholder: 'Enter warehouse name' },
-  { key: 'site', label: 'Site', required: true, suggestions: siteOptions, placeholder: 'Search or select a site' },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
+  { ...identity, key: 'code', label: 'Store Code', icon: Hash, required: true, placeholder: 'Enter warehouse code' },
+  { ...identity, key: 'name', label: 'Store Name', icon: Warehouse, required: true, placeholder: 'Enter warehouse name' },
+  { ...placement, key: 'site', label: 'Site', icon: Building2, required: true, suggestions: siteOptions, placeholder: 'Search or select a site' },
+  { ...placement, key: 'status', label: 'Status', icon: ShieldCheck, options: ['Active', 'Inactive'] }
 ]
 const templateHeaders = Object.keys(emptyStore)
 
