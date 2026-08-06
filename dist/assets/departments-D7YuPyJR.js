@@ -1,0 +1,1 @@
+var e=e=>{let t=String(e||``).trim().toLowerCase();if(!t)return``;let n=t.replace(/[^a-z0-9]+/g,``);return n===`mechanics`||n===`mechanical`?`mechanical`:n},t=(t,n)=>e(t)===e(n),n=(e,t=[])=>{let n=String(e||``).trim().toLowerCase(),r=t.find(e=>e.name?.toLowerCase()===n||e.code?.toLowerCase()===n);return r?`${r.code} / ${r.name}`:e||``};export{t as n,n as r,e as t};

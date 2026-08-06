@@ -60,7 +60,7 @@ const exportColumns = [
   { key: 'quantity', label: 'Quantity' }
 ]
 
-export default function AssetsPage({ rows: controlledRows, setRows: setControlledRows, initialAssets = [], workOrders = [], siteRecords = [], departmentRecords = [], locationRows = [] }) {
+export default function AssetsPage({ rows: controlledRows, setRows: setControlledRows, initialAssets = [], workOrders = [], siteRecords = [], departmentRecords = [], systemRecords = [], locationRows = [] }) {
   const { user } = useAuth()
   const access = useModuleAccess('Assets')
   const [localRows, setLocalRows] = useState(initialAssets)
@@ -114,7 +114,7 @@ export default function AssetsPage({ rows: controlledRows, setRows: setControlle
   }
 
   if (selected) {
-    return <AssetDetailPage asset={selected} workOrders={relatedWorkOrders.rows} onBack={close} onUpdate={updateAsset} />
+    return <AssetDetailPage asset={selected} systemRecords={systemRecords} workOrders={relatedWorkOrders.rows} onBack={close} onUpdate={updateAsset} />
   }
 
   return (
@@ -180,7 +180,7 @@ export default function AssetsPage({ rows: controlledRows, setRows: setControlle
         />
       </TablePanel>
 
-      {adding && <AddAssetModal form={form} setForm={setForm} rows={rows} error={codeError} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={locationRows} onClose={() => { setAdding(false); setCodeError('') }} onSave={save} />}
+      {adding && <AddAssetModal form={form} setForm={setForm} rows={rows} error={codeError} siteRecords={siteRecords} departmentRecords={departmentRecords} systemRecords={systemRecords} locationRows={locationRows} onClose={() => { setAdding(false); setCodeError('') }} onSave={save} />}
     </>
   )
 }

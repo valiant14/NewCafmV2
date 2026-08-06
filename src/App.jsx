@@ -25,13 +25,14 @@ import { useAuth } from './providers/AuthProvider'
 import { useToast } from './providers/ToastProvider'
 import { nowLocalDateTime } from './lib/datetime'
 import { printWithoutBrowserTitle } from './lib/print'
-import { sameDepartment, systemNamesForDepartment, workGroupsForDepartment } from './lib/departments'
+import { sameDepartment } from './lib/departments'
+import { routingRecordByValue, supervisorOptionsForScope, supervisorValueForWorkGroup, systemOptionsForScope, workGroupOptionsForScope } from './lib/routingMasters'
 import { storeLabel, storesHolding, totalAvailable } from './lib/inventory'
 import { readProjectName } from './lib/projectSettings'
 import { canTransitionWorkOrder, statusCode, statusDescription, statusOptions, workOrderTransitions } from './lib/statusMatrix'
 import { HOLD_MATERIAL, HOLD_PERMIT, effectiveTargetTime, endHold, holdSince, isOnHold, startHold } from './lib/holdPeriods'
 import { describeOutstanding, markReturned, outstandingReturns } from './lib/resourceReturns'
-import { canUseAction, canViewPage, filterNavigationForUser, firstAllowedPage, scopeRowsForUser } from './lib/accessControl'
+import { canNavigatePage, canUseAction, filterNavigationForUser, firstAllowedPage, scopeRowsForUser } from './lib/accessControl'
 import { failureClassOptions, jobPlanOptions } from './lib/masterOptions'
 import { deriveDepartmentOptions, deriveSiteOptions } from './lib/referenceFallbacks'
 import { api, loadWorkspace, loadWorkOrderDetail, loadWorkOrderPage, serviceRequestApi, supplyChainApi } from './services/api'
@@ -84,6 +85,7 @@ const ReservationsPage = lazy(() => import('./pages/ReservationsPage'))
 const UsersPage = lazy(() => import('./pages/UsersPage'))
 const SitesSettingsPage = lazy(() => import('./pages/SitesSettingsPage'))
 const DepartmentsSettingsPage = lazy(() => import('./pages/DepartmentsSettingsPage'))
+const RoutingMastersSettingsPage = lazy(() => import('./pages/RoutingMastersSettingsPage'))
 
 
 const buildWorkOrderNotifications = rows => {
@@ -528,11 +530,23 @@ const apiMappers = {
     apiKey: 'sub_department_code',
     toApi: row => ({ sub_department_code: toText(row.subDepartmentCode), department_name: toText(row.department), description: toText(row.description), status: statusText(row.status) })
   },
+  systems: {
+    endpoint: '/systems',
+    key: 'code',
+    apiKey: 'system_code',
+    toApi: row => ({ system_code: toText(row.code), system_name: toText(row.name), description: row.description || '', site_code: row.site || null, department_name: row.department || '', sub_department_code: row.subDepartment || null, status: statusText(row.status) })
+  },
+  workGroups: {
+    endpoint: '/work-groups',
+    key: 'code',
+    apiKey: 'work_group_code',
+    toApi: row => ({ work_group_code: toText(row.code), work_group_name: toText(row.name), site_code: row.site || null, department_name: row.department || '', sub_department_code: row.subDepartment || null, default_supervisor_labor_id: row.supervisorId || null, status: statusText(row.status) })
+  },
   assets: {
     endpoint: '/assets',
     key: 'assetnum',
     apiKey: 'asset_num',
-    toApi: row => ({ asset_num: toText(row.assetnum), description: toText(row.description), location_code: row.location || '', parent_asset_num: row.parent || null, department_name: row.department || '', sub_department_code: row['sub department'] || row.subDepartment || '', priority: toNumberOrNull(row.prioity || row.priority), site_code: row.site || null, status: statusText(row.status, 'OPERATING'), model_num: row.modelnum || '', serial_num: row.serialnum || '', install_date: toDateOrNull(row.installdate), quantity: toNumberOrNull(row.quantity) || 1 })
+    toApi: row => ({ asset_num: toText(row.assetnum), description: toText(row.description), location_code: row.location || '', parent_asset_num: row.parent || null, department_name: row.department || '', sub_department_code: row['sub department'] || row.subDepartment || '', system_name: row.system || '', priority: toNumberOrNull(row.prioity || row.priority), site_code: row.site || null, status: statusText(row.status, 'OPERATING'), model_num: row.modelnum || '', serial_num: row.serialnum || '', install_date: toDateOrNull(row.installdate), quantity: toNumberOrNull(row.quantity) || 1 })
   },
   locations: {
     endpoint: '/locations',
@@ -720,7 +734,7 @@ function WorkOrderWorkflowNotice({ status, missing = [], nextStep }) {
   )
 }
 
-function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, workflow: workflowValue = DEFAULT_WORK_ORDER_WORKFLOW, siteRecords = [], departmentRecords = [], assetRecords = [], workOrderRows = [], laborRecords = [], materialRecords = [], stockRecords = [], storeRecords = [], toolRecords = [], jobTaskRecords = [], failureCodeRecords = [], reservationRecords = [], purchaseRequestRecords = [], purchaseOrderRecords = [], meterRecords = [], onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder, onNotifyWorkOrderStatus }) {
+function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, workflow: workflowValue = DEFAULT_WORK_ORDER_WORKFLOW, siteRecords = [], departmentRecords = [], systemRecords = [], workGroupRecords = [], assetRecords = [], workOrderRows = [], laborRecords = [], materialRecords = [], stockRecords = [], storeRecords = [], toolRecords = [], jobTaskRecords = [], failureCodeRecords = [], reservationRecords = [], purchaseRequestRecords = [], purchaseOrderRecords = [], meterRecords = [], onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder, onNotifyWorkOrderStatus }) {
   const { user } = useAuth()
   const { notify } = useToast()
   const workflow = useMemo(()=>normalizeWorkOrderWorkflow(workflowValue),[workflowValue])
@@ -821,17 +835,18 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const selectedDepartment=departments.find(item=>sameDepartment(item.name,department))
   const masterSubDepartments=departmentRecords.filter(item=>item.status!=='Inactive'&&sameDepartment(item.department,department)).map(item=>({value:item.subDepartmentCode,label:item.description}))
   const subDepartmentOptions=masterSubDepartments.length?masterSubDepartments:(selectedDepartment?.subDepartments||departments.flatMap(item=>item.subDepartments)).map(item=>({value:item.name,label:item.code}))
-  const workGroupOptions=workGroupsForDepartment(assignedDepartment)
-  const systemOptions=systemNamesForDepartment(department)
-  const supervisorOptions=laborRecords.filter(person=>!assignedDepartment||person.department===assignedDepartment).map(person=>({value:person.name,label:`${person.craftCode} · ${person.craft}`}))
+  const systemOptions=['',...systemOptionsForScope(systemRecords,{site:siteValue,department,subDepartment})]
+  const workGroupOptions=['',...workGroupOptionsForScope(workGroupRecords,{site:siteValue,department:assignedDepartment,subDepartment})]
+  const supervisorOptions=['',...supervisorOptionsForScope(laborRecords,{site:siteValue,department:assignedDepartment,subDepartment})]
   const laborCraftOptions=[...new Map(laborRecords.map(person=>[person.craftCode,{value:person.craftCode,label:person.craft}])).values()]
   const plannedCraftOptions=[...new Map(laborRecords.map(person=>[person.craft,{value:person.craft,label:person.craftCode}])).values()]
   const plannedCrewOptions=laborRecords.map(person=>({value:person.name,label:`${person.personId} · ${person.craft} · ${person.availability}`}))
   const assetsForSite=assetRecords.filter(a=>!siteValue||String(a.site)===siteValue)
   const assetOptions=assetsForSite.map(a=>({value:a.assetnum,label:a.description?.trim()}))
   const locationOptions=[...new Set([...assetsForSite.map(a=>a.location),...workOrderRows.filter(o=>!siteValue||String(o.SITE)===siteValue).map(o=>o['LOCATION '])].filter(Boolean))].sort()
-  const changeSite=e=>{setSiteValue(e.target.value);setAssetValue('');setLocationValue('')}
-  const changeAsset=e=>{const value=e.target.value;setAssetValue(value);const match=assetRecords.find(a=>cleanText(a.assetnum)===cleanText(value));setAssetDescription(match?.description?.trim()||'');if(match?.location)setLocationValue(match.location);if(match?.site)setSiteValue(String(match.site));if(match?.system)setSystemValue(current=>current||match.system)}
+  const changeSite=e=>{setSiteValue(e.target.value);setAssetValue('');setLocationValue('');setSystemValue('');setWorkGroup('');setSupervisor('')}
+  const changeAsset=e=>{const value=e.target.value;setAssetValue(value);const match=assetRecords.find(a=>cleanText(a.assetnum)===cleanText(value));setAssetDescription(match?.description?.trim()||'');if(match?.location)setLocationValue(match.location);if(match?.site&&String(match.site)!==siteValue){setSiteValue(String(match.site));setWorkGroup('');setSupervisor('')}setSystemValue(match?.system||'')}
+  const changeWorkGroup=e=>{const value=e.target.value;setWorkGroup(value);const group=routingRecordByValue(workGroupRecords,value);setSupervisor(supervisorValueForWorkGroup(group,laborRecords))}
   const matchingFailures=failureCodeRecords.filter(row=>!failureClass||cleanText(row['FAILURE CLASS ID'])===cleanText(failureClass))
   const failureClassOptions=uniqueCodeOptions(failureCodeRecords,'FAILURE CLASS ID','DESCRIPTION')
   const problemOptions=uniqueCodeOptions(matchingFailures,'PROBLEM CODE','PC - DESCRIPTION')
@@ -1299,7 +1314,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     <WorkOrderTabs tabs={visibleWorkOrderTabs} active={tab} onChange={setTab} alertTabs={tabAlerts} meta={<WorkOrderDatesBar readOnly={!canEditWorkOrder} isPM={isPM} reportedDate={reportedDateValue} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} actualFinish={actualFinish} />} />
     <WorkOrderWorkflowNotice status={status} missing={workflowMissing} nextStep={workflowNextStepText} />
     <div className={workOrderBodyClass}>
-      {tab==='Overview' && <WorkOrderOverviewTab readOnly={!canEditWorkOrder} projectName={projectName} sourceRequest={sourceRequest} number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} systemValue={systemValue} setSystemValue={setSystemValue} systemOptions={systemOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={reportedDateValue} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
+      {tab==='Overview' && <WorkOrderOverviewTab readOnly={!canEditWorkOrder} projectName={projectName} sourceRequest={sourceRequest} number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} changeWorkGroup={changeWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} systemValue={systemValue} setSystemValue={setSystemValue} systemOptions={systemOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={reportedDateValue} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
       {tab==='Plan' && <WorkOrderPlanTab readOnly={!canEditWorkOrder} isPM={isPM} tasksLocked={tasksFromJobPlan} jobPlanNumber={jobPlanNumber} estimatedDuration={order['ESTIMATED DURATION']} safetyInstructions={order['SAFETY INSTRUCTIONS']} checklist={order.CHECKLIST||[]} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialRecords} toolMaster={toolRecords} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} updatePlannedResourceField={updatePlannedResourceField} />}
       {tab==='Actual' && <WorkOrderActualTab readOnly={!canEditWorkOrder} actualsEditable={actualsEditable} status={status} nextStatus={nextInChain} preparationReady={startReady} planReady={planReady} setTab={setTab} setWorkStarted={value=>{if(value&&startReady)changeStatus('INPRG')}} completeWork={completeWork} showStartAction={!workflowStepByStatus(workflow,'INPRG')?.isAutomatic} showCompleteAction={!workflowStepByStatus(workflow,'COMP')?.isAutomatic} showCloseAction={canCloseWorkOrder&&!workflowStepByStatus(workflow,'CLOSE')?.isAutomatic} completionReady={completionReady} completionBlocked={missingFor('COMP').join(', ')} startBlocked={missingFor('INPRG').join(', ')} outlineButtonClass={workOrderOutlineButtonClass} primaryButtonClass={workOrderPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} completionDate={order['COMPLETED AT']} closedAt={order['CLOSED AT']} closedBy={order['CLOSED BY']} setActualFinish={changeActualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} actualHours={actualHours} setActualHours={changeActualHours} actualStart={actualStart} setActualStart={changeActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} actualReady={actualReady} closeWork={closeWork} returnResource={returnResource} outstanding={outstandingReturnRows} currentUser={user} />}
       {tab==='Failure' && <WorkOrderFailureTab readOnly={!canEditWorkOrder} isCM={isCM} causeApplicable={causeApplicable} remedyApplicable={remedyApplicable} failureClass={failureClass} changeFailure={changeFailure} failureClassOptions={failureClassOptions} problemCode={problemCode} setProblemCode={setProblemCode} setCauseCode={setCauseCode} setRemedyCode={setRemedyCode} problemOptions={problemOptions} causeCode={causeCode} causeOptions={causeOptions} remedyCode={remedyCode} remedyOptions={remedyOptions} failureDescription={failureDescription} problemDescription={problemDescription} causeDescription={causeDescription} remedyDescription={remedyDescription} failureCount={failureCodeRecords.length} />}
@@ -1347,6 +1362,8 @@ export default function App() {
   const [userRecords,setUserRecords]=useState([])
   const [siteRecords,setSiteRecords]=useState([])
   const [departmentRecords,setDepartmentRecords]=useState([])
+  const [systemRecords,setSystemRecords]=useState([])
+  const [workGroupRecords,setWorkGroupRecords]=useState([])
   const [failureCodeRecords,setFailureCodeRecords]=useState([])
   const [workspaceLoading,setWorkspaceLoading]=useState(false)
   const [workspaceError,setWorkspaceError]=useState('')
@@ -1417,6 +1434,8 @@ export default function App() {
     if (Object.hasOwn(data, 'users')) setUserRecords(data.users)
     if (Object.hasOwn(data, 'sites')) setSiteRecords(data.sites)
     if (Object.hasOwn(data, 'departments')) setDepartmentRecords(data.departments)
+    if (Object.hasOwn(data, 'systems')) setSystemRecords(data.systems)
+    if (Object.hasOwn(data, 'workGroups')) setWorkGroupRecords(data.workGroups)
     if (Object.hasOwn(data, 'failureCodes')) setFailureCodeRecords(data.failureCodes)
   }, [])
   useEffect(() => {
@@ -1453,6 +1472,8 @@ export default function App() {
     setUserRecords([])
     setSiteRecords([])
     setDepartmentRecords([])
+    setSystemRecords([])
+    setWorkGroupRecords([])
     setFailureCodeRecords([])
     setWorkspaceError('')
   }, [isAuthenticated, user?.userId, user?.username])
@@ -1643,7 +1664,11 @@ export default function App() {
     }
   }, [canDo, notify])
   const guardSave = useCallback((moduleName, saveFn) => update => {
-    const permissionModule = moduleName === 'Job Plan Tasks' ? 'Job Plans' : moduleName
+    const permissionModule = moduleName === 'Job Plan Tasks'
+      ? 'Job Plans'
+      : moduleName.startsWith('Routing Masters')
+        ? 'Routing Masters'
+        : moduleName
     const beforeRows = moduleName === 'Assets' ? assetRecords
       : moduleName === 'Locations' ? locationRecords
       : moduleName === 'Labor' ? laborRecords
@@ -1664,6 +1689,8 @@ export default function App() {
       : moduleName === 'Reservations' ? reservations
       : moduleName === 'Sites' ? siteRecords
       : moduleName === 'Departments' ? departmentRecords
+      : moduleName === 'Routing Masters Systems' ? systemRecords
+      : moduleName === 'Routing Masters Work Groups' ? workGroupRecords
       : moduleName === 'Job Plans' ? jobPlanRecords
       : moduleName === 'Job Plan Tasks' ? jobTaskRecords
       : moduleName === 'Users' ? userRecords
@@ -1687,7 +1714,7 @@ export default function App() {
         refreshWorkspace({ silent: true })
         return { __saveError: true, error }
       })
-  }, [assetRecords, locationRecords, laborRecords, materialRecords, storeRecords, toolRecords, failureCodeRecords, meterRecords, allWorkOrders, serviceRequests, incidents, pmScheduleRecords, pmRuleRecords, connectorRecords, notificationRuleRecords, purchaseRequests, purchaseOrders, reservations, siteRecords, departmentRecords, jobPlanRecords, jobTaskRecords, userRecords, rolePermissionRecords, canDo, notify, refreshWorkspace])
+  }, [assetRecords, locationRecords, laborRecords, materialRecords, storeRecords, toolRecords, failureCodeRecords, meterRecords, allWorkOrders, serviceRequests, incidents, pmScheduleRecords, pmRuleRecords, connectorRecords, notificationRuleRecords, purchaseRequests, purchaseOrders, reservations, siteRecords, departmentRecords, systemRecords, workGroupRecords, jobPlanRecords, jobTaskRecords, userRecords, rolePermissionRecords, canDo, notify, refreshWorkspace])
   const rawSaveAssets = useMemo(() => backendSetter(setAssetRecords, apiMappers.assets), [])
   const rawSaveLocations = useMemo(() => backendSetter(setLocationRecords, apiMappers.locations), [])
   const rawSaveLabor = useMemo(() => backendSetter(setLaborRecords, apiMappers.labor), [])
@@ -1705,6 +1732,8 @@ export default function App() {
   const rawSaveNotificationRules = useMemo(() => backendSetter(setNotificationRuleRecords, apiMappers.notificationRules), [])
   const rawSaveSites = useMemo(() => backendSetter(setSiteRecords, apiMappers.sites), [])
   const rawSaveDepartments = useMemo(() => backendSetter(setDepartmentRecords, apiMappers.departments), [])
+  const rawSaveSystems = useMemo(() => backendSetter(setSystemRecords, apiMappers.systems), [])
+  const rawSaveWorkGroups = useMemo(() => backendSetter(setWorkGroupRecords, apiMappers.workGroups), [])
   const rawSaveJobPlans = useMemo(() => backendSetter(setJobPlanRecords, apiMappers.jobPlans), [])
   const rawSaveJobTasks = useMemo(() => backendSetter(setJobTaskRecords, apiMappers.jobTasks), [])
   const rawSaveUsers = useMemo(() => backendSetter(setUserRecords, apiMappers.users), [])
@@ -1744,6 +1773,8 @@ export default function App() {
   const saveNotificationRules = useMemo(() => guardSave('Settings', rawSaveNotificationRules), [guardSave, rawSaveNotificationRules])
   const saveSites = useMemo(() => guardSave('Sites', rawSaveSites), [guardSave, rawSaveSites])
   const saveDepartments = useMemo(() => guardSave('Departments', rawSaveDepartments), [guardSave, rawSaveDepartments])
+  const saveSystems = useMemo(() => guardSave('Routing Masters Systems', rawSaveSystems), [guardSave, rawSaveSystems])
+  const saveWorkGroups = useMemo(() => guardSave('Routing Masters Work Groups', rawSaveWorkGroups), [guardSave, rawSaveWorkGroups])
   const saveJobPlans = useMemo(() => guardSave('Job Plans', rawSaveJobPlans), [guardSave, rawSaveJobPlans])
   const saveJobTasks = useMemo(() => guardSave('Job Plan Tasks', rawSaveJobTasks), [guardSave, rawSaveJobTasks])
   const saveUsers = useMemo(() => guardSave('Users', rawSaveUsers), [guardSave, rawSaveUsers])
@@ -1761,7 +1792,7 @@ export default function App() {
   const workOrderNotifications = buildWorkOrderNotifications(scopedWorkOrders)
   const allowedNavigation = useMemo(() => filterNavigationForUser(navigationItems, effectiveUser), [effectiveUser])
   const fallbackPage = firstAllowedPage(navigationItems, effectiveUser)
-  const canNavigate = name => canViewPage(effectiveUser, name)
+  const canNavigate = name => canNavigatePage(navigationItems, effectiveUser, name)
   const accessFor = useCallback(moduleName => ({
     view: canDo(moduleName, 'view'),
     create: canDo(moduleName, 'create'),
@@ -1793,7 +1824,7 @@ export default function App() {
     const syncRouteAccess = () => {
       const currentPath = window.location.pathname
       const routePage = routeToPage(currentPath)
-      if (canViewPage(effectiveUser, routePage)) {
+      if (canNavigatePage(navigationItems, effectiveUser, routePage)) {
         setRoutePath(currentPath)
         setActive(routePage)
         return
@@ -2176,9 +2207,9 @@ export default function App() {
     'Incidents': <IncidentsPage rows={scopedIncidents} setRows={saveIncidents} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} laborRows={laborRecords}/>,
     'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} pageMeta={workOrderPageMeta} onPageRequest={requestWorkOrderPage} onLoadDetail={loadWorkOrderById} EditorComponent={props => {
       const detailContext = workOrderContext.workOrder === String(props.order.WORKORDER) ? workOrderContext : null
-      return <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} workflow={workOrderWorkflow} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={detailContext?.tasks || jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={detailContext?.reservations || reservations} purchaseRequestRecords={detailContext?.purchaseRequests || purchaseRequests} purchaseOrderRecords={detailContext?.purchaseOrders || purchaseOrders} meterRecords={detailContext?.meters || meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} onNotifyWorkOrderStatus={sendWorkOrderStatusNotification} />
+      return <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} workflow={workOrderWorkflow} siteRecords={siteRecords} departmentRecords={departmentRecords} systemRecords={systemRecords} workGroupRecords={workGroupRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={detailContext?.tasks || jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={detailContext?.reservations || reservations} purchaseRequestRecords={detailContext?.purchaseRequests || purchaseRequests} purchaseOrderRecords={detailContext?.purchaseOrders || purchaseOrders} meterRecords={detailContext?.meters || meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} onNotifyWorkOrderStatus={sendWorkOrderStatusNotification} />
     }} excelDate={excelDate} workflow={workOrderWorkflow} slaBreached={slaBreached} access={accessFor('Work Orders')}/>,
-    'Assets': <AssetsPage rows={scopedAssets} setRows={saveAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} />,
+    'Assets': <AssetsPage rows={scopedAssets} setRows={saveAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} systemRecords={systemRecords} locationRows={scopedLocations} />,
     'Preventive Maintenance': <PreventiveMaintenancePage rows={pmScheduleRecords} setRows={savePmSchedules} onImport={importPmSchedules} pmRules={pmRuleRecords} assets={scopedAssets} jobPlans={jobPlanRecords} jobTasks={jobTaskRecords} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} locationRows={scopedLocations} storeRows={storeRecords} laborRows={laborRecords} workflow={workOrderWorkflow} scopeUser={effectiveUser} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Meters': <MetersPage rows={meterRecords} setRows={saveMeters} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} />,
     'Locations': <LocationsPage rows={scopedLocations} setRows={saveLocations} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords}/>,
@@ -2217,7 +2248,7 @@ export default function App() {
     ]} mapFormToRow={form => ({ ...form })} onCreate={form => saveFailureCodes(rows => [{ ...form }, ...rows])} onImport={importFailureCodes} access={accessFor('Failure Library')} rowKey="FAILURE CLASS ID" onRowClick={row=>{setSelectedFailureClass(row);window.history.pushState({},'',`/failure-library/${encodeURIComponent(row['FAILURE CLASS ID'])}`)}} columns={[
       {key:'FAILURE CLASS ID',label:'Class',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Class description'},{key:'problemCount',label:'Problems'},{key:'causeCount',label:'Causes'},{key:'remedyCount',label:'Remedies'}
     ]}/>,
-    'Labor': <LaborPage rows={laborRecords} setRows={saveLabor} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} laborRows={laborRecords}/>,
+    'Labor': <LaborPage rows={laborRecords} setRows={saveLabor} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} laborRows={laborRecords}/>,
     'Materials': <MaterialsPage onOpenWorkOrder={openConvertedWorkOrder} rows={materialRecords} setRows={saveMaterials} stockRows={stockRecords} storeRows={storeRecords} workOrders={scopedWorkOrders} resourceRequests={workOrderResourceRecords} purchaseRequests={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} onCreateRequest={createPurchaseRequest} onUpdateStock={(storeCode,itemCode,patch)=>upsertStockRecord(storeCode,itemCode,patch)}/>,
     'Stores': <StoresPage materials={materialRecords} tools={toolRecords} stockRows={stockRecords} storeRows={storeRecords} setStoreRows={saveStores} locationRows={locationRecords} siteRecords={siteRecords} scopeUser={effectiveUser}/>,
     'Purchase Requisitions': <PurchaseRequestsPage rows={scopedPurchaseRequests} purchaseOrders={scopedPurchaseOrders} materials={materialRecords} tools={toolRecords} storeRows={storeRecords} siteRecords={siteRecords} departmentRecords={departmentRecords} workflow={applicationWorkflows.SUPPLY_CHAIN} onOpenWorkOrder={openConvertedWorkOrder} onCreateRequest={createPurchaseRequest} onApproveRequest={createPurchaseOrderFromRequest} onUpdateRequest={updatePurchaseRequest}/>,
@@ -2228,6 +2259,7 @@ export default function App() {
     'Roles & Permissions': <RolesPermissionsPage rows={rolePermissionRecords} setRows={saveRoles} siteOptions={siteScopeOptions} departmentOptions={departmentScopeOptions}/>,
     'Sites': <SitesSettingsPage rows={siteRecords} setRows={saveSites}/>,
     'Departments': <DepartmentsSettingsPage rows={departmentRecords} setRows={saveDepartments}/>,
+    'Routing Masters': <RoutingMastersSettingsPage systems={systemRecords} setSystems={saveSystems} workGroups={workGroupRecords} setWorkGroups={saveWorkGroups} sites={siteRecords} departments={departmentRecords} labor={laborRecords}/>,
     'Work Order Workflow': <WorkOrderWorkflowSettingsPage workflow={workOrderWorkflow} applicationWorkflows={applicationWorkflows} onSave={saveWorkOrderWorkflow} onSaveApplication={saveApplicationWorkflow} canEdit={canDo('Work Order Workflow', 'edit')}/>,
     'Notifications': <NotificationsSettingsPage rows={notificationRuleRecords} setRows={saveNotificationRules}/>,
     'SMTP & SMS': <ConnectorsSettingsPage rows={connectorRecords} setRows={saveConnectors}/>,

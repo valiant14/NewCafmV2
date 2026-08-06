@@ -114,6 +114,26 @@ const mapDepartment = row => ({
   status: row.status || 'Active'
 })
 
+const mapSystem = row => ({
+  code: row.system_code,
+  name: row.system_name,
+  description: row.description || '',
+  site: row.site_code || '',
+  department: row.department_name || '',
+  subDepartment: row.sub_department_code || '',
+  status: row.status || 'Active'
+})
+
+const mapWorkGroup = row => ({
+  code: row.work_group_code,
+  name: row.work_group_name,
+  site: row.site_code || '',
+  department: row.department_name || '',
+  subDepartment: row.sub_department_code || '',
+  supervisorId: row.default_supervisor_labor_id || '',
+  status: row.status || 'Active'
+})
+
 const mapUser = (row, roles = []) => {
   const dataScope = row.effective_data_scope || row.role_data_scope || 'DEPARTMENT'
   return {
@@ -156,6 +176,7 @@ const mapAsset = row => ({
   parent: row.parent_asset_num || '',
   department: row.department_name || '',
   'sub department': row.sub_department_code || '',
+  system: row.system_name || '',
   prioity: row.priority || '',
   site: row.site_code,
   status: row.status || '',
@@ -680,6 +701,8 @@ const resourceDefinitions = {
   })],
   sites: ['/sites', rows => rows.map(mapSite)],
   departments: ['/departments', rows => rows.map(mapDepartment)],
+  systems: ['/systems', rows => rows.map(mapSystem)],
+  workGroups: ['/work-groups', rows => rows.map(mapWorkGroup)],
   roles: ['/roles', rows => rows.map(mapRole)],
   users: ['/users', rows => rows],
   assets: ['/assets', rows => rows.map(mapAsset)],
@@ -709,7 +732,7 @@ const resourceDefinitions = {
   applicationWorkflows: ['/application-workflows', mapApplicationWorkflows]
 }
 
-export const WORKSPACE_RESOURCE_KEYS = ['overviewSnapshot', 'sites', 'departments', 'roles', 'users', 'assets', 'locations', 'labor', 'materials', 'storerooms', 'inventoryStock', 'tools', 'failureCodes', 'workOrders', 'workOrderResources', 'workOrderPlannedLabor', 'workOrderTasks', 'serviceRequests', 'purchaseRequests', 'purchaseOrders', 'reservations', 'pmSchedules', 'pmRules', 'connectors', 'notificationRules', 'jobPlans', 'jobTasks', 'incidents', 'meters', 'workOrderWorkflow', 'applicationWorkflows']
+export const WORKSPACE_RESOURCE_KEYS = ['overviewSnapshot', 'sites', 'departments', 'systems', 'workGroups', 'roles', 'users', 'assets', 'locations', 'labor', 'materials', 'storerooms', 'inventoryStock', 'tools', 'failureCodes', 'workOrders', 'workOrderResources', 'workOrderPlannedLabor', 'workOrderTasks', 'serviceRequests', 'purchaseRequests', 'purchaseOrders', 'reservations', 'pmSchedules', 'pmRules', 'connectors', 'notificationRules', 'jobPlans', 'jobTasks', 'incidents', 'meters', 'workOrderWorkflow', 'applicationWorkflows']
 
 export async function loadWorkspace({ resources = [], workOrderQuery = {} } = {}) {
   const selected = [...new Set(resources)].filter(resource => resourceDefinitions[resource] || resource === 'workOrders')

@@ -13,7 +13,7 @@ using (values
   ('Job Plans'), ('Assets'), ('Labor'), ('Locations'), ('Failure Library'), ('Meters'),
   ('Materials'), ('Stores'), ('Tools & Equipment'), ('Reservations'),
   ('Purchase Requisitions'), ('Purchase Orders'), ('Users'), ('Roles & Permissions'),
-  ('Sites'), ('Departments'), ('Work Order Workflow'), ('PM Schedule Rules'), ('SMTP & SMS'), ('Settings')
+  ('Sites'), ('Departments'), ('Routing Masters'), ('Work Order Workflow'), ('PM Schedule Rules'), ('SMTP & SMS'), ('Settings')
 ) as source(module_name)
 on target.module_name = source.module_name
 when not matched then insert(module_name) values(source.module_name);
@@ -109,7 +109,7 @@ insert into dbo.role_permissions(role_id, module_name, action_name, allowed)
 select r.role_id, m.module_name, a.action_name, 1
 from dbo.roles r
 join dbo.permission_modules m on m.module_name in (
-  'Overview', 'Job Requests', 'Work Orders', 'Work Order Planning', 'Assets', 'Labor', 'Locations',
+  'Overview', 'Job Requests', 'Work Orders', 'Work Order Planning', 'Assets', 'Labor', 'Locations', 'Routing Masters',
   'Failure Library', 'Meters', 'Materials', 'Stores', 'Tools & Equipment',
   'Reservations', 'Purchase Requisitions', 'Purchase Orders', 'PM Schedule Rules'
 )

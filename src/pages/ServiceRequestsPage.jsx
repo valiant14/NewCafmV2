@@ -129,6 +129,10 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
   }
   const approve = async request => {
     if (!access.approve) return request
+    if (access.edit) {
+      const saved = await setRequests(list => list.map(item => item.sr === request.sr ? request : item))
+      if (saved?.__saveError) throw saved.error || new Error('Unable to save the Job Request review before conversion.')
+    }
     const result = await onConvert(request)
     const createdWorkOrder = result?.workOrder || result
     if (!createdWorkOrder?.WORKORDER) return request

@@ -164,6 +164,34 @@ const workflowError = (message, details = []) => {
   return error
 }
 
+const canonicalDepartmentName = async (pool, value, label) => {
+  const supplied = text(value)
+  if (!supplied) return ''
+  const result = await pool.request()
+    .input('departmentName', supplied)
+    .query(`
+      select top 1 department_name
+      from dbo.departments
+      where department_name = @departmentName and status = 'Active'
+      order by department_name
+    `)
+  if (result.recordset[0]?.department_name) return result.recordset[0].department_name
+  const error = workflowError(`${label} must be selected from the Department master`)
+  error.status = 400
+  throw error
+}
+
+const normalizeServiceRequestDepartments = async (pool, payload) => {
+  const next = { ...payload }
+  if (Object.hasOwn(next, 'department_name')) {
+    next.department_name = await canonicalDepartmentName(pool, next.department_name, 'Department')
+  }
+  if (Object.hasOwn(next, 'assigned_department_name')) {
+    next.assigned_department_name = await canonicalDepartmentName(pool, next.assigned_department_name, 'Assigned Department')
+  }
+  return next
+}
+
 const jobRequestRequirementGaps = async (pool, request, requirements) => {
   const missing = []
   const add = (condition, label) => {
@@ -211,13 +239,13 @@ export const prepareServiceRequestCreate = async ({ pool, payload }) => {
   const workflow = await getApplicationWorkflow('JOB_REQUEST', pool)
   if (!workflow) return payload
   const effectiveStatus = workflow.initial_status
-  const prepared = {
+  const prepared = await normalizeServiceRequestDepartments(pool, {
     ...payload,
     assigned_department_name: text(payload.assigned_department_name) || text(payload.department_name),
     converted_work_order_num: null,
     reported_at: new Date(),
     status: effectiveStatus
-  }
+  })
   const initialStep = applicationWorkflowStep(workflow, effectiveStatus)
   const missing = await jobRequestRequirementGaps(pool, prepared, initialStep?.requirements || [])
   if (missing.length) {
@@ -229,20 +257,21 @@ export const prepareServiceRequestCreate = async ({ pool, payload }) => {
 }
 
 export const validateServiceRequestUpdate = async ({ pool, payload, current }) => {
-  if (!Object.hasOwn(payload, 'status')) return payload
+  const prepared = await normalizeServiceRequestDepartments(pool, payload)
+  if (!Object.hasOwn(prepared, 'status')) return prepared
   const workflow = await getApplicationWorkflow('JOB_REQUEST', pool)
-  if (!workflow?.is_active) return payload
+  if (!workflow?.is_active) return prepared
   const previous = statusCode(current.status)
-  const next = statusCode(payload.status)
-  if (!next || next === previous) return payload
+  const next = statusCode(prepared.status)
+  if (!next || next === previous) return prepared
   const semanticConversion = applicationWorkflowStep(workflow, next)?.requirements.includes('linked_work_order')
-    && text(payload.converted_work_order_num || current.converted_work_order_num)
+    && text(prepared.converted_work_order_num || current.converted_work_order_num)
   if (!semanticConversion && !allowedApplicationTransitions(previous, workflow).includes(next)) {
     throw workflowError(`Job Request transition ${previous} to ${next} is not allowed`)
   }
-  if (next === 'CAN') return { ...payload, status: next }
+  if (next === 'CAN') return { ...prepared, status: next }
   const step = applicationWorkflowStep(workflow, next)
-  const missing = await jobRequestRequirementGaps(pool, { ...current, ...payload, status: next }, step?.requirements || [])
+  const missing = await jobRequestRequirementGaps(pool, { ...current, ...prepared, status: next }, step?.requirements || [])
   if (missing.length) throw workflowError(`Cannot move Job Request to ${next}`, missing)
-  return { ...payload, status: next }
+  return { ...prepared, status: next }
 }

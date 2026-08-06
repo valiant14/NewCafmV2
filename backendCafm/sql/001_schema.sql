@@ -36,6 +36,25 @@ go
 create index ix_departments_department on dbo.departments(department_name);
 go
 
+create table dbo.systems (
+  system_code nvarchar(80) not null constraint pk_systems primary key,
+  system_name nvarchar(160) not null,
+  description nvarchar(500) null,
+  site_code nvarchar(30) not null,
+  department_name nvarchar(160) not null,
+  sub_department_code nvarchar(50) null,
+  status nvarchar(30) not null constraint df_systems_status default 'Active',
+  created_at datetime2 not null constraint df_systems_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_systems_updated default sysutcdatetime(),
+  constraint fk_systems_site foreign key (site_code) references dbo.sites(site_code),
+  constraint fk_systems_sub_department foreign key (sub_department_code) references dbo.departments(sub_department_code)
+);
+go
+
+create unique index uq_systems_scope_name on dbo.systems(site_code, department_name, system_name);
+create index ix_systems_scope_status on dbo.systems(site_code, department_name, sub_department_code, status) include(system_code, system_name);
+go
+
 create table dbo.roles (
   role_id int identity(1,1) not null primary key,
   role_code nvarchar(80) not null unique,
@@ -92,6 +111,26 @@ create table dbo.labor (
   updated_at datetime2 not null constraint df_labor_updated default sysutcdatetime(),
   constraint fk_labor_site foreign key (site_code) references dbo.sites(site_code)
 );
+go
+
+create table dbo.work_groups (
+  work_group_code nvarchar(80) not null constraint pk_work_groups primary key,
+  work_group_name nvarchar(160) not null,
+  site_code nvarchar(30) not null,
+  department_name nvarchar(160) not null,
+  sub_department_code nvarchar(50) null,
+  default_supervisor_labor_id nvarchar(50) null,
+  status nvarchar(30) not null constraint df_work_groups_status default 'Active',
+  created_at datetime2 not null constraint df_work_groups_created default sysutcdatetime(),
+  updated_at datetime2 not null constraint df_work_groups_updated default sysutcdatetime(),
+  constraint fk_work_groups_site foreign key (site_code) references dbo.sites(site_code),
+  constraint fk_work_groups_sub_department foreign key (sub_department_code) references dbo.departments(sub_department_code),
+  constraint fk_work_groups_supervisor foreign key (default_supervisor_labor_id) references dbo.labor(labor_id)
+);
+go
+
+create unique index uq_work_groups_scope_name on dbo.work_groups(site_code, department_name, work_group_name);
+create index ix_work_groups_scope_status on dbo.work_groups(site_code, department_name, sub_department_code, status) include(work_group_code, work_group_name, default_supervisor_labor_id);
 go
 
 create table dbo.users (
@@ -156,6 +195,7 @@ create table dbo.assets (
   parent_asset_num nvarchar(80) null,
   department_name nvarchar(160) null,
   sub_department_code nvarchar(50) null,
+  system_name nvarchar(160) null,
   priority int null,
   site_code nvarchar(30) not null,
   status nvarchar(40) not null constraint df_assets_status default 'OPERATING',

@@ -1,10 +1,11 @@
-import { CalendarCheck, Clock, Hash, User, Users, Wrench } from 'lucide-react'
+import { Building2, CalendarCheck, Clock, Hash, User, Users, Wrench } from 'lucide-react'
 import MasterRecordModal from '../master-data/MasterRecordModal'
 import { craftCodeOptions, craftNameOptions } from '../../lib/masterOptions'
 
 // Craft code and craft name were both free text, so they could drift apart. Picking a
 // code now fills the name, and the list narrows to the selected department.
-const buildFields = (department, departmentRecords = [], laborRows = []) => {
+const buildFields = (department, siteRecords = [], departmentRecords = [], laborRows = [], lockPersonId = false) => {
+  const siteOptions = ['', ...siteRecords.filter(row => row.status !== 'Inactive').map(row => ({ value: row.code, label: row.name }))]
   const departmentOptions = ['', ...new Map(departmentRecords.filter(row => row.status !== 'Inactive' && row.department).map(row => [row.department, row.department])).values()]
   const subDepartmentOptions = departmentRecords
     .filter(row => row.status !== 'Inactive' && (!department || row.department === department))
@@ -16,9 +17,10 @@ const buildFields = (department, departmentRecords = [], laborRows = []) => {
   const skills = { section: 'Craft & shift', sectionIcon: Wrench, sectionNote: 'What they are qualified for and when they work', sectionTone: 'green', sectionSpan: 'full' }
 
   return [
-  { ...person, label: 'Person ID', key: 'personId', icon: Hash, required: true, placeholder: 'LAB-0007' },
+  { ...person, label: 'Person ID', key: 'personId', icon: Hash, required: true, locked: lockPersonId, placeholder: 'LAB-0007' },
   { ...person, label: 'Name', key: 'name', icon: User, required: true, placeholder: 'Technician full name' },
-  { ...reporting, label: 'Department', key: 'department', icon: Users, options: departmentOptions },
+  { ...reporting, label: 'Site', key: 'site', icon: Building2, required: true, options: siteOptions },
+  { ...reporting, label: 'Department', key: 'department', icon: Users, required: true, options: departmentOptions },
   { ...reporting, label: 'Sub Department', key: 'subDepartment', icon: Users, options: ['', ...subDepartmentOptions] },
   // Crafts already in use are offered, but a new one can still be typed - this is where a
   // craft first enters the system.
@@ -29,7 +31,7 @@ const buildFields = (department, departmentRecords = [], laborRows = []) => {
   ]
 }
 
-export default function AddLaborModal({ form, setForm, departmentRecords = [], laborRows = [], ...props }) {
+export default function AddLaborModal({ form, setForm, siteRecords = [], departmentRecords = [], laborRows = [], lockPersonId = false, title = 'Add labor resource', note = 'Create a technician and assign department responsibility from Settings masters.', submitLabel = 'Create labor', ...props }) {
   const updateForm = update => setForm(current => {
     const next = typeof update === 'function' ? update(current) : update
     // A department change invalidates the craft and sub-department beneath it.
@@ -42,9 +44,10 @@ export default function AddLaborModal({ form, setForm, departmentRecords = [], l
       {...props}
       form={form}
       setForm={updateForm}
-      title="Add labor resource"
-      note="Create a technician and assign department responsibility from Settings masters."
-      fields={buildFields(form.department, departmentRecords, laborRows)}
+      title={title}
+      note={note}
+      submitLabel={submitLabel}
+      fields={buildFields(form.department, siteRecords, departmentRecords, laborRows, lockPersonId)}
     />
   )
 }

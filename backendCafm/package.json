@@ -15,6 +15,7 @@
     "db:encrypt-connectors": "node src/db/encryptConnectorSecrets.js",
     "db:check-users": "node src/db/checkUsers.js",
     "db:check-scopes": "node src/db/checkAccessScopes.js",
+    "db:check-routing": "node src/db/checkRoutingMasters.js",
     "api:check-scopes": "node src/db/checkApiScopes.js",
     "api:check-workflow": "node src/db/checkWorkflowControls.js",
     "api:check-transitions": "node src/db/checkTransitionPermissions.js",

@@ -25,6 +25,11 @@ const tabs = [
   ['Attachments', Paperclip]
 ]
 
+const departmentName = value => {
+  const text = String(value || '').trim()
+  return text && !/^[\d\s./-]+$/.test(text) ? text : ''
+}
+
 export default function ServiceRequestDetail({ request, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, failureRecords = [], workflow, onBack, onSubmit, onApprove, onAdvance, onOpenWorkOrder, modal = false, access = {} }) {
   const [form, setForm] = useState(request)
   const [submitError, setSubmitError] = useState('')
@@ -49,17 +54,18 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
     form.priority &&
     form.requestType
   )
+  const assignedDepartmentName = departmentName(form.assignedDepartment) || departmentName(form.department)
   const canConvert = Boolean(
     form.asset?.trim() &&
     form.department?.trim() &&
-    (form.assignedDepartment || form.department)?.trim() &&
+    assignedDepartmentName &&
     form.failureCode?.trim() &&
     form.problemCode?.trim()
   )
   const missingConversionFields = [
     !form.asset?.trim() && 'Asset',
     !form.department?.trim() && 'Department',
-    !(form.assignedDepartment || form.department)?.trim() && 'Assigned Department',
+    !assignedDepartmentName && 'Assigned Department',
     !form.failureCode?.trim() && 'Failure Code',
     !form.problemCode?.trim() && 'Problem Code'
   ].filter(Boolean)
@@ -71,9 +77,16 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
   const siteAssets = assets.filter(asset => !form.site || String(asset.site) === String(form.site))
   const assetOptions = siteAssets.map(asset => ({ value: asset.assetnum, label: asset.description?.trim() }))
   const locations = [...new Set([...siteAssets.map(asset => asset.location), ...workOrders.filter(order => !form.site || String(order.SITE) === String(form.site)).map(order => order['LOCATION '])].filter(Boolean))].sort()
-  const departmentOptions = [...new Map(departmentRecords
-    .filter(department => department.status !== 'Inactive' && department.department)
-    .map(department => [department.department, { value: department.department, label: '' }])
+  const departmentOptions = [...new Map([
+    ...departmentRecords.filter(department => department.status !== 'Inactive').map(department => department.department),
+    ...assets.map(asset => asset.department),
+    ...workOrders.flatMap(order => [order['DEPARTMENT '], order['ASSIGNED DEPARTMENT']]),
+    form.department,
+    form.assignedDepartment
+  ]
+    .map(departmentName)
+    .filter(Boolean)
+    .map(value => [value.toLowerCase(), { value, label: '' }])
   ).values()]
   const subDepartmentOptions = departmentRecords
     .filter(department => department.status !== 'Inactive' && sameDepartment(department.department, form.department))
@@ -99,7 +112,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
     ...form,
     department: event.target.value,
     subDepartment: '',
-    assignedDepartment: form.assignedDepartment || event.target.value
+    assignedDepartment: departmentName(form.assignedDepartment) || event.target.value
   })
   const updateFailure = event => {
     const failureCode = event.target.value
@@ -122,7 +135,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
     setSubmitError('')
     try {
       if (isNew) await onSubmit(form, pendingFiles)
-      else if (conversionStep) setForm(await onApprove(form))
+      else if (conversionStep) setForm(await onApprove({ ...form, assignedDepartment: assignedDepartmentName }))
       else if (manualNextStep) setForm(await onAdvance(form, manualNextStep.statusCode))
     } catch (error) {
       setSubmitError(error.message || 'Unable to save this Job Request.')
@@ -299,15 +312,25 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
                   edit rights can re-route. Classification beside it is the reviewer's own entry. */}
               <Section compact tone="purple" icon={Users} title="Routing" note="Which department owns the work and who it is assigned to">
                 <div className="grid gap-3">
-                  <Field label="Department" icon={Users} value={form.department} required onChange={updateDepartment} suggestions={departmentOptions} placeholder="Search or select a department" disabled={readOnly} />
-                  <Field label="Assigned Department" icon={Users} value={form.assignedDepartment || form.department} required onChange={update('assignedDepartment')} suggestions={departmentOptions} placeholder="Search or select an assigned department" disabled={readOnly} />
+                  <Field label="Department" icon={Users} value={form.department} required onChange={updateDepartment} options={departmentOptions} placeholder="Select a department" disabled={readOnly} />
+                  <Field label="Assigned Department" icon={Users} value={assignedDepartmentName} required onChange={update('assignedDepartment')} options={departmentOptions} placeholder="Select an assigned department" disabled={readOnly} />
                 </div>
               </Section>
 
               <Section compact tone="orange" icon={ShieldCheck} title="Classification" note="Set by the reviewer before the request becomes a work order">
                 <div className="grid gap-3">
                   <Field label="Sub Department" icon={Users} value={form.subDepartment || ''} required onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Search or select a sub department" disabled={readOnly} />
-                  <Field label="Failure Code" icon={ShieldCheck} value={form.failureCode} required onChange={update('failureCode')} suggestions={failureOptions} placeholder="Search code or description" disabled={readOnly} />
+                  <Field label="Failure Code" icon={ShieldCheck} value={form.failureCode} required onChange={updateFailure} suggestions={failureOptions} placeholder="Search code or description" disabled={readOnly} />
+                  <Field
+                    label="Problem Code"
+                    icon={ShieldCheck}
+                    value={form.problemCode || ''}
+                    required
+                    onChange={update('problemCode')}
+                    options={problemOptions}
+                    placeholder={form.failureCode ? 'Select a matching problem code' : 'Select a failure code first'}
+                    disabled={readOnly || !form.failureCode}
+                  />
                 </div>
               </Section>
             </div>

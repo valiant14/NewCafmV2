@@ -22,6 +22,7 @@ export const pagePermissionAliases = {
   'Roles & Permissions': ['Roles & Permissions'],
   Sites: ['Sites'],
   Departments: ['Departments'],
+  'Routing Masters': ['Routing Masters'],
   'Work Order Workflow': ['Work Order Workflow'],
   Notifications: ['Settings'],
   'SMTP & SMS': ['SMTP & SMS'],
@@ -126,7 +127,12 @@ export const scopeRowsForUser = (rows = [], user, siteKeys = ['site', 'SITE'], d
   })
 
 export const filterNavigationForUser = (navigationItems, user) =>
-  navigationItems.filter(item => canViewPage(user, item.name))
+  navigationItems.filter(item => canUseAction(user, item.name, item.permissionAction || 'view'))
+
+export const canNavigatePage = (navigationItems, user, pageName) => {
+  const item = navigationItems.find(entry => entry.name === pageName)
+  return item ? canUseAction(user, pageName, item.permissionAction || 'view') : canViewPage(user, pageName)
+}
 
 export const firstAllowedPage = (navigationItems, user) =>
   filterNavigationForUser(navigationItems, user)[0]?.name || ''

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Combobox from '../ui/Combobox'
-import { BriefcaseBusiness, CheckCircle2, Clock3, ShieldCheck, UserRound, Wrench } from 'lucide-react'
+import { BriefcaseBusiness, CheckCircle2, Clock3, Pencil, ShieldCheck, UserRound, Wrench } from 'lucide-react'
 import { DetailHeader, DetailTabs, InfoCard, MetricCard } from '../ui/DetailScaffold'
 import TablePanel from '../ui/TablePanel'
 import Badge from '../ui/Badge'
@@ -9,6 +9,7 @@ import EmptyState from '../ui/EmptyState'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusTone } from '../../lib/statusMatrix'
 import useModuleAccess from '../../hooks/useModuleAccess'
+import Button from '../ui/Button'
 
 const toneByStatus = {
   Available: 'green',
@@ -18,7 +19,7 @@ const toneByStatus = {
 
 const laborStatuses = ['Available', 'Assigned', 'On Leave']
 
-export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate }) {
+export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate, onEdit }) {
   const access = useModuleAccess('Labor')
   const [tab, setTab] = useState('Labor Details')
   const closedStatuses = new Set(['COMP', 'COMPLETED', 'CLOSE', 'CLOSED', 'CAN', 'CANCELLED'])
@@ -49,12 +50,14 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
           backLabel="Back to labor"
           stats={[
             { label: 'Craft Code', value: labor.craftCode },
+            { label: 'Site', value: labor.site || 'Not assigned' },
             { label: 'Department', value: labor.department },
-            { label: 'Shift', value: labor.shift },
             { label: 'Next Action', value: nextAssignment }
           ]}
           actions={access.edit ? (
-            <div className="min-w-[150px]">
+            <div className="flex items-center gap-2">
+              {onEdit && <Button variant="outline" onClick={onEdit}><Pencil size={15} />Edit labor</Button>}
+              <div className="min-w-[150px]">
               <Combobox
                 picker
                 className="h-10 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-panel)] px-3 text-xs font-extrabold text-[var(--app-ink)] outline-none transition hover:bg-[var(--app-soft-bg)] focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[var(--app-field-focus-ring)]"
@@ -63,6 +66,7 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
                 onChange={changeStatus}
                 placeholder="Status"
               />
+              </div>
             </div>
           ) : null}
         />
@@ -99,6 +103,7 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
               items={[
                 ['Craft Code', labor.craftCode],
                 ['Craft', labor.craft],
+                ['Site', labor.site],
                 ['Department', labor.department],
                 ['Sub Department', labor.subDepartment]
               ]}
@@ -139,10 +144,10 @@ export default function LaborDetailPage({ labor, pastWork = [], onBack, onUpdate
         number={labor.personId}
         status={labor.availability}
         description={`${labor.name} - ${labor.craft}`}
-        summary={[['Department', labor.department], ['Craft Code', labor.craftCode], ['Shift', labor.shift]]}
+        summary={[['Site', labor.site], ['Department', labor.department], ['Craft Code', labor.craftCode]]}
         sections={[
           { title: 'Labor Information', rows: [[['Name', labor.name], ['Person ID', labor.personId], ['Shift', labor.shift], ['Availability', labor.availability]]] },
-          { title: 'Craft and Responsibility', rows: [[['Craft Code', labor.craftCode], ['Craft', labor.craft], ['Department', labor.department], ['Sub Department', labor.subDepartment]]] },
+          { title: 'Craft and Responsibility', rows: [[['Craft Code', labor.craftCode], ['Craft', labor.craft], ['Site', labor.site], ['Department', labor.department], ['Sub Department', labor.subDepartment]]] },
           { title: 'Workload Context', rows: [[['Open Work', openWork], ['Recorded Hours', recordedHours], ['Completed Work', completedWork.length], ['Next Action', nextAssignment]]] }
         ]}
       />

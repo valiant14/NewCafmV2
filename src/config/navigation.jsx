@@ -1,4 +1,4 @@
-import { AlertTriangle, Bell, Boxes, Building2, CalendarClock, ClipboardList, FileText, Gauge, LayoutDashboard, Mail, MapPin, PackageCheck, ReceiptText, Repeat, ShieldCheck, ShoppingCart, UserCog, Users, Warehouse, Workflow, Wrench } from 'lucide-react'
+import { AlertTriangle, Bell, Boxes, Building2, CalendarClock, ClipboardList, FileText, Gauge, LayoutDashboard, Mail, MapPin, Network, PackageCheck, ReceiptText, Repeat, ShieldCheck, ShoppingCart, UserCog, Users, Warehouse, Workflow, Wrench } from 'lucide-react'
 export const navigationItems = [
   { section: 'Workspace', name: 'Overview', path: '/', icon: LayoutDashboard },
     { section: 'Workspace', name: 'Job Requests', path: '/job-requests', icon: FileText },
@@ -23,6 +23,7 @@ export const navigationItems = [
   { section: 'Settings', name: 'Roles & Permissions', path: '/roles-permissions', icon: UserCog },
   { section: 'Settings', name: 'Sites', path: '/sites', icon: Building2 },
   { section: 'Settings', name: 'Departments', path: '/departments', icon: Users },
+  { section: 'Settings', name: 'Routing Masters', path: '/routing-masters', icon: Network, permissionAction: 'edit' },
   { section: 'Settings', name: 'Work Order Workflow', label: 'Workflow Controls', path: '/work-order-workflow', icon: Workflow },
   { section: 'Settings', name: 'Notifications', path: '/notifications', icon: Bell },
   { section: 'Settings', name: 'SMTP & SMS', path: '/smtp-sms', icon: Mail },

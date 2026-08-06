@@ -38,7 +38,7 @@ export default function WorkOrderOverviewTab({
   subDepartmentOptions,
   assignedDepartment,
   setAssignedDepartment,
-  setWorkGroup,
+  changeWorkGroup,
   setSupervisor,
   workGroup,
   workGroupOptions,
@@ -79,12 +79,12 @@ export default function WorkOrderOverviewTab({
         <div className={columnClass}>
           <Section compact tone="purple" icon={Users} title="Department & Ownership" note="Responsible department, assignment, and craft routing">
             <div className={gridClass}>
-              <Field label="Department" value={department} required locked={readOnly} onChange={event => { setDepartment(event.target.value); setSubDepartment(''); setSystemValue('') }} suggestions={departmentOptions} placeholder="Search department" />
-              <Field label="Sub Department" value={subDepartment} locked={readOnly} onChange={event => setSubDepartment(event.target.value)} suggestions={subDepartmentOptions} placeholder="Search sub department" />
-              <Field label="Assigned Department" value={assignedDepartment} required locked={readOnly} onChange={event => { setAssignedDepartment(event.target.value); setWorkGroup(''); setSupervisor('') }} suggestions={departmentOptions} placeholder="Search assigned department" />
-              <Field label="System" value={systemValue} locked={readOnly} onChange={event => setSystemValue(event.target.value)} suggestions={systemOptions} placeholder="Search or select a system" />
-              <Field label="Work Group" value={workGroup} locked={readOnly} onChange={event => setWorkGroup(event.target.value)} suggestions={workGroupOptions} placeholder="Search or select a work group" />
-              <Field label="Supervisor" value={supervisor} locked={readOnly} onChange={event => setSupervisor(event.target.value)} suggestions={supervisorOptions} placeholder="Search supervisor name or craft" />
+              <Field label="Department" value={department} required locked={readOnly} onChange={event => { setDepartment(event.target.value); setSubDepartment(''); setSystemValue(''); changeWorkGroup({ target: { value: '' } }) }} suggestions={departmentOptions} placeholder="Search department" />
+              <Field label="Sub Department" value={subDepartment} locked={readOnly} onChange={event => { setSubDepartment(event.target.value); setSystemValue(''); changeWorkGroup({ target: { value: '' } }) }} suggestions={subDepartmentOptions} placeholder="Search sub department" />
+              <Field label="Assigned Department" value={assignedDepartment} required locked={readOnly} onChange={event => { setAssignedDepartment(event.target.value); changeWorkGroup({ target: { value: '' } }) }} suggestions={departmentOptions} placeholder="Search assigned department" />
+              <Field label="System" value={systemValue} locked={readOnly} onChange={event => setSystemValue(event.target.value)} options={systemOptions} placeholder="Select a configured system" />
+              <Field label="Work Group" value={workGroup} locked={readOnly} onChange={changeWorkGroup} options={workGroupOptions} placeholder="Select a configured work group" />
+              <Field label="Supervisor" value={supervisor} locked={readOnly} onChange={event => setSupervisor(event.target.value)} options={supervisorOptions} placeholder="Select an eligible supervisor" />
             </div>
           </Section>
 

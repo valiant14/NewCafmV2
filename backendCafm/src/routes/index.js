@@ -25,6 +25,7 @@ import { getRealtimeStats } from '../realtime.js'
 import { getRuntimeMetrics } from '../services/runtimeMetrics.js'
 import { prepareWorkOrderCreate, validateWorkOrderUpdate } from '../services/workOrderWorkflow.js'
 import { prepareServiceRequestCreate, validateServiceRequestUpdate } from '../services/applicationWorkflows.js'
+import { validateAssetSystem, validateWorkGroupMaster, validateWorkOrderRouting } from '../services/routingMasters.js'
 import { addScopeWhere, applyScopeDefaults, assertPayloadWithinScope } from '../middleware/scope.js'
 import { bindParams } from '../utils/sqlParams.js'
 
@@ -47,7 +48,12 @@ const validateWorkOrderCommandUpdate = async context => {
     error.code = 'CommandRequired'
     throw error
   }
-  return validateWorkOrderUpdate(context)
+  const workflowPayload = await validateWorkOrderUpdate(context)
+  return validateWorkOrderRouting({ ...context, payload: workflowPayload })
+}
+const prepareWorkOrderCreateWithRouting = async context => {
+  const workflowPayload = await prepareWorkOrderCreate(context)
+  return validateWorkOrderRouting({ ...context, payload: workflowPayload })
 }
 const ownedSource = ({ table, key, payloadKey, scope = departmentScope }) => ({
   table,
@@ -200,6 +206,16 @@ router.use('/departments', crudRouter({
   scope: { siteColumn: null, departmentColumn: 'department_name', subDepartmentColumn: 'sub_department_code' }
 }))
 
+router.use('/systems', crudRouter({
+  moduleName: 'Routing Masters',
+  relatedModules: ['Assets', 'Work Orders'],
+  table: 'dbo.systems',
+  key: 'system_code',
+  columns: ['system_code', 'system_name', 'description', 'site_code', 'department_name', 'sub_department_code', 'status', 'created_at', 'updated_at'],
+  defaultOrder: 'system_name, system_code',
+  scope: { siteColumn: 'site_code', departmentColumn: 'department_name', subDepartmentColumn: 'sub_department_code' }
+}))
+
 router.use('/users', usersRouter)
 
 router.use('/roles', rolesRouter)
@@ -208,8 +224,10 @@ router.use('/assets', crudRouter({
   moduleName: 'Assets',
   table: 'dbo.assets',
   key: 'asset_num',
-  columns: ['asset_num', 'description', 'location_code', 'parent_asset_num', 'department_name', 'sub_department_code', 'priority', 'site_code', 'status', 'model_num', 'serial_num', 'install_date', 'quantity', 'created_at', 'updated_at'],
-  scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
+  columns: ['asset_num', 'description', 'location_code', 'parent_asset_num', 'department_name', 'sub_department_code', 'system_name', 'priority', 'site_code', 'status', 'model_num', 'serial_num', 'install_date', 'quantity', 'created_at', 'updated_at'],
+  scope: { siteColumn: 'site_code', departmentColumn: 'department_name' },
+  beforeCreate: validateAssetSystem,
+  beforeUpdate: validateAssetSystem
 }))
 
 router.use('/labor', crudRouter({
@@ -218,6 +236,18 @@ router.use('/labor', crudRouter({
   key: 'labor_id',
   columns: ['labor_id', 'display_name', 'craft_code', 'craft_name', 'department_name', 'sub_department_code', 'site_code', 'availability', 'status', 'created_at', 'updated_at'],
   scope: { siteColumn: 'site_code', departmentColumn: 'department_name' }
+}))
+
+router.use('/work-groups', crudRouter({
+  moduleName: 'Routing Masters',
+  relatedModules: ['Work Orders', 'Labor'],
+  table: 'dbo.work_groups',
+  key: 'work_group_code',
+  columns: ['work_group_code', 'work_group_name', 'site_code', 'department_name', 'sub_department_code', 'default_supervisor_labor_id', 'status', 'created_at', 'updated_at'],
+  defaultOrder: 'work_group_name, work_group_code',
+  scope: { siteColumn: 'site_code', departmentColumn: 'department_name', subDepartmentColumn: 'sub_department_code' },
+  beforeCreate: validateWorkGroupMaster,
+  beforeUpdate: validateWorkGroupMaster
 }))
 
 router.use('/locations', crudRouter({
@@ -288,7 +318,7 @@ router.use('/work-orders', crudRouter({
   scope: workOrderScope,
   ownerColumn,
   ownerSources: [ownedSource({ table: 'dbo.service_requests', key: 'sr_num', payloadKey: 'source_sr_num', scope: workOrderScope })],
-  beforeCreate: prepareWorkOrderCreate,
+  beforeCreate: prepareWorkOrderCreateWithRouting,
   beforeUpdate: validateWorkOrderCommandUpdate,
   additionalUpdatePermission: workOrderUpdatePermission,
   hasTriggers: true,

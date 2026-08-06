@@ -42,6 +42,7 @@ export const permissionModules = [
   'Roles & Permissions',
   'Sites',
   'Departments',
+  'Routing Masters',
   'Work Order Workflow',
   'PM Schedule Rules',
   'SMTP & SMS',

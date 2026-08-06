@@ -38,7 +38,8 @@ const migrationFiles = [
   '042_application_workflows.sql',
   '043_maximo_job_request_cm.sql',
   '044_pm_job_plan_execution_package.sql',
-  '045_pm_target_finish_backfill.sql'
+  '045_pm_target_finish_backfill.sql',
+  '046_routing_masters.sql'
 ]
 
 const batchesFor = fileName => fs.readFileSync(path.join(sqlDirectory, fileName), 'utf8')

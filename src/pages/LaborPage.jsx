@@ -21,6 +21,7 @@ const empty = {
   name: '',
   craftCode: '',
   craft: '',
+  site: '',
   department: '',
   subDepartment: '',
   shift: 'Day',
@@ -47,9 +48,10 @@ const laborPastWork = (labor, workOrders) => workOrders
     targetFinish: order['TARGET FINISH '] || order['TARGET START '] || '-'
   }))
 
-export default function LaborPage({ rows = [], setRows, workOrders = [], departmentRecords = [] }) {
+export default function LaborPage({ rows = [], setRows, workOrders = [], siteRecords = [], departmentRecords = [] }) {
   const access = useModuleAccess('Labor')
   const [adding, setAdding] = useState(false)
+  const [editingPersonId, setEditingPersonId] = useState('')
   const [form, setForm] = useState(empty)
   const [imported, setImported] = useState('')
   const [tab, setTab] = useState('All')
@@ -86,16 +88,61 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], departm
     setSelected(current => current?.personId === personId ? { ...current, ...patch } : current)
   }
 
-  const save = () => {
-    if (!form.personId || !form.name || !form.craftCode) return
-    setRows?.(current => [...current, form])
-    setAdding(false)
+  const beginAdd = () => {
+    setEditingPersonId('')
     setForm(empty)
-    open(form)
+    setAdding(true)
   }
 
+  const beginEdit = () => {
+    if (!selected) return
+    setEditingPersonId(selected.personId)
+    setForm({ ...empty, ...selected })
+    setAdding(true)
+  }
+
+  const closeModal = () => {
+    setAdding(false)
+    setEditingPersonId('')
+    setForm(empty)
+  }
+
+  const save = async () => {
+    if (!form.personId || !form.name || !form.craftCode || !form.site || !form.department) return
+    const record = { ...form }
+    const result = await setRows?.(current => editingPersonId
+      ? current.map(row => row.personId === editingPersonId ? record : row)
+      : [...current, record]
+    )
+    if (result?.__saveError) return
+    closeModal()
+    if (editingPersonId) setSelected(record)
+    else open(record)
+  }
+
+  const laborModal = adding && (
+    <AddLaborModal
+      form={form}
+      setForm={setForm}
+      siteRecords={siteRecords}
+      departmentRecords={departmentRecords}
+      laborRows={rows}
+      lockPersonId={Boolean(editingPersonId)}
+      title={editingPersonId ? 'Edit labor resource' : 'Add labor resource'}
+      note="Assign the labor resource to a site and department so Work Order routing can offer valid supervisors."
+      submitLabel={editingPersonId ? 'Save labor' : 'Create labor'}
+      onClose={closeModal}
+      onSave={save}
+    />
+  )
+
   if (selected) {
-    return <LaborDetailPage labor={selected} pastWork={laborPastWork(selected, workOrders)} onBack={close} onUpdate={updateLabor} />
+    return (
+      <>
+        <LaborDetailPage labor={selected} pastWork={laborPastWork(selected, workOrders)} onBack={close} onUpdate={updateLabor} onEdit={access.edit ? beginEdit : undefined} />
+        {laborModal}
+      </>
+    )
   }
 
   return (
@@ -108,7 +155,7 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], departm
           <div className="flex items-center gap-2">
             <ExcelTemplateButton headers={templateHeaders} fileName="Labor_Template.xlsx" />
             {access.import && <ExcelImportButton fileName={imported} onFile={setImported} onImport={rows => setRows(current => mergeImportedRows(current, rows, 'personId'))} />}
-            {access.create && <Button onClick={() => setAdding(true)}><Plus size={17} />Add labor</Button>}
+            {access.create && <Button onClick={beginAdd}><Plus size={17} />Add labor</Button>}
           </div>
         )}
       />
@@ -144,6 +191,7 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], departm
             { key: 'name', label: 'Name' },
             { key: 'craftCode', label: 'Craft code' },
             { key: 'craft', label: 'Craft' },
+            { key: 'site', label: 'Site' },
             { key: 'department', label: 'Department' },
             { key: 'subDepartment', label: 'Sub Department' },
             { key: 'shift', label: 'Shift' },
@@ -152,7 +200,7 @@ export default function LaborPage({ rows = [], setRows, workOrders = [], departm
         />
       </TablePanel>
 
-      {adding && <AddLaborModal form={form} setForm={setForm} departmentRecords={departmentRecords} laborRows={rows} onClose={() => setAdding(false)} onSave={save} />}
+      {laborModal}
     </>
   )
 }
