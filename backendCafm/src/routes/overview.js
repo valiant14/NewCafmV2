@@ -31,9 +31,9 @@ const workOrderSnapshot = async (pool, user) => {
       count_big(1) as total,
       sum(case when upper(status) not in ('CLOSE', 'CLOSED', 'CAN', 'CANCELLED') then 1 else 0 end) as [open],
       sum(case when upper(status) in ('CLOSE', 'CLOSED', 'CAN', 'CANCELLED') then 1 else 0 end) as closed,
-      sum(case when upper(status) not in ('CLOSE', 'CLOSED', 'CAN', 'CANCELLED', 'HOLD', 'ON_HOLD_MATERIAL')
+      sum(case when upper(status) not in ('CLOSE', 'CLOSED', 'CAN', 'CANCELLED', 'HOLD', 'ON_HOLD_MATERIAL', 'ON_HOLD_PERMIT')
         and coalesce(target_finish_at, target_start_at) < sysutcdatetime() then 1 else 0 end) as overdue,
-      sum(case when upper(status) in ('HOLD', 'ON_HOLD_MATERIAL') then 1 else 0 end) as paused,
+      sum(case when upper(status) in ('HOLD', 'ON_HOLD_MATERIAL', 'ON_HOLD_PERMIT') then 1 else 0 end) as paused,
       sum(case when upper(work_type) = 'PM' then 1 else 0 end) as pm,
       sum(case when upper(work_type) = 'CM' then 1 else 0 end) as cm,
       sum(case when reported_at >= datefromparts(year(sysutcdatetime()), month(sysutcdatetime()), 1) then 1 else 0 end) as logged_this_month,
@@ -42,7 +42,7 @@ const workOrderSnapshot = async (pool, user) => {
       sum(case when ptw_required = 1 and isnull(permit_attachment.file_count, 0) = 0 then 1 else 0 end) as permits_missing,
       sum(case when upper(work_type) = 'PM' and coalesce(target_finish_at, target_start_at) is not null then 1 else 0 end) as scheduled_pm,
       sum(case when upper(work_type) = 'PM' and coalesce(target_finish_at, target_start_at) is not null
-        and upper(status) not in ('HOLD', 'ON_HOLD_MATERIAL')
+        and upper(status) not in ('HOLD', 'ON_HOLD_MATERIAL', 'ON_HOLD_PERMIT')
         and ((upper(status) in ('CLOSE', 'CLOSED') and actual_finish_at > coalesce(target_finish_at, target_start_at))
           or (upper(status) not in ('CLOSE', 'CLOSED', 'CAN', 'CANCELLED') and coalesce(target_finish_at, target_start_at) < sysutcdatetime()))
         then 1 else 0 end) as pm_missed
@@ -57,7 +57,7 @@ const workOrderSnapshot = async (pool, user) => {
 
     select top 4 site_code,
       count_big(1) as total,
-      sum(case when upper(status) not in ('CLOSE', 'CLOSED', 'CAN', 'CANCELLED', 'HOLD', 'ON_HOLD_MATERIAL')
+      sum(case when upper(status) not in ('CLOSE', 'CLOSED', 'CAN', 'CANCELLED', 'HOLD', 'ON_HOLD_MATERIAL', 'ON_HOLD_PERMIT')
         and coalesce(target_finish_at, target_start_at) < sysutcdatetime() then 1 else 0 end) as overdue
     from dbo.work_orders
     where site_code is not null${scoped.where}

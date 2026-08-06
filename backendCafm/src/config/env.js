@@ -21,6 +21,7 @@ export const env = {
   pmSchedulerIntervalMs: number(process.env.PM_SCHEDULER_INTERVAL_MS, 20000, { min: 10000, max: 3600000 }),
   pmSchedulerBatchSize: number(process.env.PM_SCHEDULER_BATCH_SIZE, 100, { min: 1, max: 1000 }),
   pmSchedulerConcurrency: number(process.env.PM_SCHEDULER_CONCURRENCY, 4, { min: 1, max: 16 }),
+  pmSchedulerMaxPasses: number(process.env.PM_SCHEDULER_MAX_PASSES, 12, { min: 1, max: 100 }),
   pmSchedulerDebug: ['true', '1', 'yes'].includes(String(process.env.PM_SCHEDULER_DEBUG || '').toLowerCase()),
   permissionCacheTtlMs: number(process.env.PERMISSION_CACHE_TTL_MS, 5000, { min: 0, max: 60000 }),
   permissionCacheMaxEntries: number(process.env.PERMISSION_CACHE_MAX_ENTRIES, 10000, { min: 100, max: 100000 }),

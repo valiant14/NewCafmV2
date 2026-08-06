@@ -54,7 +54,7 @@ export const WORK_ORDER_WORKFLOW_DEFAULTS = Object.freeze({
 
 export const WORK_ORDER_WORKFLOW_COLUMNS = Object.keys(WORK_ORDER_WORKFLOW_DEFAULTS)
 const booleanColumns = WORK_ORDER_WORKFLOW_COLUMNS.filter(column => typeof WORK_ORDER_WORKFLOW_DEFAULTS[column] === 'boolean')
-const holdStatuses = ['HOLD', 'ON_HOLD_MATERIAL']
+const holdStatuses = ['HOLD', 'ON_HOLD_MATERIAL', 'ON_HOLD_PERMIT']
 const cacheTtlMs = 5000
 let cachedWorkflow = null
 let cacheExpiresAt = 0

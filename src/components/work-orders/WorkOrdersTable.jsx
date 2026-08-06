@@ -5,6 +5,7 @@ import StatusBadge from '../ui/StatusBadge'
 import TablePanel from '../ui/TablePanel'
 import { isOnHold } from '../../lib/holdPeriods'
 import { workflowStatusLabel, workflowStepByStatus } from '../../lib/workOrderWorkflow'
+import { pmWorkOrderStatusLabel } from '../../lib/pmGeneration'
 
 const cellClass = 'px-4 py-3.5 align-middle text-[var(--app-table-text)]'
 const compactClass = `${cellClass} whitespace-nowrap`
@@ -33,7 +34,10 @@ const columns = [
   ) },
   { key: 'status', label: 'Status', sortKey: 'STATUS', className: compactClass, render: (order, { workflow }) => {
     const step = workflowStepByStatus(workflow, order.STATUS)
-    return <StatusBadge application="workOrder" value={order.STATUS} description={workflowStatusLabel(workflow, order.STATUS)} tone={step?.badgeTone} />
+    const description = String(order['WORK TYPE '] || order['WORK TYPE'] || '').trim() === 'PM'
+      ? pmWorkOrderStatusLabel(order.STATUS, workflowStatusLabel(workflow, order.STATUS))
+      : workflowStatusLabel(workflow, order.STATUS)
+    return <StatusBadge application="workOrder" value={order.STATUS} description={description} tone={step?.badgeTone} />
   } },
   { key: 'type', label: 'Type', sortKey: 'WORK TYPE', className: compactClass, render: (order, { orderType }) => <Badge tone="blue">{orderType(order)}</Badge> },
   { key: 'priority', label: 'Priority', sortKey: 'PRIORTY', className: compactClass, render: order => <PriorityBadge value={order.PRIORTY} /> },

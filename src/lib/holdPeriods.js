@@ -7,6 +7,7 @@
 // the point of it: a pause that only some of them honour is worse than no pause.
 
 export const HOLD_MATERIAL = 'ON_HOLD_MATERIAL'
+export const HOLD_PERMIT = 'ON_HOLD_PERMIT'
 
 const periodsOf = order => (Array.isArray(order?.holdPeriods) ? order.holdPeriods : [])
 

@@ -18,15 +18,21 @@ import { SurfaceHeader } from '../components/ui/Surface'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { nowLocalDate } from '../lib/datetime'
 import { normalizeWorkOrderWorkflow, workflowStatusLabel, workflowStatusOptions } from '../lib/workOrderWorkflow'
+import { pmWorkOrderStatusLabel } from '../lib/pmGeneration'
 import useModuleAccess from '../hooks/useModuleAccess'
 import useRelatedWorkOrders from '../hooks/useRelatedWorkOrders'
 import { mergeImportedRows } from '../lib/importRows'
 
 // Same enum the PM schedule form uses, so a rule can never describe a frequency the
 // schedules themselves cannot hold.
-const frequencyUnits = ['MINUTES', 'HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'YEARS']
+const frequencyUnits = ['MINUTES', 'HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'QUARTERS', 'YEARS']
 const usesTriggerHour = unit => !['MINUTES', 'HOURS'].includes(unit)
 const cleanTriggerHour = (unit, value) => usesTriggerHour(unit) ? Math.max(0, Math.min(23, Number(value) || 0)) : 0
+const pmWoStatusOptions = workflow => [
+  ...workflowStatusOptions(workflow).map(option => ({ ...option, label: pmWorkOrderStatusLabel(option.value, option.label) })),
+  { value: 'ON_HOLD_MATERIAL', label: pmWorkOrderStatusLabel('ON_HOLD_MATERIAL') },
+  { value: 'ON_HOLD_PERMIT', label: pmWorkOrderStatusLabel('ON_HOLD_PERMIT') }
+]
 
 const emptyRule = initialStatus => ({
   name: '',
@@ -72,7 +78,7 @@ const exportColumns = [
 const templateHeaders = exportColumns.map(column => column.header)
 
 const mapImportRows = (rows, workflow) => {
-  const statusOptions = workflowStatusOptions(workflow)
+  const statusOptions = pmWoStatusOptions(workflow)
   const validStatus = value => {
     const code = String(value || '').trim().toUpperCase()
     return statusOptions.some(option => option.value === code) ? code : workflow.initialStatus
@@ -96,7 +102,7 @@ const mapImportRows = (rows, workflow) => {
 const normalize = value => String(value || '').trim()
 
 function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], workflow, onBack }) {
-  const statusOptions = workflowStatusOptions(workflow)
+  const statusOptions = pmWoStatusOptions(workflow)
   const [form, setForm] = useState({ ...emptyRule(workflow.initialStatus), ...rule })
   const [error, setError] = useState('')
   const relatedPm = pmSchedules.filter(pm => normalize(pm.scheduleRule).toLowerCase() === normalize(rule.name).toLowerCase())
@@ -202,7 +208,7 @@ function PmRuleDetail({ rule, rows, setRows, pmSchedules = [], workOrders = [], 
 export default function PmRulesSettingsPage({ rows = [], setRows, pmSchedules = [], workOrders = [], workflow }) {
   const access = useModuleAccess('PM Schedule Rules')
   const activeWorkflow = normalizeWorkOrderWorkflow(workflow)
-  const statusOptions = workflowStatusOptions(activeWorkflow)
+  const statusOptions = pmWoStatusOptions(activeWorkflow)
   const [tab, setTab] = useState('All')
   const [routePath, setRoutePath] = useState(window.location.pathname)
   const [filters, setFilters] = useState(emptyStandardFilters)

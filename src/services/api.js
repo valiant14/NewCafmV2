@@ -318,6 +318,9 @@ export const mapWorkOrder = (row, resourceRequests = [], plannedLabor = [], work
   'PM CYCLE': row.pm_cycle || '',
   'JOB PLAN': row.job_plan_num || '',
   'PM RULE': row.schedule_rule_name || '',
+  'ESTIMATED DURATION': numberValue(row.estimated_duration_minutes),
+  'SAFETY INSTRUCTIONS': row.safety_instructions || '',
+  CHECKLIST: jsonArrayValue(row.checklist_json),
   'FAILURE CODE': row.failure_code || '',
   'PROBLEM CODE': row.problem_code || '',
   'CAUSE CODE': row.cause_code || '',
@@ -537,6 +540,18 @@ const mapJobTask = row => ({
   status: 'ACTIVE'
 })
 
+const mapJobPlan = row => ({
+  JPNUM: row.job_plan_num,
+  DESCRIPTION: row.description,
+  status: row.status || 'ACTIVE',
+  estimatedDurationMinutes: numberValue(row.estimated_duration_minutes),
+  requiredLabor: jsonArrayValue(row.required_labor_json),
+  requiredMaterials: jsonArrayValue(row.required_materials_json),
+  requiredTools: jsonArrayValue(row.required_tools_json),
+  safetyInstructions: row.safety_instructions || '',
+  checklist: jsonArrayValue(row.checklist_json)
+})
+
 const workOrderSortColumns = {
   WORKORDER: 'work_order_num',
   DESCRIPITION: 'description',
@@ -675,7 +690,7 @@ const resourceDefinitions = {
   pmRules: ['/pm-schedule-rules', rows => rows.map(mapPmRule)],
   connectors: ['/smtp-sms-connectors', rows => rows.map(mapConnector)],
   notificationRules: ['/notification-rules', rows => rows.map(mapNotificationRule)],
-  jobPlans: ['/job-plans', rows => rows.map(row => ({ JPNUM: row.job_plan_num, DESCRIPTION: row.description, status: row.status }))],
+  jobPlans: ['/job-plans', rows => rows.map(mapJobPlan)],
   jobTasks: ['/job-plan-tasks', rows => rows.map(mapJobTask)],
   incidents: ['/incidents', rows => rows.map(mapIncident)],
   meters: ['/meter-readings', rows => rows.map(mapMeter)],
