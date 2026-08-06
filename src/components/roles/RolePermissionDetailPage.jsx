@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Building2, Check, Minus, Power, PowerOff, ShieldCheck, UserCog, Users } from 'lucide-react'
+import { Activity, Building2, Check, FileText, Globe, Minus, Power, PowerOff, ShieldCheck, UserCog, Users } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { DetailHeader, DetailTabs, InfoCard, MetricCard } from '../ui/DetailScaffold'
@@ -108,12 +108,14 @@ export default function RolePermissionDetailPage({ role, siteOptions = [], depar
                 ['Status', role.status]
               ]}
             />
-            <Surface>
+            <Surface tone="purple">
               <SurfaceHeader eyebrow="Scope defaults" title="Transaction Visibility" description="The role controls how far users can see. Site and department assignments stay on each user account." />
               <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Status" value={role.status || 'Draft'} options={['Draft', 'Active', 'Inactive']} onChange={event => updateStatus(event.target.value)} disabled={!access.edit} />
-                <Field label="Data Visibility" value={role.dataScope || 'DEPARTMENT'} options={roleDataScopeOptions} onChange={updateField('dataScope')} disabled={disabled} />
-                <Field label="Allowed Access" value={role.scope || ''} onChange={updateField('scope')} disabled={disabled} placeholder="Describe the purpose of this role" />
+                <Field label="Status" icon={Activity} value={role.status || 'Draft'} options={['Draft', 'Active', 'Inactive']} onChange={event => updateStatus(event.target.value)} disabled={!access.edit} />
+                <Field label="Data Visibility" icon={Globe} value={role.dataScope || 'DEPARTMENT'} options={roleDataScopeOptions} onChange={updateField('dataScope')} disabled={disabled} />
+                <div className="md:col-span-2">
+                  <Field label="Allowed Access" icon={FileText} value={role.scope || ''} onChange={updateField('scope')} disabled={disabled} placeholder="Describe the purpose of this role" />
+                </div>
               </div>
             </Surface>
           </main>
