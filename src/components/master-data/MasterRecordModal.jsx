@@ -32,7 +32,7 @@ const groupFields = fields => fields.reduce((groups, field) => {
   const name = field.section || ''
   const current = groups.at(-1)
   if (current && current.name === name) current.fields.push(field)
-  else groups.push({ name, icon: field.sectionIcon, note: field.sectionNote, tone: field.sectionTone, span: field.sectionSpan, fields: [field] })
+  else groups.push({ name, icon: field.sectionIcon, note: field.sectionNote, tone: field.sectionTone, span: field.sectionSpan, columns: field.sectionColumns, fields: [field] })
   return groups
 }, [])
 
@@ -71,7 +71,7 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
                   note={section.note}
                   className={wide ? 'lg:col-span-2' : ''}
                 >
-                  <div className={`grid gap-3 md:grid-cols-2 ${wide ? 'xl:grid-cols-3' : ''}`}>
+                  <div className={`grid gap-3 md:grid-cols-2 ${wide && section.columns !== 2 ? 'xl:grid-cols-3' : ''}`}>
                     {section.fields.map(field => (
                       <MasterRecordField key={field.key} field={field} value={form[field.key]} onChange={updateField} />
                     ))}
