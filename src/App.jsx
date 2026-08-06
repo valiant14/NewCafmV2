@@ -15,7 +15,7 @@ import WorkOrderMetersTab from './components/work-orders/WorkOrderMetersTab'
 import WorkOrderHeader, { workOrderOutlineButtonClass, workOrderPrimaryButtonClass } from './components/work-orders/WorkOrderHeader'
 import WorkOrderTabs from './components/work-orders/WorkOrderTabs'
 import WorkOrderDatesBar from './components/work-orders/WorkOrderDatesBar'
-import { Clock, ClipboardList, FileText, ListChecks, ListOrdered, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, Clock, ClipboardList, FileText, Hash, HelpCircle, ListChecks, ListOrdered, ShieldCheck, Wrench } from 'lucide-react'
 import { pathWithRecordFilter } from './lib/recordNavigation'
 import AppState from './components/ui/AppState'
 import Alert from './components/ui/Alert'
@@ -2151,14 +2151,14 @@ export default function App() {
       {key:'JPNUM',label:'Plan',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Plan description'},{key:'taskCount',label:'Tasks'},{key:'totalMinutes',label:'Duration',render:v=>`${v} min`},{key:'status',label:'Status',render:v=>v||'ACTIVE'}
     ]}/>,
     'Failure Library': selectedFailureClass ? <FailureLibraryDetailPage failureClass={selectedFailureClass} rows={failureCodeRecords.filter(row=>row['FAILURE CLASS ID']===selectedFailureClass['FAILURE CLASS ID'])} workOrders={relatedFailureWorkOrders.rows} onBack={()=>{setSelectedFailureClass(null);window.history.pushState({},'','/failure-library')}}/> : <RegisterPage title="Failure library" eyebrow="RELIABILITY" description="Search the bilingual Maximo problem, cause, and remedy hierarchy." rows={failureClassRows.map(row=>({...row, problemCount: failureCodeRecords.filter(item=>item['FAILURE CLASS ID']===row['FAILURE CLASS ID']&&item['PROBLEM CODE']).length, causeCount: failureCodeRecords.filter(item=>item['FAILURE CLASS ID']===row['FAILURE CLASS ID']&&item['CAUSE CODE']).length, remedyCount: failureCodeRecords.filter(item=>item['FAILURE CLASS ID']===row['FAILURE CLASS ID']&&item['REMEDY CODE']).length}))} search={search} setSearch={setSearch} action="Add code" modalTitle="Add failure code" modalNote="Create a failure hierarchy record. Cause and remedy can stay optional." modalFields={[
-      { key: 'FAILURE CLASS ID', label: 'Failure Class ID', required: true, suggestions: failureClassOptions(failureCodeRecords), placeholder: 'Select a class or type a new one' },
-      { key: 'DESCRIPTION', label: 'Class Description', required: true, full: true },
-      { key: 'PROBLEM CODE', label: 'Problem Code', required: true },
-      { key: 'PC - DESCRIPTION', label: 'Problem Description', required: true, full: true },
-      { key: 'CAUSE CODE', label: 'Cause Code' },
-      { key: 'CC - DESCRIPTION', label: 'Cause Description', full: true },
-      { key: 'REMEDY CODE', label: 'Remedy Code' },
-      { key: 'RC - DESCRIPTION', label: 'Remedy Description', full: true }
+      { key: 'FAILURE CLASS ID', label: 'Failure Class ID', icon: ShieldCheck, required: true, suggestions: failureClassOptions(failureCodeRecords), placeholder: 'Select a class or type a new one', section: 'Class', sectionIcon: ShieldCheck, sectionNote: 'The family this failure belongs to - pick an existing class or name a new one' },
+      { key: 'DESCRIPTION', label: 'Class Description', icon: FileText, required: true, section: 'Class' },
+      { key: 'PROBLEM CODE', label: 'Problem Code', icon: Hash, required: true, section: 'Problem', sectionIcon: AlertTriangle, sectionNote: 'What went wrong - required', sectionTone: 'orange' },
+      { key: 'PC - DESCRIPTION', label: 'Problem Description', icon: FileText, required: true, section: 'Problem' },
+      { key: 'CAUSE CODE', label: 'Cause Code', icon: Hash, section: 'Cause', sectionIcon: HelpCircle, sectionNote: 'Why it happened - optional', sectionTone: 'purple' },
+      { key: 'CC - DESCRIPTION', label: 'Cause Description', icon: FileText, section: 'Cause' },
+      { key: 'REMEDY CODE', label: 'Remedy Code', icon: Hash, section: 'Remedy', sectionIcon: Wrench, sectionNote: 'How it was fixed - optional', sectionTone: 'green' },
+      { key: 'RC - DESCRIPTION', label: 'Remedy Description', icon: FileText, section: 'Remedy' }
     ]} mapFormToRow={form => ({ ...form })} onCreate={form => saveFailureCodes(rows => [{ ...form }, ...rows])} onImport={importFailureCodes} access={accessFor('Failure Library')} rowKey="FAILURE CLASS ID" onRowClick={row=>{setSelectedFailureClass(row);window.history.pushState({},'',`/failure-library/${encodeURIComponent(row['FAILURE CLASS ID'])}`)}} columns={[
       {key:'FAILURE CLASS ID',label:'Class',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Class description'},{key:'problemCount',label:'Problems'},{key:'causeCount',label:'Causes'},{key:'remedyCount',label:'Remedies'}
     ]}/>,
