@@ -1,11 +1,11 @@
-import { Check } from 'lucide-react'
+import { Boxes, Building2, CalendarClock, Check, ClipboardList, Clock, FileText, Gauge, Hash, MapPin, Repeat, Route, ShieldCheck, Store, User, Users, Workflow } from 'lucide-react'
 import Button from '../ui/Button'
 import { Field } from '../ui/FormControls'
 import { ModalFooter, ModalHeader, ModalPanel } from '../ui/ModalFrame'
 import { sameDepartment } from '../../lib/departments'
 import { craftCodeOptions, laborNameOptions, locationOptions, storeOptions } from '../../lib/masterOptions'
 import PageHeader from '../ui/PageHeader'
-import Surface from '../ui/Surface'
+import Section from '../ui/Section'
 import { normalizeWorkOrderWorkflow, workflowStatusOptions } from '../../lib/workOrderWorkflow'
 
 export default function PmScheduleForm({ form, setForm, assets, jobPlans, departments, pmRules = [], workflow, locations = [], stores = [], labor = [], onCancel, onSave, modal = false }) {
@@ -46,29 +46,52 @@ export default function PmScheduleForm({ form, setForm, assets, jobPlans, depart
     const asset = assets.find(item => item.assetnum === value)
     setForm(current => ({ ...current, asset: value, location: asset?.location || current.location, site: String(asset?.site || current.site) }))
   }
+  const pairClass = 'grid gap-3 md:grid-cols-2'
+  const wideClass = 'grid gap-3 md:grid-cols-2 xl:grid-cols-4'
   const formFields = (
-    <div className="grid gap-4 md:grid-cols-2">
-      <Field label="PMNUM" value={form.pmNumber} required onChange={event => set('pmNumber', event.target.value)} />
-      <Field label="PM Description" value={form.description} required onChange={event => set('description', event.target.value)} />
-      <Field label="ASSETNUM" value={form.asset} onChange={chooseAsset} suggestions={assets.map(asset => ({ value: asset.assetnum, label: asset.description }))} placeholder="Search asset" />
-      <Field label="LOCATION" value={form.location} onChange={event => set('location', event.target.value)} suggestions={locationChoices} placeholder="Use when PM is location-based" />
-      <Field label="ROUTE" value={form.route} onChange={event => set('route', event.target.value)} />
-      <Field label="JPNUM" value={form.jobPlan} required onChange={event => set('jobPlan', event.target.value)} suggestions={jobPlans.map(job => ({ value: job.number, label: job.description }))} />
-      <Field label="PM Rule" value={form.scheduleRule || ''} onChange={chooseRule} suggestions={pmRules.filter(rule => rule.status === 'Active').map(rule => ({ value: rule.name, label: `${rule.frequency} ${rule.freqUnit} @ ${String(rule.triggerHour || 0).padStart(2, '0')}:00` }))} placeholder="Select generation rule" />
-      <Field label="NEXTDATE" type="datetime-local" value={form.startDate} required onChange={event => set('startDate', event.target.value)} />
-      <Field label="LEAD TIME (DAYS)" type="number" value={form.leadTime} disabled={ruleLocked} onChange={event => set('leadTime', Number(event.target.value))} />
-      <Field label="FREQUENCY" type="number" value={form.frequency} required disabled={ruleLocked} onChange={event => set('frequency', Number(event.target.value))} />
-      <Field label="FREQUNIT" value={form.freqUnit} required disabled={ruleLocked} options={['MINUTES', 'HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'YEARS']} onChange={event => set('freqUnit', event.target.value)} />
-      <Field label="PMCOUNTER" type="number" value={form.pmCounter} onChange={event => set('pmCounter', Number(event.target.value))} />
-      <Field label="WORKTYPE" value="PM" locked />
-      <Field label="WOSTATUS" value={form.woStatus || activeWorkflow.initialStatus} disabled={ruleLocked} options={woStatusOptions} onChange={event => set('woStatus', event.target.value)} />
-      <Field label="STORELOC" value={form.storeLocation} onChange={event => set('storeLocation', event.target.value)} suggestions={storeChoices} placeholder="Select a store" />
-      <Field label="SUPERVISOR" value={form.supervisor} onChange={event => set('supervisor', event.target.value)} suggestions={peopleChoices} placeholder="Select a supervisor" />
-      <Field label="LEAD" value={form.lead} onChange={event => set('lead', event.target.value)} suggestions={peopleChoices} placeholder="Select a lead" />
-      <Field label="PERSONGROUP" value={form.personGroup} onChange={event => set('personGroup', event.target.value)} suggestions={groupChoices} placeholder="Select a person group" />
-      <Field label="PM Status" value={form.pmStatus} options={['ACTIVE', 'INACTIVE', 'DRAFT']} onChange={event => set('pmStatus', event.target.value)} />
-      <Field label="Department" value={form.department} onChange={event => setForm(current => ({ ...current, department: event.target.value, subDepartment: '' }))} suggestions={departmentOptions} placeholder="Search department" />
-      <Field label="Sub Department" value={form.subDepartment} onChange={event => set('subDepartment', event.target.value)} suggestions={subDepartmentOptions} placeholder={form.department ? 'Search sub department' : 'Select department first'} />
+    <div className="grid items-start gap-3 lg:grid-cols-2">
+      <Section compact icon={ClipboardList} title="Schedule" note="What this PM master is called and whether it is live">
+        <div className={pairClass}>
+          <Field label="PMNUM" icon={Hash} value={form.pmNumber} required onChange={event => set('pmNumber', event.target.value)} />
+          <Field label="PM Description" icon={FileText} value={form.description} required onChange={event => set('description', event.target.value)} />
+          <Field label="PM Status" icon={ShieldCheck} value={form.pmStatus} options={['ACTIVE', 'INACTIVE', 'DRAFT']} onChange={event => set('pmStatus', event.target.value)} />
+          <Field label="WORKTYPE" icon={Workflow} value="PM" locked />
+        </div>
+      </Section>
+
+      <Section compact tone="green" icon={MapPin} title="Target" note="The asset or location serviced, and the plan followed">
+        <div className={pairClass}>
+          <Field label="ASSETNUM" icon={Boxes} value={form.asset} onChange={chooseAsset} suggestions={assets.map(asset => ({ value: asset.assetnum, label: asset.description }))} placeholder="Search asset" />
+          <Field label="LOCATION" icon={MapPin} value={form.location} onChange={event => set('location', event.target.value)} suggestions={locationChoices} placeholder="Use when PM is location-based" />
+          <Field label="ROUTE" icon={Route} value={form.route} onChange={event => set('route', event.target.value)} />
+          <Field label="JPNUM" icon={ClipboardList} value={form.jobPlan} required onChange={event => set('jobPlan', event.target.value)} suggestions={jobPlans.map(job => ({ value: job.number, label: job.description }))} />
+        </div>
+      </Section>
+
+      {/* A generation rule supplies lead time, frequency and the starting status, so those
+          fields lock once one is chosen - the rule is the single source for them. */}
+      <Section compact tone="orange" icon={CalendarClock} title="Timing" note={ruleLocked ? 'Lead time, frequency and status come from the selected rule' : 'When the first work order is raised and how often it repeats'} className="lg:col-span-2">
+        <div className={wideClass}>
+          <Field label="PM Rule" icon={Repeat} value={form.scheduleRule || ''} onChange={chooseRule} suggestions={pmRules.filter(rule => rule.status === 'Active').map(rule => ({ value: rule.name, label: `${rule.frequency} ${rule.freqUnit} @ ${String(rule.triggerHour || 0).padStart(2, '0')}:00` }))} placeholder="Select generation rule" />
+          <Field label="NEXTDATE" icon={CalendarClock} type="datetime-local" value={form.startDate} required onChange={event => set('startDate', event.target.value)} />
+          <Field label="LEAD TIME (DAYS)" icon={Clock} type="number" value={form.leadTime} disabled={ruleLocked} onChange={event => set('leadTime', Number(event.target.value))} />
+          <Field label="FREQUENCY" icon={Repeat} type="number" value={form.frequency} required disabled={ruleLocked} onChange={event => set('frequency', Number(event.target.value))} />
+          <Field label="FREQUNIT" icon={Clock} value={form.freqUnit} required disabled={ruleLocked} options={['MINUTES', 'HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'YEARS']} onChange={event => set('freqUnit', event.target.value)} />
+          <Field label="PMCOUNTER" icon={Gauge} type="number" value={form.pmCounter} onChange={event => set('pmCounter', Number(event.target.value))} />
+          <Field label="WOSTATUS" icon={Workflow} value={form.woStatus || activeWorkflow.initialStatus} disabled={ruleLocked} options={woStatusOptions} onChange={event => set('woStatus', event.target.value)} />
+        </div>
+      </Section>
+
+      <Section compact tone="purple" icon={Users} title="Ownership" note="Who the generated work orders are routed to" className="lg:col-span-2">
+        <div className={wideClass}>
+          <Field label="Department" icon={Users} value={form.department} onChange={event => setForm(current => ({ ...current, department: event.target.value, subDepartment: '' }))} suggestions={departmentOptions} placeholder="Search department" />
+          <Field label="Sub Department" icon={Users} value={form.subDepartment} onChange={event => set('subDepartment', event.target.value)} suggestions={subDepartmentOptions} placeholder={form.department ? 'Search sub department' : 'Select department first'} />
+          <Field label="SUPERVISOR" icon={User} value={form.supervisor} onChange={event => set('supervisor', event.target.value)} suggestions={peopleChoices} placeholder="Select a supervisor" />
+          <Field label="LEAD" icon={User} value={form.lead} onChange={event => set('lead', event.target.value)} suggestions={peopleChoices} placeholder="Select a lead" />
+          <Field label="PERSONGROUP" icon={Users} value={form.personGroup} onChange={event => set('personGroup', event.target.value)} suggestions={groupChoices} placeholder="Select a person group" />
+          <Field label="STORELOC" icon={Store} value={form.storeLocation} onChange={event => set('storeLocation', event.target.value)} suggestions={storeChoices} placeholder="Select a store" />
+        </div>
+      </Section>
     </div>
   )
 
@@ -93,7 +116,8 @@ export default function PmScheduleForm({ form, setForm, assets, jobPlans, depart
         />
       )}
 
-      {modal ? <div className="overflow-auto px-6 py-5">{formFields}</div> : <Surface>{formFields}</Surface>}
+      {/* The sections are cards in their own right, so the page version needs no extra surface. */}
+      {modal ? <div className="overflow-auto px-4 py-4 sm:px-6">{formFields}</div> : formFields}
 
       {modal && (
         <ModalFooter>
