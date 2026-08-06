@@ -19,6 +19,7 @@ import { getPool, getPoolStats } from '../db/pool.js'
 import { getPmSchedulerRuntime, getPmSchedulerStatus, runPmSchedulerOnce } from '../services/pmScheduler.js'
 import { importPreventiveMaintenanceMasters, preparePmScheduleRuleCreate, preparePmScheduleRuleUpdate, preparePreventiveMaintenanceCreate, preparePreventiveMaintenanceUpdate } from '../services/pmMaster.js'
 import { sendEmailNotification } from '../services/emailSender.js'
+import { encryptSecret } from '../services/secretVault.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { getRealtimeStats } from '../realtime.js'
 import { getRuntimeMetrics } from '../services/runtimeMetrics.js'
@@ -290,6 +291,7 @@ router.use('/work-orders', crudRouter({
   beforeCreate: prepareWorkOrderCreate,
   beforeUpdate: validateWorkOrderCommandUpdate,
   additionalUpdatePermission: workOrderUpdatePermission,
+  hasTriggers: true,
   searchColumns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'site_code', 'department_name', 'assigned_department_name', 'sub_department_code', 'source_sr_num', 'failure_code', 'problem_code'],
   filterGroups: { department: ['department_name', 'assigned_department_name', 'sub_department_code'] },
   prefixFilters: { locationPrefix: 'location_code' },
@@ -480,7 +482,20 @@ router.use('/smtp-sms-connectors', crudRouter({
   moduleName: 'SMTP & SMS',
   table: 'dbo.smtp_sms_connectors',
   key: 'connector_name',
-  columns: ['connector_name', 'connector_type', 'host_endpoint', 'port', 'encryption', 'username_value', 'secret_value', 'sender_value', 'notes', 'status', 'created_at', 'updated_at']
+  columns: ['connector_name', 'connector_type', 'host_endpoint', 'port', 'encryption', 'username_value', 'secret_value', 'sender_value', 'notes', 'status', 'created_at', 'updated_at'],
+  beforeCreate: ({ payload }) => ({
+    ...payload,
+    secret_value: encryptSecret(payload.secret_value)
+  }),
+  beforeUpdate: ({ payload }) => {
+    if (!String(payload.secret_value || '').trim()) delete payload.secret_value
+    else payload.secret_value = encryptSecret(payload.secret_value)
+    return payload
+  },
+  transformResponse: row => {
+    const { secret_value: secretValue, ...safeRow } = row
+    return { ...safeRow, secret_configured: Boolean(secretValue) }
+  }
 }))
 
 router.use('/notification-rules', crudRouter({

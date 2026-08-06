@@ -1,8 +1,9 @@
 import { toLocalDateTimeInput } from '../lib/datetime'
 import { DEFAULT_WORK_ORDER_WORKFLOW, mapWorkOrderWorkflow } from '../lib/workOrderWorkflow'
 import { mapApplicationWorkflows } from '../lib/applicationWorkflow'
+import { emitToast } from './toastBus'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 const tokenKey = 'seder-cafm-auth-token'
 
 export const getAuthToken = () => localStorage.getItem(tokenKey) || ''
@@ -17,21 +18,30 @@ const handleUnauthorized = (status, path) => {
 const request = async (path, options = {}) => {
   const token = getAuthToken()
   const method = String(options.method || 'GET').toUpperCase()
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    cache: method === 'GET' ? 'no-cache' : 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {})
-    }
-  })
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      cache: method === 'GET' ? 'no-cache' : 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {})
+      }
+    })
+  } catch (networkError) {
+    const error = new Error('Unable to reach the CAFM backend. Check the server connection and try again.')
+    error.cause = networkError
+    emitToast(error.message, 'error')
+    throw error
+  }
   const body = await response.json().catch(() => null)
   if (!response.ok) {
     handleUnauthorized(response.status, path)
     const error = new Error(body?.message || `API request failed: ${response.status}`)
     error.status = response.status
+    if (response.status !== 401 || path === '/auth/login') emitToast(error.message, 'error')
     throw error
   }
   return body
@@ -484,7 +494,8 @@ const mapConnector = row => ({
   port: row.port ?? '',
   encryption: row.encryption || 'TLS',
   username: row.username_value || '',
-  password: row.secret_value || '',
+  password: '',
+  secretConfigured: Boolean(row.secret_configured),
   sender: row.sender_value || '',
   notes: row.notes || '',
   status: row.status || 'Active',

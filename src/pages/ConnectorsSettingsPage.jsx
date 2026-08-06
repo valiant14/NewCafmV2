@@ -14,6 +14,7 @@ import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../
 import { nowLocalDate } from '../lib/datetime'
 import { api } from '../services/api'
 import useModuleAccess from '../hooks/useModuleAccess'
+import { useToast } from '../providers/ToastProvider'
 
 const connectorTypes = ['SMTP', 'SMS']
 const encryptionModes = ['None', 'SSL', 'TLS']
@@ -39,7 +40,7 @@ const fields = [
   { key: 'port', label: 'Port', type: 'number', placeholder: '587' },
   { key: 'encryption', label: 'Encryption', options: encryptionModes },
   { key: 'username', label: 'Username / API Key', placeholder: 'cafm@seder.com' },
-  { key: 'password', label: 'Password / Secret', type: 'password', placeholder: 'Stored in database' },
+  { key: 'password', label: 'Password / Secret', type: 'password', placeholder: 'Leave blank to keep the stored secret' },
   { key: 'sender', label: 'From Address / Sender ID', placeholder: 'no-reply@seder.com or SEDER' },
   { key: 'notes', label: 'Notes', placeholder: 'Who owns this connector' },
   { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
@@ -58,7 +59,8 @@ const exportColumns = [
   { key: 'createdDate', header: 'Created' }
 ]
 
-export default function ConnectorsSettingsPage({ rows = [], setRows, notify }) {
+export default function ConnectorsSettingsPage({ rows = [], setRows }) {
+  const { notify } = useToast()
   const access = useModuleAccess('SMTP & SMS')
   const [tab, setTab] = useState('All')
   const [filters, setFilters] = useState(emptyStandardFilters)
@@ -101,9 +103,9 @@ export default function ConnectorsSettingsPage({ rows = [], setRows, notify }) {
     setTesting(row.name)
     try {
       const result = await api.post(`/smtp-sms-connectors/${encodeURIComponent(row.name)}/test`, {})
-      notify?.(`${row.name}: ${result.message || 'Connection test passed.'}`, 'success')
+      notify(`${row.name}: ${result.message || 'Connection test passed.'}`, 'success')
     } catch (testError) {
-      notify?.(`${row.name}: ${testError.message || 'Connection test failed.'}`, 'error')
+      notify(`${row.name}: ${testError.message || 'Connection test failed.'}`, 'error')
     } finally {
       setTesting('')
     }

@@ -1,8 +1,10 @@
 import { io } from 'socket.io-client'
 import { getAuthToken } from './api'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api'
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_BASE_URL.replace(/\/api\/?$/, '')
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (API_BASE_URL.startsWith('http')
+  ? API_BASE_URL.replace(/\/api\/?$/, '')
+  : window.location.origin)
 
 export const subscribeWorkspaceChanges = onChange => {
   const token = getAuthToken()

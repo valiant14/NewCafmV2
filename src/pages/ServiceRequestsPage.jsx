@@ -26,6 +26,7 @@ import {
   normalizeApplicationWorkflow
 } from '../lib/applicationWorkflow'
 import { useAuth } from '../providers/AuthProvider'
+import { useToast } from '../providers/ToastProvider'
 import { attachmentApi } from '../services/api'
 
 const blankRequest = () => ({
@@ -69,8 +70,9 @@ const exportColumns = [
   { key: 'convertedWorkOrder', label: 'Converted Work Order' }
 ]
 
-export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, failureRecords = [], workflow, access = {}, notify }) {
+export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, requests, setRequests, assets, workOrders, siteRecords = [], departmentRecords = [], failureOptions, failureRecords = [], workflow, access = {} }) {
   const { user } = useAuth()
+  const { notify } = useToast()
   const activeWorkflow = normalizeApplicationWorkflow(workflow || DEFAULT_APPLICATION_WORKFLOWS.JOB_REQUEST, 'JOB_REQUEST')
   const requestFromPath = () => {
     const id = decodeURIComponent((window.location.pathname.split('/job-requests/')[1] || window.location.pathname.split('/service-requests/')[1] || ''))
@@ -121,8 +123,8 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     }
     setSelected(null)
     window.history.replaceState({}, '', '/job-requests')
-    if (failedUploads.length) notify?.(`Job request saved, but ${failedUploads.length} attachment${failedUploads.length === 1 ? '' : 's'} could not be uploaded.`, 'error')
-    else if (files.length) notify?.(`Job request and ${files.length} attachment${files.length === 1 ? '' : 's'} saved.`, 'success')
+    if (failedUploads.length) notify(`Job request saved, but ${failedUploads.length} attachment${failedUploads.length === 1 ? '' : 's'} could not be uploaded.`, 'error')
+    else if (files.length) notify(`Job request and ${files.length} attachment${files.length === 1 ? '' : 's'} saved.`, 'success')
     return submitted
   }
   const approve = async request => {
@@ -134,7 +136,7 @@ export default function ServiceRequestsPage({ onConvert, onOpenWorkOrder, reques
     if (!result?.serviceRequest) await setRequests(list => list.map(item => item.sr === updated.sr ? updated : item))
     setSelected(updated)
     window.history.replaceState({}, '', `/job-requests/${updated.sr}`)
-    notify?.(`CM work order #${createdWorkOrder.WORKORDER} created and linked.`, 'success')
+    notify(`CM work order #${createdWorkOrder.WORKORDER} created and linked.`, 'success')
     return updated
   }
   const advance = async (request, status) => {

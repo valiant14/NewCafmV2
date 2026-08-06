@@ -19,6 +19,7 @@ import {
   DEFAULT_APPLICATION_WORKFLOWS,
   normalizeApplicationWorkflow
 } from '../lib/applicationWorkflow'
+import { useToastError } from '../providers/ToastProvider'
 
 const workOrderPolicyControls = [
   ['allowManualStatusChange', 'Manual status control', 'Authorized users can choose an allowed next stage from the work order.'],
@@ -97,6 +98,7 @@ export default function WorkOrderWorkflowSettingsPage({ workflow, applicationWor
   const [form, setForm] = useState(normalized)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  useToastError(error)
   const [draggingStepId, setDraggingStepId] = useState('')
   const [dragOverStepId, setDragOverStepId] = useState('')
   const pointerDrag = useRef(null)

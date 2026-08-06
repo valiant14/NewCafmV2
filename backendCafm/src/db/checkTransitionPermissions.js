@@ -65,7 +65,8 @@ try {
   const routingRoundTrip = routingResponse.status === 200 && Object.entries(routingFields)
     .every(([key, value]) => routingBody?.[key] === value)
   if (!routingRoundTrip) {
-    throw new Error(`Work-order routing fields did not round-trip through the API (HTTP ${routingResponse.status}).`)
+    const detail = routingBody?.message ? ` ${routingBody.message}` : ''
+    throw new Error(`Work-order routing fields did not round-trip through the API (HTTP ${routingResponse.status}).${detail}`)
   }
 
   const response = await fetch(`${baseUrl}/work-orders/${encodeURIComponent(workOrderNumber)}`, {

@@ -19,10 +19,10 @@ import { AlertTriangle, Clock, ClipboardList, FileText, Hash, HelpCircle, ListCh
 import { pathWithRecordFilter } from './lib/recordNavigation'
 import AppState from './components/ui/AppState'
 import Alert from './components/ui/Alert'
-import Toast from './components/ui/Toast'
 import { navigationItems, pathForPage, routeToPage } from './config/navigation'
 import { departments, excelDate, slaBreached, statusMatrix, toDateTimeInput } from './config/runtimeDefaults'
 import { useAuth } from './providers/AuthProvider'
+import { useToast } from './providers/ToastProvider'
 import { nowLocalDateTime } from './lib/datetime'
 import { printWithoutBrowserTitle } from './lib/print'
 import { sameDepartment, systemNamesForDepartment, workGroupsForDepartment } from './lib/departments'
@@ -720,8 +720,9 @@ function WorkOrderWorkflowNotice({ status, missing = [], nextStep }) {
   )
 }
 
-function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, workflow: workflowValue = DEFAULT_WORK_ORDER_WORKFLOW, siteRecords = [], departmentRecords = [], assetRecords = [], workOrderRows = [], laborRecords = [], materialRecords = [], stockRecords = [], storeRecords = [], toolRecords = [], jobTaskRecords = [], failureCodeRecords = [], reservationRecords = [], purchaseRequestRecords = [], purchaseOrderRecords = [], meterRecords = [], onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder, onNotifyWorkOrderStatus, notify }) {
+function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab, workflow: workflowValue = DEFAULT_WORK_ORDER_WORKFLOW, siteRecords = [], departmentRecords = [], assetRecords = [], workOrderRows = [], laborRecords = [], materialRecords = [], stockRecords = [], storeRecords = [], toolRecords = [], jobTaskRecords = [], failureCodeRecords = [], reservationRecords = [], purchaseRequestRecords = [], purchaseOrderRecords = [], meterRecords = [], onCreatePurchaseRequest, onCreateReservation, onUpdateWorkOrder, onNotifyWorkOrderStatus }) {
   const { user } = useAuth()
+  const { notify } = useToast()
   const workflow = useMemo(()=>normalizeWorkOrderWorkflow(workflowValue),[workflowValue])
   const canEditWorkOrder = canUseAction(user, 'Work Orders', 'edit')
   const canCloseWorkOrder = canEditWorkOrder && canUseAction(user, 'Work Orders', 'close')
@@ -735,6 +736,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const [autoSaveState,setAutoSaveState]=useState('Saved')
   const saveReady = useRef(false)
   const lastSavedFingerprint = useRef('')
+  const lastPersistedStatus = useRef(normalizeWoStatus(order.STATUS))
   const [selectedStatus,setSelectedStatus]=useState(normalizeWoStatus(order.STATUS))
   const [heldFrom,setHeldFrom]=useState(order['HELD FROM']||'')
   const [holdPeriods,setHoldPeriods]=useState(Array.isArray(order.holdPeriods)?order.holdPeriods:[])
@@ -747,6 +749,9 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     setHeldFrom(order['HELD FROM']||'')
     setHoldPeriods(Array.isArray(order.holdPeriods)?order.holdPeriods:[])
   },[order.WORKORDER,order.STATUS])
+  useEffect(()=>{
+    lastPersistedStatus.current=normalizeWoStatus(order.STATUS)
+  },[order.WORKORDER])
   useEffect(()=>{
     if(!canViewPlanTab&&tab==='Plan') setTab('Overview')
   },[canViewPlanTab,tab])
@@ -991,15 +996,6 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const completionReady=missingFor('COMP').length===0
   const status = selectedStatus
   const configuredNextStep=getWorkflowNextStep(workflow,status)
-  const notifyStatusChange=next=>{
-    if(String(selectedStatus||'').toUpperCase()===String(next||'').toUpperCase()) return
-    onNotifyWorkOrderStatus?.({
-      ...order,
-      ...currentWorkOrderSnapshot(),
-      STATUS: next,
-      'STATUS DESCRIPITION': workOrderDisplayStatus(isPM,workflow,next)
-    })
-  }
   // `chained` is set only by the automatic advance, which has already walked the steps one at a
   // time and checked each one - so the single commit it asks for may skip several statuses.
   const changeStatus=(value,options)=>{
@@ -1010,7 +1006,6 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     // The select disables invalid options, but guard here too so no other caller can
     // drive the work order off the workflow.
     if(!chained&&!canTransitionWorkOrder(selectedStatus,next,heldFrom,workflow)) return
-    notifyStatusChange(next)
     const wasHold=workOrderHoldStatuses.includes(selectedStatus)
     if(workOrderHoldStatuses.includes(next)) setHeldFrom(selectedStatus)
     else if(wasHold) setHeldFrom('')
@@ -1115,18 +1110,13 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     const selected=Array.from(event.target.files||[])
     event.target.value=''
     if(!selected.length) return
-    try{
-      await uploadWorkOrderFiles(selected,category)
-      notify?.(`${selected.length} attachment${selected.length===1?'':'s'} uploaded.`,'success')
-    }catch(error){notify?.(error.message||'Unable to upload attachment.','error')}
+    await uploadWorkOrderFiles(selected,category).catch(()=>{})
   }
   const removeFile=async file=>{
-    try{await removeWorkOrderAttachment(file);notify?.('Attachment removed.','success')}
-    catch(error){notify?.(error.message||'Unable to remove attachment.','error')}
+    await removeWorkOrderAttachment(file).catch(()=>{})
   }
   const downloadFile=async file=>{
-    try{await downloadWorkOrderAttachment(file)}
-    catch(error){notify?.(error.message||'Unable to download attachment.','error')}
+    await downloadWorkOrderAttachment(file).catch(()=>{})
   }
   // Planned labour already names the craft, the hours and who is doing it, so the actual
   // fields start from it rather than being re-keyed. Planned rows store the craft *name*
@@ -1280,9 +1270,21 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
       ...order,
       ...currentWorkOrderSnapshot()
     }
+    const nextStatus=normalizeWoStatus(updatedOrder.STATUS)
+    const statusChanged=lastPersistedStatus.current!==nextStatus
     setAutoSaveState('Saving')
-    Promise.resolve(onUpdateWorkOrder?.(number, updatedOrder))
-      .then(result=>{if(result?.__saveError) throw result.error||new Error('Unable to save work order.');lastSavedFingerprint.current = fingerprint; setAutoSaveState('Saved')})
+    return Promise.resolve(onUpdateWorkOrder?.(number, updatedOrder))
+      .then(result=>{
+        if(result?.__saveError) throw result.error||new Error('Unable to save work order.')
+        lastSavedFingerprint.current=fingerprint
+        setAutoSaveState('Saved')
+        if(statusChanged){
+          lastPersistedStatus.current=nextStatus
+          notify(`Work order #${number} moved to ${workOrderDisplayStatus(isPM,workflow,nextStatus)}.`,'success')
+          onNotifyWorkOrderStatus?.({...updatedOrder,STATUS:nextStatus,'STATUS DESCRIPITION':workOrderDisplayStatus(isPM,workflow,nextStatus)})
+        }
+        return result
+      })
       .catch(()=>setAutoSaveState('Save failed'))
   }
   useEffect(()=>{
@@ -1310,6 +1312,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
 
 export default function App() {
   const { isAuthenticated, user, logout, refreshSession, applySessionUpdate } = useAuth()
+  const { notify } = useToast()
   const [active, setActive] = useState(()=>routeToPage(window.location.pathname))
   const [routePath, setRoutePath] = useState(() => window.location.pathname)
   const [search, setSearch] = useState('')
@@ -1347,15 +1350,10 @@ export default function App() {
   const [failureCodeRecords,setFailureCodeRecords]=useState([])
   const [workspaceLoading,setWorkspaceLoading]=useState(false)
   const [workspaceError,setWorkspaceError]=useState('')
-  const [toast,setToast]=useState(null)
   const [projectName]=useState(readProjectName)
   const loadedResourcesRef=useRef(new Set())
   const sessionIdentityRef=useRef('')
   const workOrderQueryRef=useRef({ page: 1, pageSize: 10, search: '', sort: { key: 'REPORTED DATE', direction: 'desc' }, type: 'All', filters: {} })
-  const notify = useCallback((message, tone = 'info') => {
-    if (!message) return
-    setToast({ id: Date.now(), message, tone })
-  }, [])
   const sendWorkOrderStatusNotification = useCallback(order => {
     const eventName = notificationEventForWorkOrderStatus(order.STATUS)
     if (!eventName) return
@@ -1389,11 +1387,6 @@ export default function App() {
       .then(result => notify(`${eventName} email sent to ${result.sentCount || recipients.length} recipient(s).`, 'success'))
       .catch(error => notify(error.message || `${eventName} email failed.`, 'error'))
   }, [notificationRuleRecords, notify, projectName])
-  useEffect(() => {
-    if (!toast) return undefined
-    const timer = setTimeout(() => setToast(null), 3600)
-    return () => clearTimeout(timer)
-  }, [toast])
   const applyWorkspaceData = useCallback(data => {
     if (Object.hasOwn(data, 'overviewSnapshot')) setOverviewSnapshot(data.overviewSnapshot)
     if (Object.hasOwn(data, 'assets')) setAssetRecords(data.assets)
@@ -1686,8 +1679,7 @@ export default function App() {
     }
     return saveFn(nextRows)
       .then(result => {
-        if (action === 'create') notify(`${moduleName} saved.`, 'success')
-        else if (moduleName === 'Roles & Permissions') notify('Role permissions saved.', 'success')
+        if (moduleName !== 'Work Orders') notify(action === 'create' ? `${moduleName} saved.` : `${moduleName} changes saved.`, 'success')
         return result
       })
       .catch(error => {
@@ -2180,11 +2172,11 @@ export default function App() {
   }
   const createWorkOrder=async form=>{if(!canDo('Work Orders','create')){notify('No create access for Work Orders.','error');return null}const created={'WORKORDER':'AUTO','__isNew':true,'DESCRIPITION ':form.description,'LOCATION ':form.location,'LOCATION PRIORTY':toLocationPriority(form.priority),'ASSET':form.asset,'STATUS':workOrderWorkflow.initialStatus,'WORK TYPE ':form.type,'STATUS DESCRIPITION':workflowStatusLabel(workOrderWorkflow,workOrderWorkflow.initialStatus)||workOrderWorkflow.initialStatus,'DEPARTMENT ':form.department||'','SUB DEPARTMENT  NAME':form.subDepartment||'','ASSIGNED DEPARTMENT':form.department||'','ASSET DESCRIPTION':assetDescriptionFromMaster(form.asset, assetRecords),'SYSTEM':assetFromMaster(form.asset, assetRecords)?.system||'','PRIORTY':Number(String(form.priority).charAt(0))||3,'SITE':form.site,'TARGET START ':null,'TARGET FINISH ':null,'REPORTED DATE ':nowLocalDateTime(),'PTW REQUIRED':workOrderWorkflow.ptwRequiredDefault};const result=await saveWorkOrders(rows=>[...rows,created]);if(result?.__saveError)return null;notify(`Work order #${created.WORKORDER} created.`,'success');return created}
   const pages = {
-    'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions} failureRecords={failureCodeRecords} workflow={applicationWorkflows.JOB_REQUEST} access={accessFor('Job Requests')} notify={notify}/>,
+    'Job Requests': <ServiceRequestsPage onConvert={convertRequest} onOpenWorkOrder={openConvertedWorkOrder} requests={scopedServiceRequests} setRequests={saveServiceRequests} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} failureOptions={requestFailureOptions} failureRecords={failureCodeRecords} workflow={applicationWorkflows.JOB_REQUEST} access={accessFor('Job Requests')}/>,
     'Incidents': <IncidentsPage rows={scopedIncidents} setRows={saveIncidents} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} laborRows={laborRecords}/>,
     'Work Orders': <WorkOrdersPage rows={scopedWorkOrders} assets={scopedAssets} locationRows={scopedLocations} siteRecords={siteRecords} departmentRecords={departmentRecords} onCreate={createWorkOrder} onImportRows={saveWorkOrders} pageMeta={workOrderPageMeta} onPageRequest={requestWorkOrderPage} onLoadDetail={loadWorkOrderById} EditorComponent={props => {
       const detailContext = workOrderContext.workOrder === String(props.order.WORKORDER) ? workOrderContext : null
-      return <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} workflow={workOrderWorkflow} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={detailContext?.tasks || jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={detailContext?.reservations || reservations} purchaseRequestRecords={detailContext?.purchaseRequests || purchaseRequests} purchaseOrderRecords={detailContext?.purchaseOrders || purchaseOrders} meterRecords={detailContext?.meters || meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} onNotifyWorkOrderStatus={sendWorkOrderStatusNotification} notify={notify} />
+      return <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} workflow={workOrderWorkflow} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={detailContext?.tasks || jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={detailContext?.reservations || reservations} purchaseRequestRecords={detailContext?.purchaseRequests || purchaseRequests} purchaseOrderRecords={detailContext?.purchaseOrders || purchaseOrders} meterRecords={detailContext?.meters || meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} onNotifyWorkOrderStatus={sendWorkOrderStatusNotification} />
     }} excelDate={excelDate} workflow={workOrderWorkflow} slaBreached={slaBreached} access={accessFor('Work Orders')}/>,
     'Assets': <AssetsPage rows={scopedAssets} setRows={saveAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} />,
     'Preventive Maintenance': <PreventiveMaintenancePage rows={pmScheduleRecords} setRows={savePmSchedules} onImport={importPmSchedules} pmRules={pmRuleRecords} assets={scopedAssets} jobPlans={jobPlanRecords} jobTasks={jobTaskRecords} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} locationRows={scopedLocations} storeRows={storeRecords} laborRows={laborRecords} workflow={workOrderWorkflow} scopeUser={effectiveUser} onOpenWorkOrder={openConvertedWorkOrder}/>,
@@ -2238,7 +2230,7 @@ export default function App() {
     'Departments': <DepartmentsSettingsPage rows={departmentRecords} setRows={saveDepartments}/>,
     'Work Order Workflow': <WorkOrderWorkflowSettingsPage workflow={workOrderWorkflow} applicationWorkflows={applicationWorkflows} onSave={saveWorkOrderWorkflow} onSaveApplication={saveApplicationWorkflow} canEdit={canDo('Work Order Workflow', 'edit')}/>,
     'Notifications': <NotificationsSettingsPage rows={notificationRuleRecords} setRows={saveNotificationRules}/>,
-    'SMTP & SMS': <ConnectorsSettingsPage rows={connectorRecords} setRows={saveConnectors} notify={notify}/>,
+    'SMTP & SMS': <ConnectorsSettingsPage rows={connectorRecords} setRows={saveConnectors}/>,
     'PM Schedule Rules': <PmRulesSettingsPage rows={pmRuleRecords} setRows={savePmRules} pmSchedules={pmScheduleRecords} workOrders={scopedWorkOrders} workflow={workOrderWorkflow}/>
   }
   if (!isAuthenticated) return <LoginPage />
@@ -2270,7 +2262,6 @@ export default function App() {
           {activePage === 'Overview' ? <OverviewPage onNavigate={navigate} onOpenWorkOrderTab={openWorkOrderTab} currentUser={effectiveUser} projectName={projectName} snapshot={overviewSnapshot} workOrders={scopedWorkOrders} /> : pages[activePage]}
         </Suspense>
       </AppShell>
-      <Toast message={toast?.message} tone={toast?.tone} onDismiss={() => setToast(null)} />
     </>
   )
 }

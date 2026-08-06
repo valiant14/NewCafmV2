@@ -3,9 +3,13 @@ import { getPool } from './pool.js'
 
 const userId = process.env.ADMIN_USER_ID || 'USR-ADMIN'
 const username = process.env.ADMIN_USERNAME || 'admin'
-const password = process.env.ADMIN_PASSWORD || 'admin123'
+const password = process.env.ADMIN_PASSWORD || ''
 const displayName = process.env.ADMIN_DISPLAY_NAME || 'System Administrator'
 const email = process.env.ADMIN_EMAIL || 'admin@example.com'
+
+if (password.length < 12) {
+  throw new Error('ADMIN_PASSWORD is required and must contain at least 12 characters.')
+}
 
 const pool = await getPool()
 const role = await pool.request()

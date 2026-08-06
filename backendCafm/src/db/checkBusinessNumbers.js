@@ -1,9 +1,12 @@
+import { randomUUID } from 'node:crypto'
 import jwt from 'jsonwebtoken'
 import { env } from '../config/env.js'
 import { closePool, getPool } from './pool.js'
 
 const baseUrl = process.env.API_CHECK_BASE_URL || `http://localhost:${env.port}/api`
 const pool = await getPool()
+const suffix = randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()
+const workOrderNumber = `CHECK-NUM-${suffix}`
 const setup = await pool.request().query(`
   select top 1 u.user_id
   from dbo.users u
@@ -13,18 +16,36 @@ const setup = await pool.request().query(`
     and (case when u.data_scope_override = 'ROLE' then r.data_scope else u.data_scope_override end) = 'GLOBAL'
   order by case when u.user_id = 'USR-ADMIN' then 0 else 1 end, u.user_id;
 
-  select top 1 work_order_num, site_code, department_name
-  from dbo.work_orders
-  where site_code is not null
-  order by reported_at desc, work_order_num desc;
+  declare @siteCode nvarchar(30) = (select top 1 site_code from dbo.sites where status = 'Active' order by site_code);
+  select @siteCode as site_code,
+    (select top 1 department_name from dbo.departments where status = 'Active' order by department_name) as department_name;
+
+  select top 1 item_code, description from dbo.materials where status = 'Active' order by item_code;
+  select top 1 tool_code, description from dbo.tools_equipment where status <> 'Inactive' order by tool_code;
+  select top 1 store_code from dbo.storerooms where status = 'Active' and site_code = @siteCode order by store_code;
 `)
 
 const globalUser = setup.recordsets[0]?.[0]
 const workOrder = setup.recordsets[1]?.[0]
-if (!globalUser || !workOrder) throw new Error('A global user and a scoped work order are required for the business-number check.')
+const material = setup.recordsets[2]?.[0]
+const tool = setup.recordsets[3]?.[0]
+const store = setup.recordsets[4]?.[0]
+if (!globalUser || !workOrder?.site_code || !material || !tool || !store) {
+  throw new Error('A global user plus active site, store, material, and tool masters are required for the business-number check.')
+}
+
+await pool.request()
+  .input('workOrderNumber', workOrderNumber)
+  .input('siteCode', workOrder.site_code)
+  .input('departmentName', workOrder.department_name || null)
+  .input('createdBy', globalUser.user_id)
+  .query(`
+    insert into dbo.work_orders(work_order_num, description, status, work_type, site_code, department_name, reported_at, created_by_user_id)
+    values(@workOrderNumber, 'Temporary business number check', 'WAPPR', 'CM', @siteCode, @departmentName, sysutcdatetime(), @createdBy)
+  `)
 
 const token = jwt.sign({ userId: globalUser.user_id }, env.jwtSecret, { expiresIn: '2m' })
-const created = { purchaseRequests: [], purchaseOrder: '', reservation: '', incident: '' }
+const created = { workOrder: workOrderNumber, purchaseRequests: [], purchaseOrder: '', reservation: '', incident: '' }
 const request = async (path, body) => {
   const response = await fetch(`${baseUrl}${path}`, {
     method: 'POST',
@@ -47,44 +68,33 @@ const matches = (value, prefix) => new RegExp(`^${prefix}-${year}-\\d{4,}$`).tes
 try {
   const prPayload = suffix => ({
     pr_num: 'AUTO',
-    work_order_num: workOrder.work_order_num,
+    work_order_num: workOrderNumber,
     request_type: 'Material',
-    item_code: `NUMBER-CHECK-${suffix}`,
-    item_description: `Business number check ${suffix}`,
+    item_code: material.item_code,
+    item_description: material.description,
     requested_quantity: 1,
+    store_code: store.store_code,
     site_code: workOrder.site_code,
     department_name: workOrder.department_name || '',
     status: 'WAPPR'
   })
   const purchaseRequests = await Promise.all([
-    request('/purchase-requisitions', prPayload('A')),
-    request('/purchase-requisitions', prPayload('B'))
+    request('/supply-chain/purchase-requisitions', prPayload('A')),
+    request('/supply-chain/purchase-requisitions', prPayload('B'))
   ])
-  created.purchaseRequests = purchaseRequests.map(row => row.pr_num)
+  created.purchaseRequests = purchaseRequests.map(result => result.purchaseRequisition?.pr_num)
   if (new Set(created.purchaseRequests).size !== 2 || created.purchaseRequests.some(value => !matches(value, 'PR'))) {
     throw new Error(`Concurrent PR allocation returned invalid references: ${created.purchaseRequests.join(', ')}`)
   }
 
-  const purchaseOrder = await request('/purchase-orders', {
-    po_num: 'AUTO',
-    pr_num: created.purchaseRequests[0],
-    work_order_num: workOrder.work_order_num,
-    request_type: 'Material',
-    item_code: 'NUMBER-CHECK-A',
-    item_description: 'Business number check PO',
-    ordered_quantity: 1,
-    site_code: workOrder.site_code,
-    department_name: workOrder.department_name || '',
-    status: 'WAPPR'
-  })
-  created.purchaseOrder = purchaseOrder.po_num
+  const purchaseOrder = await request(`/supply-chain/purchase-requisitions/${encodeURIComponent(created.purchaseRequests[0])}/approve-create-po`, {})
+  created.purchaseOrder = purchaseOrder.purchaseOrder?.po_num
 
-  const reservation = await request('/reservations', {
-    reservation_num: 'AUTO',
-    work_order_num: workOrder.work_order_num,
+  const reservation = await request('/supply-chain/reservations', {
+    work_order_num: workOrderNumber,
     request_type: 'Tool',
-    item_code: 'NUMBER-CHECK-TOOL',
-    item_description: 'Business number check allocation',
+    item_code: tool.tool_code,
+    item_description: tool.description,
     reserved_quantity: 1,
     arranged_quantity: 0,
     released_quantity: 0,
@@ -93,7 +103,7 @@ try {
     department_name: workOrder.department_name || '',
     status: 'ENTERED'
   })
-  created.reservation = reservation.reservation_num
+  created.reservation = reservation.reservation?.reservation_num
 
   const incident = await request('/incidents', {
     incident_num: 'AUTO',
@@ -112,6 +122,7 @@ try {
   console.log(JSON.stringify({ ok: true, ...created }, null, 2))
 } finally {
   const cleanup = pool.request()
+    .input('workOrderNumber', created.workOrder)
     .input('reservation', created.reservation || null)
     .input('purchaseOrder', created.purchaseOrder || null)
     .input('purchaseRequestA', created.purchaseRequests[0] || null)
@@ -122,6 +133,7 @@ try {
     delete from dbo.purchase_orders where po_num = @purchaseOrder;
     delete from dbo.purchase_requisitions where pr_num in (@purchaseRequestA, @purchaseRequestB);
     delete from dbo.incidents where incident_num = @incident;
+    delete from dbo.work_orders where work_order_num = @workOrderNumber;
   `).catch(() => {})
   await closePool()
 }

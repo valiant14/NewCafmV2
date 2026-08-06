@@ -1,6 +1,8 @@
 import net from 'node:net'
 import tls from 'node:tls'
 import { getPool } from '../db/pool.js'
+import { env } from '../config/env.js'
+import { decryptSecret } from './secretVault.js'
 
 const CRLF = '\r\n'
 
@@ -74,7 +76,7 @@ const writeSmtp = async (socket, command, expected = [250]) => {
 }
 
 const connectSocket = ({ host, port, secure }) => new Promise((resolve, reject) => {
-  const socket = secure ? tls.connect({ host, port, servername: host, rejectUnauthorized: false }) : net.connect({ host, port })
+  const socket = secure ? tls.connect({ host, port, servername: host, rejectUnauthorized: env.smtpTlsRejectUnauthorized }) : net.connect({ host, port })
   const event = secure ? 'secureConnect' : 'connect'
   const cleanup = () => {
     socket.off(event, onConnect)
@@ -97,7 +99,7 @@ const connectSocket = ({ host, port, secure }) => new Promise((resolve, reject) 
 })
 
 const upgradeToTls = (socket, host) => new Promise((resolve, reject) => {
-  const secureSocket = tls.connect({ socket, servername: host, rejectUnauthorized: false })
+  const secureSocket = tls.connect({ socket, servername: host, rejectUnauthorized: env.smtpTlsRejectUnauthorized })
   const cleanup = () => {
     secureSocket.off('secureConnect', onConnect)
     secureSocket.off('error', onError)
@@ -180,7 +182,7 @@ export const sendEmailNotification = async ({ connectorName, recipients, subject
     `)
   const connector = result.recordset[0]
   if (!connector) throw new Error('No active SMTP connector is configured.')
-  await sendViaSmtp({ connector, recipients: recipientList, subject, text })
+  await sendViaSmtp({ connector: { ...connector, secret_value: decryptSecret(connector.secret_value) }, recipients: recipientList, subject, text })
   return { connectorName: connector.connector_name, sentCount: recipientList.length }
 }
 
