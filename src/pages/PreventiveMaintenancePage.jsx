@@ -19,6 +19,7 @@ import { countPmDueState, pmDueState } from '../lib/pmSchedule'
 import { filterRows } from '../lib/tableSearch'
 import { scopeRowsForUser } from '../lib/accessControl'
 import { normalizeWorkOrderWorkflow, workflowStatusOptions } from '../lib/workOrderWorkflow'
+import { normalizePmFrequencyUnit, pmWorkOrderStatusLabel } from '../lib/pmGeneration'
 import { mergeImportedRows } from '../lib/importRows'
 import useModuleAccess from '../hooks/useModuleAccess'
 import useRelatedWorkOrders from '../hooks/useRelatedWorkOrders'
@@ -50,7 +51,7 @@ const emptyPlan = initialStatus => ({
 })
 const searchKeys = ['pmNumber', 'description', 'jobPlan', 'asset', 'location', 'route', 'department', 'subDepartment', 'supervisor', 'personGroup', 'storeLocation', 'workType']
 
-const pmTemplateHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'ROUTE', 'LOCATION', 'JPNUM', 'PM RULE', 'NEXTDATE', 'PMCOUNTER', 'WORKTYPE', 'STORELOC', 'SUPERVISOR', 'LEAD', 'PERSONGROUP', 'department', 'sub department']
+const pmTemplateHeaders = ['PMNUM', 'PM DESCRIPTION', 'ASSETNUM', 'LOCATION', 'SITE', 'JPNUM', 'PM RULE', 'START DATE', 'LEAD TIME (DAYS)', 'FREQUENCY', 'FREQUNIT', 'WOSTATUS', 'DEPARTMENT', 'SUB DEPARTMENT', 'PM STATUS', 'ROUTE', 'STORELOC', 'SUPERVISOR', 'LEAD', 'PERSONGROUP']
 
 const normalizeDate = value => {
   if (!value) return ''
@@ -64,9 +65,18 @@ const normalizeDate = value => {
 
 const findPmRule = (rules = [], name = '') => rules.find(rule => String(rule.name || '').trim().toLowerCase() === String(name || '').trim().toLowerCase())
 
+const pmInitialStatusOptions = workflow => [
+  ...workflowStatusOptions(workflow),
+  { value: 'ON_HOLD_MATERIAL', label: pmWorkOrderStatusLabel('ON_HOLD_MATERIAL') },
+  { value: 'ON_HOLD_PERMIT', label: pmWorkOrderStatusLabel('ON_HOLD_PERMIT') }
+]
+
 const validWorkflowStatus = (value, workflow) => {
   const code = String(value || '').trim().toUpperCase()
-  return workflowStatusOptions(workflow).some(option => option.value === code) ? code : workflow.initialStatus
+  const options = pmInitialStatusOptions(workflow)
+  const waiting = options.some(option => option.value === 'WSCH') ? 'WSCH' : workflow.initialStatus
+  const alias = ({ WAITING: 'WSCH', ASSIGNED: 'SCHED', 'IN PROGRESS': 'INPRG', COMPLETED: 'COMP', CLOSED: 'CLOSE', 'WAITING FOR MATERIAL': 'ON_HOLD_MATERIAL', 'WAITING FOR PERMIT': 'ON_HOLD_PERMIT' })[code] || code
+  return options.some(option => option.value === alias) ? alias : waiting
 }
 
 const mapPmImportRows = (rows, rules = [], workflow) => rows.map(row => {
@@ -80,10 +90,10 @@ const mapPmImportRows = (rows, rules = [], workflow) => rows.map(row => {
     location: row.LOCATION || '',
     site: row.SITE || '',
     jobPlan: row.JPNUM || '',
-    startDate: normalizeDate(row.NEXTDATE),
+    startDate: normalizeDate(row['START DATE'] || row.NEXTDATE),
     leadTime: Number(rule?.leadTimeDays ?? row['LEAD TIME (DAYS)'] ?? 0),
-    frequency: Number(rule?.frequency ?? row.FREQUENCY ?? 1),
-    freqUnit: rule?.freqUnit || row.FREQUNIT || 'MONTHS',
+    frequency: Number(rule?.frequency ?? (Number(row.FREQUENCY) || 1)),
+    freqUnit: normalizePmFrequencyUnit(rule?.freqUnit || row.FREQUNIT || (!Number(row.FREQUENCY) ? row.FREQUENCY : '') || 'MONTHS'),
     scheduleRule,
     pmCounter: Number(row.PMCOUNTER || 0),
     workType: row.WORKTYPE || 'PM',
@@ -94,12 +104,40 @@ const mapPmImportRows = (rows, rules = [], workflow) => rows.map(row => {
     personGroup: row.PERSONGROUP || '',
     department: row.department || row.DEPARTMENT || '',
     subDepartment: row['sub department'] || row['SUB DEPARTMENT'] || '',
-    pmStatus: normalizeStatus('preventiveMaintenance', row['PM Status'] || row.PMSTATUS, 'ACTIVE'),
+    pmStatus: normalizeStatus('preventiveMaintenance', row['PM STATUS'] || row['PM Status'] || row.PMSTATUS, 'ACTIVE'),
     lastGeneratedCycle: ''
   }
-}).filter(plan => plan.pmNumber && plan.description)
+})
 
-export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules = [], assets = [], jobTasks = [], workOrders = [], departmentRecords = [], locationRows = [], storeRows = [], laborRows = [], workflow, scopeUser, onOpenWorkOrder }) {
+const validatePmImportRows = (plans, rules = []) => {
+  const seen = new Set()
+  plans.forEach((plan, index) => {
+    const missing = [
+      !plan.pmNumber && 'PMNUM',
+      !plan.description && 'PM DESCRIPTION',
+      !plan.asset && !plan.location && 'ASSETNUM or LOCATION',
+      !plan.site && 'SITE',
+      !plan.jobPlan && 'JPNUM',
+      !parseLocal(plan.startDate) && 'START DATE',
+      !(Number(plan.frequency) > 0) && 'FREQUENCY',
+      !plan.freqUnit && 'FREQUNIT',
+      !plan.department && 'DEPARTMENT',
+      !plan.subDepartment && 'SUB DEPARTMENT'
+    ].filter(Boolean)
+    if (missing.length) throw new Error(`PM import row ${index + 2} is incomplete: ${missing.join(', ')}.`)
+    if (!Number.isFinite(Number(plan.leadTime)) || Number(plan.leadTime) < 0) {
+      throw new Error(`PM import row ${index + 2} has an invalid LEAD TIME (DAYS).`)
+    }
+    if (plan.scheduleRule && !findPmRule(rules, plan.scheduleRule)) {
+      throw new Error(`PM import row ${index + 2} references an unknown PM RULE: ${plan.scheduleRule}.`)
+    }
+    const key = String(plan.pmNumber).trim().toUpperCase()
+    if (seen.has(key)) throw new Error(`PM import row ${index + 2} repeats PMNUM ${plan.pmNumber}.`)
+    seen.add(key)
+  })
+}
+
+export default function PreventiveMaintenancePage({ rows = [], setRows, onImport, pmRules = [], assets = [], jobPlans: jobPlanMasters = [], jobTasks = [], workOrders = [], departmentRecords = [], locationRows = [], storeRows = [], laborRows = [], workflow, scopeUser, onOpenWorkOrder }) {
   const { user } = useAuth()
   const access = useModuleAccess('Preventive Maintenance')
   const activeWorkflow = useMemo(() => normalizeWorkOrderWorkflow(workflow), [workflow])
@@ -113,7 +151,8 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
   const [mode, setMode] = useState('list')
   const [selectedId, setSelectedId] = useState(routeId ? decodeURIComponent(routeId) : '')
   const relatedWorkOrders = useRelatedWorkOrders(selectedId ? { pm_num: selectedId } : null, { enabled: Boolean(selectedId) })
-  const [form, setForm] = useState(() => emptyPlan(activeWorkflow.initialStatus))
+  const waitingStatus = validWorkflowStatus('WSCH', activeWorkflow)
+  const [form, setForm] = useState(() => emptyPlan(waitingStatus))
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [pmTab, setPmTab] = useState('All')
@@ -126,15 +165,21 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
   }, [routeId])
 
   const jobPlans = useMemo(() => [
-    ...new Map(jobTasks
-      .filter(task => task.JPNUM)
-      .map(task => [task.JPNUM, {
-        number: task.JPNUM,
-        description: task.DESCRIPTION,
-        duration: jobTasks.filter(item => item.JPNUM === task.JPNUM).reduce((sum, item) => sum + Number(item['TASK DURATION IN HOUR'] || 0), 0)
-      }])
+    ...new Map([...jobPlanMasters, ...jobTasks]
+      .filter(row => row.JPNUM)
+      .map(row => {
+        const master = jobPlanMasters.find(item => item.JPNUM === row.JPNUM)
+        const taskDuration = jobTasks.filter(item => item.JPNUM === row.JPNUM).reduce((sum, item) => sum + Number(item['TASK DURATION IN HOUR'] || 0), 0)
+        const masterDuration = Number(master?.estimatedDurationMinutes || 0) / 60
+        return [row.JPNUM, {
+          ...master,
+          number: row.JPNUM,
+          description: master?.DESCRIPTION || row.DESCRIPTION,
+          duration: masterDuration || taskDuration
+        }]
+      })
     ).values()
-  ], [jobTasks])
+  ], [jobPlanMasters, jobTasks])
 
   const selected = scopedPlans.find(plan => plan.pmNumber === selectedId)
   const matchesTab = plan => {
@@ -164,11 +209,12 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
   const currentPage = Math.min(page, pageCount)
   const visiblePage = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
-  const valid = Boolean(form.pmNumber && form.description && (form.asset || form.location) && form.jobPlan && form.startDate && form.frequency && form.freqUnit)
-  const save = () => {
+  const valid = Boolean(form.pmNumber && form.description && (form.asset || form.location) && form.site && form.jobPlan && form.startDate && form.frequency && form.freqUnit && form.department && form.subDepartment)
+  const save = async () => {
     if (!valid) return
-    setRows?.(rows => [...rows, form])
-    setForm(emptyPlan(activeWorkflow.initialStatus))
+    const result = await setRows?.(rows => [...rows, form])
+    if (!result || result.__saveError) return
+    setForm(emptyPlan(waitingStatus))
     setMode('list')
   }
   const openPlan = id => {
@@ -192,7 +238,14 @@ export default function PreventiveMaintenancePage({ rows = [], setRows, pmRules 
         eyebrow="PREVENTIVE MAINTENANCE"
         title="PM Schedule"
         description="Maximo-aligned PM masters and automatic work-order generation."
-        actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" />{access.import && <ExcelImportButton onImport={rows => { const imported = mapPmImportRows(rows, pmRules, activeWorkflow); if (imported.length) setRows?.(current => mergeImportedRows(current, imported, 'pmNumber')) }} />}{access.create && <Button onClick={() => { setForm(emptyPlan(activeWorkflow.initialStatus)); setMode('new') }}><Plus size={16} />New PM schedule</Button>}</div>}
+          actions={<div className="flex items-center gap-2"><ExcelTemplateButton headers={pmTemplateHeaders} fileName="PM_Master_Upload_Template.xlsx" />{access.import && <ExcelImportButton onImport={async importedRows => {
+            const imported = mapPmImportRows(importedRows, pmRules, activeWorkflow)
+            validatePmImportRows(imported, pmRules)
+            const result = onImport
+              ? await onImport(imported)
+              : await setRows?.(current => mergeImportedRows(current, imported, 'pmNumber'))
+            if (!result || result.__saveError) throw result?.error || new Error('Unable to save the PM master import.')
+          }} />}{access.create && <Button onClick={() => { setForm(emptyPlan(waitingStatus)); setMode('new') }}><Plus size={16} />New PM schedule</Button>}</div>}
       />
 
       <IndexTabs

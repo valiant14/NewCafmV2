@@ -69,6 +69,8 @@ export default function WorkOrderPrintReport({
   slaLabel,
   jobPlan,
   estimatedDuration,
+  safetyInstructions,
+  checklist = [],
   pmNumber,
   pmCycle,
   plannedTasks = [],
@@ -166,6 +168,15 @@ export default function WorkOrderPrintReport({
         rows={plannedTasks.map((task, index) => ({ ...task, sequence: task.sequence || index + 1 }))}
         emptyText="No job tasks configured."
       />
+
+      {workType === 'PM' && (
+        <FieldTable
+          title="Safety Instructions and Checklist"
+          rows={[
+            [['Safety Instructions', safetyInstructions], ['Checklist', checklist.length ? checklist.map((item, index) => `${index + 1}. ${item}`).join('\n') : '']]
+          ]}
+        />
+      )}
 
       <DataRows
         title="Planned Labor"

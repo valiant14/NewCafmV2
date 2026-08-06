@@ -5,7 +5,7 @@ import Button from '../ui/Button'
 import { DetailHeader, DetailTabs, MetricCard } from '../ui/DetailScaffold'
 import GenericPrintReport from '../ui/GenericPrintReport'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
-import { scheduleForPlan } from '../../lib/pmGeneration'
+import { pmWorkOrderStatusLabel, scheduleForPlan } from '../../lib/pmGeneration'
 import { nowLocalDateTime } from '../../lib/datetime'
 import Surface, { SurfaceHeader } from '../ui/Surface'
 import Field from '../ui/Field'
@@ -43,12 +43,18 @@ function FieldGrid({ rows }) {
 export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmRules = [], workOrders, workflow, onBack, onOpenWorkOrder, onUpdate }) {
   const access = useModuleAccess('Preventive Maintenance')
   const activeWorkflow = normalizeWorkOrderWorkflow(workflow)
-  const validWoStatuses = workflowStatusOptions(activeWorkflow).map(option => option.value)
+  const validWoStatuses = [...workflowStatusOptions(activeWorkflow).map(option => option.value), 'ON_HOLD_MATERIAL', 'ON_HOLD_PERMIT']
   const generatedTab = 'Generated Work Orders'
   const [activeTab, setActiveTab] = useState('PM Details')
   const asset = assets.find(item => normalize(item.assetnum) === normalize(plan.asset))
   const linkedPlan = jobPlans.find(item => normalize(item.number) === normalize(plan.jobPlan))
   const tasks = jobTasks.filter(task => normalize(task.JPNUM) === normalize(plan.jobPlan))
+  const requiredLabor = linkedPlan?.requiredLabor || []
+  const requiredResources = [
+    ...(linkedPlan?.requiredMaterials || []).map(row => ({ ...row, type: 'Material' })),
+    ...(linkedPlan?.requiredTools || []).map(row => ({ ...row, type: 'Tool' }))
+  ]
+  const checklist = linkedPlan?.checklist || []
   const history = workOrders.filter(order => normalize(order['PM NUMBER']) === normalize(plan.pmNumber))
   const location = plan.location || asset?.location || 'From asset'
   const inactive = plan.pmStatus === 'INACTIVE'
@@ -133,7 +139,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                     <MiniMetric label="Every" value={`${schedule.frequency} ${schedule.freqUnit}`} note={selectedRule ? 'From rule' : 'Direct PM'} />
                     <MiniMetric label="Lead Time" value={`${schedule.leadTime} days`} note="Due soon window" />
                     <MiniMetric label="Trigger Hour" value={`${String(schedule.triggerHour || 0).padStart(2, '0')}:00`} note="Generation starts after" pulse />
-                    <MiniMetric label="WO Status" value={workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus} note={schedule.woStatus || activeWorkflow.initialStatus} />
+                    <MiniMetric label="WO Status" value={pmWorkOrderStatusLabel(schedule.woStatus, workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus)} note={schedule.woStatus || activeWorkflow.initialStatus} />
                   </div>
                 </div>
                 <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
@@ -143,7 +149,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                   </span>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone="blue">{plan.workType || 'PM'}</Badge>
-                    <Badge tone={statusTone(schedule.woStatus || activeWorkflow.initialStatus)}>{workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus}</Badge>
+                    <Badge tone={statusTone(schedule.woStatus || activeWorkflow.initialStatus)}>{pmWorkOrderStatusLabel(schedule.woStatus, workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus)}</Badge>
                     <Badge tone="purple">{tasks.length} job task{tasks.length === 1 ? '' : 's'}</Badge>
                     <Badge tone="green">Every {schedule.frequency} {schedule.freqUnit}</Badge>
                     <Badge tone="orange">{String(schedule.triggerHour || 0).padStart(2, '0')}:00</Badge>
@@ -167,7 +173,24 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
             <div className="mb-4 grid gap-3 md:grid-cols-3">
               <MiniMetric label="JPNUM" value={plan.jobPlan} note={linkedPlan?.description || 'Job plan reference from Excel'} />
               <MiniMetric label="Tasks" value={tasks.length} note="All matching task rows" />
-              <MiniMetric label="Estimated Duration" value={linkedPlan ? `${Math.max(1, Math.round(linkedPlan.duration * 10) / 10)} hours` : 'From job plan'} />
+              <MiniMetric label="Estimated Duration" value={linkedPlan ? `${Math.max(0, Math.round(linkedPlan.duration * 10) / 10)} hours` : 'From job plan'} />
+            </div>
+
+            <div className="mb-4 grid gap-3 md:grid-cols-3">
+              <MiniMetric label="Required Labor" value={requiredLabor.length} note="Craft lines" />
+              <MiniMetric label="Materials & Tools" value={requiredResources.length} note="Planned resources" />
+              <MiniMetric label="Checklist" value={checklist.length} note="Execution checks" />
+            </div>
+
+            <div className="mb-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl bg-[var(--app-soft-bg)] p-4">
+                <strong className="text-sm text-[var(--app-ink)]">Safety Instructions</strong>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--app-muted)]">{linkedPlan?.safetyInstructions || 'None specified'}</p>
+              </div>
+              <div className="rounded-2xl bg-[var(--app-soft-bg)] p-4">
+                <strong className="text-sm text-[var(--app-ink)]">Checklist</strong>
+                {checklist.length ? <ol className="mt-2 grid gap-1 text-sm text-[var(--app-muted)]">{checklist.map((item, index) => <li key={`${item}-${index}`}>{index + 1}. {item}</li>)}</ol> : <p className="mt-2 text-sm text-[var(--app-muted)]">No checklist items</p>}
+              </div>
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-[var(--app-line)]">
@@ -186,6 +209,16 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                 <p className="p-4 text-sm text-[var(--app-muted)]">No task rows found for this job plan.</p>
               )}
             </div>
+
+            {(requiredLabor.length > 0 || requiredResources.length > 0) && (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--app-line)]">
+                <div className="grid grid-cols-[120px_1fr_110px_120px] bg-[var(--app-table-header-bg)] px-4 py-3 text-[length:var(--app-table-header-font-size)] font-extrabold uppercase tracking-[.12em] text-[var(--app-table-heading)]">
+                  <span>Type</span><span>Requirement</span><span>Quantity</span><span>Store / Crew</span>
+                </div>
+                {requiredLabor.map((row, index) => <div className="grid grid-cols-[120px_1fr_110px_120px] border-t border-[var(--app-line)] px-4 py-3 text-sm" key={`labor-${index}`}><strong>Labor</strong><span>{row.craft}</span><span>{row.hours} h</span><span>{row.crew || 'Supervisor assigns'}</span></div>)}
+                {requiredResources.map((row, index) => <div className="grid grid-cols-[120px_1fr_110px_120px] border-t border-[var(--app-line)] px-4 py-3 text-sm" key={`resource-${index}`}><strong>{row.type}</strong><span>{row.itemCode || row.description}</span><span>{row.quantity}</span><span>{row.storeCode || plan.storeLocation || '-'}</span></div>)}
+              </div>
+            )}
           </DetailCard>
         )}
 
@@ -209,7 +242,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                     <strong className="mono block min-w-0 truncate text-[var(--app-ink)]" title={order.WORKORDER}>{order.WORKORDER}</strong>
                     <span className="min-w-0 truncate">{order['PM CYCLE'] || '-'}</span>
                     <span className="whitespace-nowrap">{String(order['TARGET START '] || '-').slice(0, 10)}</span>
-                    <Badge tone={['COMP', 'CLOSE'].includes(order.STATUS) ? 'green' : 'neutral'}>{order.STATUS}</Badge>
+                    <Badge tone={statusTone(order.STATUS)}>{pmWorkOrderStatusLabel(order.STATUS, order.STATUS)}</Badge>
                     <ChevronRight size={15} />
                   </button>
                 ))}
@@ -218,7 +251,7 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
               <div className="grid place-items-center rounded-2xl border border-dashed border-[var(--app-line)] p-8 text-center text-[var(--app-muted)]">
                 <CalendarClock />
                 <strong className="mt-2 text-[var(--app-ink)]">No work orders generated yet</strong>
-                <span className="text-sm">Run PM generation from the PM Schedule page. Matching generated WOs will appear here.</span>
+                <span className="text-sm">The backend scheduler will add each due maintenance cycle here automatically.</span>
               </div>
             )}
           </DetailCard>

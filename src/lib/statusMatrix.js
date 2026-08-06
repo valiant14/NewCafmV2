@@ -18,7 +18,8 @@ export const STATUS_MATRIX = {
     CLOSE: 'Closed',
     CAN: 'Cancelled',
     HOLD: 'On Hold',
-    ON_HOLD_MATERIAL: 'On Hold – Material'
+    ON_HOLD_MATERIAL: 'Waiting for Material',
+    ON_HOLD_PERMIT: 'Waiting for Permit'
   },
   preventiveMaintenance: {
     ACTIVE: 'Active',
@@ -87,6 +88,8 @@ const GENERIC_STATUS_ALIASES = {
   CANCELLED: 'CAN',
   CANCELED: 'CAN',
   'ON HOLD': 'HOLD',
+  'WAITING FOR MATERIAL': 'ON_HOLD_MATERIAL',
+  'WAITING FOR PERMIT': 'ON_HOLD_PERMIT',
   'WAITING FOR APPROVAL': 'WAPPR',
   'WAITING FOR SCHEDULE': 'WSCH'
 }
@@ -104,9 +107,7 @@ export const statusCode = (application, value) => {
   return GENERIC_STATUS_ALIASES[upper] || upper
 }
 
-// Both holds behave identically in the state machine. They differ in what they mean -
-// ON_HOLD_MATERIAL says the job is waiting on stock, and it is the one that pauses SLA.
-const holdStatuses = ['HOLD', 'ON_HOLD_MATERIAL']
+const holdStatuses = ['HOLD', 'ON_HOLD_MATERIAL', 'ON_HOLD_PERMIT']
 
 export const workOrderTransitions = (current, heldFrom = '', workflow = {}) => {
   const status = String(current || '').toUpperCase()
@@ -151,6 +152,6 @@ export const statusTone = status => {
   if (['INPRG', 'IN PROGRESS', 'SCHED', 'SCHEDULED', 'STAGED', 'CONVERTED'].includes(code)) return 'blue'
   if (['WSCH', 'DRAFT', 'PLANNED', 'ENTERED', 'NEW'].includes(code)) return 'purple'
   if (['CAN', 'CANCELLED', 'CANCELED', 'BROKEN', 'DECOMMISSIONED', 'RETIRED'].includes(code)) return 'red'
-  if (['WAPPR', 'HOLD', 'ON HOLD', 'ON_HOLD_MATERIAL', 'NOT READY', 'INACTIVE', 'LOW STOCK', 'NO STOCK'].includes(code)) return 'orange'
+  if (['WAPPR', 'HOLD', 'ON HOLD', 'ON_HOLD_MATERIAL', 'ON_HOLD_PERMIT', 'NOT READY', 'INACTIVE', 'LOW STOCK', 'NO STOCK'].includes(code)) return 'orange'
   return 'neutral'
 }

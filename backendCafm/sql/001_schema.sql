@@ -311,6 +311,9 @@ create table dbo.work_orders (
   actual_tools_json nvarchar(max) null,
   held_from_status nvarchar(40) null,
   hold_periods_json nvarchar(max) null,
+  estimated_duration_minutes decimal(18,4) not null constraint df_wo_estimated_duration default 0,
+  safety_instructions nvarchar(max) null,
+  checklist_json nvarchar(max) not null constraint df_wo_checklist default N'[]',
   created_by_user_id nvarchar(50) null,
   created_at datetime2 not null constraint df_wo_created default sysutcdatetime(),
   updated_at datetime2 not null constraint df_wo_updated default sysutcdatetime(),
@@ -318,7 +321,8 @@ create table dbo.work_orders (
   constraint fk_wo_location foreign key (location_code) references dbo.locations(location_code),
   constraint fk_wo_asset foreign key (asset_num) references dbo.assets(asset_num),
   constraint fk_wo_source_sr foreign key (source_sr_num) references dbo.service_requests(sr_num),
-  constraint fk_wo_sub_department foreign key (sub_department_code) references dbo.departments(sub_department_code)
+  constraint fk_wo_sub_department foreign key (sub_department_code) references dbo.departments(sub_department_code),
+  constraint ck_wo_checklist_json check (isjson(checklist_json) = 1)
 );
 go
 
@@ -590,8 +594,18 @@ create table dbo.job_plans (
   job_plan_num nvarchar(80) not null primary key,
   description nvarchar(300) not null,
   status nvarchar(40) not null constraint df_jp_status default 'ACTIVE',
+  estimated_duration_minutes decimal(18,4) not null constraint df_jp_estimated_duration default 0,
+  required_labor_json nvarchar(max) not null constraint df_jp_required_labor default N'[]',
+  required_materials_json nvarchar(max) not null constraint df_jp_required_materials default N'[]',
+  required_tools_json nvarchar(max) not null constraint df_jp_required_tools default N'[]',
+  safety_instructions nvarchar(max) null,
+  checklist_json nvarchar(max) not null constraint df_jp_checklist default N'[]',
   created_at datetime2 not null constraint df_jp_created default sysutcdatetime(),
-  updated_at datetime2 not null constraint df_jp_updated default sysutcdatetime()
+  updated_at datetime2 not null constraint df_jp_updated default sysutcdatetime(),
+  constraint ck_jp_required_labor_json check (isjson(required_labor_json) = 1),
+  constraint ck_jp_required_materials_json check (isjson(required_materials_json) = 1),
+  constraint ck_jp_required_tools_json check (isjson(required_tools_json) = 1),
+  constraint ck_jp_checklist_json check (isjson(checklist_json) = 1)
 );
 go
 

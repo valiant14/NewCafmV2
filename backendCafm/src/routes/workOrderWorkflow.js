@@ -142,7 +142,7 @@ router.put('/', requirePermission('Work Order Workflow', 'edit'), asyncHandler(a
         select distinct upper(ltrim(rtrim(status))) status_code
         from dbo.work_orders
         where status is not null
-          and upper(ltrim(rtrim(status))) not in ('CAN', 'CANCELLED', 'CANCELED', 'HOLD', 'ON_HOLD_MATERIAL');
+          and upper(ltrim(rtrim(status))) not in ('CAN', 'CANCELLED', 'CANCELED', 'HOLD', 'ON_HOLD_MATERIAL', 'ON_HOLD_PERMIT');
       `)
       const configured = new Set(effectiveSteps.map(step => step.status_code))
       const orphaned = liveStatuses.recordset.map(row => row.status_code).filter(status => !configured.has(status))

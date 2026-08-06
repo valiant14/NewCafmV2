@@ -1,4 +1,4 @@
-import { Boxes, ListChecks, Lock, Plus, Users, X } from 'lucide-react'
+import { Boxes, ListChecks, Lock, Plus, ShieldCheck, Users, X } from 'lucide-react'
 import Section from '../ui/Section'
 
 const workspaceClass = 'grid gap-3'
@@ -24,6 +24,9 @@ export default function WorkOrderPlanTab({
   isPM,
   tasksLocked = isPM,
   jobPlanNumber,
+  estimatedDuration = 0,
+  safetyInstructions = '',
+  checklist = [],
   plannedLabor,
   setPlannedLabor,
   plannedResources,
@@ -59,14 +62,14 @@ export default function WorkOrderPlanTab({
             <div className={isPM ? laborRowClass : editableLaborRowClass} key={index}>
               <input value={row.craft} list="planned-craft-options" readOnly={readOnly || isPM} onChange={event => updatePlanRow(setPlannedLabor, index, 'craft', event.target.value)} placeholder="Search craft code or description" />
               <input value={row.hours} readOnly={readOnly || isPM} type="number" onChange={event => updatePlanRow(setPlannedLabor, index, 'hours', event.target.value)} placeholder="Hours" />
-              <input value={row.crew} list="planned-crew-options" readOnly={readOnly || isPM} onChange={event => updatePlanRow(setPlannedLabor, index, 'crew', event.target.value)} placeholder="Search technician or crew" />
+              <input value={row.crew} list="planned-crew-options" readOnly={readOnly} onChange={event => updatePlanRow(setPlannedLabor, index, 'crew', event.target.value)} placeholder="Assign technician or crew" />
               {!isPM && <button disabled={readOnly} onClick={() => setPlannedLabor(rows => rows.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>}
             </div>
           ))}
         </div>
       </Section>
 
-      <Section compact tone="green" icon={Boxes} title="Planned Materials & Tools" note="Left empty by default. Data entry users add materials, tools, or equipment manually when needed; availability is managed in Materials.">
+      <Section compact tone="green" icon={Boxes} title="Planned Materials & Tools" note={isPM ? 'Generated from the linked job plan; additional requirements can be added before execution' : 'Add the materials, tools, or equipment required; availability is managed in Materials'}>
         <div className={actionRowClass}>
           <button className={addButtonClass} disabled={readOnly} onClick={() => setPlannedResources(rows => [...rows, { type: 'Material', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add material</button>
           <button className={secondaryAddButtonClass} disabled={readOnly} onClick={() => setPlannedResources(rows => [...rows, { type: 'Tool', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add tool</button>
@@ -76,7 +79,7 @@ export default function WorkOrderPlanTab({
         <div className={tableClass}>
           <div className={resourceHeadClass}><span>Type</span><span>Item / description</span><span>Quantity</span><span /></div>
           {plannedResources.length ? plannedResources.map((row, index) => {
-            const locked = readOnly || hasTransaction(row)
+            const locked = readOnly || hasTransaction(row) || (isPM && row.sourceType === 'JOB_PLAN')
             return (
             <div className={resourceRowClass} key={index}>
               <select value={row.type} disabled={locked} title={locked ? 'Submitted resource lines cannot be changed. Add a new row for extra quantity.' : undefined} onChange={event => updatePlannedResourceField(index, 'type', event.target.value)}>
@@ -89,6 +92,25 @@ export default function WorkOrderPlanTab({
           )}) : <div className={emptyClass}>No planned materials or tools yet.</div>}
         </div>
       </Section>
+
+      {isPM && (
+        <Section compact tone="orange" icon={ShieldCheck} title="Safety & Checklist" note={`Execution package from job plan ${jobPlanNumber || '-'}`}>
+          <div className="grid gap-3 lg:grid-cols-[180px_1fr_1fr]">
+            <div className="rounded-xl bg-[var(--app-soft-bg)] p-3">
+              <span className="app-stat-label">Estimated duration</span>
+              <strong className="mt-1 block text-[var(--app-ink)]">{Number(estimatedDuration || 0)} min</strong>
+            </div>
+            <div className="rounded-xl bg-[var(--app-soft-bg)] p-3">
+              <span className="app-stat-label">Safety instructions</span>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-[var(--app-table-text)]">{safetyInstructions || 'None specified'}</p>
+            </div>
+            <div className="rounded-xl bg-[var(--app-soft-bg)] p-3">
+              <span className="app-stat-label">Checklist</span>
+              {checklist.length ? <ol className="mt-1 grid gap-1 text-sm text-[var(--app-table-text)]">{checklist.map((item, index) => <li key={`${item}-${index}`}>{index + 1}. {item}</li>)}</ol> : <p className="mt-1 text-sm text-[var(--app-muted)]">No checklist items</p>}
+            </div>
+          </div>
+        </Section>
+      )}
 
       <Section compact icon={ListChecks} title="Job Tasks" note={tasksLocked ? `Generated from job plan ${jobPlanNumber}` : 'Configure sequence, instructions, and expected duration'}>
         {!tasksLocked && <button className={addButtonClass} disabled={readOnly} onClick={() => setPlannedTasks(rows => [...rows, { sequence: (rows.length + 1) * 10, description: '', duration: '' }])}><Plus size={15} />Add task</button>}

@@ -29,7 +29,7 @@ import { sameDepartment, systemNamesForDepartment, workGroupsForDepartment } fro
 import { storeLabel, storesHolding, totalAvailable } from './lib/inventory'
 import { readProjectName } from './lib/projectSettings'
 import { canTransitionWorkOrder, statusCode, statusDescription, statusOptions, workOrderTransitions } from './lib/statusMatrix'
-import { HOLD_MATERIAL, effectiveTargetTime, endHold, holdSince, isOnHold, startHold } from './lib/holdPeriods'
+import { HOLD_MATERIAL, HOLD_PERMIT, effectiveTargetTime, endHold, holdSince, isOnHold, startHold } from './lib/holdPeriods'
 import { describeOutstanding, markReturned, outstandingReturns } from './lib/resourceReturns'
 import { canUseAction, canViewPage, filterNavigationForUser, firstAllowedPage, scopeRowsForUser } from './lib/accessControl'
 import { failureClassOptions, jobPlanOptions } from './lib/masterOptions'
@@ -58,6 +58,7 @@ import {
   applicationWorkflowToApi,
   normalizeApplicationWorkflow
 } from './lib/applicationWorkflow'
+import { pmWorkOrderStatusLabel } from './lib/pmGeneration'
 
 const ServiceRequestsPage = lazy(() => import('./pages/ServiceRequestsPage'))
 const WorkOrdersPage = lazy(() => import('./pages/WorkOrdersPage'))
@@ -132,16 +133,36 @@ const toLocationPriority = value => {
   return 3
 }
 const maximoWorkOrderStatusDescriptions = new Proxy({}, { get: (_, status) => statusDescription('workOrder', status) })
+const workOrderHoldStatuses = ['HOLD', HOLD_MATERIAL, HOLD_PERMIT]
+const workOrderDisplayStatus = (isPM, workflow, status) => {
+  const fallback = workflowStatusLabel(workflow, status) || maximoWorkOrderStatusDescriptions[status] || status
+  return isPM ? pmWorkOrderStatusLabel(status, fallback) : fallback
+}
 const splitNotificationRecipients = value => {
   const source = Array.isArray(value) ? value.join(',') : String(value || '')
   return source.split(/[,;\n]+/).map(item => item.trim()).filter(Boolean)
 }
 const notificationEventForWorkOrderStatus = status => {
   const code = String(status || '').toUpperCase()
-  if (code === 'HOLD' || code === HOLD_MATERIAL) return 'Work order on hold'
+  if (workOrderHoldStatuses.includes(code)) return 'Work order on hold'
   return ''
 }
 const cleanText = value => String(value ?? '').replace(/\s+/g, ' ').trim()
+const splitPlanList = value => String(value || '').split(/[;\n]+/).map(cleanText).filter(Boolean)
+const uniquePlanRows = (rows, keyFor) => [...new Map(rows.map(row => [keyFor(row), row]).filter(([key]) => key)).values()]
+const jobPlanPackageFromRows = rows => ({
+  requiredLabor: uniquePlanRows(rows
+    .filter(row => cleanText(row['LABOR CRAFT']) && Number(row['LABOR HOURS']) > 0)
+    .map((row, index) => ({ lineOrder: index + 1, craft: cleanText(row['LABOR CRAFT']), hours: Number(row['LABOR HOURS']), crew: cleanText(row['ASSIGNED CREW']) })), row => `${row.craft.toLowerCase()}|${row.hours}|${row.crew.toLowerCase()}`),
+  requiredMaterials: uniquePlanRows(rows
+    .filter(row => cleanText(row['MATERIAL CODE'] || row['MATERIAL DESCRIPTION']) && Number(row['MATERIAL QTY']) > 0)
+    .map(row => ({ itemCode: cleanText(row['MATERIAL CODE']), description: cleanText(row['MATERIAL DESCRIPTION']), quantity: Number(row['MATERIAL QTY']), storeCode: cleanText(row['MATERIAL STORE']) })), row => `${row.itemCode.toLowerCase()}|${row.description.toLowerCase()}|${row.storeCode.toLowerCase()}`),
+  requiredTools: uniquePlanRows(rows
+    .filter(row => cleanText(row['TOOL CODE'] || row['TOOL DESCRIPTION']) && Number(row['TOOL QTY']) > 0)
+    .map(row => ({ itemCode: cleanText(row['TOOL CODE']), description: cleanText(row['TOOL DESCRIPTION']), quantity: Number(row['TOOL QTY']), storeCode: cleanText(row['TOOL STORE']) })), row => `${row.itemCode.toLowerCase()}|${row.description.toLowerCase()}|${row.storeCode.toLowerCase()}`),
+  safetyInstructions: [...new Set(rows.flatMap(row => splitPlanList(row['SAFETY INSTRUCTIONS'])))].join('\n'),
+  checklist: [...new Set(rows.flatMap(row => splitPlanList(row['CHECKLIST ITEM'] || row.CHECKLIST)))]
+})
 let pendingReferenceCounter = 0
 const pendingReference = prefix => `${prefix}-PENDING-${Date.now().toString(36)}-${++pendingReferenceCounter}`
 const upsertLocalRecord = (rows, record, key) => {
@@ -553,7 +574,7 @@ const apiMappers = {
     endpoint: '/work-orders',
     key: 'WORKORDER',
     apiKey: 'work_order_num',
-    toApi: row => ({ ...(row.__isNew ? { __forcePost: true } : {}), work_order_num: row.__isNew ? 'AUTO' : toText(row.WORKORDER), description: toText(row['DESCRIPITION '] || row.DESCRIPTION), long_description: row['LONG DESCRIPTION'] || '', location_code: row['LOCATION '] || '', asset_num: row.ASSET || null, status: statusText(row.STATUS, 'WAPPR'), work_type: row['WORK TYPE '] || row['WORK TYPE'] || 'CM', priority: toNumberOrNull(row.PRIORTY || row.priority), site_code: row.SITE || null, department_name: row['DEPARTMENT '] || '', sub_department_code: row['SUB DEPARTMENT  NAME'] || '', assigned_department_name: row['ASSIGNED DEPARTMENT'] || row['DEPARTMENT '] || '', work_group: row['WORK GROUP'] || '', system_name: row.SYSTEM || '', supervisor: row.SUPERVISOR || '', labor_craft_code: row['LABOR CRAFT CODE'] || '', target_start_at: toDateOrNull(row['TARGET START ']), target_finish_at: toDateOrNull(row['TARGET FINISH ']), actual_start_at: toDateOrNull(row['ACTUAL START ']), actual_finish_at: toDateOrNull(row['ACTUAL FINISH ']), reported_at: toDateOrNull(row['REPORTED DATE ']) || new Date(), source_sr_num: row['SOURCE SR'] || null, pm_num: row['PM NUMBER'] || null, pm_cycle: row['PM CYCLE'] || null, job_plan_num: row['JOB PLAN'] || null, schedule_rule_name: row['PM RULE'] || null, failure_code: row['FAILURE CODE'] || '', problem_code: row['PROBLEM CODE'] || '', cause_code: row['CAUSE CODE'] || '', remedy_code: row['REMEDY CODE'] || '', ...(row['PTW REQUIRED'] === undefined ? {} : { ptw_required: Boolean(row['PTW REQUIRED']) }), technician_remarks: row['TECHNICIAN REMARKS'] || '', completion_notes: row['COMPLETION NOTES'] || '', actual_labor: row['ACTUAL LABOR'] || '', actual_hours: toNumberOrNull(row['ACTUAL HOURS']), actual_materials_json: JSON.stringify(actualResourceMetadata(row['ACTUAL MATERIALS'])), actual_tools_json: JSON.stringify(actualResourceMetadata(row['ACTUAL TOOLS'])), held_from_status: row['HELD FROM'] || null, hold_periods_json: JSON.stringify(Array.isArray(row.holdPeriods) ? row.holdPeriods : []) }),
+    toApi: row => ({ ...(row.__isNew ? { __forcePost: true } : {}), work_order_num: row.__isNew ? 'AUTO' : toText(row.WORKORDER), description: toText(row['DESCRIPITION '] || row.DESCRIPTION), long_description: row['LONG DESCRIPTION'] || '', location_code: row['LOCATION '] || '', asset_num: row.ASSET || null, status: statusText(row.STATUS, 'WAPPR'), work_type: row['WORK TYPE '] || row['WORK TYPE'] || 'CM', priority: toNumberOrNull(row.PRIORTY || row.priority), site_code: row.SITE || null, department_name: row['DEPARTMENT '] || '', sub_department_code: row['SUB DEPARTMENT  NAME'] || '', assigned_department_name: row['ASSIGNED DEPARTMENT'] || row['DEPARTMENT '] || '', work_group: row['WORK GROUP'] || '', system_name: row.SYSTEM || '', supervisor: row.SUPERVISOR || '', labor_craft_code: row['LABOR CRAFT CODE'] || '', target_start_at: toDateOrNull(row['TARGET START ']), target_finish_at: toDateOrNull(row['TARGET FINISH ']), actual_start_at: toDateOrNull(row['ACTUAL START ']), actual_finish_at: toDateOrNull(row['ACTUAL FINISH ']), reported_at: toDateOrNull(row['REPORTED DATE ']) || new Date(), source_sr_num: row['SOURCE SR'] || null, pm_num: row['PM NUMBER'] || null, pm_cycle: row['PM CYCLE'] || null, job_plan_num: row['JOB PLAN'] || null, schedule_rule_name: row['PM RULE'] || null, failure_code: row['FAILURE CODE'] || '', problem_code: row['PROBLEM CODE'] || '', cause_code: row['CAUSE CODE'] || '', remedy_code: row['REMEDY CODE'] || '', ...(row['PTW REQUIRED'] === undefined ? {} : { ptw_required: Boolean(row['PTW REQUIRED']) }), technician_remarks: row['TECHNICIAN REMARKS'] || '', completion_notes: row['COMPLETION NOTES'] || '', actual_labor: row['ACTUAL LABOR'] || '', actual_hours: toNumberOrNull(row['ACTUAL HOURS']), actual_materials_json: JSON.stringify(actualResourceMetadata(row['ACTUAL MATERIALS'])), actual_tools_json: JSON.stringify(actualResourceMetadata(row['ACTUAL TOOLS'])), held_from_status: row['HELD FROM'] || null, hold_periods_json: JSON.stringify(Array.isArray(row.holdPeriods) ? row.holdPeriods : []), estimated_duration_minutes: toNumberOrNull(row['ESTIMATED DURATION']) || 0, safety_instructions: row['SAFETY INSTRUCTIONS'] || '', checklist_json: JSON.stringify(Array.isArray(row.CHECKLIST) ? row.CHECKLIST : []) }),
     beforeRow: persistWorkOrderChildren,
     afterRow: async (row, saved, context) => {
       if (context?.existed) return
@@ -596,7 +617,7 @@ const apiMappers = {
     endpoint: '/pm-schedule-rules',
     key: 'name',
     apiKey: 'rule_name',
-    toApi: row => ({ rule_name: toText(row.name), frequency: toNumberOrNull(row.frequency) || 1, frequency_unit: row.freqUnit || 'MONTHS', lead_time_days: toNumberOrNull(row.leadTimeDays) || 0, horizon_days: toNumberOrNull(row.horizonDays) || 30, trigger_hour: ['MINUTES', 'HOURS'].includes(row.freqUnit) ? 0 : Math.max(0, Math.min(23, toNumberOrNull(row.triggerHour) || 0)), wo_prefix: row.woPrefix || 'PMWO-', default_wo_status: row.defaultWoStatus || 'WSCH', notes: row.notes || '', status: row.status || 'Active' })
+    toApi: row => ({ rule_name: toText(row.name), frequency: toNumberOrNull(row.frequency) || 1, frequency_unit: row.freqUnit || 'MONTHS', lead_time_days: toNumberOrNull(row.leadTimeDays) || 0, horizon_days: toNumberOrNull(row.horizonDays) ?? 30, trigger_hour: ['MINUTES', 'HOURS'].includes(row.freqUnit) ? 0 : Math.max(0, Math.min(23, toNumberOrNull(row.triggerHour) || 0)), wo_prefix: row.woPrefix || 'PMWO-', default_wo_status: row.defaultWoStatus || 'WSCH', notes: row.notes || '', status: row.status || 'Active' })
   },
   connectors: {
     endpoint: '/smtp-sms-connectors',
@@ -620,7 +641,7 @@ const apiMappers = {
     endpoint: '/job-plans',
     key: 'JPNUM',
     apiKey: 'job_plan_num',
-    toApi: row => ({ job_plan_num: toText(row.JPNUM || row.number), description: toText(row.DESCRIPTION || row.description), status: statusText(row.status, 'ACTIVE') })
+    toApi: row => ({ job_plan_num: toText(row.JPNUM || row.number), description: toText(row.DESCRIPTION || row.description), status: statusText(row.status, 'ACTIVE'), estimated_duration_minutes: toNumberOrNull(row.estimatedDurationMinutes) || 0, required_labor_json: JSON.stringify(Array.isArray(row.requiredLabor) ? row.requiredLabor : []), required_materials_json: JSON.stringify(Array.isArray(row.requiredMaterials) ? row.requiredMaterials : []), required_tools_json: JSON.stringify(Array.isArray(row.requiredTools) ? row.requiredTools : []), safety_instructions: row.safetyInstructions || '', checklist_json: JSON.stringify(Array.isArray(row.checklist) ? row.checklist : []) })
   },
   jobTasks: {
     endpoint: '/job-plan-tasks',
@@ -757,7 +778,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const jobPlanTaskRows = order['JOB PLAN TASKS']?.length ? order['JOB PLAN TASKS'] : jobPlanNumber ? jobTaskRecords.filter(task => cleanText(task.JPNUM) === jobPlanNumber) : []
   // saveChanges writes these back onto the order, so reopening a saved work order must
   // read them again - otherwise planned rows silently vanish on every revisit.
-  const [plannedLabor,setPlannedLabor]=useState(order['PLANNED LABOR']?.length?order['PLANNED LABOR']:[{craft:'',hours:'',crew:''}])
+  const [plannedLabor,setPlannedLabor]=useState(order['PLANNED LABOR']?.length?order['PLANNED LABOR']:isPM?[]:[{craft:'',hours:'',crew:''}])
   const [plannedResources,setPlannedResources]=useState(order['PLANNED RESOURCES']?.length?order['PLANNED RESOURCES']:[])
   const [plannedTasks,setPlannedTasks]=useState(isPM?jobPlanTaskRows.map(taskToPlanRow):[{sequence:10,description:'',duration:''}])
   const tasksFromJobPlan=isPM&&jobPlanTaskRows.length>0
@@ -976,7 +997,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
       ...order,
       ...currentWorkOrderSnapshot(),
       STATUS: next,
-      'STATUS DESCRIPITION': workflowStatusLabel(workflow,next)||maximoWorkOrderStatusDescriptions[next]||next
+      'STATUS DESCRIPITION': workOrderDisplayStatus(isPM,workflow,next)
     })
   }
   // `chained` is set only by the automatic advance, which has already walked the steps one at a
@@ -984,20 +1005,19 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const changeStatus=(value,options)=>{
     const next=normalizeWoStatus(value)
     const chained=options?.chained===true
-    const holdStatuses=['HOLD',HOLD_MATERIAL]
     if(['CLOSE','CAN'].includes(next)&&!canCloseWorkOrder) return
-    if((holdStatuses.includes(next)||holdStatuses.includes(selectedStatus))&&!canManageHold) return
+    if((workOrderHoldStatuses.includes(next)||workOrderHoldStatuses.includes(selectedStatus))&&!canManageHold) return
     // The select disables invalid options, but guard here too so no other caller can
     // drive the work order off the workflow.
     if(!chained&&!canTransitionWorkOrder(selectedStatus,next,heldFrom,workflow)) return
     notifyStatusChange(next)
-    const wasHold=['HOLD',HOLD_MATERIAL].includes(selectedStatus)
-    if(['HOLD',HOLD_MATERIAL].includes(next)) setHeldFrom(selectedStatus)
+    const wasHold=workOrderHoldStatuses.includes(selectedStatus)
+    if(workOrderHoldStatuses.includes(next)) setHeldFrom(selectedStatus)
     else if(wasHold) setHeldFrom('')
-    // Only the material hold stops the SLA clock, so only it opens a hold period. Going
-    // via the status select and via the header buttons must produce the same record.
-    if(next===HOLD_MATERIAL) setHoldPeriods(current=>startHold({holdPeriods:current}))
-    else if(selectedStatus===HOLD_MATERIAL) setHoldPeriods(current=>endHold({holdPeriods:current}))
+    if(workOrderHoldStatuses.includes(next)) {
+      const reason=next===HOLD_MATERIAL?'MATERIAL':next===HOLD_PERMIT?'PERMIT':'GENERAL'
+      setHoldPeriods(current=>startHold({holdPeriods:current},reason))
+    } else if(wasHold) setHoldPeriods(current=>endHold({holdPeriods:current}))
     setSelectedStatus(next)
     setWorkApproved(['APPR','WSCH','SCHED','INPRG','COMP','CLOSE'].includes(next))
     setWorkWaitingSchedule(['WSCH','SCHED','INPRG','COMP','CLOSE'].includes(next))
@@ -1025,23 +1045,23 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   // current status always reads "nothing missing" - the work order is already there - which
   // contradicted the disabled action sitting right beneath it.
   const nextInChain=configuredNextStep?.statusCode||''
-  const workflowMissing=['HOLD',HOLD_MATERIAL].includes(status)?holdMissing
+  const workflowMissing=workOrderHoldStatuses.includes(status)?holdMissing
     :missingFor(status).length?missingFor(status)
     :nextInChain?missingFor(nextInChain):[]
   const allowedStatuses=workOrderTransitions(status,heldFrom,workflow)
   const configuredStatusOptions=workflowStatusOptions(workflow)
   const exceptionalStatusOptions=statusOptions('workOrder')
-    .filter(value=>['HOLD',HOLD_MATERIAL,'CAN'].includes(value))
+    .filter(value=>[...workOrderHoldStatuses,'CAN'].includes(value))
     .map(value=>({value,label:maximoWorkOrderStatusDescriptions[value]||value}))
   const allStatusOptions=[...configuredStatusOptions,...exceptionalStatusOptions]
-  if(!allStatusOptions.some(option=>option.value===status)) allStatusOptions.push({value:status,label:workflowStatusLabel(workflow,status)||status})
+  if(!allStatusOptions.some(option=>option.value===status)) allStatusOptions.push({value:status,label:workOrderDisplayStatus(isPM,workflow,status)})
   const statusSelectOptions=allStatusOptions.map(option=>({
     value:option.value,
-    label:`${option.value} · ${option.label}`,
-    disabled:option.value!==status&&(!allowedStatuses.includes(option.value)||missingFor(option.value).length>0||(['CLOSE','CAN'].includes(option.value)&&!canCloseWorkOrder)||(['HOLD',HOLD_MATERIAL].includes(option.value)&&!canManageHold))
+    label:`${option.value} · ${workOrderDisplayStatus(isPM,workflow,option.value)}`,
+    disabled:option.value!==status&&(!allowedStatuses.includes(option.value)||missingFor(option.value).length>0||(['CLOSE','CAN'].includes(option.value)&&!canCloseWorkOrder)||(workOrderHoldStatuses.includes(option.value)&&!canManageHold))
   }))
-  const workflowNextStepText=['HOLD',HOLD_MATERIAL].includes(status)
-    ?(status===HOLD_MATERIAL?'SLA is paused. Resume once material is available':'Resolve the hold before continuing')
+  const workflowNextStepText=workOrderHoldStatuses.includes(status)
+    ?(status===HOLD_MATERIAL?'SLA is paused. Resume once material is available':status===HOLD_PERMIT?'SLA is paused. Resume once the permit is approved':'Resolve the hold before continuing')
     :!configuredNextStep
       ?'Workflow complete'
       :missingFor(configuredNextStep.statusCode).length
@@ -1080,29 +1100,15 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
   const number = order.WORKORDER || 'AUTO'
   const rawTargetFinishTime=targetFinish?new Date(targetFinish).getTime():null
   const actualFinishTime=actualFinish?new Date(actualFinish).getTime():null
-  const onMaterialHold=status===HOLD_MATERIAL||isOnHold({holdPeriods})
+  const onWorkflowHold=workOrderHoldStatuses.includes(status)||isOnHold({holdPeriods})
   // The deadline moves forward by whatever time this order has already spent on hold, so
   // waiting on stock never eats into the SLA.
   const targetFinishTime=effectiveTargetTime(rawTargetFinishTime,{holdPeriods})
-  const slaBreachedNow=Boolean(!onMaterialHold&&targetFinishTime&&((actualFinishTime&&actualFinishTime>targetFinishTime)||(!actualFinishTime&&Date.now()>targetFinishTime)))
-  const slaLabel=onMaterialHold?'SLA Paused'
+  const slaBreachedNow=Boolean(!onWorkflowHold&&targetFinishTime&&((actualFinishTime&&actualFinishTime>targetFinishTime)||(!actualFinishTime&&Date.now()>targetFinishTime)))
+  const slaLabel=onWorkflowHold?'SLA Paused'
     :!targetFinishTime?'Not defined'
     :actualFinishTime?(slaBreachedNow?'No – SLA Breached':'Yes – SLA Met')
     :(slaBreachedNow?'No – SLA Breached':'Pending – Within SLA')
-  const putOnMaterialHold=()=>{
-    const periods=startHold({holdPeriods})
-    notifyStatusChange(HOLD_MATERIAL)
-    setHoldPeriods(periods); setHeldFrom(status); setSelectedStatus(HOLD_MATERIAL)
-    // Pushed straight to the shared list so the badge updates without waiting for Save.
-    onUpdateWorkOrder?.(number,{STATUS:HOLD_MATERIAL,'STATUS DESCRIPITION':statusDescription('workOrder',HOLD_MATERIAL),'HELD FROM':status,holdPeriods:periods})
-  }
-  const resumeFromMaterialHold=()=>{
-    const periods=endHold({holdPeriods})
-    const resume=workOrderTransitions(HOLD_MATERIAL,heldFrom,workflow)[0]||workflow.initialStatus
-    notifyStatusChange(resume)
-    setHoldPeriods(periods); setHeldFrom(''); setSelectedStatus(resume)
-    onUpdateWorkOrder?.(number,{STATUS:resume,'STATUS DESCRIPITION':statusDescription('workOrder',resume),'HELD FROM':'',holdPeriods:periods})
-  }
   const close = () => onClose()
   const reroute=()=>{setTab('Overview');setAssignedDepartment('');setSupervisor('');setWorkStarted(false);setWorkScheduled(false);setWorkWaitingSchedule(false);setWorkApproved(false)}
   const addFiles=category=>async event=>{
@@ -1234,7 +1240,7 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     SUPERVISOR: supervisor,
     'LABOR CRAFT CODE': laborCraft,
     STATUS: status,
-    'STATUS DESCRIPITION': workflowStatusLabel(workflow,status)||maximoWorkOrderStatusDescriptions[status]||status,
+    'STATUS DESCRIPITION': workOrderDisplayStatus(isPM,workflow,status),
     'TARGET START ': targetStart,
     'TARGET FINISH ': targetFinish,
     'ACTUAL START ': actualStart,
@@ -1287,19 +1293,19 @@ function WorkOrderEditor({ order, onClose, page = false, projectName, initialTab
     return()=>clearTimeout(timer)
   },[description,longDescription,priority,department,subDepartment,assignedDepartment,workGroup,supervisor,laborCraft,siteValue,assetValue,assetDescription,locationValue,targetStart,targetFinish,failureClass,problemCode,causeCode,remedyCode,plannedLabor,plannedResources,plannedTasks,ptwRequired,technicianRemarks,completionNotes,actualLabor,actualHours,actualMaterials,actualTools,actualStart,actualFinish,meterId,waterMeterId,energyMeterId,meterReading,waterConsumption,energyConsumption,meterReadingDate,selectedStatus,workApproved,workWaitingSchedule,workScheduled,workStarted,workCompleted,workClosed])
   return <div className={page?'w-full':'fixed inset-0 z-50 overflow-auto bg-[color:color-mix(in_srgb,var(--app-sidebar-bg)_72%,transparent)] p-6 backdrop-blur-sm'}><div className={`${page?'mx-auto w-full max-w-[1400px] space-y-3 bg-transparent p-0':'mx-auto max-w-7xl space-y-4 rounded-3xl bg-[var(--app-panel)] p-0 shadow-2xl'} wo-screen`}>
-    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={workflowStatusLabel(workflow,status)||maximoWorkOrderStatusDescriptions[status]||status} statusTone={workflowStepByStatus(workflow,status)?.badgeTone} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} statusOptions={statusSelectOptions} onStatusChange={changeStatus} close={close} printWorkOrder={printWorkOrder} workClosed={workClosed} statusLocked={!canEditWorkOrder||!workflow.allowManualStatusChange} />
+    <WorkOrderHeader number={number} workType={workType} status={status} statusDescription={workOrderDisplayStatus(isPM,workflow,status)} statusTone={workflowStepByStatus(workflow,status)?.badgeTone} description={description || order.DESCRIPTION || 'Enter work order information'} isPM={isPM} statusOptions={statusSelectOptions} onStatusChange={changeStatus} close={close} printWorkOrder={printWorkOrder} workClosed={workClosed} statusLocked={!canEditWorkOrder||!workflow.allowManualStatusChange} />
     <WorkOrderTabs tabs={visibleWorkOrderTabs} active={tab} onChange={setTab} alertTabs={tabAlerts} meta={<WorkOrderDatesBar readOnly={!canEditWorkOrder} isPM={isPM} reportedDate={reportedDateValue} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} actualFinish={actualFinish} />} />
     <WorkOrderWorkflowNotice status={status} missing={workflowMissing} nextStep={workflowNextStepText} />
     <div className={workOrderBodyClass}>
       {tab==='Overview' && <WorkOrderOverviewTab readOnly={!canEditWorkOrder} projectName={projectName} sourceRequest={sourceRequest} number={number} status={status} workType={workType} priority={priority} setPriority={setPriority} description={description} setDescription={setDescription} siteValue={siteValue} changeSite={changeSite} siteOptions={siteOptions} longDescription={longDescription} setLongDescription={setLongDescription} assetValue={assetValue} changeAsset={changeAsset} assetOptions={assetOptions} locationValue={locationValue} setLocationValue={setLocationValue} locationOptions={locationOptions} assetDescription={assetDescription} setAssetDescription={setAssetDescription} department={department} setDepartment={setDepartment} departmentOptions={departmentOptions} subDepartment={subDepartment} setSubDepartment={setSubDepartment} subDepartmentOptions={subDepartmentOptions} assignedDepartment={assignedDepartment} setAssignedDepartment={setAssignedDepartment} setWorkGroup={setWorkGroup} setSupervisor={setSupervisor} workGroup={workGroup} workGroupOptions={workGroupOptions} systemValue={systemValue} setSystemValue={setSystemValue} systemOptions={systemOptions} supervisor={supervisor} supervisorOptions={supervisorOptions} laborCraft={laborCraft} setLaborCraft={setLaborCraft} laborCraftOptions={laborCraftOptions} reportedDate={reportedDateValue} targetStart={targetStart} setTargetStart={setTargetStart} targetFinish={targetFinish} setTargetFinish={setTargetFinish} actualStart={actualStart} setActualStart={setActualStart} actualFinish={actualFinish} setActualFinish={setActualFinish} slaLabel={slaLabel} isPM={isPM} />}
-      {tab==='Plan' && <WorkOrderPlanTab readOnly={!canEditWorkOrder} isPM={isPM} tasksLocked={tasksFromJobPlan} jobPlanNumber={jobPlanNumber} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialRecords} toolMaster={toolRecords} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} updatePlannedResourceField={updatePlannedResourceField} />}
+      {tab==='Plan' && <WorkOrderPlanTab readOnly={!canEditWorkOrder} isPM={isPM} tasksLocked={tasksFromJobPlan} jobPlanNumber={jobPlanNumber} estimatedDuration={order['ESTIMATED DURATION']} safetyInstructions={order['SAFETY INSTRUCTIONS']} checklist={order.CHECKLIST||[]} plannedLabor={plannedLabor} setPlannedLabor={setPlannedLabor} plannedResources={plannedResources} setPlannedResources={setPlannedResources} plannedTasks={plannedTasks} setPlannedTasks={setPlannedTasks} plannedCraftOptions={plannedCraftOptions} plannedCrewOptions={plannedCrewOptions} materialMaster={materialRecords} toolMaster={toolRecords} updatePlanRow={updatePlanRow} updatePlannedResource={updatePlannedResource} updatePlannedResourceField={updatePlannedResourceField} />}
       {tab==='Actual' && <WorkOrderActualTab readOnly={!canEditWorkOrder} actualsEditable={actualsEditable} status={status} nextStatus={nextInChain} preparationReady={startReady} planReady={planReady} setTab={setTab} setWorkStarted={value=>{if(value&&startReady)changeStatus('INPRG')}} completeWork={completeWork} showStartAction={!workflowStepByStatus(workflow,'INPRG')?.isAutomatic} showCompleteAction={!workflowStepByStatus(workflow,'COMP')?.isAutomatic} showCloseAction={canCloseWorkOrder&&!workflowStepByStatus(workflow,'CLOSE')?.isAutomatic} completionReady={completionReady} completionBlocked={missingFor('COMP').join(', ')} startBlocked={missingFor('INPRG').join(', ')} outlineButtonClass={workOrderOutlineButtonClass} primaryButtonClass={workOrderPrimaryButtonClass} targetStart={targetStart} targetFinish={targetFinish} actualFinish={actualFinish} completionDate={order['COMPLETED AT']} closedAt={order['CLOSED AT']} closedBy={order['CLOSED BY']} setActualFinish={changeActualFinish} slaBreachedNow={slaBreachedNow} slaLabel={slaLabel} technicianRemarks={technicianRemarks} setTechnicianRemarks={setTechnicianRemarks} completionNotes={completionNotes} setCompletionNotes={setCompletionNotes} actualLabor={actualLabor} setActualLabor={setActualLabor} actualHours={actualHours} setActualHours={changeActualHours} actualStart={actualStart} setActualStart={changeActualStart} actualMaterials={actualMaterials} setActualMaterials={setActualMaterials} actualTools={actualTools} setActualTools={setActualTools} updateActualRow={updateActualRow} workClosed={workClosed} actualReady={actualReady} closeWork={closeWork} returnResource={returnResource} outstanding={outstandingReturnRows} currentUser={user} />}
       {tab==='Failure' && <WorkOrderFailureTab readOnly={!canEditWorkOrder} isCM={isCM} causeApplicable={causeApplicable} remedyApplicable={remedyApplicable} failureClass={failureClass} changeFailure={changeFailure} failureClassOptions={failureClassOptions} problemCode={problemCode} setProblemCode={setProblemCode} setCauseCode={setCauseCode} setRemedyCode={setRemedyCode} problemOptions={problemOptions} causeCode={causeCode} causeOptions={causeOptions} remedyCode={remedyCode} remedyOptions={remedyOptions} failureDescription={failureDescription} problemDescription={problemDescription} causeDescription={causeDescription} remedyDescription={remedyDescription} failureCount={failureCodeRecords.length} />}
       {tab==='Material Requests' && <WorkOrderMaterialRequestsTab readOnly={!canEditWorkOrder} resourceRequests={resourceRequests} plannedResources={plannedResources} setPlannedResources={setPlannedResources} updatePlanRow={updatePlanRow} getAvailability={resourceAvailability} materialBlocked={materialBlocked} primaryButtonClass={workOrderPrimaryButtonClass} outlineButtonClass={workOrderOutlineButtonClass} setTab={setTab} materials={materialRecords} reservations={reservationRecords} purchaseRequests={purchaseRequestRecords} purchaseOrders={purchaseOrderRecords} workOrderContext={{ number, site: siteValue, department: department || assignedDepartment, assignedDepartment }} onCreatePurchaseRequest={onCreatePurchaseRequest} onCreateReservation={onCreateReservation} />}
       {tab==='PTW & Files' && <WorkOrderDocumentsTab readOnly={!canEditWorkOrder} ptwRequired={ptwRequired} setPtwRequired={setPtwRequired} allowPtwOverride={workflow.allowPtwOverride} ptwFiles={ptwFiles} generalFiles={generalFiles} addFiles={addFiles} removeFile={removeFile} downloadFile={downloadFile} />}
       {tab==='Meters' && <WorkOrderMetersTab readOnly={!canEditWorkOrder} workOrderNumber={number} assetValue={assetValue} siteValue={siteValue} department={department} meterRows={meterRecords} meterId={meterId} setMeterId={setMeterId} meterReading={meterReading} setMeterReading={setMeterReading} meterReadingDate={meterReadingDate} setMeterReadingDate={setMeterReadingDate} />}
     </div>
-  </div><WorkOrderPrintReport sourceRequest={sourceRequest} systemValue={systemValue} number={number} description={description || order['DESCRIPITION '] || 'Work order'} workType={workType} status={status} priority={priority} siteValue={siteValue} department={department} subDepartment={subDepartment} assignedDepartment={assignedDepartment} locationValue={locationValue} assetValue={assetValue} assetDescription={assetDescription} targetStart={targetStart} targetFinish={targetFinish} actualStart={actualStart} actualFinish={actualFinish} slaLabel={slaLabel} jobPlan={jobPlanNumber} estimatedDuration={order['ESTIMATED DURATION']} pmNumber={order['PM NUMBER']} pmCycle={order['PM CYCLE']} plannedTasks={plannedTasks} plannedLabor={plannedLabor} plannedResources={plannedResources} ptwRequired={ptwRequired} ptwFiles={ptwFiles} generalFiles={generalFiles} meterReading={meterReading} waterConsumption={waterConsumption} energyConsumption={energyConsumption} meterReadingDate={meterReadingDate} failureClass={failureClass} problemCode={problemCode} causeCode={causeCode} remedyCode={remedyCode} technicianRemarks={technicianRemarks} completionNotes={completionNotes} actualLabor={actualLabor} actualHours={actualHours} actualMaterials={actualMaterials} actualTools={actualTools} /></div>
+  </div><WorkOrderPrintReport sourceRequest={sourceRequest} systemValue={systemValue} number={number} description={description || order['DESCRIPITION '] || 'Work order'} workType={workType} status={status} priority={priority} siteValue={siteValue} department={department} subDepartment={subDepartment} assignedDepartment={assignedDepartment} locationValue={locationValue} assetValue={assetValue} assetDescription={assetDescription} targetStart={targetStart} targetFinish={targetFinish} actualStart={actualStart} actualFinish={actualFinish} slaLabel={slaLabel} jobPlan={jobPlanNumber} estimatedDuration={order['ESTIMATED DURATION']} safetyInstructions={order['SAFETY INSTRUCTIONS']} checklist={order.CHECKLIST||[]} pmNumber={order['PM NUMBER']} pmCycle={order['PM CYCLE']} plannedTasks={plannedTasks} plannedLabor={plannedLabor} plannedResources={plannedResources} ptwRequired={ptwRequired} ptwFiles={ptwFiles} generalFiles={generalFiles} meterReading={meterReading} waterConsumption={waterConsumption} energyConsumption={energyConsumption} meterReadingDate={meterReadingDate} failureClass={failureClass} problemCode={problemCode} causeCode={causeCode} remedyCode={remedyCode} technicianRemarks={technicianRemarks} completionNotes={completionNotes} actualLabor={actualLabor} actualHours={actualHours} actualMaterials={actualMaterials} actualTools={actualTools} /></div>
 }
 
 export default function App() {
@@ -1723,6 +1729,24 @@ export default function App() {
   const saveServiceRequests = useMemo(() => guardSave('Job Requests', rawSaveServiceRequests), [guardSave, rawSaveServiceRequests])
   const saveIncidents = useMemo(() => guardSave('Incidents', rawSaveIncidents), [guardSave, rawSaveIncidents])
   const savePmSchedules = useMemo(() => guardSave('Preventive Maintenance', rawSavePmSchedules), [guardSave, rawSavePmSchedules])
+  const importPmSchedules = useCallback(async plans => {
+    if (!canDo('Preventive Maintenance', 'import')) {
+      const error = new Error('No import access for Preventive Maintenance.')
+      notify(error.message, 'error')
+      throw error
+    }
+    try {
+      const result = await api.post('/preventive-maintenance/import', {
+        rows: plans.map(apiMappers.pm.toApi)
+      })
+      await refreshWorkspace({ resources: ['pmSchedules'], force: true, silent: true })
+      notify(`${result.importedCount} PM master${result.importedCount === 1 ? '' : 's'} imported.`, 'success')
+      return result
+    } catch (error) {
+      notify(error.message || 'Unable to import PM masters.', 'error')
+      throw error
+    }
+  }, [canDo, notify, refreshWorkspace])
   const savePmRules = useMemo(() => guardSave('PM Schedule Rules', rawSavePmRules), [guardSave, rawSavePmRules])
   const saveConnectors = useMemo(() => guardSave('SMTP & SMS', rawSaveConnectors), [guardSave, rawSaveConnectors])
   const saveNotificationRules = useMemo(() => guardSave('Settings', rawSaveNotificationRules), [guardSave, rawSaveNotificationRules])
@@ -1965,8 +1989,17 @@ export default function App() {
     if(!canDo('Job Plans','create')){notify('No create access for Job Plans.','error');return null}
     const jpnum=String(form.JPNUM||'').trim()
     if(!jpnum) return null
-    const plan={JPNUM:jpnum,DESCRIPTION:form.DESCRIPTION||'',status:form.status||'DRAFT'}
-    const planResult=await saveJobPlans(rows=>rows.some(row=>row.JPNUM===jpnum)?rows.map(row=>row.JPNUM===jpnum?{...row,...plan}:row):[plan,...rows])
+    const executionPackage=jobPlanPackageFromRows([form])
+    const plan={JPNUM:jpnum,DESCRIPTION:form.DESCRIPTION||'',status:form.status||'DRAFT',...executionPackage}
+    const planResult=await saveJobPlans(rows=>rows.some(row=>row.JPNUM===jpnum)?rows.map(row=>row.JPNUM===jpnum?{
+      ...row,
+      ...plan,
+      requiredLabor: executionPackage.requiredLabor.length?uniquePlanRows([...(row.requiredLabor||[]),...executionPackage.requiredLabor],item=>`${item.craft}|${item.hours}|${item.crew}`):row.requiredLabor||[],
+      requiredMaterials: executionPackage.requiredMaterials.length?uniquePlanRows([...(row.requiredMaterials||[]),...executionPackage.requiredMaterials],item=>`${item.itemCode}|${item.description}|${item.storeCode}`):row.requiredMaterials||[],
+      requiredTools: executionPackage.requiredTools.length?uniquePlanRows([...(row.requiredTools||[]),...executionPackage.requiredTools],item=>`${item.itemCode}|${item.description}|${item.storeCode}`):row.requiredTools||[],
+      safetyInstructions: executionPackage.safetyInstructions||row.safetyInstructions||'',
+      checklist: executionPackage.checklist.length?[...new Set([...(row.checklist||[]),...executionPackage.checklist])]:row.checklist||[]
+    }:row):[plan,...rows])
     if(!planResult||planResult.__saveError)return null
     if(form['JOB TASK DESCRIPTION']) {
       const task={...form,JPNUM:jpnum,JOBTASKID:pendingReference('JPT'),__isNew:true}
@@ -1985,10 +2018,27 @@ export default function App() {
       'JOB TASK SEQUENCE':Number(row['JOB TASK SEQUENCE']||row['Task Sequence']||10),
       'JOB TASK DESCRIPTION':cleanText(row['JOB TASK DESCRIPTION']||row['Task Description']),
       'TASK DURATION IN HOUR':Number(row['TASK DURATION IN HOUR']||row['Duration in Hours']||0),
+      'LABOR CRAFT':cleanText(row['LABOR CRAFT']||row['Labor Craft']),
+      'LABOR HOURS':Number(row['LABOR HOURS']||row['Labor Hours']||0),
+      'ASSIGNED CREW':cleanText(row['ASSIGNED CREW']||row['Assigned Crew']),
+      'MATERIAL CODE':cleanText(row['MATERIAL CODE']||row['Material Code']),
+      'MATERIAL DESCRIPTION':cleanText(row['MATERIAL DESCRIPTION']||row['Material Description']),
+      'MATERIAL QTY':Number(row['MATERIAL QTY']||row['Material Quantity']||0),
+      'MATERIAL STORE':cleanText(row['MATERIAL STORE']||row['Material Store']),
+      'TOOL CODE':cleanText(row['TOOL CODE']||row['Tool Code']),
+      'TOOL DESCRIPTION':cleanText(row['TOOL DESCRIPTION']||row['Tool Description']),
+      'TOOL QTY':Number(row['TOOL QTY']||row['Tool Quantity']||0),
+      'TOOL STORE':cleanText(row['TOOL STORE']||row['Tool Store']),
+      'SAFETY INSTRUCTIONS':row['SAFETY INSTRUCTIONS']||row['Safety Instructions']||'',
+      'CHECKLIST ITEM':row['CHECKLIST ITEM']||row['Checklist Item']||row.CHECKLIST||'',
       status:statusText(row.status||row.STATUS,'ACTIVE')
     })).filter(row=>row.JPNUM)
     if(!normalized.length)throw new Error('No valid Job Plan rows were found.')
-    const plans=[...new Map(normalized.map(row=>[row.JPNUM,{JPNUM:row.JPNUM,DESCRIPTION:row.DESCRIPTION,status:row.status}])).values()]
+    const plans=[...new Set(normalized.map(row=>row.JPNUM))].map(JPNUM=>{
+      const planRows=normalized.filter(row=>row.JPNUM===JPNUM)
+      const source=planRows[0]
+      return {JPNUM,DESCRIPTION:source.DESCRIPTION,status:source.status,estimatedDurationMinutes:planRows.reduce((total,row)=>total+Number(row['TASK DURATION IN HOUR']||0)*60,0),...jobPlanPackageFromRows(planRows)}
+    })
     const planResult=await saveJobPlans(current=>[
       ...plans.map(plan=>({...current.find(row=>row.JPNUM===plan.JPNUM),...plan})),
       ...current.filter(row=>!plans.some(plan=>plan.JPNUM===row.JPNUM))
@@ -2137,7 +2187,7 @@ export default function App() {
       return <WorkOrderEditor {...props} projectName={projectName} initialTab={deepLinkTabFor(props.order)} workflow={workOrderWorkflow} siteRecords={siteRecords} departmentRecords={departmentRecords} assetRecords={assetRecords} workOrderRows={allWorkOrders} laborRecords={laborRecords} materialRecords={materialRecords} stockRecords={stockRecords} storeRecords={storeRecords} toolRecords={toolRecords} jobTaskRecords={detailContext?.tasks || jobTaskRecords} failureCodeRecords={failureCodeRecords} reservationRecords={detailContext?.reservations || reservations} purchaseRequestRecords={detailContext?.purchaseRequests || purchaseRequests} purchaseOrderRecords={detailContext?.purchaseOrders || purchaseOrders} meterRecords={detailContext?.meters || meterRecords} onCreatePurchaseRequest={createPurchaseRequest} onCreateReservation={createReservation} onUpdateWorkOrder={updateWorkOrder} onNotifyWorkOrderStatus={sendWorkOrderStatusNotification} notify={notify} />
     }} excelDate={excelDate} workflow={workOrderWorkflow} slaBreached={slaBreached} access={accessFor('Work Orders')}/>,
     'Assets': <AssetsPage rows={scopedAssets} setRows={saveAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} />,
-    'Preventive Maintenance': <PreventiveMaintenancePage rows={pmScheduleRecords} setRows={savePmSchedules} pmRules={pmRuleRecords} assets={scopedAssets} jobTasks={jobTaskRecords} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} locationRows={scopedLocations} storeRows={storeRecords} laborRows={laborRecords} workflow={workOrderWorkflow} scopeUser={effectiveUser} onOpenWorkOrder={openConvertedWorkOrder}/>,
+    'Preventive Maintenance': <PreventiveMaintenancePage rows={pmScheduleRecords} setRows={savePmSchedules} onImport={importPmSchedules} pmRules={pmRuleRecords} assets={scopedAssets} jobPlans={jobPlanRecords} jobTasks={jobTaskRecords} workOrders={scopedWorkOrders} departmentRecords={departmentRecords} locationRows={scopedLocations} storeRows={storeRecords} laborRows={laborRecords} workflow={workOrderWorkflow} scopeUser={effectiveUser} onOpenWorkOrder={openConvertedWorkOrder}/>,
     'Meters': <MetersPage rows={meterRecords} setRows={saveMeters} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords} locationRows={scopedLocations} />,
     'Locations': <LocationsPage rows={scopedLocations} setRows={saveLocations} assets={scopedAssets} workOrders={scopedWorkOrders} siteRecords={siteRecords} departmentRecords={departmentRecords}/>,
     'Job Plans': selectedJobPlan ? <JobPlanDetailPage plan={selectedJobPlan} tasks={jobTaskRecords.filter(task=>task.JPNUM===selectedJobPlan.JPNUM)} workOrders={relatedJobPlanWorkOrders.rows} onBack={()=>{setSelectedJobPlan(null);window.history.pushState({},'','/job-plans')}} onUpdate={updateJobPlan}/> : <RegisterPage title="Job plans" eyebrow="MAINTENANCE" description="Standard task sequences and estimated durations for technicians." rows={jobPlanSummaryRows} onCreate={createJobPlan} onImport={importJobPlans} access={accessFor('Job Plans')} search={search} setSearch={setSearch} action="New job plan" modalTitle="Add job plan" modalNote="Create a job plan task line with sequence, instructions, and estimated duration." modalFields={[
@@ -2147,6 +2197,19 @@ export default function App() {
       { key: 'JOB TASK SEQUENCE', label: 'Task Sequence', icon: ListOrdered, required: true, type: 'number', defaultValue: 10, section: 'Task line', sectionIcon: ListChecks, sectionNote: 'One step of the plan: what to do, in what order, and how long it takes', sectionTone: 'green' },
       { key: 'TASK DURATION IN HOUR', label: 'Duration in Hours', icon: Clock, required: true, type: 'number', defaultValue: 1, section: 'Task line' },
       { key: 'JOB TASK DESCRIPTION', label: 'Task Description', icon: FileText, required: true, type: 'textarea', fullWidth: true, section: 'Task line', placeholder: 'What the technician has to do at this step' }
+      ,{ key: 'LABOR CRAFT', label: 'Required Labor Craft', icon: ClipboardList, section: 'Execution package', sectionIcon: ShieldCheck, sectionNote: 'Optional labor, resources, safety, and checklist copied into every generated PM Work Order' }
+      ,{ key: 'LABOR HOURS', label: 'Estimated Labor Hours', icon: Clock, type: 'number', section: 'Execution package' }
+      ,{ key: 'ASSIGNED CREW', label: 'Default Crew (optional)', icon: ClipboardList, section: 'Execution package' }
+      ,{ key: 'MATERIAL CODE', label: 'Material Code', icon: ClipboardList, section: 'Execution package' }
+      ,{ key: 'MATERIAL DESCRIPTION', label: 'Material Description', icon: FileText, section: 'Execution package' }
+      ,{ key: 'MATERIAL QTY', label: 'Material Quantity', icon: Clock, type: 'number', section: 'Execution package' }
+      ,{ key: 'MATERIAL STORE', label: 'Material Store', icon: ClipboardList, section: 'Execution package' }
+      ,{ key: 'TOOL CODE', label: 'Tool Code', icon: ClipboardList, section: 'Execution package' }
+      ,{ key: 'TOOL DESCRIPTION', label: 'Tool Description', icon: FileText, section: 'Execution package' }
+      ,{ key: 'TOOL QTY', label: 'Tool Quantity', icon: Clock, type: 'number', section: 'Execution package' }
+      ,{ key: 'TOOL STORE', label: 'Tool Store', icon: ClipboardList, section: 'Execution package' }
+      ,{ key: 'SAFETY INSTRUCTIONS', label: 'Safety Instructions', icon: ShieldCheck, type: 'textarea', fullWidth: true, section: 'Execution package' }
+      ,{ key: 'CHECKLIST ITEM', label: 'Checklist Item', icon: ListChecks, type: 'textarea', fullWidth: true, section: 'Execution package' }
     ]} mapFormToRow={form => ({ ...form, status: form.status || 'ACTIVE', 'TASK DURATION IN HOUR': Number(form['TASK DURATION IN HOUR'] || 0) })} statusTabs={['DRAFT', 'ACTIVE', 'INACTIVE']} rowKey="JPNUM" onRowClick={row=>{setSelectedJobPlan(row);window.history.pushState({},'',`/job-plans/${row.JPNUM}`)}} columns={[
       {key:'JPNUM',label:'Plan',render:v=><strong className="mono">{v}</strong>},{key:'DESCRIPTION',label:'Plan description'},{key:'taskCount',label:'Tasks'},{key:'totalMinutes',label:'Duration',render:v=>`${v} min`},{key:'status',label:'Status',render:v=>v||'ACTIVE'}
     ]}/>,

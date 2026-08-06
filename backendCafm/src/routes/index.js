@@ -17,13 +17,14 @@ import overviewRouter from './overview.js'
 import { getPermissionCacheStats, requireAuth, requirePermission } from '../middleware/auth.js'
 import { getPool, getPoolStats } from '../db/pool.js'
 import { getPmSchedulerRuntime, getPmSchedulerStatus, runPmSchedulerOnce } from '../services/pmScheduler.js'
+import { importPreventiveMaintenanceMasters, preparePmScheduleRuleCreate, preparePmScheduleRuleUpdate, preparePreventiveMaintenanceCreate, preparePreventiveMaintenanceUpdate } from '../services/pmMaster.js'
 import { sendEmailNotification } from '../services/emailSender.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { getRealtimeStats } from '../realtime.js'
 import { getRuntimeMetrics } from '../services/runtimeMetrics.js'
 import { prepareWorkOrderCreate, validateWorkOrderUpdate } from '../services/workOrderWorkflow.js'
 import { prepareServiceRequestCreate, validateServiceRequestUpdate } from '../services/applicationWorkflows.js'
-import { addScopeWhere } from '../middleware/scope.js'
+import { addScopeWhere, applyScopeDefaults, assertPayloadWithinScope } from '../middleware/scope.js'
 import { bindParams } from '../utils/sqlParams.js'
 
 const router = Router()
@@ -34,6 +35,7 @@ const workOrderScope = {
   departmentColumns: ['assigned_department_name'],
   subDepartmentColumn: 'sub_department_code'
 }
+const preventiveMaintenanceScope = { ...departmentScope, subDepartmentColumn: 'sub_department_code' }
 
 const validateWorkOrderCommandUpdate = async context => {
   const currentStatus = String(context.current?.status || '').trim().toUpperCase()
@@ -70,11 +72,12 @@ const statusTransitionPermission = ({ approve = [], close = [] } = {}) => ({ pay
   return null
 }
 const workOrderUpdatePermission = context => {
-  const action = statusTransitionPermission({ approve: ['HOLD', 'HOLD-MATERIAL'], close: ['CLOSE', 'CAN'] })(context)
+  const holds = ['HOLD', 'ON_HOLD_MATERIAL', 'ON_HOLD_PERMIT']
+  const action = statusTransitionPermission({ approve: holds, close: ['CLOSE', 'CAN'] })(context)
   if (action) return action
   const previous = normalizedStatus(context.current?.status)
   const next = normalizedStatus(context.payload?.status)
-  return ['HOLD', 'HOLD-MATERIAL'].includes(previous) && next && next !== previous ? 'approve' : null
+  return holds.includes(previous) && next && next !== previous ? 'approve' : null
 }
 const purchaseRequestUpdatePermission = statusTransitionPermission({ approve: ['APPR'], close: ['CLOSE'] })
 const purchaseOrderUpdatePermission = statusTransitionPermission({ approve: ['APPR'], close: ['CLOSE'] })
@@ -278,7 +281,7 @@ router.use('/work-orders', crudRouter({
   relatedModules: ['Overview', 'Job Requests', 'Preventive Maintenance', 'Meters'],
   table: 'dbo.work_orders',
   key: 'work_order_num',
-  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'work_group', 'system_name', 'supervisor', 'labor_craft_code', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'completed_at', 'closed_at', 'closed_by_user_id', 'closed_by_name', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'held_from_status', 'hold_periods_json', 'created_by_user_id', 'created_at', 'updated_at'],
+  columns: ['work_order_num', 'description', 'long_description', 'location_code', 'asset_num', 'status', 'work_type', 'priority', 'site_code', 'department_name', 'sub_department_code', 'assigned_department_name', 'work_group', 'system_name', 'supervisor', 'labor_craft_code', 'target_start_at', 'target_finish_at', 'actual_start_at', 'actual_finish_at', 'completed_at', 'closed_at', 'closed_by_user_id', 'closed_by_name', 'reported_at', 'source_sr_num', 'pm_num', 'pm_cycle', 'job_plan_num', 'schedule_rule_name', 'failure_code', 'problem_code', 'cause_code', 'remedy_code', 'ptw_required', 'technician_remarks', 'completion_notes', 'actual_labor', 'actual_hours', 'actual_materials_json', 'actual_tools_json', 'held_from_status', 'hold_periods_json', 'estimated_duration_minutes', 'safety_instructions', 'checklist_json', 'created_by_user_id', 'created_at', 'updated_at'],
   defaultOrder: 'reported_at desc, work_order_num desc',
   defaultPageSize: 100,
   scope: workOrderScope,
@@ -380,6 +383,29 @@ router.use('/reservations', crudRouter({
   readOnly: true
 }))
 
+router.post('/preventive-maintenance/import', requirePermission('Preventive Maintenance', 'import'), asyncHandler(async (req, res) => {
+  const sourceRows = Array.isArray(req.body?.rows) ? req.body.rows : []
+  const scopedRows = sourceRows.map(payload => {
+    const scoped = applyScopeDefaults({ user: req.user, payload, ...preventiveMaintenanceScope })
+    assertPayloadWithinScope({ user: req.user, payload: scoped, ...preventiveMaintenanceScope, requireValues: true })
+    return scoped
+  })
+  const pool = await getPool()
+  const imported = await importPreventiveMaintenanceMasters({
+    pool,
+    rows: scopedRows,
+    userId: req.user?.userId
+  })
+  req.app.locals.broadcastWorkspaceChange?.({
+    moduleName: 'Preventive Maintenance',
+    relatedModules: ['Overview', 'PM Schedule Rules', 'Work Orders'],
+    table: 'dbo.preventive_maintenance',
+    action: 'import',
+    count: imported.length
+  })
+  res.json({ importedCount: imported.length, pmNumbers: imported })
+}))
+
 router.use('/preventive-maintenance', crudRouter({
   moduleName: 'Preventive Maintenance',
   relatedModules: ['Overview', 'PM Schedule Rules', 'Work Orders'],
@@ -387,8 +413,10 @@ router.use('/preventive-maintenance', crudRouter({
   key: 'pm_num',
   columns: ['pm_num', 'description', 'asset_num', 'route_code', 'location_code', 'job_plan_num', 'next_date', 'lead_time_days', 'frequency', 'frequency_unit', 'schedule_rule_name', 'pm_counter', 'work_type', 'wo_status', 'store_code', 'supervisor', 'lead_person', 'person_group', 'site_code', 'department_name', 'sub_department_code', 'pm_status', 'last_generated_cycle', 'created_by_user_id', 'created_at', 'updated_at'],
   defaultOrder: 'next_date, pm_num',
-  scope: { ...departmentScope, subDepartmentColumn: 'sub_department_code' },
-  ownerColumn
+  scope: preventiveMaintenanceScope,
+  ownerColumn,
+  beforeCreate: preparePreventiveMaintenanceCreate,
+  beforeUpdate: preparePreventiveMaintenanceUpdate
 }))
 
 router.use('/pm-schedule-rules', crudRouter({
@@ -396,7 +424,9 @@ router.use('/pm-schedule-rules', crudRouter({
   relatedModules: ['Preventive Maintenance'],
   table: 'dbo.pm_schedule_rules',
   key: 'rule_name',
-  columns: ['rule_name', 'frequency', 'frequency_unit', 'lead_time_days', 'horizon_days', 'trigger_hour', 'wo_prefix', 'default_wo_status', 'notes', 'status', 'created_at', 'updated_at']
+  columns: ['rule_name', 'frequency', 'frequency_unit', 'lead_time_days', 'horizon_days', 'trigger_hour', 'wo_prefix', 'default_wo_status', 'notes', 'status', 'created_at', 'updated_at'],
+  beforeCreate: preparePmScheduleRuleCreate,
+  beforeUpdate: preparePmScheduleRuleUpdate
 }))
 
 router.post('/smtp-sms-connectors/:id/test', requirePermission('SMTP & SMS', 'edit'), asyncHandler(async (req, res) => {
@@ -466,7 +496,7 @@ router.use('/job-plans', crudRouter({
   moduleName: 'Job Plans',
   table: 'dbo.job_plans',
   key: 'job_plan_num',
-  columns: ['job_plan_num', 'description', 'status', 'created_at', 'updated_at']
+  columns: ['job_plan_num', 'description', 'status', 'estimated_duration_minutes', 'required_labor_json', 'required_materials_json', 'required_tools_json', 'safety_instructions', 'checklist_json', 'created_at', 'updated_at']
 }))
 
 router.use('/job-plan-tasks', crudRouter({

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Combobox from '../ui/Combobox'
-import { CalendarClock, ClipboardList, ListChecks, TimerReset, Wrench } from 'lucide-react'
+import { Boxes, CalendarClock, ClipboardList, ListChecks, ShieldCheck, TimerReset, Users, Wrench } from 'lucide-react'
 import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
 import EmptyState from '../ui/EmptyState'
@@ -17,7 +17,14 @@ export default function JobPlanDetailPage({ plan, tasks = [], workOrders = [], o
   const access = useModuleAccess('Job Plans')
   const [tab, setTab] = useState('Job Plan Details')
   const status = plan.status || plan.STATUS || 'ACTIVE'
-  const totalMinutes = tasks.reduce((sum, task) => sum + minutesFromExcelHours(task['TASK DURATION IN HOUR']), 0)
+  const taskMinutes = tasks.reduce((sum, task) => sum + minutesFromExcelHours(task['TASK DURATION IN HOUR']), 0)
+  const totalMinutes = taskMinutes || Number(plan.estimatedDurationMinutes || 0)
+  const requiredLabor = plan.requiredLabor || []
+  const requiredResources = [
+    ...(plan.requiredMaterials || []).map(row => ({ ...row, type: 'Material' })),
+    ...(plan.requiredTools || []).map(row => ({ ...row, type: 'Tool' }))
+  ]
+  const checklist = plan.checklist || []
   const changeStatus = event => onUpdate?.(plan.JPNUM, { status: event.target.value })
 
   return (
@@ -51,7 +58,7 @@ export default function JobPlanDetailPage({ plan, tasks = [], workOrders = [], o
           ) : null}
         />
 
-        <DetailTabs tabs={['Job Plan Details', 'Tasks', 'Work Orders']} active={tab} onChange={setTab} />
+        <DetailTabs tabs={['Job Plan Details', 'Execution Package', 'Tasks', 'Work Orders']} active={tab} onChange={setTab} />
 
         {tab === 'Job Plan Details' && (
           <main className="space-y-4">
@@ -77,6 +84,45 @@ export default function JobPlanDetailPage({ plan, tasks = [], workOrders = [], o
                 ['Linked Work Orders', workOrders.length]
               ]}
             />
+          </main>
+        )}
+
+        {tab === 'Execution Package' && (
+          <main className="grid gap-4">
+            <section className="grid gap-3 md:grid-cols-4">
+              <MetricCard icon={TimerReset} label="Duration" value={`${totalMinutes} min`} note="Calculated from task lines" />
+              <MetricCard icon={Users} label="Labor Lines" value={requiredLabor.length} note="Copied to PM Work Orders" />
+              <MetricCard icon={Boxes} label="Resources" value={requiredResources.length} note="Materials and tools" />
+              <MetricCard icon={ListChecks} label="Checklist" value={checklist.length} note="Execution checks" />
+            </section>
+
+            <InfoCard
+              icon={ShieldCheck}
+              kicker="SAFETY"
+              title="Instructions and Checklist"
+              items={[
+                ['Safety Instructions', plan.safetyInstructions || 'None specified'],
+                ['Checklist', checklist.length ? checklist.map((item, index) => `${index + 1}. ${item}`).join('\n') : 'No checklist items']
+              ]}
+            />
+
+            <TablePanel>
+              {requiredLabor.length ? <DataTable rows={requiredLabor} rowKey="lineOrder" columns={[
+                { key: 'craft', label: 'Labor Craft' },
+                { key: 'hours', label: 'Estimated Hours' },
+                { key: 'crew', label: 'Default Crew', render: value => value || 'Assigned by supervisor' }
+              ]} /> : <EmptyState icon={Users} title="No required labor" description="Labor requirements imported with this Job Plan will appear here." />}
+            </TablePanel>
+
+            <TablePanel>
+              {requiredResources.length ? <DataTable rows={requiredResources} rowKey={row => `${row.type}-${row.itemCode || row.description}-${row.storeCode || ''}`} columns={[
+                { key: 'type', label: 'Type' },
+                { key: 'itemCode', label: 'Item Code' },
+                { key: 'description', label: 'Description' },
+                { key: 'quantity', label: 'Quantity' },
+                { key: 'storeCode', label: 'Store' }
+              ]} /> : <EmptyState icon={Boxes} title="No materials or tools" description="Resource requirements imported with this Job Plan will appear here." />}
+            </TablePanel>
           </main>
         )}
 
@@ -131,25 +177,40 @@ export default function JobPlanDetailPage({ plan, tasks = [], workOrders = [], o
         description={plan.DESCRIPTION}
         summary={[['Tasks', tasks.length], ['Duration', `${totalMinutes} min`], ['Linked Work Orders', workOrders.length]]}
         sections={[
-          { title: 'Job Plan Information', rows: [[['Job Plan', plan.JPNUM], ['Description', plan.DESCRIPTION], ['Status', status], ['Estimated Duration', `${totalMinutes} minutes`]]] }
+          { title: 'Job Plan Information', rows: [[['Job Plan', plan.JPNUM], ['Description', plan.DESCRIPTION], ['Status', status], ['Estimated Duration', `${totalMinutes} minutes`]]] },
+          { title: 'Safety and Checklist', rows: [[['Safety Instructions', plan.safetyInstructions], ['Checklist', checklist.map((item, index) => `${index + 1}. ${item}`).join('\n')]]] }
         ]}
-        tables={[{
-          title: 'Task Summary',
-          columns: [
-            { key: 'sequence', label: 'Seq.' },
-            { key: 'taskId', label: 'Task ID' },
-            { key: 'description', label: 'Task Description' },
-            { key: 'duration', label: 'Duration' }
-          ],
-          rows: tasks.map(task => ({
-            key: task.JOBTASKID,
-            sequence: task['JOB TASK SEQUENCE'],
-            taskId: task.JOBTASKID,
-            description: task['JOB TASK DESCRIPTION'],
-            duration: `${minutesFromExcelHours(task['TASK DURATION IN HOUR'])} min`
-          })),
-          emptyText: 'No task lines configured for this job plan.'
-        }]}
+        tables={[
+          {
+            title: 'Required Labor',
+            columns: [{ key: 'craft', label: 'Craft' }, { key: 'hours', label: 'Hours' }, { key: 'crew', label: 'Default Crew' }],
+            rows: requiredLabor,
+            emptyText: 'No labor requirements configured.'
+          },
+          {
+            title: 'Required Materials and Tools',
+            columns: [{ key: 'type', label: 'Type' }, { key: 'itemCode', label: 'Item' }, { key: 'description', label: 'Description' }, { key: 'quantity', label: 'Qty' }, { key: 'storeCode', label: 'Store' }],
+            rows: requiredResources,
+            emptyText: 'No resource requirements configured.'
+          },
+          {
+            title: 'Task Summary',
+            columns: [
+              { key: 'sequence', label: 'Seq.' },
+              { key: 'taskId', label: 'Task ID' },
+              { key: 'description', label: 'Task Description' },
+              { key: 'duration', label: 'Duration' }
+            ],
+            rows: tasks.map(task => ({
+              key: task.JOBTASKID,
+              sequence: task['JOB TASK SEQUENCE'],
+              taskId: task.JOBTASKID,
+              description: task['JOB TASK DESCRIPTION'],
+              duration: `${minutesFromExcelHours(task['TASK DURATION IN HOUR'])} min`
+            })),
+            emptyText: 'No task lines configured for this job plan.'
+          }
+        ]}
       />
     </section>
   )
