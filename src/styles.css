@@ -335,6 +335,10 @@ main,
   .app-record-link > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .app-record-link > svg { flex: 0 0 auto; opacity: .6; }
   .app-record-link:hover > svg { opacity: 1; }
+
+  /* A report panel keeps a fixed body height and scrolls inside, so a long list neither breaks
+     the row it shares nor hides rows behind an arbitrary cut-off. */
+  .app-report-scroll .data-table-wrap { max-height: 340px; }
   .app-section .data-table-heading { background: color-mix(in srgb, var(--app-section-accent) 12%, var(--app-table-header-bg)); color: color-mix(in srgb, var(--app-section-accent) 45%, var(--app-table-heading)); }
 
   .app-surface-title {

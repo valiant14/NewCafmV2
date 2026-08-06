@@ -392,20 +392,20 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
           })}
         />
       </section>
-      <section className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_.9fr]">
-        <Surface as="div" flush>
-          <SurfaceHeader eyebrow="Stock report" title="Low and no stock items" />
+      <section className="mt-4 grid items-start gap-4 xl:grid-cols-[1.4fr_.9fr]">
+        <Surface as="div" flush tone="orange" className="app-report-scroll">
+          <SurfaceHeader eyebrow="Stock report" title="Low and no stock items" actions={<Badge tone={lowStockRows.length ? 'orange' : 'green'}>{lowStockRows.length} item{lowStockRows.length === 1 ? '' : 's'}</Badge>} />
           {lowStockRows.length ? (
             <DataTable
-              rows={lowStockRows.slice(0, 8)}
+              rows={lowStockRows}
               rowKey={row => `${row.storeroom}-${row.itemNumber}`}
               showFooter={false}
               columns={[
                 { key: 'itemNumber', label: 'Item', render: value => <strong className="mono">{value}</strong> },
                 { key: 'description', label: 'Description' },
                 { key: 'storeName', label: 'Store' },
-                { key: 'available', label: 'Available' },
-                { key: 'reorderLevel', label: 'Low Level' },
+                { key: 'available', label: 'Available', render: value => <Badge tone={Number(value) > 0 ? 'green' : 'red'}>{Number(value) || 0}</Badge> },
+                { key: 'reorderLevel', label: 'Low Level', render: value => <Badge tone="neutral">{Number(value) || 0}</Badge> },
                 { key: 'status', label: 'Status', render: (value, row) => <Badge tone={availabilityTone(row)}>{value}</Badge> }
               ]}
             />
@@ -413,8 +413,8 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
             <EmptyState icon={PackageCheck} title="Stock levels look healthy" description="No material is below its configured low level." />
           )}
         </Surface>
-        <Surface as="div" flush>
-          <SurfaceHeader eyebrow="Store report" title="Largest stores by balance" />
+        <Surface as="div" flush tone="green" className="app-report-scroll">
+          <SurfaceHeader eyebrow="Store report" title="Largest stores by balance" actions={<Badge tone="green">{topStores.length} store{topStores.length === 1 ? '' : 's'}</Badge>} />
           <DataTable
             rows={topStores}
             rowKey="code"
@@ -422,13 +422,13 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
             columns={[
               { key: 'code', label: 'Warehouse', render: value => <strong className="mono">{value}</strong> },
               { key: 'name', label: 'Warehouse Name' },
-              { key: 'itemCount', label: 'Items Held' },
-              { key: 'totalQuantity', label: 'On Hand' }
+              { key: 'itemCount', label: 'Items Held', render: value => <Badge tone={Number(value) > 0 ? 'blue' : 'neutral'}>{Number(value) || 0}</Badge> },
+              { key: 'totalQuantity', label: 'On Hand', render: value => <Badge tone={Number(value) > 0 ? 'green' : 'neutral'}>{Number(value) || 0}</Badge> }
             ]}
           />
         </Surface>
       </section>
-      <Surface className="mt-4" flush>
+      <Surface className="mt-4" flush tone="blue">
         <DataTable
           rows={visibleRows}
           rowKey="code"
@@ -440,8 +440,8 @@ export default function StoresPage({ materials = [], tools = [], stockRows = [],
             { key: 'location', label: 'Storage Location', render: (value, row) => (
               <span><strong className="mono">{value}</strong><small className="mt-1 block text-[9px] text-[var(--app-muted)]">{row.locationDescription}</small></span>
             ) },
-            { key: 'itemCount', label: 'Items Held' },
-            { key: 'totalQuantity', label: 'On-Hand Quantity' },
+            { key: 'itemCount', label: 'Items Held', render: value => <Badge tone={Number(value) > 0 ? 'blue' : 'neutral'}>{Number(value) || 0}</Badge> },
+            { key: 'totalQuantity', label: 'On-Hand Quantity', render: value => <Badge tone={Number(value) > 0 ? 'green' : 'neutral'}>{Number(value) || 0}</Badge> },
             { key: 'belowReorder', label: 'Low Stock Items', render: value => (
               <Badge tone={value ? 'orange' : 'green'}>{value}</Badge>
             ) },
