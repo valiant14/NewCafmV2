@@ -573,10 +573,18 @@ main,
        so each card carries its hue instead of being a dark box with a coloured lid. */
     background: color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 4%, var(--app-panel));
     border-color: color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 34%, var(--app-line));
-    /* The accent runs the card's full left edge, stacked with the panel shadow it replaces. */
-    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 90%, transparent), var(--app-shadow-panel);
+    /* The accent runs the card's full left edge, stacked with the lift that replaces the
+       default panel shadow. */
+    box-shadow:
+      inset 3px 0 0 color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 90%, transparent),
+      0 1px 2px rgba(15, 23, 42, .08),
+      0 12px 24px -6px rgba(15, 23, 42, .16);
   }
-  .app-section.app-section--compact { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 90%, transparent); }
+  .app-section.app-section--compact {
+    box-shadow:
+      inset 3px 0 0 color-mix(in srgb, var(--app-section-accent, var(--app-primary)) 90%, transparent),
+      0 1px 2px rgba(15, 23, 42, .07);
+  }
   /* The header is a tinted band, not a plain rule, so a long form reads as a stack of labelled
      cards instead of one grey wall. The negative margins pull it out to the card edge, so they
      mirror the padding of .app-surface and its compact variant. */
@@ -818,7 +826,7 @@ main,
   .app-info-card-header h2 { color: var(--app-ink); font-size: 14px; font-weight: 750; margin: 2px 0 0; }
   /* Inside a toned card the value tiles pick up its accent through the cascade; on an untoned
      one the fallback is the plain soft background they always had. */
-  .app-info-field { background: color-mix(in srgb, var(--app-section-accent, var(--app-soft-bg)) 7%, var(--app-soft-bg)); border: 1px solid color-mix(in srgb, var(--app-section-accent, var(--app-line)) 16%, transparent); border-radius: var(--app-radius-panel); padding: 11px 12px; }
+  .app-info-field { background: color-mix(in srgb, var(--app-section-accent, var(--app-soft-bg)) 7%, var(--app-soft-bg)); border: 1px solid color-mix(in srgb, var(--app-section-accent, var(--app-line)) 16%, transparent); border-radius: var(--app-radius-panel); box-shadow: 0 1px 2px rgba(15, 23, 42, .07), 0 6px 14px -4px rgba(15, 23, 42, .14); padding: 11px 12px; }
   .app-info-field dd { color: var(--app-ink); font-size: 13px; font-weight: 700; margin: 4px 0 0; overflow-wrap: anywhere; }
   .app-timeline-row { align-items: center; background: var(--app-soft-bg); border-radius: var(--app-radius-panel); display: grid; gap: 12px; grid-template-columns: auto minmax(0, 1fr) auto; padding: 12px; }
 
