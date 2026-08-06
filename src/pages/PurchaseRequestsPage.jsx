@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Package, Plus, ShoppingCart, XCircle } from 'lucide-react'
+import { Boxes, Building2, CheckCircle2, ClipboardList, Layers, Package, Plus, ShoppingCart, Users, Warehouse, XCircle } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -24,14 +24,17 @@ const purchaseRequisitionStatuses = ['WAPPR', 'APPR', 'CLOSE', 'CAN']
 
 const emptyRequest = { type: 'Material', item: '', quantity: 1, source: '', site: '', department: '', workOrder: '' }
 
+const request = { section: 'Request', sectionIcon: ShoppingCart, sectionNote: 'What is being bought and how much of it', sectionSpan: 'full' }
+const routing = { section: 'Routing', sectionIcon: Building2, sectionNote: 'Where it is going - leave the work order blank to restock a store', sectionTone: 'green', sectionSpan: 'full' }
+
 const buildRequestFields = ({ siteRecords = [], departmentRecords = [], materials = [], tools = [], storeRows = [] }) => [
-  { key: 'type', label: 'Type', options: ['Material', 'Tool', 'Equipment'] },
-  { key: 'item', label: 'Item', required: true, options: ['', ...materials.map(material => material.description || material.itemNumber).filter(Boolean), ...tools.map(tool => tool.description || tool.toolNumber).filter(Boolean)] },
-  { key: 'quantity', label: 'Quantity', required: true, type: 'number', min: 1 },
-  { key: 'source', label: 'Store', options: ['', ...storeRows.map(store => store.code).filter(Boolean)] },
-  { key: 'site', label: 'Site', required: true, suggestions: siteRecords.filter(site => site.status !== 'Inactive').map(site => ({ value: site.code, label: site.name })), placeholder: 'Select a site' },
-  { key: 'department', label: 'Department', suggestions: [...new Map(departmentRecords.filter(department => department.status !== 'Inactive' && department.department).map(department => [department.department, department.department])).values()], placeholder: 'Search department' },
-  { key: 'workOrder', label: 'Work Order (optional)', placeholder: 'Leave blank for a store restock' }
+  { ...request, key: 'type', label: 'Type', icon: Layers, options: ['Material', 'Tool', 'Equipment'] },
+  { ...request, key: 'item', label: 'Item', icon: Package, required: true, options: ['', ...materials.map(material => material.description || material.itemNumber).filter(Boolean), ...tools.map(tool => tool.description || tool.toolNumber).filter(Boolean)] },
+  { ...request, key: 'quantity', label: 'Quantity', icon: Boxes, required: true, type: 'number', min: 1 },
+  { ...request, key: 'source', label: 'Store', icon: Warehouse, options: ['', ...storeRows.map(store => store.code).filter(Boolean)] },
+  { ...routing, key: 'site', label: 'Site', icon: Building2, required: true, suggestions: siteRecords.filter(site => site.status !== 'Inactive').map(site => ({ value: site.code, label: site.name })), placeholder: 'Select a site' },
+  { ...routing, key: 'department', label: 'Department', icon: Users, suggestions: [...new Map(departmentRecords.filter(department => department.status !== 'Inactive' && department.department).map(department => [department.department, department.department])).values()], placeholder: 'Search department' },
+  { ...routing, key: 'workOrder', label: 'Work Order (optional)', icon: ClipboardList, placeholder: 'Leave blank for a store restock' }
 ]
 
 const exportColumns = [
@@ -162,7 +165,7 @@ export default function PurchaseRequestsPage({
         statusOptions={purchaseRequisitionStatuses}
       />
       <RecordFilterNotice reference={focusReference} count={visibleRows.length} onClear={clearFocusReference} />
-      <TablePanel>
+      <TablePanel tone="purple">
         {visibleRows.length ? (
           <DataTable
             rows={visibleRows}
@@ -183,11 +186,11 @@ export default function PurchaseRequestsPage({
               // seeing "1" against a job that plans 2 needs to know why.
               { key: 'quantity', label: 'Quantity', render: (value, row) => (
                 Number(row.plannedQuantity) > Number(value)
-                  ? <span><strong>{value}</strong><small className="mt-1 block text-[9px] text-[var(--app-muted)]">{row.plannedQuantity} planned · {row.availableQuantity} in stock</small></span>
-                  : value
+                  ? <span><Badge tone="orange">{Number(value) || 0}</Badge><small className="mt-1 block text-[9px] text-[var(--app-muted)]">{row.plannedQuantity} planned · {row.availableQuantity} in stock</small></span>
+                  : <Badge tone="blue">{Number(value) || 0}</Badge>
               ) },
               { key: 'source', label: 'Requested From' },
-              { key: 'purchaseOrder', label: 'Linked PO', render: value => value || 'Not created' },
+              { key: 'purchaseOrder', label: 'Linked PO', render: value => value ? <Badge tone="green">{value}</Badge> : <span className="text-[var(--app-muted)]">Not created</span> },
               { key: 'site', label: 'Site' },
               { key: 'department', label: 'Department' },
               { key: 'status', label: 'Status', render: renderWorkflowStatus },
