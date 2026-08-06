@@ -2257,6 +2257,7 @@ export default function App() {
         onMobileClose={() => setMobileOpen(false)}
         onNavigate={navigate}
         onOpenWorkOrders={() => navigate('Work Orders')}
+        onOpenWorkOrder={openConvertedWorkOrder}
       >
         <Suspense fallback={<AppState eyebrow="Workspace" title="Opening page" />}>
           {activePage === 'Overview' ? <OverviewPage onNavigate={navigate} onOpenWorkOrderTab={openWorkOrderTab} currentUser={effectiveUser} projectName={projectName} snapshot={overviewSnapshot} workOrders={scopedWorkOrders} /> : pages[activePage]}

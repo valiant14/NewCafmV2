@@ -38,18 +38,6 @@ const endpoint = { section: 'Endpoint', sectionIcon: Server, sectionNote: 'Where
 const credentials = { section: 'Credentials', sectionIcon: KeyRound, sectionNote: 'Stored in the CAFM database - nothing is sent until a delivery service is connected', sectionTone: 'orange', sectionSpan: 'full' }
 
 const fields = [
-<<<<<<< HEAD
-  { key: 'name', label: 'Connector Name', required: true, placeholder: 'Primary mail relay' },
-  { key: 'type', label: 'Type', required: true, options: connectorTypes },
-  { key: 'host', label: 'Host / Endpoint', required: true, placeholder: 'smtp.seder.com' },
-  { key: 'port', label: 'Port', type: 'number', placeholder: '587' },
-  { key: 'encryption', label: 'Encryption', options: encryptionModes },
-  { key: 'username', label: 'Username / API Key', placeholder: 'cafm@seder.com' },
-  { key: 'password', label: 'Password / Secret', type: 'password', placeholder: 'Leave blank to keep the stored secret' },
-  { key: 'sender', label: 'From Address / Sender ID', placeholder: 'no-reply@seder.com or SEDER' },
-  { key: 'notes', label: 'Notes', placeholder: 'Who owns this connector' },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
-=======
   { ...connector, key: 'name', label: 'Connector Name', icon: Mail, required: true, placeholder: 'Primary mail relay' },
   { ...connector, key: 'type', label: 'Type', icon: Send, required: true, options: connectorTypes },
   { ...connector, key: 'status', label: 'Status', icon: Activity, options: ['Active', 'Inactive'] },
@@ -58,9 +46,8 @@ const fields = [
   { ...endpoint, key: 'port', label: 'Port', icon: Hash, type: 'number', placeholder: '587' },
   { ...endpoint, key: 'encryption', label: 'Encryption', icon: Lock, options: encryptionModes },
   { ...credentials, key: 'username', label: 'Username / API Key', icon: User, placeholder: 'cafm@seder.com' },
-  { ...credentials, key: 'password', label: 'Password / Secret', icon: KeyRound, type: 'password', placeholder: 'Stored in database' },
+  { ...credentials, key: 'password', label: 'Password / Secret', icon: KeyRound, type: 'password', placeholder: 'Leave blank to keep the stored secret' },
   { ...credentials, key: 'sender', label: 'From Address / Sender ID', icon: Send, placeholder: 'no-reply@seder.com or SEDER' }
->>>>>>> 780cca193302d3bb24f5fb5825d64cc409bfd027
 ]
 
 const exportColumns = [
