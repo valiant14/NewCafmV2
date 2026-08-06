@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, PackageCheck, Wrench } from 'lucide-react'
+import { AlertTriangle, Boxes, Check, PackageCheck, Wrench } from 'lucide-react'
 import Section from '../ui/Section'
 import Badge from '../ui/Badge'
 import { statusDescription, statusTone } from '../../lib/statusMatrix'
@@ -184,7 +184,7 @@ export default function WorkOrderMaterialRequestsTab({
   }
 
   return (
-    <Section compact title="Material Requests" note="Available stock creates a Reservation / Allocation. Unavailable stock creates a Purchase Requisition for procurement.">
+    <Section compact tone="green" icon={Boxes} title="Material Requests" note="Available stock creates a Reservation / Allocation. Unavailable stock creates a Purchase Requisition for procurement.">
       {resourceRequests.length ? (
         <>
           <div className={tableClass}>

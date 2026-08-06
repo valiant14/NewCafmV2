@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx'
 import { Download } from 'lucide-react'
-
 export default function ExcelTemplateButton({ headers = [], fileName = 'Import_Template.xlsx', sampleRows = [], label = 'Export template' }) {
   const download = () => {
     const worksheet = XLSX.utils.json_to_sheet(

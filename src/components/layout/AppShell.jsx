@@ -1,6 +1,5 @@
-﻿import { Bell, ChevronRight, LogOut, Menu, X } from 'lucide-react'
+﻿import { Bell, ChevronDown, ChevronRight, LogOut, Menu, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
 import sederLogo from '../../Assets/seder-logo.svg'
 import { useAuth } from '../../providers/AuthProvider'
 import Button from '../ui/Button'

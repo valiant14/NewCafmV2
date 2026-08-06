@@ -1,4 +1,4 @@
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Gauge, History } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Field from '../ui/Field'
 import Section from '../ui/Section'
@@ -39,7 +39,7 @@ export default function WorkOrderMetersTab({
 
   return (
     <>
-      <Section compact title="Meter Reading">
+      <Section compact tone="green" icon={Gauge} title="Meter Reading">
         <div className={formGridClass}>
           <Field
             label="Related Meter"
@@ -63,7 +63,7 @@ export default function WorkOrderMetersTab({
         )}
       </Section>
 
-      <Section compact title="Meter Reading History">
+      <Section compact tone="neutral" icon={History} title="Meter Reading History">
         {historicalRows.length ? (
           <div className="overflow-hidden rounded-2xl border border-[var(--app-line)]">
             <table className="w-full border-collapse text-left text-xs">

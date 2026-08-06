@@ -1,4 +1,4 @@
-import { Check, Lock, PackageCheck, Play, ShieldCheck, Undo2, Wrench } from 'lucide-react'
+import { Check, ClipboardCheck, Lock, PackageCheck, Play, ShieldCheck, Undo2, Users, Wrench } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Field from '../ui/Field'
 import Section from '../ui/Section'
@@ -43,7 +43,7 @@ function ActualResourceSection({ title, note, rows, icon: Icon, update, onReturn
   }, [newestReturn])
 
   return (
-    <Section compact title={title} note={note}>
+    <Section compact tone={kind === RETURN_KIND.TOOL ? 'purple' : 'green'} icon={Icon} title={title} note={note}>
       {rows.length ? (
         <div className={resourceListClass}>
           {rows.map((row, index) => {
@@ -201,14 +201,14 @@ export default function WorkOrderActualTab({
         <div className="p-3"><Badge tone={slaBreachedNow ? 'orange' : 'green'}>{slaLabel}</Badge></div>
       </div>
 
-      <Section compact title="Execution Notes">
+      <Section compact icon={ClipboardCheck} title="Execution Notes">
         <div className={twoColumnGridClass}>
           <Field label="Technician Remarks" value={technicianRemarks} onChange={event => setTechnicianRemarks(event.target.value)} type="textarea" required disabled={locked} />
           <Field label="Completion Notes" value={completionNotes} onChange={event => setCompletionNotes(event.target.value)} type="textarea" required disabled={locked} />
         </div>
       </Section>
 
-      <Section compact title="Actual Labor">
+      <Section compact tone="purple" icon={Users} title="Actual Labor">
         <div className={laborGridClass}>
           <Field label="Technicians / Labor" value={actualLabor} onChange={event => setActualLabor(event.target.value)} required disabled={locked} />
           <Field label="Actual Labor Hours" value={actualHours} onChange={event => setActualHours(event.target.value)} type="number" required disabled={locked} />
@@ -240,7 +240,7 @@ export default function WorkOrderActualTab({
         locked={locked}
       />
 
-      <Section compact title="Store Returns" note="Unused material and every borrowed tool must be back in the store before the work order closes">
+      <Section compact tone="orange" icon={PackageCheck} title="Store Returns" note="Unused material and every borrowed tool must be back in the store before the work order closes">
         {outstanding.length ? (
           <div className="flex flex-wrap items-start gap-3 rounded-2xl bg-[var(--app-badge-orange-bg)] p-4 text-[var(--app-badge-orange-text)]">
             <Undo2 size={18} />
@@ -260,7 +260,7 @@ export default function WorkOrderActualTab({
         )}
       </Section>
 
-      <Section compact title="Automatic Closeout" note="System populated when the work order is closed">
+      <Section compact tone="green" icon={ShieldCheck} title="Automatic Closeout" note="System populated when the work order is closed">
         <div className={closeoutGridClass}>
           <div className={closeoutCardClass}><span>Completion Date</span><strong>{actualFinish ? new Date(actualFinish).toLocaleString() : 'Pending'}</strong></div>
           <div className={closeoutCardClass}><span>Closed By</span><strong>{workClosed ? (currentUser?.name || currentUser?.username || 'Current user') : 'Pending'}</strong></div>

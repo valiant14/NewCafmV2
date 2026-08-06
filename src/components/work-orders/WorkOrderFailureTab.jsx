@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react'
+import { AlertTriangle, Search } from 'lucide-react'
 import Field from '../ui/Field'
 import Section from '../ui/Section'
 
@@ -53,7 +53,7 @@ export default function WorkOrderFailureTab({
   failureCount
 }) {
   return (
-    <Section compact title="Failure Classification" note={isCM ? 'Failure Class and Problem are required for corrective maintenance' : 'Optional for this work order type'}>
+    <Section compact tone="orange" icon={AlertTriangle} title="Failure Classification" note={isCM ? 'Failure Class and Problem are required for corrective maintenance' : 'Optional for this work order type'}>
       <div className={fieldsClass}>
         <Field label="Failure Code" value={failureClass} required={isCM} locked={readOnly} onChange={changeFailure} suggestions={failureClassOptions} placeholder="Search code or description" />
         <Field label="Problem Code" value={problemCode} required={isCM} locked={readOnly} onChange={event => { setProblemCode(event.target.value); setCauseCode(''); setRemedyCode('') }} suggestions={problemOptions} placeholder={failureClass ? 'Search matching problems' : 'Select failure code first'} />

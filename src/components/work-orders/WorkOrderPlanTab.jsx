@@ -1,4 +1,4 @@
-import { Lock, Plus, X } from 'lucide-react'
+import { Boxes, ListChecks, Lock, Plus, Users, X } from 'lucide-react'
 import Section from '../ui/Section'
 
 const workspaceClass = 'grid gap-3'
@@ -40,7 +40,7 @@ export default function WorkOrderPlanTab({
 }) {
   return (
     <div className={workspaceClass}>
-      <Section compact title="Planned Labor" note={isPM ? 'Generated from the linked job plan' : 'Add the crafts, crews, and estimated hours required'}>
+      <Section compact tone="purple" icon={Users} title="Planned Labor" note={isPM ? 'Generated from the linked job plan' : 'Add the crafts, crews, and estimated hours required'}>
         {!isPM && (
           <button className={addButtonClass} disabled={readOnly} onClick={() => setPlannedLabor(rows => [...rows, { craft: '', hours: '', crew: '' }])}>
             <Plus size={15} />Add labor
@@ -66,7 +66,7 @@ export default function WorkOrderPlanTab({
         </div>
       </Section>
 
-      <Section compact title="Planned Materials & Tools" note="Left empty by default. Data entry users add materials, tools, or equipment manually when needed; availability is managed in Materials.">
+      <Section compact tone="green" icon={Boxes} title="Planned Materials & Tools" note="Left empty by default. Data entry users add materials, tools, or equipment manually when needed; availability is managed in Materials.">
         <div className={actionRowClass}>
           <button className={addButtonClass} disabled={readOnly} onClick={() => setPlannedResources(rows => [...rows, { type: 'Material', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add material</button>
           <button className={secondaryAddButtonClass} disabled={readOnly} onClick={() => setPlannedResources(rows => [...rows, { type: 'Tool', item: '', quantity: '', availability: 'Available' }])}><Plus size={15} />Add tool</button>
@@ -90,7 +90,7 @@ export default function WorkOrderPlanTab({
         </div>
       </Section>
 
-      <Section compact title="Job Tasks" note={tasksLocked ? `Generated from job plan ${jobPlanNumber}` : 'Configure sequence, instructions, and expected duration'}>
+      <Section compact icon={ListChecks} title="Job Tasks" note={tasksLocked ? `Generated from job plan ${jobPlanNumber}` : 'Configure sequence, instructions, and expected duration'}>
         {!tasksLocked && <button className={addButtonClass} disabled={readOnly} onClick={() => setPlannedTasks(rows => [...rows, { sequence: (rows.length + 1) * 10, description: '', duration: '' }])}><Plus size={15} />Add task</button>}
         <div className={tableClass}>
           <div className={taskHeadClass}><span>Sequence</span><span>Task instruction</span><span>Duration (min)</span><span /></div>

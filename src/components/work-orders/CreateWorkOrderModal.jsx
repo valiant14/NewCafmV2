@@ -86,7 +86,7 @@ export default function CreateWorkOrderModal({ rows, assets, locationRows = [], 
             </div>
           </Section>
 
-          <Section compact icon={MapPin} title="Where" note="Site and location are required, asset is optional">
+          <Section compact tone="green" icon={MapPin} title="Where" note="Site and location are required, asset is optional">
             <div className="grid gap-3 md:grid-cols-3">
               <Field label="Site" icon={Building2} value={form.site} required onChange={changeSite} suggestions={sites} placeholder="Search or select a site" />
               <Field label="Location" icon={MapPin} value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
@@ -94,7 +94,7 @@ export default function CreateWorkOrderModal({ rows, assets, locationRows = [], 
             </div>
           </Section>
 
-          <Section compact icon={Users} title="Ownership" note="Department responsible for the work">
+          <Section compact tone="purple" icon={Users} title="Ownership" note="Department responsible for the work">
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Department" icon={Users} value={form.department} required onChange={changeDepartment} suggestions={departmentOptions} placeholder="Search department" />
               <Field label="Sub Department" icon={Users} value={form.subDepartment} onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder={form.department ? 'Search sub department' : 'Select department first'} />

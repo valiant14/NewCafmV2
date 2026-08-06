@@ -1,27 +1,4 @@
-import {
-  Bell,
-  Boxes,
-  CalendarClock,
-  ClipboardList,
-  FileText,
-  Gauge,
-  AlertTriangle,
-  LayoutDashboard,
-  Mail,
-  MapPin,
-  PackageCheck,
-  Warehouse,
-  ReceiptText,
-  Repeat,
-  ShoppingCart,
-  ShieldCheck,
-  Building2,
-  UserCog,
-  Users,
-  Wrench,
-  Workflow
-} from 'lucide-react'
-
+import { AlertTriangle, Bell, Boxes, Building2, CalendarClock, ClipboardList, FileText, Gauge, LayoutDashboard, Mail, MapPin, PackageCheck, ReceiptText, Repeat, ShieldCheck, ShoppingCart, UserCog, Users, Warehouse, Workflow, Wrench } from 'lucide-react'
 export const navigationItems = [
   { section: 'Workspace', name: 'Overview', path: '/', icon: LayoutDashboard },
     { section: 'Workspace', name: 'Job Requests', path: '/job-requests', icon: FileText },

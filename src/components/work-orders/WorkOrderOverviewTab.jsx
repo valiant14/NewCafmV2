@@ -1,3 +1,4 @@
+import { Boxes, CalendarClock, ClipboardCheck, FileText, Users } from 'lucide-react'
 import Field from '../ui/Field'
 import Section from '../ui/Section'
 import { priorityCode, workOrderPriorities } from '../../lib/priority'
@@ -65,7 +66,7 @@ export default function WorkOrderOverviewTab({
   return (
     <div className={layoutClass}>
       <div className={columnClass}>
-        <Section compact title="Work Order Details" note="Basic CM/PM information and request description">
+        <Section compact icon={FileText} title="Work Order Details" note="Basic CM/PM information and request description">
           <div className={gridClass}>
             <Field label="Work Order Number" value={String(number)} locked />
             <Field label="Status" value={status} locked />
@@ -79,7 +80,7 @@ export default function WorkOrderOverviewTab({
           </div>
         </Section>
 
-        <Section compact title="Asset & Location" note="Equipment, facility, and project relationship">
+        <Section compact tone="green" icon={Boxes} title="Asset & Location" note="Equipment, facility, and project relationship">
           <div className={gridClass}>
             <Field label="Asset" value={assetValue} locked={readOnly} onChange={changeAsset} suggestions={assetOptions} placeholder={assetOptions.length ? 'Search asset number or description' : 'Optional - no scoped assets available'} />
             <Field label="Location" value={locationValue} required locked={readOnly} onChange={event => setLocationValue(event.target.value)} suggestions={locationOptions} placeholder="Search or select a location" />
@@ -90,7 +91,7 @@ export default function WorkOrderOverviewTab({
       </div>
 
       <div className={columnClass}>
-        <Section compact title="Department & Ownership" note="Responsible department, assignment, and craft routing">
+        <Section compact tone="purple" icon={Users} title="Department & Ownership" note="Responsible department, assignment, and craft routing">
           <div className={gridClass}>
             <Field label="Department" value={department} required locked={readOnly} onChange={event => { setDepartment(event.target.value); setSubDepartment(''); setSystemValue('') }} suggestions={departmentOptions} placeholder="Search department" />
             <Field label="Sub Department" value={subDepartment} locked={readOnly} onChange={event => setSubDepartment(event.target.value)} suggestions={subDepartmentOptions} placeholder="Search sub department" />
@@ -103,7 +104,7 @@ export default function WorkOrderOverviewTab({
         </Section>
 
         {sourceRequest && (
-          <Section compact title="Originating Job Request" note="Raised as a service request and converted to this work order">
+          <Section compact icon={ClipboardCheck} title="Originating Job Request" note="Raised as a service request and converted to this work order">
             <div className={gridClass}>
               <Field label="Job Request (SR)" value={sourceRequest.sr} locked />
               <Field label="Reported By" value={sourceRequest.reportedBy || 'Not recorded'} locked />
@@ -113,7 +114,7 @@ export default function WorkOrderOverviewTab({
           </Section>
         )}
 
-        <Section compact title="Target Dates" note="Schedule and actual timing for SLA tracking">
+        <Section compact tone="orange" icon={CalendarClock} title="Target Dates" note="Schedule and actual timing for SLA tracking">
           <div className={gridClass}>
             <Field label="Reported Date" value={reportedDate} type="datetime-local" locked />
             {/* Work cannot be scheduled to start before it was reported, and cannot finish

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Boxes, Building2, Check, ChevronRight, ClipboardCheck, Download, FileText, Flag, MapPin, Paperclip, Printer, Upload, User, X } from 'lucide-react'
+import { Boxes, Building2, Check, ChevronRight, ClipboardCheck, Download, FileText, Flag, MapPin, Paperclip, Printer, ShieldCheck, Upload, User, Users, X } from 'lucide-react'
 import Badge from '../ui/Badge'
 import StatusBadge from '../ui/StatusBadge'
 import Alert from '../ui/Alert'
@@ -26,6 +26,9 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
 
   const isNew = form.status === 'NEW'
   const { attachments, loading: attachmentsLoading, error: attachmentError, uploadFiles, removeAttachment, downloadAttachment } = useEntityAttachments('service-request', form.sr, { enabled: !isNew })
+  // A submitted request is a record of what was reported, not a draft. Only a role with edit
+  // rights on Job Requests may change it afterwards - a reporter can read it but not rewrite it.
+  const readOnly = !isNew && !access.edit
   const canSubmit = Boolean(form.description?.trim() && form.site && form.location && form.reportedBy?.trim())
   const canConvert = Boolean(
     form.asset?.trim() &&
@@ -121,7 +124,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
           </div>
         </Section>
 
-        <Section compact icon={MapPin} title="Where" note="Site and location are required, asset is optional">
+        <Section compact tone="green" icon={MapPin} title="Where" note="Site and location are required, asset is optional">
           <div className="grid gap-3 md:grid-cols-3">
             <Field label="Site" icon={Building2} value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" />
             <Field label="Location" icon={MapPin} value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
@@ -129,7 +132,7 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
           </div>
         </Section>
 
-        <Section compact icon={Paperclip} title="Attachments" note="Photos, PDFs and supporting documents">
+        <Section compact tone="purple" icon={Paperclip} title="Attachments" note="Photos, PDFs and supporting documents">
           <label className="relative flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-header-bg)] p-3 text-center text-[var(--app-muted)]">
             <Upload size={18} />
             <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
@@ -212,50 +215,68 @@ export default function ServiceRequestDetail({ request, assets, workOrders, site
           )}
 
           {!isNew && activeTab === 'Request Details' && (
-            <Surface>
-              <SurfaceHeader eyebrow="Request" title="Request details" description="Issue, location, requester, and linked asset." actions={<Badge tone="neutral">Reported {form.reportedDate?.replace('T', ' ') || 'Not defined'}</Badge>} />
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Priority" value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} />
-                <Field label="Reported By" value={form.reportedBy} required onChange={update('reportedBy')} />
-                <Field label="Description" value={form.description} required onChange={update('description')} />
-                <Field label="Site" value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" />
-                <Field label="Location" value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" />
-                <Field label="Asset" value={form.asset} required onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" />
-                <div className="md:col-span-2">
-                  <Field label="Long Description" value={form.longDescription} type="textarea" onChange={update('longDescription')} />
+            <div className="grid gap-3">
+              <Section compact icon={FileText} title="What happened" note="Reported as submitted - locked once the request exists">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Field label="Priority" icon={Flag} value={form.priority} required options={['Low', 'Medium', 'High', 'Emergency']} onChange={update('priority')} disabled={readOnly} />
+                  <Field label="Reported By" icon={User} value={form.reportedBy} required onChange={update('reportedBy')} disabled={readOnly} />
+                  <div className="md:col-span-2"><Field label="Description" icon={FileText} value={form.description} required onChange={update('description')} disabled={readOnly} /></div>
                 </div>
-              </div>
-            </Surface>
+              </Section>
+
+              <Section compact tone="green" icon={MapPin} title="Where" note="Site, location and the asset involved">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Field label="Site" icon={Building2} value={form.site} required onChange={updateSite} suggestions={sites} placeholder="Search or select a site" disabled={readOnly} />
+                  <Field label="Location" icon={MapPin} value={form.location} required onChange={update('location')} suggestions={locations} placeholder="Search or select a location" disabled={readOnly} />
+                  <Field label="Asset" icon={Boxes} value={form.asset} required onChange={updateAsset} suggestions={assetOptions} placeholder="Search asset number or description" disabled={readOnly} />
+                </div>
+              </Section>
+
+              {/* Added after submission, so it stays open for anyone still working the request. */}
+              <Section compact tone="purple" icon={ClipboardCheck} title="Notes" note={`Reported ${form.reportedDate?.replace('T', ' ') || 'Not defined'}`}>
+                <Field label="Long Description" icon={FileText} value={form.longDescription} type="textarea" onChange={update('longDescription')} />
+              </Section>
+            </div>
           )}
 
           {!isNew && activeTab === 'Department Review' && (
-            <Surface>
-              <SurfaceHeader eyebrow="Department review" title="Review and CM conversion" description="Complete routing, asset, and failure classification before creating the corrective work order." />
+            <div className="grid gap-3">
+              {/* Routing is settled when the request is raised - a technician reads it, a role with
+                  edit rights can re-route. Classification below is the reviewer's own entry. */}
+              <Section compact tone="purple" icon={Users} title="Routing" note="Which department owns the work and who it is assigned to">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Field label="Department" icon={Users} value={form.department} required onChange={updateDepartment} suggestions={departmentOptions} placeholder="Search or select a department" disabled={readOnly} />
+                  <Field label="Assigned Department" icon={Users} value={form.assignedDepartment || form.department} required onChange={update('assignedDepartment')} suggestions={departmentOptions} placeholder="Search or select an assigned department" disabled={readOnly} />
+                </div>
+              </Section>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Department" value={form.department} required onChange={updateDepartment} suggestions={departmentOptions} placeholder="Search or select a department" />
-                <Field label="Sub Department" value={form.subDepartment || ''} required onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Search or select a sub department" />
-                <Field label="Assigned Department" value={form.assignedDepartment || form.department} required onChange={update('assignedDepartment')} suggestions={departmentOptions} placeholder="Search or select an assigned department" />
-                <Field label="Failure Code" value={form.failureCode} required onChange={update('failureCode')} suggestions={failureOptions} placeholder="Search code or description" />
-              </div>
-            </Surface>
+              <Section compact tone="orange" icon={ShieldCheck} title="Classification" note="Set by the reviewer before the request becomes a work order">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Field label="Sub Department" icon={Users} value={form.subDepartment || ''} required onChange={update('subDepartment')} suggestions={subDepartmentOptions} placeholder="Search or select a sub department" />
+                  <Field label="Failure Code" icon={ShieldCheck} value={form.failureCode} required onChange={update('failureCode')} suggestions={failureOptions} placeholder="Search code or description" />
+                </div>
+              </Section>
+            </div>
           )}
 
           {activeTab === 'Attachments' && (
-            <Section title="Attachments" note="Add photos or documents that help explain the request">
+            <Section title="Attachments" note={access.edit ? 'Add photos or documents that help explain the request' : 'Photos and documents attached to this request'}>
               {attachmentError && <Alert className="mb-3" tone="danger">{attachmentError}</Alert>}
-              <div className="relative grid min-h-28 cursor-pointer place-items-center content-center gap-2 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-hover-bg)] p-5 text-center text-[var(--app-muted)]">
-                <Upload size={25} />
-                <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
-                <span className="text-xs">Photos, PDFs and supporting documents · multiple files supported</span>
-                <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple disabled={!access.edit} onChange={async event => {
-                  const files = Array.from(event.target.files || [])
-                  event.target.value = ''
-                  if (files.length) await uploadFiles(files, 'General').catch(() => {})
-                }} />
-              </div>
-              <div className="mt-3 app-record-list">
+              {/* A drop zone that refuses the file it invites you to pick is worse than no drop
+                  zone, so a reader gets the list on its own. */}
+              {access.edit && (
+                <div className="relative grid min-h-28 cursor-pointer place-items-center content-center gap-2 rounded-2xl border border-dashed border-[var(--app-line)] bg-[var(--app-table-hover-bg)] p-5 text-center text-[var(--app-muted)]">
+                  <Upload size={25} />
+                  <strong className="text-sm text-[var(--app-ink)]">Upload attachments</strong>
+                  <span className="text-xs">Photos, PDFs and supporting documents · multiple files supported</span>
+                  <input className="absolute inset-0 cursor-pointer opacity-0" type="file" multiple onChange={async event => {
+                    const files = Array.from(event.target.files || [])
+                    event.target.value = ''
+                    if (files.length) await uploadFiles(files, 'General').catch(() => {})
+                  }} />
+                </div>
+              )}
+              <div className={`app-record-list ${access.edit ? 'mt-3' : ''}`}>
                 {attachments.map(file => <article className="app-record-row" key={file.attachmentId}>
                   <div className="flex min-w-0 items-center gap-3"><FileText size={16} /><div className="min-w-0"><strong className="block truncate text-sm">{file.name}</strong><span className="text-xs text-[var(--app-muted)]">{file.type} - {file.size}</span></div></div>
                   <div className="flex items-center gap-2"><button type="button" className="app-icon-button" aria-label={`Download ${file.name}`} onClick={() => downloadAttachment(file)}><Download size={14} /></button>{access.edit && <button type="button" className="app-icon-button" aria-label={`Remove ${file.name}`} onClick={() => removeAttachment(file)}><X size={14} /></button>}</div>
