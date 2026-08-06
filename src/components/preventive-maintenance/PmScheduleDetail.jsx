@@ -138,18 +138,8 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                   <div className="grid gap-2 md:grid-cols-4">
                     <MiniMetric label="Every" value={`${schedule.frequency} ${schedule.freqUnit}`} note={selectedRule ? 'From rule' : 'Direct PM'} />
                     <MiniMetric label="Lead Time" value={`${schedule.leadTime} days`} note="Due soon window" />
-<<<<<<< HEAD
-                    <MiniMetric label="Trigger Hour" value={`${String(schedule.triggerHour || 0).padStart(2, '0')}:00`} note="Generation starts after" />
-                    <MiniMetric label="WO Status" value={pmWorkOrderStatusLabel(schedule.woStatus, workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus)} note={schedule.woStatus || activeWorkflow.initialStatus} />
-                  </div>
-                </div>
-                <div className="grid gap-2 rounded-2xl bg-[var(--app-soft-bg)] p-4">
-                  <strong className="text-[var(--app-ink)]">Next output</strong>
-                  <span>Work Type: {plan.workType || 'PM'} - Initial Status: {pmWorkOrderStatusLabel(schedule.woStatus, workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus)} - Job Tasks: {tasks.length}</span>
-                  <span>Frequency: every {schedule.frequency} {schedule.freqUnit} at {String(schedule.triggerHour || 0).padStart(2, '0')}:00</span>
-=======
                     <MiniMetric label="Trigger Hour" value={`${String(schedule.triggerHour || 0).padStart(2, '0')}:00`} note="Generation starts after" pulse />
-                    <MiniMetric label="WO Status" value={workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus} note={schedule.woStatus || activeWorkflow.initialStatus} />
+                    <MiniMetric label="WO Status" value={pmWorkOrderStatusLabel(schedule.woStatus, workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus)} note={schedule.woStatus || activeWorkflow.initialStatus} />
                   </div>
                 </div>
                 <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
@@ -159,12 +149,11 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
                   </span>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone="blue">{plan.workType || 'PM'}</Badge>
-                    <Badge tone={statusTone(schedule.woStatus || activeWorkflow.initialStatus)}>{workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus}</Badge>
+                    <Badge tone={statusTone(schedule.woStatus || activeWorkflow.initialStatus)}>{pmWorkOrderStatusLabel(schedule.woStatus, workflowStatusLabel(activeWorkflow, schedule.woStatus) || activeWorkflow.initialStatus)}</Badge>
                     <Badge tone="purple">{tasks.length} job task{tasks.length === 1 ? '' : 's'}</Badge>
                     <Badge tone="green">Every {schedule.frequency} {schedule.freqUnit}</Badge>
                     <Badge tone="orange">{String(schedule.triggerHour || 0).padStart(2, '0')}:00</Badge>
                   </div>
->>>>>>> b0b549d50a04c9a43587a0e2a6baae114eedfe96
                 </div>
                 {/* Green once a cycle has run, amber while the PM has never produced anything. */}
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4">
