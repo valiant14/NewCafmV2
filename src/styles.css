@@ -352,7 +352,11 @@ main,
     background: color-mix(in srgb, var(--app-stat-accent, var(--app-panel)) 5%, var(--app-panel));
     border: 1px solid color-mix(in srgb, var(--app-stat-accent, var(--app-line)) 34%, var(--app-line));
     border-radius: var(--app-radius-panel);
-    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-stat-accent, transparent) 85%, transparent), var(--app-shadow-panel);
+    /* A lifted shadow so the metric row reads as raised tiles above the cards below it. */
+    box-shadow:
+      inset 3px 0 0 color-mix(in srgb, var(--app-stat-accent, transparent) 85%, transparent),
+      0 1px 2px rgba(15, 23, 42, .08),
+      0 12px 24px -6px rgba(15, 23, 42, .16);
     display: flex;
     gap: 12px;
     min-height: 112px;
@@ -800,7 +804,9 @@ main,
   .app-detail-date input:focus { border-color: var(--app-field-focus); outline: none; }
   .app-detail-tab--active { border-bottom-color: var(--app-primary); color: var(--app-primary); font-weight: 750; }
 
-  .app-metric-card { background: var(--app-soft-bg); border-radius: var(--app-radius-panel); padding: 13px; }
+  /* Raised like the stat tiles it sits alongside: a panel background with a contact shadow and
+     a soft drop, so the metric row reads above the cards below it instead of sinking into them. */
+  .app-metric-card { background: var(--app-panel); border: 1px solid var(--app-line); border-radius: var(--app-radius-panel); box-shadow: 0 1px 2px rgba(15, 23, 42, .08), 0 12px 24px -6px rgba(15, 23, 42, .16); padding: 13px; }
   .app-metric-card strong { color: var(--app-ink); display: block; font-size: 16px; margin-top: 4px; }
   .app-metric-card small { color: var(--app-muted); display: block; font-size: 10px; margin-top: 3px; }
   .app-info-card-header { align-items: center; border-bottom: 1px solid var(--app-line); display: flex; gap: 10px; margin-bottom: 15px; padding-bottom: 13px; }
