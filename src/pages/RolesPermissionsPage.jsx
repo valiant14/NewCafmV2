@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { FileText, Globe, Plus, ShieldCheck, Activity } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
 import Button from '../components/ui/Button'
@@ -14,6 +14,7 @@ import TablePanel from '../components/ui/TablePanel'
 import RolePermissionDetailPage from '../components/roles/RolePermissionDetailPage'
 import StandardFilters from '../components/ui/StandardFilters'
 import Field from '../components/ui/Field'
+import Section from '../components/ui/Section'
 import { ModalFooter, ModalHeader, ModalOverlay, ModalPanel } from '../components/ui/ModalFrame'
 import { permissionActions, rolePermissionRows } from '../config/runtimeDefaults'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
@@ -131,7 +132,7 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <TablePanel>
+      <TablePanel tone="purple">
         <DataTable
           rows={visibleRows}
           rowKey={row => `${row.role}-${row.department}`}
@@ -139,8 +140,9 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
           pagination
           columns={[
             { key: 'role', label: 'Role', render: value => <strong className="text-[var(--app-ink)]">{value}</strong> },
-            { key: 'dataScope', label: 'Data Visibility', render: value => dataScopeLabel(value) },
-            { key: 'scope', label: 'Allowed Access' },
+            // Global access reaches every site and department, so it is called out in orange.
+            { key: 'dataScope', label: 'Data Visibility', render: value => <Badge tone={/global/i.test(dataScopeLabel(value)) ? 'orange' : 'green'}>{dataScopeLabel(value)}</Badge> },
+            { key: 'scope', label: 'Allowed Access', render: value => value || <span className="text-[var(--app-muted)]">Not described</span> },
             { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> }
           ]}
         />
@@ -155,12 +157,20 @@ export default function RolesPermissionsPage({ rows = rolePermissionRows, setRow
               description="Create a role first, then configure its permission matrix."
               onClose={() => setCreating(false)}
             />
-            <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
-              {formError && <Alert className="md:col-span-2" tone="danger">{formError}</Alert>}
-              <Field label="Role name" value={form.role} required onChange={event => setForm({ ...form, role: event.target.value })} placeholder="Civil Supervisor" />
-              <Field label="Status" value={form.status} options={['Draft', 'Active', 'Inactive']} onChange={event => setForm({ ...form, status: event.target.value })} />
-              <Field label="Data Visibility" value={form.dataScope} options={roleDataScopeOptions} onChange={event => setForm({ ...form, dataScope: event.target.value })} />
-              <div className="md:col-span-2"><Field label="Allowed Access" value={form.scope} onChange={event => setForm({ ...form, scope: event.target.value })} placeholder="Describe the purpose of this role" /></div>
+            <div className="grid items-stretch gap-3 px-4 py-4 sm:px-6 lg:grid-cols-2">
+              {formError && <Alert className="lg:col-span-2" tone="danger">{formError}</Alert>}
+              <Section compact icon={ShieldCheck} title="Role" note="What the role is called and whether it is in use">
+                <div className="grid gap-3">
+                  <Field label="Role name" icon={ShieldCheck} value={form.role} required onChange={event => setForm({ ...form, role: event.target.value })} placeholder="Civil Supervisor" />
+                  <Field label="Status" icon={Activity} value={form.status} options={['Draft', 'Active', 'Inactive']} onChange={event => setForm({ ...form, status: event.target.value })} />
+                </div>
+              </Section>
+              <Section compact tone="green" icon={Globe} title="Access" note="How much data the role sees - the permission matrix is set after it is created">
+                <div className="grid gap-3">
+                  <Field label="Data Visibility" icon={Globe} value={form.dataScope} options={roleDataScopeOptions} onChange={event => setForm({ ...form, dataScope: event.target.value })} />
+                  <Field label="Allowed Access" icon={FileText} value={form.scope} onChange={event => setForm({ ...form, scope: event.target.value })} placeholder="Describe the purpose of this role" />
+                </div>
+              </Section>
             </div>
             <ModalFooter>
               <Button variant="outline" onClick={() => setCreating(false)}>Cancel</Button>

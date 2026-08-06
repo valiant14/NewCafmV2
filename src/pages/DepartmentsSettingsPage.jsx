@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Activity, FileText, Hash, Layers, Plus, Users } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -24,11 +24,14 @@ const emptyDepartment = {
   status: 'Active'
 }
 
+const parent = { section: 'Department', sectionIcon: Users, sectionNote: 'The department this line sits under - it is what a user scope is set to' }
+const line = { section: 'Sub department', sectionIcon: Layers, sectionNote: 'The coded line itself, as it appears on work orders', sectionTone: 'green' }
+
 const fields = [
-  { key: 'subDepartmentCode', label: 'Sub Department Code', required: true, placeholder: '4-1-1' },
-  { key: 'department', label: 'Department', required: true, placeholder: 'Mechanical' },
-  { key: 'description', label: 'Description', required: true, placeholder: 'Mechanical-HVAC' },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
+  { ...parent, key: 'department', label: 'Department', icon: Users, required: true, placeholder: 'Mechanical' },
+  { ...parent, key: 'status', label: 'Status', icon: Activity, options: ['Active', 'Inactive'] },
+  { ...line, key: 'subDepartmentCode', label: 'Sub Department Code', icon: Hash, required: true, placeholder: '4-1-1' },
+  { ...line, key: 'description', label: 'Description', icon: FileText, required: true, placeholder: 'Mechanical-HVAC' }
 ]
 const templateHeaders = ['Sub Department Code', 'Department', 'Description']
 const exportColumns = [
@@ -129,7 +132,7 @@ export default function DepartmentsSettingsPage({ rows = [], setRows }) {
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <TablePanel>
+      <TablePanel tone="purple">
         <DataTable
           rows={visibleRows}
           rowKey="subDepartmentCode"
@@ -137,7 +140,7 @@ export default function DepartmentsSettingsPage({ rows = [], setRows }) {
           pagination
           columns={[
             { key: 'subDepartmentCode', label: 'Sub Department Code', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
-            { key: 'department', label: 'Department' },
+            { key: 'department', label: 'Department', render: value => <Badge tone="purple">{value || '-'}</Badge> },
             { key: 'description', label: 'Description' },
             { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> }
           ]}

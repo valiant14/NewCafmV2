@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, Plus } from 'lucide-react'
+import { Activity, Bell, FileText, Hash, Mail, Plus, Send, Users, Zap } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -72,13 +72,16 @@ const renderRecipients = value => {
   )
 }
 
+const trigger = { section: 'Trigger', sectionIcon: Bell, sectionNote: 'The event that raises the notification and how it is sent', sectionSpan: 'full' }
+const audience = { section: 'Audience', sectionIcon: Users, sectionNote: 'Who hears about it - comma, semicolon or a new line between addresses', sectionTone: 'green', sectionSpan: 'full' }
+
 const fields = [
-  { key: 'id', label: 'Rule ID', required: true, placeholder: 'NOTIF-001' },
-  { key: 'event', label: 'Event', required: true, options: events },
-  { key: 'channel', label: 'Channel', required: true, options: channels },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] },
-  { key: 'recipients', label: 'Recipients', type: 'textarea', fullWidth: true, placeholder: 'ahmed@seder.com, ops@seder.com\nmanager@seder.com' },
-  { key: 'notes', label: 'Notes', type: 'textarea', minRows: 'compact', fullWidth: true, placeholder: 'When and why this rule fires' }
+  { ...trigger, key: 'id', label: 'Rule ID', icon: Hash, required: true, placeholder: 'NOTIF-001' },
+  { ...trigger, key: 'event', label: 'Event', icon: Zap, required: true, options: events },
+  { ...trigger, key: 'channel', label: 'Channel', icon: Send, required: true, options: channels },
+  { ...trigger, key: 'status', label: 'Status', icon: Activity, options: ['Active', 'Inactive'] },
+  { ...audience, key: 'recipients', label: 'Recipients', icon: Mail, type: 'textarea', fullWidth: true, placeholder: 'ahmed@seder.com, ops@seder.com\nmanager@seder.com' },
+  { ...audience, key: 'notes', label: 'Notes', icon: FileText, type: 'textarea', minRows: 'compact', fullWidth: true, placeholder: 'When and why this rule fires' }
 ]
 
 const exportColumns = [
@@ -160,7 +163,7 @@ export default function NotificationsSettingsPage({ rows = [], setRows }) {
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <TablePanel>
+      <TablePanel tone="blue">
         {rows.length ? (
           <DataTable
             rows={visibleRows}
@@ -169,7 +172,7 @@ export default function NotificationsSettingsPage({ rows = [], setRows }) {
             pagination
             columns={[
               { key: 'id', label: 'Rule ID', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
-              { key: 'event', label: 'Event' },
+              { key: 'event', label: 'Event', render: value => <Badge tone="purple">{value || '-'}</Badge> },
               { key: 'channel', label: 'Channel', render: value => <Badge tone={value === 'SMS' ? 'orange' : 'blue'}>{value}</Badge> },
               { key: 'recipients', label: 'Recipients', render: renderRecipients },
               { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> },

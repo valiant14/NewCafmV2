@@ -175,7 +175,7 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
         statusOptions={reservationStatuses}
       />
       <RecordFilterNotice reference={focusReference} count={visibleRows.length} onClear={clearFocusReference} />
-      <TablePanel>
+      <TablePanel tone="purple">
         {visibleRows.length ? (
           <DataTable
             rows={visibleRows}
@@ -193,11 +193,17 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
                   title={`Open ${row.itemCode || value} to request a purchase`}
                 />
               ) },
-              { key: 'quantity', label: 'Requested' },
-              { key: 'availableQuantity', label: 'Balance', render: (_, row) => stockBalanceFor(row) },
-              { key: 'arrangedQuantity', label: 'Arranged', render: value => value || 0 },
-              { key: 'releasedQuantity', label: 'Released', render: value => value || 0 },
-              { key: 'deliveredQuantity', label: 'Delivered', render: value => value || 0 },
+              { key: 'quantity', label: 'Requested', render: value => <Badge tone="blue">{Number(value) || 0}</Badge> },
+              // A tool is not stocked by balance, so its dash stays a dash rather than a zero badge.
+              { key: 'availableQuantity', label: 'Balance', render: (_, row) => {
+                const balance = stockBalanceFor(row)
+                return balance === '-' || balance === null || balance === undefined
+                  ? <span className="text-[var(--app-muted)]">-</span>
+                  : <Badge tone={Number(balance) > 0 ? 'green' : 'orange'}>{Number(balance) || 0}</Badge>
+              } },
+              { key: 'arrangedQuantity', label: 'Arranged', render: (value, row) => <Badge tone={Number(value) >= Number(row.quantity || 0) && Number(value) > 0 ? 'green' : Number(value) > 0 ? 'orange' : 'neutral'}>{Number(value) || 0}</Badge> },
+              { key: 'releasedQuantity', label: 'Released', render: (value, row) => <Badge tone={Number(value) >= Number(row.quantity || 0) && Number(value) > 0 ? 'green' : Number(value) > 0 ? 'orange' : 'neutral'}>{Number(value) || 0}</Badge> },
+              { key: 'deliveredQuantity', label: 'Delivered', render: (value, row) => <Badge tone={Number(value) >= Number(row.quantity || 0) && Number(value) > 0 ? 'green' : Number(value) > 0 ? 'orange' : 'neutral'}>{Number(value) || 0}</Badge> },
               { key: 'source', label: 'Store / Source' },
               { key: 'status', label: 'Status', render: (value, row) => isCancelled(row)
                 ? <StatusBadge application="inventoryUsage" value="CANCELLED" />

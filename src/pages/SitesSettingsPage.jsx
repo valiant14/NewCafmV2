@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Activity, Building2, Globe, Hash, MapPin, Plus } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
@@ -25,12 +25,15 @@ const emptySite = {
   status: 'Active'
 }
 
+const identity = { section: 'Site', sectionIcon: Building2, sectionNote: 'The code is what gets assigned to a user as their site scope' }
+const place = { section: 'Location', sectionIcon: MapPin, sectionNote: 'Where the site is, and whether it is in use', sectionTone: 'green' }
+
 const fields = [
-  { key: 'code', label: 'Site Code', required: true, placeholder: 'Enter site code' },
-  { key: 'name', label: 'Site Name', required: true, placeholder: 'Riyadh HQ' },
-  { key: 'region', label: 'Region', placeholder: 'Central' },
-  { key: 'city', label: 'City', placeholder: 'Riyadh' },
-  { key: 'status', label: 'Status', options: ['Active', 'Inactive'] }
+  { ...identity, key: 'code', label: 'Site Code', icon: Hash, required: true, placeholder: 'Enter site code' },
+  { ...identity, key: 'name', label: 'Site Name', icon: Building2, required: true, placeholder: 'Riyadh HQ' },
+  { ...place, key: 'region', label: 'Region', icon: Globe, placeholder: 'Central' },
+  { ...place, key: 'city', label: 'City', icon: MapPin, placeholder: 'Riyadh' },
+  { ...place, key: 'status', label: 'Status', icon: Activity, options: ['Active', 'Inactive'] }
 ]
 const templateHeaders = Object.keys(emptySite)
 const exportColumns = [
@@ -135,7 +138,7 @@ export default function SitesSettingsPage({ rows = [], setRows }) {
         statusOptions={optionsFromRows(rows, ['status'])}
       />
 
-      <TablePanel>
+      <TablePanel tone="green">
         <DataTable
           rows={visibleRows}
           rowKey="code"
@@ -144,9 +147,11 @@ export default function SitesSettingsPage({ rows = [], setRows }) {
           columns={[
             { key: 'code', label: 'Site Code', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
             { key: 'name', label: 'Site Name' },
-            { key: 'region', label: 'Region' },
-            { key: 'city', label: 'City' },
-            { key: 'scope', label: 'Scope Value', render: (_, row) => siteScopeValue(row) },
+            { key: 'region', label: 'Region', render: value => value || <span className="text-[var(--app-muted)]">-</span> },
+            { key: 'city', label: 'City', render: value => value || <span className="text-[var(--app-muted)]">-</span> },
+            // This is the exact string a user's site scope has to carry, so it reads as a value
+            // to copy rather than another descriptive column.
+            { key: 'scope', label: 'Scope Value', render: (_, row) => <Badge tone="blue">{siteScopeValue(row)}</Badge> },
             { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'green' : 'orange'}>{value}</Badge> }
           ]}
         />

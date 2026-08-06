@@ -204,7 +204,7 @@ export default function MaterialsPage({ rows = [], setRows, onOpenWorkOrder, sto
         statusOptions={optionsFromRows(stockedRows, ['availability'])}
       />
 
-      <TablePanel>
+      <TablePanel tone="blue">
         <DataTable
           rows={visibleRows}
           rowKey="itemNumber"
@@ -216,10 +216,10 @@ export default function MaterialsPage({ rows = [], setRows, onOpenWorkOrder, sto
             { key: 'category', label: 'Category' },
             { key: 'unit', label: 'Unit' },
             { key: 'stores', label: 'Stores' },
-            { key: 'balance', label: 'Balance' },
-            { key: 'reserved', label: 'Reserved' },
+            { key: 'balance', label: 'Balance', render: value => <Badge tone={Number(value) > 0 ? 'blue' : 'neutral'}>{Number(value) || 0}</Badge> },
+            { key: 'reserved', label: 'Reserved', render: value => <Badge tone={Number(value) > 0 ? 'purple' : 'neutral'}>{Number(value) || 0}</Badge> },
             { key: 'available', label: 'Available', render: (value, row) => <Badge tone={row.availability === 'Available' ? 'green' : 'orange'}>{value}</Badge> },
-            { key: 'reorderLevel', label: 'Low level' },
+            { key: 'reorderLevel', label: 'Low level', render: value => <Badge tone="neutral">{Number(value) || 0}</Badge> },
             { key: 'availability', label: 'Availability', render: value => <Badge tone={materialStatusTone(value)}>{value}</Badge> },
             { key: 'status', label: 'Material Status', render: value => value ? <Badge tone={materialStatusTone(value)}>{value}</Badge> : '—' }
           ]}
