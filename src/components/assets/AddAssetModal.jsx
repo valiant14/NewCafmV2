@@ -1,3 +1,4 @@
+import { Activity, Boxes, Building2, CalendarClock, ClipboardList, FileText, Flag, Hash, Layers, MapPin, Tag, Users, Workflow } from 'lucide-react'
 import MasterRecordModal from '../master-data/MasterRecordModal'
 import { systemNamesForDepartment } from '../../lib/departments'
 import { assetTypes, nextAssetCode } from '../../lib/coding'
@@ -6,23 +7,29 @@ import { assetOptions, departmentOptions, locationOptions, siteOptions, subDepar
 const typeOptions = ['', ...assetTypes.map(type => `${type.code} · ${type.name}`)]
 const codeFromOption = option => String(option || '').split('·')[0].trim()
 
+const identity = { section: 'Identity', sectionIcon: Boxes, sectionNote: 'The type generates the asset number from the approved coding structure' }
+const placement = { section: 'Placement', sectionIcon: MapPin, sectionNote: 'Where the asset sits and who owns it', sectionTone: 'green' }
+const record = { section: 'Record', sectionIcon: ClipboardList, sectionNote: 'Manufacturer details and how the asset is tracked', sectionTone: 'purple', sectionSpan: 'full' }
+
 const buildFields = (department, masters = {}) => [
-  { key: 'assetType', label: 'Asset Type', options: typeOptions },
-  { key: 'assetnum', label: 'Asset Number', required: true, placeholder: 'Pick a type to generate' },
-  { key: 'description', label: 'Description', required: true, full: true, placeholder: 'Asset description' },
-  { key: 'site', label: 'Site', required: true, suggestions: siteOptions(masters.sites), placeholder: 'Select a site' },
-  { key: 'location', label: 'Location', required: true, suggestions: locationOptions(masters.locations), placeholder: 'Select a location' },
-  { key: 'department', label: 'Department', suggestions: departmentOptions(masters.departments), placeholder: 'Select a department' },
-  { key: 'sub department', label: 'Sub Department', suggestions: subDepartmentOptions(masters.departments, department), placeholder: 'Select a sub department' },
-  { key: 'system', label: 'System', options: ['', ...systemNamesForDepartment(department)] },
-  { key: 'prioity', label: 'Priority', type: 'number', min: 1 },
-  { key: 'status', label: 'Status', options: ['OPERATING', 'NOT READY', 'BROKEN', 'DECOMMISSIONED', 'RETIRED'] },
-  { key: 'parent', label: 'Parent Asset', suggestions: assetOptions(masters.assets), placeholder: 'Leave blank for a top level asset' },
-  { key: 'modelnum', label: 'Model Number' },
-  { key: 'serialnum', label: 'Serial Number' },
-  { key: 'installdate', label: 'Install Date', type: 'date' },
-  { key: 'quantity', label: 'Quantity', type: 'number', min: 1 },
-  { key: 'asset short name', label: 'Asset Short Name' }
+  { ...identity, key: 'assetType', label: 'Asset Type', icon: Layers, options: typeOptions },
+  { ...identity, key: 'assetnum', label: 'Asset Number', icon: Hash, required: true, placeholder: 'Pick a type to generate' },
+  { ...identity, key: 'description', label: 'Description', icon: FileText, required: true, fullWidth: true, placeholder: 'Asset description' },
+  { ...identity, key: 'asset short name', label: 'Asset Short Name', icon: Tag },
+  { ...identity, key: 'status', label: 'Status', icon: Activity, options: ['OPERATING', 'NOT READY', 'BROKEN', 'DECOMMISSIONED', 'RETIRED'] },
+
+  { ...placement, key: 'site', label: 'Site', icon: Building2, required: true, suggestions: siteOptions(masters.sites), placeholder: 'Select a site' },
+  { ...placement, key: 'location', label: 'Location', icon: MapPin, required: true, suggestions: locationOptions(masters.locations), placeholder: 'Select a location' },
+  { ...placement, key: 'department', label: 'Department', icon: Users, suggestions: departmentOptions(masters.departments), placeholder: 'Select a department' },
+  { ...placement, key: 'sub department', label: 'Sub Department', icon: Users, suggestions: subDepartmentOptions(masters.departments, department), placeholder: 'Select a sub department' },
+  { ...placement, key: 'system', label: 'System', icon: Workflow, options: ['', ...systemNamesForDepartment(department)] },
+  { ...placement, key: 'parent', label: 'Parent Asset', icon: Boxes, suggestions: assetOptions(masters.assets), placeholder: 'Leave blank for a top level asset' },
+
+  { ...record, key: 'modelnum', label: 'Model Number', icon: Tag },
+  { ...record, key: 'serialnum', label: 'Serial Number', icon: Hash },
+  { ...record, key: 'installdate', label: 'Install Date', icon: CalendarClock, type: 'date' },
+  { ...record, key: 'prioity', label: 'Priority', icon: Flag, type: 'number', min: 1 },
+  { ...record, key: 'quantity', label: 'Quantity', icon: Boxes, type: 'number', min: 1 }
 ]
 
 export default function AddAssetModal({ form, setForm, onClose, onSave, rows = [], error = '', siteRecords = [], departmentRecords = [], locationRows = [] }) {

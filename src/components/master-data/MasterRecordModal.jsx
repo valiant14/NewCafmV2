@@ -32,7 +32,7 @@ const groupFields = fields => fields.reduce((groups, field) => {
   const name = field.section || ''
   const current = groups.at(-1)
   if (current && current.name === name) current.fields.push(field)
-  else groups.push({ name, icon: field.sectionIcon, note: field.sectionNote, tone: field.sectionTone, fields: [field] })
+  else groups.push({ name, icon: field.sectionIcon, note: field.sectionNote, tone: field.sectionTone, span: field.sectionSpan, fields: [field] })
   return groups
 }, [])
 
@@ -47,7 +47,7 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
 
   return (
     <ModalOverlay>
-      <ModalPanel className="max-w-4xl rounded-2xl" labelledBy="master-record-title">
+      <ModalPanel className="max-w-5xl rounded-2xl" labelledBy="master-record-title">
         <ModalHeader eyebrow="MASTER DATA" title={title} titleId="master-record-title" description={note} onClose={onClose} />
 
         {error && (
@@ -58,16 +58,27 @@ export default function MasterRecordModal({ title, note, fields, form, setForm, 
         )}
 
         {sections.length > 1 || sections[0]?.name ? (
-          <div className="grid gap-3 overflow-auto px-4 py-4 sm:px-6">
-            {sections.map(section => (
-              <Section compact key={section.name} tone={section.tone} icon={section.icon} title={section.name} note={section.note}>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {section.fields.map(field => (
-                    <MasterRecordField key={field.key} field={field} value={form[field.key]} onChange={updateField} />
-                  ))}
-                </div>
-              </Section>
-            ))}
+          <div className="grid items-start gap-3 overflow-auto px-4 py-4 sm:px-6 lg:grid-cols-2">
+            {sections.map(section => {
+              const wide = section.span === 'full' || sections.length === 1
+              return (
+                <Section
+                  compact
+                  key={section.name}
+                  tone={section.tone}
+                  icon={section.icon}
+                  title={section.name}
+                  note={section.note}
+                  className={wide ? 'lg:col-span-2' : ''}
+                >
+                  <div className={`grid gap-3 md:grid-cols-2 ${wide ? 'xl:grid-cols-3' : ''}`}>
+                    {section.fields.map(field => (
+                      <MasterRecordField key={field.key} field={field} value={form[field.key]} onChange={updateField} />
+                    ))}
+                  </div>
+                </Section>
+              )
+            })}
           </div>
         ) : (
           <div className="grid gap-3 overflow-auto px-4 py-4 sm:px-6">
