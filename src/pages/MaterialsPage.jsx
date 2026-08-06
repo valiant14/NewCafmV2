@@ -14,7 +14,7 @@ import PageHeader from '../components/ui/PageHeader'
 import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
-import { availabilityFor, materialStatusTone, stockForItem, storeLabel, storesHolding, totalAvailable, totalBalance, totalReserved } from '../lib/inventory'
+import { availabilityFor, matchesItemId, materialStatusTone, stockForItem, storeLabel, storesHolding, totalAvailable, totalBalance, totalReserved } from '../lib/inventory'
 import { mergeImportedRows } from '../lib/importRows'
 import useModuleAccess from '../hooks/useModuleAccess'
 
@@ -62,7 +62,7 @@ const exportColumns = [
   { key: 'availability', label: 'Availability' },
   { key: 'status', label: 'Material Status' }
 ]
-const sameMaterial = (row, id) => String(row.itemNumber || '').trim().toLowerCase() === String(id || '').trim().toLowerCase()
+const sameMaterial = (row, id) => matchesItemId(id, row.itemNumber, row.description)
 
 const materialUsage = (material, workOrders, resourceRequests = []) => {
   const nested = workOrders.flatMap(order => {
@@ -101,7 +101,7 @@ const materialUsage = (material, workOrders, resourceRequests = []) => {
   return [...new Map([...nested, ...direct].map(row => [String(row.reference), row])).values()]
 }
 
-export default function MaterialsPage({ rows = [], setRows, stockRows = [], storeRows = [], workOrders = [], resourceRequests = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest, onUpdateStock }) {
+export default function MaterialsPage({ rows = [], setRows, onOpenWorkOrder, stockRows = [], storeRows = [], workOrders = [], resourceRequests = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest, onUpdateStock }) {
   const access = useModuleAccess('Materials')
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
@@ -117,7 +117,15 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
       setSelected(null)
       return
     }
-    setSelected(rows.find(row => sameMaterial(row, routeId)) || null)
+    const match = rows.find(row => sameMaterial(row, routeId))
+    // A link that only knows the item's description cannot know whether it is stocked as a
+    // material or as a tool. If it is not here, hand it to Tools rather than dead-ending.
+    if (!match && rows.length) {
+      window.history.replaceState({}, '', `/tools/${encodeURIComponent(routeId)}`)
+      window.dispatchEvent(new PopStateEvent('popstate'))
+      return
+    }
+    setSelected(match || null)
   }, [rows, routeId])
   const tabRows = tab === 'All' ? stockedRows : stockedRows.filter(row => row.availability === tab)
   const visibleRows = applyStandardFilters(tabRows, filters, {
@@ -157,7 +165,7 @@ export default function MaterialsPage({ rows = [], setRows, stockRows = [], stor
   }
 
   if (selectedMaterial) {
-    return <MaterialDetailPage material={selectedMaterial} stockRows={stockRows} storeRows={storeRows} usageRows={materialUsage(selectedMaterial, workOrders, resourceRequests)} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} onBack={close} onUpdate={updateMaterial} onCreateRequest={onCreateRequest} onUpdateStock={onUpdateStock} />
+    return <MaterialDetailPage material={selectedMaterial} stockRows={stockRows} storeRows={storeRows} usageRows={materialUsage(selectedMaterial, workOrders, resourceRequests)} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} onBack={close} onUpdate={updateMaterial} onCreateRequest={onCreateRequest} onUpdateStock={onUpdateStock} onOpenWorkOrder={onOpenWorkOrder} />
   }
 
   return (

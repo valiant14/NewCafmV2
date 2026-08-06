@@ -15,6 +15,7 @@ import TablePanel from '../components/ui/TablePanel'
 import StandardFilters from '../components/ui/StandardFilters'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { mergeImportedRows } from '../lib/importRows'
+import { matchesItemId } from '../lib/inventory'
 import useModuleAccess from '../hooks/useModuleAccess'
 
 const empty = {
@@ -41,7 +42,7 @@ const exportColumns = [
   { key: 'availability', label: 'Availability' },
   { key: 'toolStatus', label: 'Tool Status' }
 ]
-const sameTool = (row, id) => String(row.toolNumber || '').trim().toLowerCase() === String(id || '').trim().toLowerCase()
+const sameTool = (row, id) => matchesItemId(id, row.toolNumber, row.description)
 const cleanCode = value => String(value || '').trim().toLowerCase()
 const toolStatusTone = value => value === 'Available' ? 'green' : 'orange'
 const matchesTool = (tool, value, description) =>
@@ -141,7 +142,7 @@ const withToolUsage = (row, workOrders, allocations = [], storeRows = []) => {
   }
 }
 
-export default function ToolsPage({ rows = [], setRows, workOrders = [], resourceRequests = [], allocations = [], storeRows = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest }) {
+export default function ToolsPage({ rows = [], setRows, onOpenWorkOrder, workOrders = [], resourceRequests = [], allocations = [], storeRows = [], purchaseRequests = [], purchaseOrders = [], onCreateRequest }) {
   const access = useModuleAccess('Tools & Equipment')
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(empty)
@@ -192,7 +193,7 @@ export default function ToolsPage({ rows = [], setRows, workOrders = [], resourc
   }
 
   if (selectedTool) {
-    return <ToolDetailPage tool={selectedTool} usageRows={toolUsage(selectedTool, workOrders, resourceRequests)} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} onBack={close} onUpdate={updateTool} onCreateRequest={onCreateRequest} />
+    return <ToolDetailPage tool={selectedTool} usageRows={toolUsage(selectedTool, workOrders, resourceRequests)} purchaseRequests={purchaseRequests} purchaseOrders={purchaseOrders} onBack={close} onUpdate={updateTool} onCreateRequest={onCreateRequest} onOpenWorkOrder={onOpenWorkOrder} />
   }
 
   return (

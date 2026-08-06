@@ -123,14 +123,16 @@ export function MetricCard({ icon: Icon, label, value, note }) {
   )
 }
 
-export function InfoCard({ icon: Icon, kicker, title, items = [], wide = false }) {
+// Shares Section's accent classes rather than a second look of its own, so a detail page and a
+// form page read as the same product. `tone` is one of the badge palette names.
+export function InfoCard({ icon: Icon, kicker, title, items = [], wide = false, tone }) {
   return (
-    <section className={cn('app-surface', wide && 'lg:col-span-2')}>
-      <header className="app-info-card-header">
-        {Icon && <Icon className="text-[var(--app-muted)]" size={18} />}
+    <section className={cn('app-surface app-section', tone && `app-section--${tone}`, wide && 'lg:col-span-2')}>
+      <header className="app-section-header">
+        {Icon && <span className="app-section-icon"><Icon size={15} /></span>}
         <div>
           <span className="app-eyebrow">{kicker}</span>
-          <h2>{title}</h2>
+          <h2 className="app-section-title">{title}</h2>
         </div>
       </header>
       <dl className="grid gap-3 sm:grid-cols-2">

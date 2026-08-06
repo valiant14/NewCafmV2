@@ -8,10 +8,10 @@ export default function StatCard({ icon: Icon, label, value, detail, tone = 'neu
     <Component
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={cn('app-stat-card', onClick && 'app-stat-card--interactive', className)}
+      className={cn('app-stat-card', `app-stat-card--${tone}`, onClick && 'app-stat-card--interactive', className)}
       aria-label={onClick ? `View ${label}` : undefined}
     >
-      <span className={cn('app-stat-icon', `app-stat-icon--${tone}`)}>
+      <span className="app-stat-icon">
         {Icon && <Icon size={18} />}
       </span>
       <span className="min-w-0 flex-1 text-left">

@@ -184,16 +184,19 @@ export default function PmScheduleDetail({ plan, assets, jobTasks, jobPlans, pmR
             </div>
             {history.length ? (
               <div className="grid gap-2">
+                {/* A generated number can be a short counter or a full GUID, so the first column
+                    is wide enough for the long form and truncates past it - otherwise one long id
+                    wraps and knocks that row's columns out of line with every other row. */}
                 {history.map(order => (
                   <button
                     type="button"
-                    className="grid gap-3 rounded-2xl border border-[var(--app-line)] p-4 text-left text-[var(--app-table-text)] transition hover:bg-[var(--app-soft-bg)] md:grid-cols-[120px_1fr_120px_90px_auto] md:items-center"
+                    className="grid gap-3 rounded-2xl border border-[var(--app-line)] p-4 text-left text-[var(--app-table-text)] transition hover:bg-[var(--app-soft-bg)] md:grid-cols-[230px_1fr_120px_90px_auto] md:items-center"
                     key={order.WORKORDER}
                     onClick={() => onOpenWorkOrder?.(order.WORKORDER)}
                   >
-                    <strong className="mono text-[var(--app-ink)]">{order.WORKORDER}</strong>
-                    <span>{order['PM CYCLE'] || '-'}</span>
-                    <span>{String(order['TARGET START '] || '-').slice(0, 10)}</span>
+                    <strong className="mono block min-w-0 truncate text-[var(--app-ink)]" title={order.WORKORDER}>{order.WORKORDER}</strong>
+                    <span className="min-w-0 truncate">{order['PM CYCLE'] || '-'}</span>
+                    <span className="whitespace-nowrap">{String(order['TARGET START '] || '-').slice(0, 10)}</span>
                     <Badge tone={['COMP', 'CLOSE'].includes(order.STATUS) ? 'green' : 'neutral'}>{order.STATUS}</Badge>
                     <ChevronRight size={15} />
                   </button>

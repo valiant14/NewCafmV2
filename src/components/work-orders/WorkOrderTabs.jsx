@@ -2,7 +2,9 @@ import { cn } from '../../lib/cn'
 
 // Uses the shared detail-tab classes rather than a second set of its own, so these tabs and the
 // ones on every detail page stay the same size and shape. Sizing lives in `.app-detail-tab`.
-export default function WorkOrderTabs({ tabs, active, onChange, alertTabs = [] }) {
+// `meta` renders on the right of the same row - record-level facts that should stay visible
+// whichever tab is open, like the work order's dates.
+export default function WorkOrderTabs({ tabs, active, onChange, alertTabs = [], meta }) {
   const alerts = new Set(alertTabs)
 
   return (
@@ -20,6 +22,7 @@ export default function WorkOrderTabs({ tabs, active, onChange, alertTabs = [] }
           {alerts.has(name) && <i className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--orange)]" />}
         </button>
       ))}
+      {meta}
     </nav>
   )
 }

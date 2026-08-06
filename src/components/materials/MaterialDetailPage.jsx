@@ -7,6 +7,7 @@ import Button from '../ui/Button'
 import DataTable from '../ui/DataTable'
 import StatCard from '../ui/StatCard'
 import TablePanel from '../ui/TablePanel'
+import RecordLink from '../ui/RecordLink'
 import { SurfaceHeader } from '../ui/Surface'
 import { stockForItem, storeLabel } from '../../lib/inventory'
 import EmptyState from '../ui/EmptyState'
@@ -37,7 +38,7 @@ const matchesMaterial = (material, row) => {
   return item === String(material.itemNumber || '').trim().toLowerCase() || item === String(material.description || '').trim().toLowerCase()
 }
 
-export default function MaterialDetailPage({ material, stockRows = [], storeRows = [], usageRows = [], purchaseRequests = [], purchaseOrders = [], onBack, onUpdate, onCreateRequest, onUpdateStock }) {
+export default function MaterialDetailPage({ material, stockRows = [], storeRows = [], usageRows = [], purchaseRequests = [], purchaseOrders = [], onBack, onUpdate, onCreateRequest, onUpdateStock, onOpenWorkOrder }) {
   const access = useModuleAccess('Materials')
   const purchaseRequestAccess = useModuleAccess('Purchase Requisitions')
   const [tab, setTab] = useState('Material Details')
@@ -135,16 +136,17 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
         {tab === 'Material Details' && <main className="space-y-4">
           <section className="grid gap-3 md:grid-cols-4">
             {[
-              { icon: Boxes, label: 'Balance', value: material.balance, note: `Total ${material.unit}` },
-              { icon: ClipboardList, label: 'Reserved', value: material.reserved || 0, note: 'Committed' },
-              { icon: PackageCheck, label: 'Available', value: stock.available, note: `Ready ${material.unit}` },
-              { icon: BarChart3, label: 'Low Level', value: material.reorderLevel, note: `${stock.coverage}% coverage` }
-            ].map(metric => <StatCard key={metric.label} {...metric} detail={metric.note} tone="blue" />)}
+              { icon: Boxes, label: 'Balance', value: material.balance, note: `Total ${material.unit}`, tone: 'blue' },
+              { icon: ClipboardList, label: 'Reserved', value: material.reserved || 0, note: 'Committed', tone: 'purple' },
+              { icon: PackageCheck, label: 'Available', value: stock.available, note: `Ready ${material.unit}`, tone: stock.available > 0 ? 'green' : 'orange' },
+              { icon: BarChart3, label: 'Low Level', value: material.reorderLevel, note: `${stock.coverage}% coverage`, tone: 'orange' }
+            ].map(metric => <StatCard key={metric.label} {...metric} detail={metric.note} />)}
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
           <InfoCard
             icon={Archive}
+            tone="blue"
             kicker="ITEM"
             title="Material Information"
             items={[
@@ -157,6 +159,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
 
           <InfoCard
             icon={Warehouse}
+            tone="green"
             kicker="INVENTORY"
             title="Stock Control"
             items={[
@@ -169,7 +172,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
           />
           </section>
 
-          <TablePanel className="lg:col-span-2">
+          <TablePanel tone="green" className="lg:col-span-2">
             <SurfaceHeader eyebrow="Store inventory" title={`Held in ${storeStock.length} store${storeStock.length === 1 ? '' : 's'}`} />
             <DataTable
               rows={storeStock}
@@ -178,9 +181,11 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
               columns={[
                 { key: 'storeName', label: 'Store' },
                 { key: 'storeroom', label: 'Store Code', render: value => <strong className="mono">{value}</strong> },
-                { key: 'balance', label: 'Balance' },
-                { key: 'reserved', label: 'Reserved' },
-                { key: 'available', label: 'Available' },
+                /* The three quantities are what the row is read for, so each is a badge in the
+                   tone it carries elsewhere on the page - and an empty shelf reads orange. */
+                { key: 'balance', label: 'Balance', render: value => <Badge tone={Number(value) > 0 ? 'blue' : 'neutral'}>{Number(value) || 0}</Badge> },
+                { key: 'reserved', label: 'Reserved', render: value => <Badge tone={Number(value) > 0 ? 'purple' : 'neutral'}>{Number(value) || 0}</Badge> },
+                { key: 'available', label: 'Available', render: value => <Badge tone={Number(value) > 0 ? 'green' : 'orange'}>{Number(value) || 0}</Badge> },
                 { key: 'reorderLevel', label: 'Low Level', render: (_, row) => (
                   <input
                     type="number"
@@ -200,14 +205,14 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
         </main>}
 
         {tab === 'Work Order Usage' && (
-          <TablePanel>
+          <TablePanel tone="blue">
             {usageRows.length ? (
               <DataTable
                 rows={usageRows}
                 rowKey="reference"
                 pagination
                 columns={[
-                  { key: 'reference', label: 'Work Order', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
+                  { key: 'reference', label: 'Work Order', render: value => <RecordLink value={value} mono onClick={value && onOpenWorkOrder ? () => onOpenWorkOrder(value) : undefined} /> },
                   { key: 'description', label: 'Description' },
                   { key: 'workType', label: 'Type' },
                   { key: 'quantity', label: 'Consumed / Requested', render: (value, row) => `${value} ${row.unit || material.unit}` },
@@ -227,7 +232,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
           </TablePanel>
         )}
         {tab === 'Procurement History' && (
-          <TablePanel>
+          <TablePanel tone="purple">
             {procurementRows.length ? (
               <DataTable
                 rows={procurementRows}
@@ -237,7 +242,7 @@ export default function MaterialDetailPage({ material, stockRows = [], storeRows
                   { key: 'recordType', label: 'Type' },
                   { key: 'reference', label: 'Reference', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
                   { key: 'linked', label: 'Linked Record' },
-                  { key: 'workOrder', label: 'Work Order' },
+                  { key: 'workOrder', label: 'Work Order', render: value => <RecordLink value={value} mono onClick={value && onOpenWorkOrder ? () => onOpenWorkOrder(value) : undefined} /> },
                   { key: 'quantity', label: 'Quantity' },
                   { key: 'source', label: 'Store' },
                   { key: 'status', label: 'Status', render: value => <Badge tone={statusTone(value)}>{value}</Badge> },

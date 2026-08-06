@@ -5,6 +5,7 @@ import Button from '../components/ui/Button'
 import DataTable from '../components/ui/DataTable'
 import LineChart from '../components/ui/LineChart'
 import PageHeader from '../components/ui/PageHeader'
+import RecordLink from '../components/ui/RecordLink'
 import StatCard from '../components/ui/StatCard'
 import Surface, { SurfaceHeader } from '../components/ui/Surface'
 import { excelDate, excelToDate } from '../config/runtimeDefaults'
@@ -13,6 +14,7 @@ import { parseLocal } from '../lib/datetime'
 import { effectiveTargetTime, isOnHold } from '../lib/holdPeriods'
 import { statusDescription, statusTone } from '../lib/statusMatrix'
 import { printWithoutBrowserTitle } from '../lib/print'
+import { openInventoryItem } from '../lib/recordNavigation'
 
 const Metric = props => <StatCard {...props} />
 
@@ -181,11 +183,25 @@ export default function OverviewPage({
   const permitsMissingDocs = workOrderStats ? Number(workOrderStats.permitsMissing || 0) : recentPermitOrders.filter(order => !order.fileCount).length
   const permitsDocumented = Math.max(0, permitCount - permitsMissingDocs)
 
-  const connectedOperations = snapshot?.supply?.operations || [
-    ...purchaseRequests.map(row => ({ type: 'Purchase Request', reference: row.purchaseRequest, workOrder: row.workOrder, item: row.item, status: row.status, next: row.purchaseOrder ? `Linked to ${row.purchaseOrder}` : 'Awaiting approval' })),
-    ...purchaseOrders.map(row => ({ type: 'Purchase Order', reference: row.purchaseOrder, workOrder: row.workOrder, item: row.item, status: row.status, next: row.status === 'CLOSE' ? 'Received and closed' : 'Procurement follow-up' })),
-    ...reservations.map(row => ({ type: row.type === 'Material' ? 'Reservation' : 'Allocation', reference: row.reservation, workOrder: row.workOrder, item: row.item, status: row.status, next: row.status === 'COMPLETE' ? 'Delivered to work order' : 'Store fulfillment' }))
-  ].slice(0, 8)
+  // The server snapshot sends only the operation label, reference, work order and item text -
+  // enough to work out where each of those points, which is done here rather than per column.
+  const operationPage = type => (
+    type === 'Purchase Request' ? 'Purchase Requisitions'
+      : type === 'Purchase Order' ? 'Purchase Orders'
+        : 'Reservations'
+  )
+  const connectedOperations = (snapshot?.supply?.operations || [
+    ...purchaseRequests.map(row => ({ type: 'Purchase Request', page: 'Purchase Requisitions', reference: row.purchaseRequest, workOrder: row.workOrder, item: row.item, itemCode: row.itemCode, itemType: row.type, status: row.status, next: row.purchaseOrder ? `Linked to ${row.purchaseOrder}` : 'Awaiting approval' })),
+    ...purchaseOrders.map(row => ({ type: 'Purchase Order', page: 'Purchase Orders', reference: row.purchaseOrder, workOrder: row.workOrder, item: row.item, itemCode: row.itemCode, itemType: row.type, status: row.status, next: row.status === 'CLOSE' ? 'Received and closed' : 'Procurement follow-up' })),
+    ...reservations.map(row => ({ type: row.type === 'Material' ? 'Reservation' : 'Allocation', page: 'Reservations', reference: row.reservation, workOrder: row.workOrder, item: row.item, itemCode: row.itemCode, itemType: row.type, status: row.status, next: row.status === 'COMPLETE' ? 'Delivered to work order' : 'Store fulfillment' }))
+  ]).slice(0, 8).map(row => ({
+    ...row,
+    page: row.page || operationPage(row.type),
+    // An allocation is always a tool; everything else is stocked as a material unless the row
+    // says otherwise. Materials hands an unknown description over to Tools, so a wrong guess
+    // still lands on the right record.
+    itemType: row.itemType || (row.type === 'Allocation' ? 'Tool' : 'Material')
+  }))
   const calculatedSiteCompliance = [...new Set(workOrderRows.map(order => order.SITE).filter(Boolean))].slice(0, 4).map(site => {
     const siteRows = workOrderRows.filter(order => order.SITE === site)
     const siteOverdue = overdueOrders.filter(order => order.SITE === site)
@@ -292,7 +308,7 @@ export default function OverviewPage({
           <Metric label="Meters" value={meterTotal} detail="Utility and runtime meters tracked" icon={Gauge} tone="green" onClick={() => onNavigate('Meters')} />
         </section>
 
-        <Surface className="mb-7">
+        <Surface tone="green" className="mb-7">
           <SurfaceHeader inset eyebrow="SLA by site" title="Service level performance" />
 
           <div className="mb-5 grid gap-4 md:grid-cols-2">
@@ -322,7 +338,7 @@ export default function OverviewPage({
           <Metric label="Store fulfillment" value={activeReservationCount} detail="Reservations or allocations not yet delivered" icon={Truck} tone="green" onClick={() => onNavigate('Reservations')} />
         </section>
 
-        <Surface className="mb-7">
+        <Surface tone="blue" className="mb-7">
           <SurfaceHeader
             inset
             eyebrow="Utilities"
@@ -363,7 +379,7 @@ export default function OverviewPage({
         </Surface>
 
         <section className="mb-7 grid gap-5 xl:grid-cols-[1fr_340px]">
-          <Surface as="article" flush>
+          <Surface as="article" flush tone="blue">
             <SurfaceHeader eyebrow="Operations" title="Active work orders" actions={<Button className="print-hide" variant="ghost" onClick={() => onNavigate('Work Orders')}>View all <ChevronRight size={16} /></Button>} />
             <DataTable
               rows={openOrders}
@@ -371,7 +387,7 @@ export default function OverviewPage({
               pageSize={5}
               showFooter={false}
               columns={[
-                { key: 'WORKORDER', label: 'Order', render: value => <strong className="mono">#{value}</strong> },
+                { key: 'WORKORDER', label: 'Order', render: value => <RecordLink value={`#${value}`} mono onClick={() => onOpenWorkOrderTab?.(value, 'Overview')} title={`Open work order ${value}`} /> },
                 { key: 'DESCRIPITION ', label: 'Description' },
                 { key: 'LOCATION PRIORTY', label: 'Location', render: value => <Badge tone={String(value ?? '').trim() === 'VIP' ? 'purple' : 'orange'}>{value ?? '-'}</Badge> },
                 { key: 'STATUS', label: 'Status', render: value => <Badge tone={statusTone(value)}>{statusDescription('workOrder', value) || value}</Badge> },
@@ -381,7 +397,7 @@ export default function OverviewPage({
           </Surface>
 
           <aside className="grid gap-5">
-            <Surface as="article">
+            <Surface as="article" tone="purple">
               <header className="mb-5 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[var(--app-muted)]">PORTFOLIO</p>
@@ -412,7 +428,7 @@ export default function OverviewPage({
           </aside>
         </section>
 
-        <Surface className="mb-7">
+        <Surface tone="orange" className="mb-7">
           <SurfaceHeader inset eyebrow="Compliance" title="Permits to work" description="Open a work order directly on its permit documentation." />
           {recentPermitOrders.length ? (
             <div className="grid gap-2">
@@ -443,7 +459,7 @@ export default function OverviewPage({
         </Surface>
 
         {connectedOperations.length > 0 && (
-          <Surface className="print-hide mb-7" flush>
+          <Surface tone="purple" className="print-hide mb-7" flush>
             <SurfaceHeader eyebrow="Connected operations" title="Work order supply chain" actions={<Button className="print-hide" variant="ghost" onClick={() => onNavigate('Purchase Requisitions')}>Open requisitions <ChevronRight size={16} /></Button>} />
             <DataTable
               rows={connectedOperations}
@@ -452,9 +468,9 @@ export default function OverviewPage({
               showFooter={false}
               columns={[
                 { key: 'type', label: 'Operation' },
-                { key: 'reference', label: 'Reference', render: value => <strong className="mono">{value}</strong> },
-                { key: 'workOrder', label: 'Work Order' },
-                { key: 'item', label: 'Item' },
+                { key: 'reference', label: 'Reference', render: (value, row) => <RecordLink value={value} mono onClick={row.page ? () => onNavigate(row.page, { reference: value }) : undefined} title={`Open ${value} on ${row.page || 'its page'}`} /> },
+                { key: 'workOrder', label: 'Work Order', render: value => <RecordLink value={value} mono onClick={value ? () => onOpenWorkOrderTab?.(value, 'Overview') : undefined} /> },
+                { key: 'item', label: 'Item', render: (value, row) => <RecordLink value={value} icon={Boxes} onClick={row.itemCode || value ? () => openInventoryItem({ type: row.itemType, itemCode: row.itemCode, item: value }) : undefined} /> },
                 { key: 'status', label: 'Status', render: value => <Badge tone={value === 'CLOSE' || value === 'COMPLETE' ? 'green' : 'orange'}>{value}</Badge> },
                 { key: 'next', label: 'Current Link' }
               ]}
@@ -462,13 +478,19 @@ export default function OverviewPage({
           </Surface>
         )}
 
-        <Surface className="print-hide">
+        <Surface tone="green" className="print-hide">
           <SurfaceHeader inset eyebrow="Maintenance" title="Preventive maintenance" actions={<Button className="print-hide" variant="ghost" onClick={() => onNavigate('Preventive Maintenance')}>Open schedule <ChevronRight size={16} /></Button>} />
           <div className="grid gap-3">
             {pmRows.slice(0, 4).map(pm => {
               const dueDate = parseLocal(pm.startDate)
               return (
-                <div className="grid gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4 md:grid-cols-[auto_1fr_auto] md:items-center" key={pm.pmNumber}>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('Preventive Maintenance')}
+                  title={`Open the schedule for ${pm.pmNumber}`}
+                  className="grid w-full gap-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-soft-bg)] p-4 text-left transition hover:bg-[var(--app-table-hover-bg)] md:grid-cols-[auto_1fr_auto] md:items-center"
+                  key={pm.pmNumber}
+                >
                   <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--app-badge-green-bg)] text-center">
                     <span className="block text-lg font-extrabold leading-none text-[var(--app-badge-green-text)]">{dueDate ? String(dueDate.getDate()).padStart(2, '0') : '--'}</span>
                     <small className="text-[9px] font-extrabold text-[var(--app-muted)]">{dueDate ? dueDate.toLocaleDateString(undefined, { month: 'short' }).toUpperCase() : 'TBD'}</small>
@@ -478,7 +500,7 @@ export default function OverviewPage({
                     <span className="text-xs text-[var(--app-muted)]">{pm.asset || 'No asset'} - Every {pm.frequency} {pm.freqUnit}</span>
                   </div>
                   <Badge tone={pmDueTone(pmPlanFromRecord(pm))}>{pmDueLabel(pmPlanFromRecord(pm))}</Badge>
-                </div>
+                </button>
               )
             })}
           </div>

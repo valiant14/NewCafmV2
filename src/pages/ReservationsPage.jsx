@@ -6,8 +6,11 @@ import IndexTabs from '../components/ui/IndexTabs'
 import PageHeader from '../components/ui/PageHeader'
 import StatusBadge from '../components/ui/StatusBadge'
 import TablePanel from '../components/ui/TablePanel'
+import RecordLink from '../components/ui/RecordLink'
+import RecordFilterNotice from '../components/ui/RecordFilterNotice'
+import { matchesReference, openInventoryItem, useRecordFilter } from '../lib/recordNavigation'
 import StandardFilters from '../components/ui/StandardFilters'
-import { ClipboardCheck, ClipboardList, PackageOpen, Truck, X } from 'lucide-react'
+import { ClipboardCheck, ClipboardList, Package, PackageOpen, Truck, X } from 'lucide-react'
 import { useState } from 'react'
 import { applyStandardFilters, emptyStandardFilters, optionsFromRows } from '../lib/standardFilters'
 import { statusDescription } from '../lib/statusMatrix'
@@ -56,7 +59,7 @@ const cancelledWorkOrders = (workOrders = []) => new Set(
     .filter(Boolean)
 )
 
-export default function ReservationsPage({ rows = [], stockRows = [], workOrders = [], onUpdate }) {
+export default function ReservationsPage({ rows = [], stockRows = [], workOrders = [], onUpdate, onOpenWorkOrder }) {
   const access = useModuleAccess('Reservations')
   const cancelled = cancelledWorkOrders(workOrders)
   const isCancelled = row => isCancelledStatus(row.status) || cancelled.has(workOrderKey(row.workOrder))
@@ -65,12 +68,17 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
   const [releaseRow, setReleaseRow] = useState(null)
   const [releaseQuantity, setReleaseQuantity] = useState('')
   const statusRows = status === 'All' ? rows : rows.filter(row => row.status === status)
-  const visibleRows = applyStandardFilters(statusRows, filters, {
+  const scopedRows = applyStandardFilters(statusRows, filters, {
     site: ['site'],
     department: ['department'],
     status: ['status'],
     date: ['createdAt']
   })
+
+  // A link from another page can point at a single record; it narrows the list on arrival.
+  const [focusReference, clearFocusReference] = useRecordFilter()
+  const focusedRows = focusReference ? scopedRows.filter(row => matchesReference(row, focusReference, ['reservation', 'workOrder', 'purchaseRequest', 'purchaseOrder'])) : scopedRows
+  const visibleRows = focusedRows
 
   const arrange = row => {
     const q = nextQuantity(row)
@@ -78,14 +86,6 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
     const available = liveBalance === null ? q.available : liveBalance + q.released
     const arrangedQuantity = Math.min(q.requested, available)
     onUpdate?.(row.reservation, { arrangedQuantity, status: 'STAGED', statusDescription: statusDescription('inventoryUsage', 'STAGED') })
-  }
-  // With the store empty there is nothing to arrange, and the fix is a purchase request on the
-  // item itself - so the item opens its own record, where Request PR lives.
-  const openItem = row => {
-    const code = row.itemCode || row.item
-    if (!code) return
-    window.history.pushState({}, '', `${row.type === 'Tool' ? '/tools' : '/materials'}/${encodeURIComponent(code)}`)
-    window.dispatchEvent(new PopStateEvent('popstate'))
   }
   const stockBalanceFor = row => {
     const store = cleanKey(row.source)
@@ -169,6 +169,7 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
         departmentOptions={optionsFromRows(rows, ['department'])}
         statusOptions={reservationStatuses}
       />
+      <RecordFilterNotice reference={focusReference} count={visibleRows.length} onClear={clearFocusReference} />
       <TablePanel>
         {visibleRows.length ? (
           <DataTable
@@ -177,18 +178,15 @@ export default function ReservationsPage({ rows = [], stockRows = [], workOrders
             pagination
             columns={[
               { key: 'reservation', label: 'Reference', render: value => <strong className="mono text-[var(--app-ink)]">{value}</strong> },
-              { key: 'workOrder', label: 'Work Order' },
+              { key: 'workOrder', label: 'Work Order', render: value => <RecordLink value={value} mono onClick={value && onOpenWorkOrder ? () => onOpenWorkOrder(value) : undefined} /> },
               { key: 'type', label: 'Type' },
               { key: 'item', label: 'Item / Description', render: (value, row) => (
-                <button
-                  type="button"
-                  onClick={() => openItem(row)}
-                  disabled={!(row.itemCode || row.item)}
+                <RecordLink
+                  value={value || row.itemCode || 'Unnamed item'}
+                  icon={Package}
+                  onClick={row.itemCode || row.item ? () => openInventoryItem(row) : undefined}
                   title={`Open ${row.itemCode || value} to request a purchase`}
-                  className="text-left text-[var(--app-primary)] transition hover:opacity-70 disabled:cursor-default disabled:text-[var(--app-table-text)] disabled:opacity-100"
-                >
-                  {value || row.itemCode || 'Unnamed item'}
-                </button>
+                />
               ) },
               { key: 'quantity', label: 'Requested' },
               { key: 'availableQuantity', label: 'Balance', render: (_, row) => stockBalanceFor(row) },
