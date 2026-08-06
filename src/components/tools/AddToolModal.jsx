@@ -1,14 +1,18 @@
+import { BarChart3, Boxes, CalendarClock, ClipboardCheck, FileText, Hash, Layers, ShieldCheck, Warehouse, Wrench } from 'lucide-react'
 import MasterRecordModal from '../master-data/MasterRecordModal'
 
+const resource = { section: 'Resource', sectionIcon: Wrench, sectionNote: 'What the tool is and where it is kept', sectionSpan: 'full' }
+const control = { section: 'Stock & inspection', sectionIcon: ClipboardCheck, sectionNote: 'How many are held, when to restock, and when it is next due for inspection', sectionTone: 'green', sectionSpan: 'full' }
+
 const toolFields = [
-  { label: 'Tool Number', key: 'toolNumber', required: true, placeholder: 'TOOL-0007' },
-  { label: 'Description', key: 'description', required: true, placeholder: 'Tool or equipment description' },
-  { label: 'Category', key: 'category', placeholder: 'e.g. Electrical Test' },
-  { label: 'Store / Location', key: 'location', placeholder: 'Main Tool Store' },
-  { label: 'Quantity', key: 'quantity', type: 'number', min: 1 },
-  { label: 'Low Level', key: 'lowLevel', type: 'number', min: 0 },
-  { label: 'Status', key: 'status', options: ['Available', 'Allocated', 'Maintenance'] },
-  { label: 'Inspection Due', key: 'inspectionDue', type: 'date', full: true }
+  { ...resource, label: 'Tool Number', key: 'toolNumber', icon: Hash, required: true, placeholder: 'TOOL-0007' },
+  { ...resource, label: 'Description', key: 'description', icon: FileText, required: true, placeholder: 'Tool or equipment description' },
+  { ...resource, label: 'Category', key: 'category', icon: Layers, placeholder: 'e.g. Electrical Test' },
+  { ...resource, label: 'Store / Location', key: 'location', icon: Warehouse, placeholder: 'Main Tool Store' },
+  { ...control, label: 'Quantity', key: 'quantity', icon: Boxes, type: 'number', min: 1 },
+  { ...control, label: 'Low Level', key: 'lowLevel', icon: BarChart3, type: 'number', min: 0 },
+  { ...control, label: 'Status', key: 'status', icon: ShieldCheck, options: ['Available', 'Allocated', 'Maintenance'] },
+  { ...control, label: 'Inspection Due', key: 'inspectionDue', icon: CalendarClock, type: 'date' }
 ]
 
 export default function AddToolModal(props) {

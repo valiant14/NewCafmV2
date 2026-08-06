@@ -232,7 +232,7 @@ export default function ToolsPage({ rows = [], setRows, onOpenWorkOrder, workOrd
         statusOptions={optionsFromRows(enrichedRows, ['status'])}
       />
 
-      <TablePanel>
+      <TablePanel tone="blue">
         <DataTable
           rows={visibleRows}
           rowKey="toolNumber"
@@ -244,10 +244,10 @@ export default function ToolsPage({ rows = [], setRows, onOpenWorkOrder, workOrd
             { key: 'category', label: 'Category' },
             { key: 'unit', label: 'Unit' },
             { key: 'stores', label: 'Stores' },
-            { key: 'balance', label: 'Balance' },
-            { key: 'reservedQuantity', label: 'Reserved' },
-            { key: 'availableQuantity', label: 'Available' },
-            { key: 'lowLevel', label: 'Low level' },
+            { key: 'balance', label: 'Balance', render: value => <Badge tone={Number(value) > 0 ? 'blue' : 'neutral'}>{Number(value) || 0}</Badge> },
+            { key: 'reservedQuantity', label: 'Reserved', render: value => <Badge tone={Number(value) > 0 ? 'purple' : 'neutral'}>{Number(value) || 0}</Badge> },
+            { key: 'availableQuantity', label: 'Available', render: value => <Badge tone={Number(value) > 0 ? 'green' : 'orange'}>{Number(value) || 0}</Badge> },
+            { key: 'lowLevel', label: 'Low level', render: value => <Badge tone="neutral">{Number(value) || 0}</Badge> },
             { key: 'availability', label: 'Availability', render: value => <Badge tone={toolStatusTone(value)}>{value}</Badge> },
             { key: 'toolStatus', label: 'Tool Status', render: value => <Badge tone={toolStatusTone(value)}>{value}</Badge> }
           ]}
