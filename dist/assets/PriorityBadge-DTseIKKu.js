@@ -1,1 +1,0 @@
-import{i as e}from"./Surface-DLvcaqzy.js";import{t}from"./Badge-CgWJETur.js";import{I as n,L as r,R as i}from"./index-BsSj-uqF.js";var a=e();function o({value:e,showCode:o=!0,className:s}){let c=n(e),l=r(e)||String(e??``).trim()||`Not set`,u=o&&c?`${c} · ${l}`:l;return(0,a.jsx)(t,{className:s,tone:i(e),title:`Priority: ${u}`,children:u})}export{o as t};
